@@ -1,0 +1,247 @@
+// Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+// All rights reserved.
+// Confidential and Proprietary - Qualcomm Technologies, Inc.
+
+#ifndef FADAS_INTERFACE_IDL
+#define FADAS_INTERFACE_IDL
+#include "AEEStdDef.idl"
+#include "remote.idl"
+
+interface FadasIface : remote_handle64 {
+
+enum FadasRemapPipeline_e
+{
+    FADAS_REMAP_PIPELINE_1C8_NSP,                  ///< 1 8-bit channel unconverted
+    FADAS_REMAP_PIPELINE_1C8_ROISCALE_NSP,             ///< 8-bit channel unconverted + ROI scaling
+    FADAS_REMAP_PIPELINE_3C888_NSP,                    ///< 3 8-bit channels unconverted
+    FADAS_REMAP_PIPELINE_3C888_ROISCALE_NSP,           ///< 3 8-bit channels unconverted + ROI scaling
+    FADAS_REMAP_PIPELINE_YUV888_TO_RGB888_NSP,         ///< Convert YUV888 to RGB888 [see FadasCvtYUV_UYVYtoRGB()]
+    FADAS_REMAP_PIPELINE_UYVY_TO_RGB888_NSP,           ///< Convert UYVY to RGB [see FadasCvtYUV_UYVYtoRGB()]
+    FADAS_REMAP_PIPELINE_VYUY_TO_RGB888_NSP,           ///< Convert VYUY to RGB
+    FADAS_REMAP_PIPELINE_UYVY_TO_RGB888_ROISCALE_NSP,  ///< Convert UYVY to RGB [see FadasCvtYUV_UYVYtoRGB()] + ROI scaling
+    FADAS_REMAP_PIPELINE_VYUY_TO_RGB888_ROISCALE_NSP,  ///< Convert VYUY to RGB + ROI scaling
+    FADAS_REMAP_PIPELINE_UYVY_TO_RGB888_NORMI8_NSP,    ///< Convert UYVY to RGB [see FadasCvtYUV_UYVYtoRGB()] + Renormalization
+    FADAS_REMAP_PIPELINE_UYVY_TO_RGB888_NORMU8_NSP,    ///< Convert UYVY to RGB [see FadasCvtYUV_UYVYtoRGB()] + Renormalization with uint8 output
+    FADAS_REMAP_PIPELINE_Y8UV8_TO_RGB888_NSP,
+    FADAS_REMAP_PIPELINE_Y8UV8_TO_BGR888_NSP,
+    FADAS_REMAP_PIPELINE_Y8UV8_TO_RGB888_NORMI8_NSP,
+    FADAS_REMAP_PIPELINE_Y8UV8_TO_RGB888_NORMU8_NSP,
+    FADAS_REMAP_PIPELINE_Y8UV8_TO_RGB888_ROISCALE_NSP,
+    FADAS_REMAP_PIPELINE_UYVY_TO_BGR888_NSP,           ///< Convert UYVY to BGR
+    FADAS_REMAP_PIPELINE_MAX_NSP                       ///< \b WARNING: must be last};
+};
+
+struct FadasCameraProps_t
+{
+    double focalLengthX;
+    double focalLengthY;
+    double principalPointX;
+    double principalPointY;
+};
+
+struct FadasDistCoeffs_t
+{
+    double k1;
+    double k2;
+    double k3;
+    double k4;
+};
+
+enum FadasImageFormat_e
+{
+    FADAS_IMAGE_FORMAT_UNKNOWN_NSP,          ///<  Not specified
+    FADAS_IMAGE_FORMAT_Y_NSP,                ///<  1-channel, 8-bit pixels
+    FADAS_IMAGE_FORMAT_Y12_NSP,              ///<  1-channel, 12-bit pixels in 16b containers
+    FADAS_IMAGE_FORMAT_UYVY_NSP,             ///<  8-bit UYUY
+    FADAS_IMAGE_FORMAT_UYVY10_NSP,           ///<  10-bit UYUY
+    FADAS_IMAGE_FORMAT_VYUY_NSP,             ///<  8-bit VYUY
+    FADAS_IMAGE_FORMAT_YUV888_NSP,           ///<  3-channel, 24-bit pixels
+    FADAS_IMAGE_FORMAT_RGB888_NSP,           ///<  3-channel, 24-bit pixels
+    FADAS_IMAGE_FORMAT_Y10UV10_NSP,          ///<  10 bit YUV420 semi-planar
+                                             ///<  10 bits in 16-bit container
+    FADAS_IMAGE_FORMAT_Y8UV8_NSP,            ///<  8 bit luma, 8 bit chroma
+                                             ///<  YUV420 semi-planar
+    FADAS_IMAGE_FORMAT_COUNT_NSP             ///<  last color format
+};
+
+enum FadasCvtYUVPipeline_e
+{
+    FADAS_CVTYUV_PIPELINE_DownscaleUYVYAndRGB888_NSP,       ///< UYVY to RGB using parameters of FadasCvtYUV_UYVYtoRGB()
+    FADAS_CVTYUV_PIPELINE_DownscaleUYVYBy2AndRGB888_NSP,    ///< UYVY to RGB using parameters of FadasCvtYUV_UYVYtoRGB()
+    FADAS_CVTYUV_PIPELINE_DownscaleYUV888AndRGB888_NSP,     ///< 3 8-bit channel YUV to RGB using parameters of FadasCvtYUV_UYVYtoRGB()
+    FADAS_CVTYUV_PIPELINE_DownscaleYUV888By2AndRGB888_NSP,  ///< 3 8-bit channel YUV to RGB using parameters of FadasCvtYUV_UYVYtoRGB()
+    FADAS_CVTYUV_PIPELINE_DownscaleY8UV8by2_NSP,            ///< Multi planar image (Y,UV) with 8 bit data in 8 bit carriers
+    FADAS_CVTYUV_PIPELINE_DownscaleY10UV10by2_NSP,          ///< Multi planar image (Y,UV) with 10 bit data in 16 bit carriers
+    FADAS_CVTYUV_PIPELINE_COUNT_NSP
+};
+
+enum FadasBufType_e {
+   FADAS_BUF_TYPE_IN_NSP,
+   FADAS_BUF_TYPE_OUT_NSP,
+   FADAS_BUF_TYPE_INOUT_NSP,
+   FADAS_BUF_TYPE_MAX_NSP
+};
+
+struct  FadasImgProps_t
+{
+    uint32_t width;
+    uint32_t height;
+    FadasImageFormat_e format;
+    uint32_t stride[4];
+    uint32_t numPlanes;
+    uint32_t actualHeight[4];
+};
+
+struct FadasROI_t
+{
+    uint32_t x;
+    uint32_t y;
+    uint32_t width;
+    uint32_t height;
+};
+
+struct FadasNormlzParams_t
+{
+    float  sub;
+    float  mul;
+    float  add;
+};
+
+struct Pt3D_t
+{
+    float x;
+    float y;
+    float z;
+};
+
+struct Grid2D_t
+{
+    float tlX;
+    float tlY;
+    float brX;
+    float brY;
+    float cellSizeX;
+    float cellSizeY;
+};
+
+AEEResult FadasInit(rout int32_t status);
+
+AEEResult FadasVersion(rout sequence<uint8_t> version);
+
+AEEResult FadasDeInit();
+
+AEEResult FadasRemap_CreateMapFromMap( inrout uint64 mapPtr,
+                                in uint32_t camWidth,
+                                in uint32_t camHeight,
+								in uint32_t mapWidth,
+								in uint32_t mapHeight,
+                                in int32_t mapXFd,
+                                in int32_t mapYFd,
+                                in uint32_t mapStride,
+                                in FadasRemapPipeline_e imgFormat,
+                                in uint8_t borderConst);
+
+AEEResult FadasRemap_CreateMapNoUndistortion(inrout uint64 mapPtr,
+												in uint32_t camWidth,
+												in uint32_t camHeight,
+												in uint32_t mapWidth,
+                                                in uint32_t mapHeight,
+												in FadasRemapPipeline_e imgFormat,
+                                                in uint8_t borderConst);
+
+AEEResult FadasRemap_DestroyMap( in uint64 mapPtr );
+
+AEEResult FadasRemap_CreateWorkers(inrout uint64 worker_ptr,
+                                   in uint32_t nThreads,
+                                   in FadasRemapPipeline_e imgFormat);
+
+AEEResult FadasRemap_DestroyWorkers( in uint64 worker_ptr );
+
+AEEResult FadasRemap_RunMT(   in sequence<uint64> workerPtrs,
+                              in sequence<uint64> mapPtrs,
+                              in sequence<int32_t> srcFds,
+                              in sequence<uint32_t> offsets,
+                              in sequence<FadasImgProps_t> srcProps,
+                              in int32_t dstFd,
+                              in uint32_t dstLen,
+                              in FadasImgProps_t dstProps,
+                              in sequence<FadasROI_t> dstROIs,
+                              in sequence<FadasNormlzParams_t> normlz);
+
+
+AEEResult       mmap( in int32_t         bufFd,
+                      in uint32_t          bufSize);
+
+AEEResult       munmap( in int32_t         bufFd,
+                        in uint32_t          bufSize);
+
+AEEResult FadasRegBuf(  in     FadasBufType_e     bufType,
+                        in     int32_t            bufFd,
+                        in     uint32_t           bufSize,
+                        in     uint32_t           bufOffset,
+                        in     uint32_t           batchSize );
+
+AEEResult FadasDeregBuf(in     int32_t            bufFd,
+                        in     uint32_t           bufSize,
+                        in     uint32_t           bufOffset,
+                        in     uint32_t           batchSize);
+
+AEEResult PointPillarCreate( in Pt3D_t pPlrSize,
+                             in Pt3D_t pMinRange,
+                             in Pt3D_t pMaxRange,
+                             in uint32_t maxNumInPts,
+                             in uint32_t numInFeatureDim,
+                             in uint32_t maxNumPlrs,
+                             in uint32_t maxNumPtsPerPlr,
+                             in uint32_t numOutFeatureDim,
+                             rout uint64_t phPreProc );
+
+AEEResult PointPillarRun( in uint64_t hPreProc,
+                          in uint32_t numPts,
+                          in int32_t fdInPts,
+                          in uint32_t inPtsOffset,
+                          in uint32_t inPtsSize,
+                          in int32_t fdOutPlrs,
+                          in uint32_t outPlrsOffset,
+                          in uint32_t outPlrsSize,
+                          in int32_t fdOutFeature,
+                          in uint32_t outFeatureOffset,
+                          in uint32_t outFeatureSize,
+                          rout uint32_t pNumOutPlrs );
+
+AEEResult PointPillarDestroy( in uint64_t hPreProc );
+
+AEEResult ExtractBBoxCreate( in uint32_t maxNumInPts,
+                             in uint32_t numInFeatureDim,
+                             in uint32_t maxNumDetOut,
+                             in uint32_t numClass,
+                             in Grid2D_t pGrid,
+                             in float threshScore,
+                             in float threshIOU,
+                             in float minCentreX,
+                             in float minCentreY,
+                             in float minCentreZ,
+                             in float maxCentreX,
+                             in float maxCentreY,
+                             in float maxCentreZ,
+                             in sequence<uint8_t> labelSelect,
+                             in uint32_t maxNumFilter,
+                             rout uint64_t phPostProc );
+
+AEEResult ExtractBBoxRun( in uint64_t hPostProc,
+                          in uint32_t numPts,
+                          in sequence<int32_t> fds,
+                          in sequence<uint32_t> offsets,
+                          in sequence<uint32_t> sizes,
+                          in uint8_t bMapPtsToBBox, 
+                          in uint8_t bBBoxFilter,
+                          rout uint32_t pNumDetOut );
+
+AEEResult ExtractBBoxDestroy( in uint64_t hPostProc );
+};
+
+#endif //FADAS_INTERFACE_IDL
+
+
+
+

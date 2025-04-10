@@ -1,0 +1,30 @@
+#!/bin/sh
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# All rights reserved.
+# Confidential and Proprietary - Qualcomm Technologies, Inc.
+
+homedir=`pwd`
+
+cdsp0skeldir="$homedir/lib/dsp;/usr/share/fastrpc;/vendor/dsp/cdsp;/dspfw/image/dsp/cdsp0;/dsplib/image/dsp/cdsp0;/mnt/etc/images;/mnt/etc/images/cdsp0;/mnt/etc/images/dsp;/firmware/image/dsp/cdsp0/"
+cdsp1skeldir="$homedir/lib/dsp;/usr/share/fastrpc;/vendor/dsp/cdsp1;/dspfw/image/dsp/cdsp1;/dsplib/image/dsp/cdsp1;/mnt/etc/images;/mnt/etc/images/cdsp1;/mnt/etc/images/dsp;/firmware/image/dsp/cdsp0/"
+
+export LD_LIBRARY_PATH=$homedir/lib/:$LD_LIBRARY_PATH:/usr/lib64:/lib:/mnt/lib64:$homedir/lib/runtime
+export PATH=$PATH:$homedir/bin
+export CDSP_LIBRARY_PATH=$cdsp0skeldir
+export CDSP0_LIBRARY_PATH=$cdsp0skeldir
+export CDSP1_LIBRARY_PATH=$cdsp1skeldir
+
+# unset DISPLAY to avoid SDL from using X11
+unset DISPLAY
+
+if [ -f /usr/lib/libEGL_adreno.so ] ; then
+echo setup env for Linux SDL
+export SDL_VIDEO_EGL_DRIVER=/usr/lib/libEGL_adreno.so
+export SDL_VIDEO_GL_DRIVER=/usr/lib/libGLESv2_adreno.so
+fi
+
+if [ -f /mnt/lib64/libsocket.so.4 ] ; then
+export LD_PRELOAD=/mnt/lib64/libsocket.so.4
+fi
+
+$@

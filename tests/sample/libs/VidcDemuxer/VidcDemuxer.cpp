@@ -1,0 +1,522 @@
+// Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+// All rights reserved.
+// Confidential and Proprietary - Qualcomm Technologies, Inc.
+
+#include "VidcDemuxer.hpp"
+#include <filesource.h>
+#include <malloc.h>
+#include <stdlib.h>
+#include <thread>
+
+namespace ridehal
+{
+namespace sample
+{
+
+VidcDemuxer::VidcDemuxer() : m_fileSource( FileSourceCallback, this, false ) {}
+
+VidcDemuxer::~VidcDemuxer() {}
+
+RideHalError_e VidcDemuxer::Init( VidcDemuxer_Config_t *pConfig )
+{
+    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+
+    m_bFileOpen = false;
+    m_bInitialized = false;
+    m_bSendCodecConfig = true;
+    m_bKeyFrameFound = false;
+    m_frameIdx = 0;
+    m_startFrameIdx = pConfig->startFrameIdx;
+
+    const char *pVideoFile = pConfig->pVideoFileName;
+    m_videoFile = (wchar_t *) malloc( sizeof( wchar_t ) * ( strlen( pVideoFile ) + 1 ) );
+    memset( m_videoFile, 0, sizeof( m_videoFile ) );
+    mbstowcs( m_videoFile, pVideoFile, strlen( pVideoFile ) );
+    if ( m_videoFile == nullptr )
+    {
+        ret = RIDEHAL_ERROR_FAIL;
+        RIDEHAL_LOG_ERROR( "VidcDemuxer::Init Error: could not get video file: %s", pVideoFile );
+    }
+
+    if ( RIDEHAL_ERROR_NONE == ret )
+    {
+        ret = OpenFile( m_videoFile );
+    }
+
+    if ( RIDEHAL_ERROR_NONE == ret )
+    {
+        ret = GetVideoTrackInfo( m_videoInfo );
+    }
+    if ( RIDEHAL_ERROR_NONE == ret )
+    {
+        ret = SelectVideoTrackId( m_videoInfo.trackId );
+    }
+    if ( RIDEHAL_ERROR_NONE == ret )
+    {
+        ret = GetMaxFrameBufferSize( m_videoInfo.trackId, m_videoInfo.maxFrameSize );
+    }
+
+    if ( RIDEHAL_ERROR_NONE == ret )
+    {
+        m_bInitialized = true;
+    }
+
+    return ret;
+}
+
+RideHalError_e VidcDemuxer::DeInit()
+{
+    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+
+    if ( !m_bInitialized )
+    {
+        ret = RIDEHAL_ERROR_BAD_STATE;
+        RIDEHAL_LOG_ERROR( "VidcDemuxer::DeInit Error: demuxer not initialzed" );
+    }
+
+    if ( RIDEHAL_ERROR_NONE == ret )
+    {
+        if ( m_bFileOpen )
+        {
+            m_fileSource.CleanupResource();
+            m_fileSource.CloseFile();
+            m_bFileOpen = false;
+        }
+
+        if ( m_videoFile != nullptr )
+        {
+            free( m_videoFile );
+            m_videoFile = nullptr;
+        }
+        m_bInitialized = false;
+    }
+
+    return ret;
+}
+
+RideHalError_e VidcDemuxer::GetFrame( RideHal_SharedBuffer_t *pSharedBuffer,
+                                      VidcDemuxer_FrameInfo_t &frameInfo )
+{
+    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+
+    vidc_frame_data_type frame;
+    void *bufferAddr = pSharedBuffer->data();
+
+    if ( !m_bInitialized )
+    {
+        ret = RIDEHAL_ERROR_BAD_STATE;
+        RIDEHAL_LOG_ERROR( "VidcDemuxer::Process Error: demuxer not initialzed" );
+    }
+
+    if ( RIDEHAL_ERROR_NONE == ret )
+    {
+        if ( pSharedBuffer == nullptr )
+        {
+            ret = RIDEHAL_ERROR_INVALID_BUF;
+            RIDEHAL_LOG_ERROR( "VidcDemuxer::Process Error: shared buffer is empty" );
+        }
+    }
+
+    if ( RIDEHAL_ERROR_NONE == ret )
+    {
+        (void) memset( &frame, 0, sizeof( vidc_frame_data_type ) );
+        frame.frame_addr = (uint8_t *) bufferAddr;
+        frame.data_len = pSharedBuffer->size;
+        frame.alloc_len = pSharedBuffer->buffer.size;
+
+        if ( m_bSendCodecConfig == true )
+        {
+            ret = ProcessFormatBlock( m_videoInfo.trackId, &frame );
+            if ( RIDEHAL_ERROR_NONE == ret )
+            {
+                m_bSendCodecConfig = false;
+            }
+            else
+            {
+                RIDEHAL_LOG_ERROR( "VidcDemuxer::Process Error: failed to process format " );
+            }
+        }
+        else
+        {
+            ret = GetNextMediaSample( m_videoInfo.trackId, &frame, frameInfo );
+            if ( ( RIDEHAL_ERROR_NONE == ret ) && ( frame.data_len > 0 ) )
+            {
+                if ( m_bKeyFrameFound == false )
+                {
+                    m_bKeyFrameFound = frameInfo.sync == 1;
+                }
+                if ( m_bKeyFrameFound == true )
+                {
+                    frame.timestamp = frameInfo.startTime;
+                    frame.flags = VIDC_FRAME_FLAG_ENDOFFRAME;
+                }
+                else
+                {
+                    frame.data_len = 0;
+                    RIDEHAL_LOG_DEBUG(
+                            "VidcDemuxer::Process Debug: drop frame data until key frame found" );
+                }
+            }
+            else if ( RIDEHAL_ERROR_OUT_OF_BOUND == ret )
+            {
+                RIDEHAL_LOG_DEBUG( "VidcDemuxer::Process Debug: end of video stream" );
+            }
+            else
+            {
+                frame.data_len = 0;
+                ret = RIDEHAL_ERROR_FAIL;
+                RIDEHAL_LOG_ERROR( "VidcDemuxer::Process Error: failed to get next media sample" );
+            }
+        }
+    }
+
+    return ret;
+}
+
+
+RideHalError_e VidcDemuxer::GetVideoInfo( VidcDemuxer_VideoInfo_t &videoInfo )
+{
+    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+
+    if ( !m_bInitialized )
+    {
+        ret = RIDEHAL_ERROR_BAD_STATE;
+        RIDEHAL_LOG_ERROR( "VidcDemuxer::GetVideoInfo Error: demuxer not initialzed" );
+    }
+
+    if ( RIDEHAL_ERROR_NONE == ret )
+    {
+        videoInfo.trackId = m_videoInfo.trackId;
+        videoInfo.frameWidth = m_videoInfo.frameWidth;
+        videoInfo.frameHeight = m_videoInfo.frameHeight;
+        videoInfo.maxFrameSize = m_videoInfo.maxFrameSize;
+        videoInfo.frameRate = m_videoInfo.frameRate;
+        videoInfo.codecType = m_videoInfo.codecType;
+        videoInfo.format = GetRideHalImageFormat( m_videoInfo.codecType );
+    }
+
+    return ret;
+}
+
+RideHalError_e VidcDemuxer::SetPlayTime( int64_t time )
+{
+    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    FileSourceStatus status = FILE_SOURCE_SUCCESS;
+
+    if ( !m_bFileOpen )
+    {
+        ret = RIDEHAL_ERROR_FAIL;
+        RIDEHAL_LOG_ERROR( "VidcDemuxer::SetPlayTime Error: file source not open" );
+    }
+
+    if ( RIDEHAL_ERROR_NONE == ret )
+    {
+        status = m_fileSource.SeekAbsolutePosition( m_videoInfo.trackId, time );
+        if ( FILE_SOURCE_SUCCESS != status )
+        {
+            ret = RIDEHAL_ERROR_FAIL;
+            RIDEHAL_LOG_ERROR( "VidcDemuxer::SetPlayTime Error: could not seek time position" );
+        }
+    }
+
+    return ret;
+}
+
+RideHalError_e VidcDemuxer::OpenFile( wchar_t *videoFile )
+{
+    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+
+    if ( m_bFileOpen )
+    {
+        ret = RIDEHAL_ERROR_ALREADY;
+        RIDEHAL_LOG_INFO( "VidcDemuxer::OpenFile Info: file source already open" );
+    }
+
+    if ( RIDEHAL_ERROR_NONE == ret )
+    {
+        FileSourceStatus status = m_fileSource.OpenFile( videoFile, videoFile, videoFile );
+        if ( FILE_SOURCE_SUCCESS != status )
+        {
+            ret = RIDEHAL_ERROR_FAIL;
+            RIDEHAL_LOG_ERROR( "VidcDemuxer::OpenFile Error: could not open video file: %s",
+                               &videoFile );
+        }
+    }
+
+    if ( RIDEHAL_ERROR_NONE == ret )
+    {
+        m_bFileOpen = true;
+    }
+
+    return ret;
+}
+
+RideHalError_e VidcDemuxer::GetVideoTrackInfo( VidcDemuxer_VideoInfo_t &videoInfo )
+{
+    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+
+    int trackCnt = 0;
+    int maxFrameBufferSize = 0;
+    MediaTrackInfo trackInfo = {};
+    FileSourceTrackIdInfoType *trackInfoPtr = nullptr;
+    FileSourceStatus status = FILE_SOURCE_SUCCESS;
+
+    if ( !m_bFileOpen )
+    {
+        ret = RIDEHAL_ERROR_FAIL;
+        RIDEHAL_LOG_ERROR( "VidcDemuxer::GetVideoTrackInfo Error: file source not open" );
+    }
+
+    if ( RIDEHAL_ERROR_NONE == ret )
+    {
+        trackCnt = m_fileSource.GetWholeTracksIDList( nullptr );
+        if ( trackCnt <= 0 )
+        {
+            ret = RIDEHAL_ERROR_FAIL;
+            RIDEHAL_LOG_ERROR(
+                    "VidcDemuxer::GetVideoTrackInfo Error: could not get track id list" );
+        }
+    }
+
+    if ( RIDEHAL_ERROR_NONE == ret )
+    {
+        trackInfoPtr = (FileSourceTrackIdInfoType *) malloc( trackCnt *
+                                                             sizeof( FileSourceTrackIdInfoType ) );
+        if ( trackInfoPtr == nullptr )
+        {
+            ret = RIDEHAL_ERROR_FAIL;
+            RIDEHAL_LOG_ERROR( "VidcDemuxer::GetVideoTrackInfo Error: could not allocate memory" );
+        }
+    }
+
+    if ( RIDEHAL_ERROR_NONE == ret )
+    {
+        m_fileSource.GetWholeTracksIDList( trackInfoPtr );
+        for ( int i = 0; i < trackCnt; i++ )
+        {
+            if ( trackInfoPtr[i].majorType == FILE_SOURCE_MJ_TYPE_VIDEO )
+            {
+                memset( &trackInfo, 0, sizeof( trackInfo ) );
+                status = m_fileSource.GetMediaTrackInfo( trackInfoPtr[i].id, &trackInfo );
+                if ( FILE_SOURCE_SUCCESS == status )
+                {
+                    videoInfo.trackId = trackInfo.videoTrackInfo.id;
+                    videoInfo.frameWidth = trackInfo.videoTrackInfo.frameWidth;
+                    videoInfo.frameHeight = trackInfo.videoTrackInfo.frameHeight;
+                    videoInfo.frameRate = trackInfo.videoTrackInfo.frameRate;
+                    if ( FILE_SOURCE_MN_TYPE_H264 == trackInfo.videoTrackInfo.videoCodec )
+                    {
+                        videoInfo.codecType = VIDC_CODEC_H264;
+                    }
+                    else if ( FILE_SOURCE_MN_TYPE_HEVC == trackInfo.videoTrackInfo.videoCodec )
+                    {
+                        videoInfo.codecType = VIDC_CODEC_HEVC;
+                    }
+                    else
+                    {
+                        ret = RIDEHAL_ERROR_UNSUPPORTED;
+                        RIDEHAL_LOG_ERROR( "VidcDemuxer::GetVideoTrackInfo Error: unsupported "
+                                           "codec type" );
+                    }
+                }
+            }
+        }
+    }
+
+    if ( trackInfoPtr != nullptr )
+    {
+        free( trackInfoPtr );
+        trackInfoPtr = nullptr;
+    }
+
+    return ret;
+}
+
+RideHalError_e VidcDemuxer::SelectVideoTrackId( uint32 trackId )
+{
+    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    FileSourceStatus status = FILE_SOURCE_SUCCESS;
+
+    if ( !m_bFileOpen )
+    {
+        ret = RIDEHAL_ERROR_FAIL;
+        RIDEHAL_LOG_ERROR( "VidcDemuxer::SelectVideoTrackId Error: file source not open" );
+    }
+
+    if ( RIDEHAL_ERROR_NONE == ret )
+    {
+        status = m_fileSource.SetSelectedTrackID( trackId );
+        if ( FILE_SOURCE_SUCCESS != status )
+        {
+            ret = RIDEHAL_ERROR_FAIL;
+            RIDEHAL_LOG_ERROR(
+                    "VidcDemuxer::SelectVideoTrackId Error: failed to select track id %u",
+                    trackId );
+        }
+    }
+
+    return ret;
+}
+
+RideHalError_e VidcDemuxer::GetMaxFrameBufferSize( uint32 trackId, uint32_t &maxFrameSize )
+{
+    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+
+    if ( !m_bFileOpen )
+    {
+        ret = RIDEHAL_ERROR_FAIL;
+        RIDEHAL_LOG_ERROR( "VidcDemuxer::GetMaxFrameBufferSize Error: file source not open" );
+    }
+
+    if ( RIDEHAL_ERROR_NONE == ret )
+    {
+        maxFrameSize = m_fileSource.GetTrackMaxFrameBufferSize( trackId );
+    }
+
+    return ret;
+}
+
+RideHalError_e VidcDemuxer::ProcessFormatBlock( uint32 trackId, vidc_frame_data_type *pFrame )
+{
+    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+
+    uint32_t bufferSize = 0;
+    FileSourceStatus status = FILE_SOURCE_SUCCESS;
+
+    if ( !m_bFileOpen )
+    {
+        ret = RIDEHAL_ERROR_FAIL;
+        RIDEHAL_LOG_ERROR( "VidcDemuxer::ProcessFormatBlock Error: file source not open" );
+    }
+
+    if ( RIDEHAL_ERROR_NONE == ret )
+    {
+        status = m_fileSource.GetFormatBlock( trackId, nullptr, &bufferSize );
+        if ( status != FILE_SOURCE_SUCCESS )
+        {
+            ret = RIDEHAL_ERROR_FAIL;
+            RIDEHAL_LOG_ERROR( "VidcDemuxer::ProcessFormatBlock Error: falied to get format block "
+                               "buffer size" );
+        }
+    }
+
+    if ( RIDEHAL_ERROR_NONE == ret )
+    {
+        if ( bufferSize == 0 )
+        {
+            ret = RIDEHAL_ERROR_FAIL;
+            RIDEHAL_LOG_ERROR( "VidcDemuxer::ProcessFormatBlock Error: buffer size is 0" );
+        }
+    }
+
+    if ( RIDEHAL_ERROR_NONE == ret )
+    {
+        pFrame->data_len = bufferSize;
+        status = m_fileSource.GetFormatBlock( trackId, pFrame->frame_addr, &bufferSize );
+        if ( FILE_SOURCE_SUCCESS == status )
+        {
+            pFrame->flags = VIDC_FRAME_FLAG_CODECCONFIG;
+        }
+        else
+        {
+            pFrame->data_len = 0;
+            ret = RIDEHAL_ERROR_FAIL;
+            RIDEHAL_LOG_ERROR(
+                    "VidcDemuxer::ProcessFormatBlock Error: failed to get format block" );
+        }
+    }
+
+    return ret;
+}
+
+RideHalError_e VidcDemuxer::GetNextMediaSample( uint32 trackId, vidc_frame_data_type *pFrame,
+                                                VidcDemuxer_FrameInfo_t &frameInfo )
+{
+    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+
+    FileSourceMediaStatus status = FILE_SOURCE_DATA_OK;
+    FileSourceSampleInfo fileSourceSampleInfo;
+
+    if ( !m_bFileOpen )
+    {
+        ret = RIDEHAL_ERROR_FAIL;
+        RIDEHAL_LOG_ERROR( "VidcDemuxer::GetNextMediaSample Error: file source not open" );
+    }
+
+    if ( RIDEHAL_ERROR_NONE == ret )
+    {
+        status = m_fileSource.GetNextMediaSample( trackId, pFrame->frame_addr, &pFrame->data_len,
+                                                  fileSourceSampleInfo );
+
+        if ( status == FILE_SOURCE_DATA_OK )
+        {
+            frameInfo.startTime = fileSourceSampleInfo.startTime;
+            frameInfo.endTime = fileSourceSampleInfo.endTime;
+            frameInfo.delta = fileSourceSampleInfo.delta;
+            frameInfo.sync = fileSourceSampleInfo.sync;
+        }
+        else if ( status == FILE_SOURCE_DATA_END )
+        {
+            ret = RIDEHAL_ERROR_OUT_OF_BOUND;
+            RIDEHAL_LOG_DEBUG( "VidcDemuxer::GetNextMediaSample Debug: end of video stream" );
+        }
+        else
+        {
+            ret = RIDEHAL_ERROR_FAIL;
+            RIDEHAL_LOG_ERROR(
+                    "VidcDemuxer::GetNextMediaSample Error: failed to get media sample" );
+        }
+    }
+
+    return ret;
+}
+
+RideHal_ImageFormat_e VidcDemuxer::GetRideHalImageFormat( vidc_codec_type codecType )
+{
+    RideHal_ImageFormat_e format = RIDEHAL_IMAGE_FORMAT_COMPRESSED_MAX;
+    switch ( codecType )
+    {
+        case VIDC_CODEC_H264:
+            format = RIDEHAL_IMAGE_FORMAT_COMPRESSED_H264;
+            break;
+        case VIDC_CODEC_HEVC:
+            format = RIDEHAL_IMAGE_FORMAT_COMPRESSED_H265;
+            break;
+        default:
+            RIDEHAL_LOG_ERROR( "codecType %d not supported", codecType );
+            break;
+    }
+
+    return format;
+}
+
+void VidcDemuxer::FileSourceCallback( FileSourceCallBackStatus eStatus, void *pClientData )
+{
+    VidcDemuxer *thisPtr = (VidcDemuxer *) pClientData;
+    switch ( eStatus )
+    {
+        case FILE_SOURCE_OPEN_COMPLETE:
+            RIDEHAL_LOG_INFO( "VidcDemuxer::fileSourceCallback Info: FILE_SOURCE_OPEN_COMPLETE" );
+            break;
+        case FILE_SOURCE_OPEN_FAIL:
+            RIDEHAL_LOG_ERROR( "VidcDemuxer::fileSourceCallback Error: FILE_SOURCE_OPEN_FAIL" );
+            break;
+        case FILE_SOURCE_SEEK_COMPLETE:
+            RIDEHAL_LOG_INFO( "VidcDemuxer::fileSourceCallback Info: FILE_SOURCE_SEEK_COMPLETE" );
+            break;
+        case FILE_SOURCE_SEEK_FAIL:
+            RIDEHAL_LOG_ERROR( "VidcDemuxer::fileSourceCallback Error: FILE_SOURCE_SEEK_FAIL" );
+            break;
+        case FILE_SOURCE_ERROR_ABORT:
+            RIDEHAL_LOG_ERROR( "VidcDemuxer::fileSourceCallback Error: FILE_SOURCE_ERROR_ABORT" );
+            break;
+        default:
+            RIDEHAL_LOG_ERROR( "VidcDemuxer::fileSourceCallback Error: unknown status %d",
+                               eStatus );
+            break;
+    }
+}
+
+}   // namespace sample
+}   // namespace ridehal
+
