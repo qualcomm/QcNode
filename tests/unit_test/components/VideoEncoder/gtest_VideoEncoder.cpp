@@ -10,7 +10,7 @@
 #include "QC/common/Types.hpp"
 #include "QC/component/VideoEncoder.hpp"
 
-using namespace QC::common;
+using namespace QC;
 using namespace QC::component;
 
 static std::mutex s_inMutex;

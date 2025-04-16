@@ -15,8 +15,6 @@
 
 namespace QC
 {
-namespace common
-{
 
 extern "C" char *__progname;
 
@@ -110,5 +108,4 @@ QCStatus_e Logger::DefaultCreate( const char *pName, Logger_Level_e level,
 void Logger::DefaultDestory( Logger_Handle_t hHandle ) {}
 
 
-}   // namespace common
 }   // namespace QC

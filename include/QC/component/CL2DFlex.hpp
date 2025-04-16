@@ -16,13 +16,12 @@
 
 #define QC_CL2DFLEX_ROI_NUMBER_MAX 100 /**<max number of roi parameters for ExecuteWithROI API*/
 
-using namespace QC::common;
-using namespace QC::libs::OpenclIface;
-
 namespace QC
 {
 namespace component
 {
+
+using namespace QC::libs::OpenclIface;
 
 /*=================================================================================================
 ** Typedefs

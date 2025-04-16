@@ -13,7 +13,7 @@
 #include "kernel/CL2DFlex.cl.h"
 #include "md5_utils.hpp"
 
-using namespace QC::common;
+using namespace QC;
 using namespace QC::component;
 using namespace QC::test::utils;
 

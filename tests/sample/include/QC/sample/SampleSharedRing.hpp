@@ -10,7 +10,7 @@
 #include "QC/sample/shared_ring/SharedPublisher.hpp"
 #include "QC/sample/shared_ring/SharedSubscriber.hpp"
 
-using namespace QC::common;
+using namespace QC;
 using namespace QC::sample::shared_ring;
 
 namespace QC

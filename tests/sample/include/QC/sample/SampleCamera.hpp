@@ -9,7 +9,7 @@
 #include "QC/component/Camera.hpp"
 #include "QC/sample/SampleIF.hpp"
 
-using namespace QC::common;
+using namespace QC;
 using namespace QC::component;
 
 namespace QC
@@ -50,6 +50,9 @@ private:
     static void FrameCallBack( CameraFrame_t *pFrame, void *pPrivData );
     static void EventCallBack( const uint32_t eventId, const void *pPayload, void *pPrivData );
 
+    void ThreadMain();
+    void ProcessFrame( CameraFrame_t *pFrame );
+
 private:
     Camera m_camera;
     Camera_Config_t m_camConfig = { 0 };
@@ -63,6 +66,13 @@ private:
 
     /* if true, ignore any camera Init or Start error */
     bool m_bIgnoreError = false;
+
+    bool m_stop;
+    std::mutex m_lock;
+    std::thread m_thread;
+    std::condition_variable m_condVar;
+    std::queue<CameraFrame_t> m_camFrameQueue;
+
 };   // class SampleCamera
 
 }   // namespace sample

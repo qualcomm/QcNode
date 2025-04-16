@@ -23,7 +23,7 @@
 
 #include "QC/sample/shared_ring/SpinLock.hpp"
 
-using namespace QC::common;
+using namespace QC;
 
 namespace QC
 {

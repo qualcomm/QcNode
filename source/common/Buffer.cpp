@@ -10,8 +10,6 @@
 
 namespace QC
 {
-namespace common
-{
 
 void QCSharedBuffer::Init()
 {
@@ -273,5 +271,4 @@ QCStatus_e QCSharedBuffer::UnImport()
     return ret;
 }
 
-}   // namespace common
 }   // namespace QC

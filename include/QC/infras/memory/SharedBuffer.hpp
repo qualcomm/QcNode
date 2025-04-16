@@ -8,8 +8,6 @@
 
 namespace QC
 {
-namespace common
-{
 
 /** @brief QC Shared Buffer between Components for zero copy purpose */
 typedef struct QCSharedBuffer
@@ -210,7 +208,6 @@ QCStatus_e QCDmaImport( void **pData, uint64_t *pDmaHandle, uint64_t pid, uint64
  * @return QC_STATUS_OK on success, others on failure
  */
 QCStatus_e QCDmaUnImport( void *pData, uint64_t dmaHandle, size_t size );
-}   // namespace common
 }   // namespace QC
 
 #endif   // QC_SHARED_BUFFER_HPP

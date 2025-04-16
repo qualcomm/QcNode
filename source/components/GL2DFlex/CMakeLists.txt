@@ -6,8 +6,10 @@ set( GL2DFLEX_HEADERS
 )
 
 set( TARGET_LIBRARIES QCNodeComponentCommon )
-
-list( APPEND TARGET_LIBRARIES EGL GLESv2_adreno drm gbm  )
+list( APPEND TARGET_LIBRARIES EGL GLESv2)
+if( "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" AND "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "aarch64" )
+list( APPEND TARGET_LIBRARIES GLESv2_adreno drm gbm  )
+endif()
 list( APPEND HEADERS_DIR ${CMAKE_SYSROOT}/usr/include/drm )
 list( APPEND HEADERS_DIR ${CMAKE_SYSROOT}/usr/include/libdrm )
 

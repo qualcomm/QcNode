@@ -8,8 +8,6 @@
 
 namespace QC
 {
-namespace common
-{
 
 Logger_Log_t Logger::s_logFnc = Logger::DefaultLog;
 Logger_Create_t Logger::s_createFnc = Logger::DefaultCreate;
@@ -164,5 +162,4 @@ Logger_Level_e Logger::DecideLoggerLevel( std::string name, Logger_Level_e level
     return loggerLevel;
 }
 
-}   // namespace common
 }   // namespace QC

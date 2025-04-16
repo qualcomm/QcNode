@@ -15,13 +15,12 @@
 #include "QC/component/ComponentIF.hpp"
 #include "fadas.h"
 
-using namespace QC::common;
-using namespace QC::libs::FadasIface;
-
 namespace QC
 {
 namespace component
 {
+using namespace QC::libs::FadasIface;
+
 typedef struct
 {
     uint32_t maxNumFilter; /**< Maximum number of filtered boxes allowed after enabling BBox

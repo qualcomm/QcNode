@@ -16,8 +16,6 @@
 
 namespace QC
 {
-namespace common
-{
 
 static std::mutex s_heapMutex;
 static int s_heapDevFd[ID_DMA_BUF_HEAP_CMA] = { -1, -1 };
@@ -287,5 +285,4 @@ QCStatus_e QCDmaUnImport( void *pData, uint64_t dmaHandle, size_t size )
 
     return ret;
 }
-}   // namespace common
 }   // namespace QC

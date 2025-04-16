@@ -14,7 +14,7 @@
 #include <stdio.h>
 #include <thread>
 
-using namespace QC::common;
+using namespace QC;
 using namespace QC::component;
 using namespace QC::test::utils;
 

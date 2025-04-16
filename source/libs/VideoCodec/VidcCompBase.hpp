@@ -13,7 +13,7 @@
 #include <sys/uio.h>
 #include <unordered_map>
 
-using namespace QC::common;
+using namespace QC;
 
 namespace QC
 {

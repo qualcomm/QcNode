@@ -26,7 +26,14 @@ extern "C"
 }
 #include "rpcmem.h"
 #pragma weak remote_session_control
-#include "remote.h"
+// #include "remote.h"
+
+extern "C"
+{
+    int get_extended_domains_id( int domain, int session );
+    void remote_register_buf_v2( int ext_domain_id, void *buf, int size, int fd );
+    void remote_register_buf_attr_v2( int ext_domain_id, void *buf, int size, int fd, int attr );
+}
 
 namespace QC
 {

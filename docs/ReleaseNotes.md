@@ -24,6 +24,7 @@ The QC is Qualcomm ADAS hardware abstraction layer that provides user friendly A
 - VideoEncoder: Add sync frame sequence header option
 - Sample: Enable rsm for HGY Linux
 - FadasIface: Add fadas skel lib for variant v68/v73/v75
+- SampleCamera: Use thread/queue to control frame request/release
 ## 2.2 Version 1.8.0
 - CL2DFlex: Add perf priority to OpenCL Iface
 - CL2DFlex: Add resize from NV12 to NV12 function to CL2DFlex component

@@ -296,7 +296,7 @@ QCStatus_e VidcCompBase::ValidateBuffer( const QCSharedBuffer_t *pBuffer,
     {
         if ( ( pBuffer->imgProps.width != m_width ) || ( pBuffer->imgProps.height != m_height ) )
         {
-            QC_ERROR( "pBuffer width %" PRIu32 " height %" PRIu32 " is not match m_width %" PRIu32
+            QC_ERROR( "pBuffer width %" PRIu32 " height %" PRIu32 " does not match m_width %" PRIu32
                       " m_height %" PRIu32,
                       pBuffer->imgProps.width, pBuffer->imgProps.height, m_width, m_height );
             ret = QC_STATUS_INVALID_BUF;
@@ -309,8 +309,8 @@ QCStatus_e VidcCompBase::ValidateBuffer( const QCSharedBuffer_t *pBuffer,
         {
             if ( pBuffer->imgProps.format != m_inFormat )
             {
-                QC_ERROR( "pBuffer format %d  is not match m_inFormat %d", pBuffer->imgProps.format,
-                          m_inFormat );
+                QC_ERROR( "pBuffer format %d does not match m_inFormat %d",
+                          pBuffer->imgProps.format, m_inFormat );
                 ret = QC_STATUS_INVALID_BUF;
             }
         }
@@ -318,7 +318,7 @@ QCStatus_e VidcCompBase::ValidateBuffer( const QCSharedBuffer_t *pBuffer,
         {
             if ( pBuffer->imgProps.format != m_outFormat )
             {
-                QC_ERROR( "pBuffer format %d  is not match m_outFormat %d",
+                QC_ERROR( "pBuffer format %d does not match m_outFormat %d",
                           pBuffer->imgProps.format, m_outFormat );
                 ret = QC_STATUS_INVALID_BUF;
             }

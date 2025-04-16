@@ -16,6 +16,10 @@ if( "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" )
     list( APPEND TARGET_LIBRARIES vidc vidc_client mmosal )
 endif()
 
+if( DEFINED QC_VIDC_LIBS )
+    list( APPEND TARGET_LIBRARIES ${QC_VIDC_LIBS} )
+endif()
+
 add_library( QCNodeVideoCodec SHARED ${VIDEOCODEC_SOURCES} )
 
 if( "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" )
@@ -32,4 +36,4 @@ target_link_libraries( QCNodeVideoCodec PUBLIC ${TARGET_LIBRARIES} )
 
 install(TARGETS QCNodeVideoCodec DESTINATION lib)
 
-install( FILES ${VIDEOCODEC_HEADERS} DESTINATION include/qcnode/libs/VideoCodec )
+install( FILES ${VIDEOCODEC_HEADERS} DESTINATION include/QC/libs/VideoCodec )

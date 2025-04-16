@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <thread>
 
-using namespace QC::common;
+using namespace QC;
 using namespace std::chrono_literals;
 
 TEST( Buffer, SANITY_ImageAllocateByWHF )

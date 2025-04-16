@@ -8,7 +8,7 @@
 
 #include "QC/common/Types.hpp"
 
-using namespace QC::common;
+using namespace QC;
 
 #include <chrono>
 #include <cinttypes>

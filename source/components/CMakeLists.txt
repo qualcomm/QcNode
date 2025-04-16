@@ -21,8 +21,9 @@ target_include_directories( QCNodeComponentCommon PUBLIC ${HEADERS_DIR} )
 target_link_libraries( QCNodeComponentCommon PUBLIC ${TARGET_LIBRARIES} )
 
 install( FILES ${COMPONENT_COMMON_HEADERS} DESTINATION include/QC/component )
-
-add_subdirectory(C2D)
+if ( ENABLE_C2D )
+  add_subdirectory(C2D)
+endif()
 add_subdirectory(Camera)
 add_subdirectory(PostCenterPoint)
 add_subdirectory(QnnRuntime)
@@ -31,10 +32,10 @@ add_subdirectory(Remap)
 add_subdirectory(VideoEncoder)
 add_subdirectory(VideoDecoder)
 add_subdirectory(Voxelization)
-add_subdirectory(OpticalFlow)
-add_subdirectory(DepthFromStereo)
-
-if( "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" AND "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "aarch64" )
-	add_subdirectory(GL2DFlex)
+if ( ENABLE_EVA )
+  add_subdirectory(OpticalFlow)
+  add_subdirectory(DepthFromStereo)
 endif()
+add_subdirectory(GL2DFlex)
+
 

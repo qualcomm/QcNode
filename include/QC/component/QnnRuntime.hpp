@@ -14,14 +14,13 @@
 #include "DynamicLoadUtil.hpp"
 #include "QC/component/ComponentIF.hpp"
 
-using namespace qnn::tools;
-using namespace qnn::tools::sample_app;
-using namespace QC::common;
-
 namespace QC
 {
 namespace component
 {
+
+using namespace qnn::tools;
+using namespace qnn::tools::sample_app;
 
 #ifndef QNNRUNTIME_NOTIFY_PARAM_NUM
 /* @note this value must be power of 2 */
@@ -308,12 +307,14 @@ private:
      */
     QCStatus_e GetMemHandle( const QCSharedBuffer_t *pSharedBuffer, Qnn_MemHandle_t *pMemHandle );
 
+public:
     /**
      * @brief DeRegister all the buffers
      * @return QC_STATUS_OK on success, others on failure
      */
     QCStatus_e DeRegisterAllBuffers();
 
+private:
     /**
      * @brief get input tensor info internally
      * @return QC_STATUS_OK on success, others on failure

@@ -22,7 +22,7 @@
 #include "QnnSampleAppUtils.hpp"
 
 using namespace QC::component;
-using namespace QC::common;
+using namespace QC;
 
 static bool s_bDisableDumpingOutputs = false;
 

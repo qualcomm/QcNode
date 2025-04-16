@@ -20,10 +20,27 @@
 #include <GLES2/gl2ext.h>
 #include <GLES3/gl32.h>
 
+#if defined( __QNXNTO__ )
+#define EGLIMAGE_WITH_UVA
+// defination copied from eglextQCOM.h
+#define EGL_FORMAT_UYVY_QCOM 0x3125
+#define EGL_FORMAT_RGB_888_QCOM 0x31C8
+#define EGL_IMAGE_FORMAT_QCOM 0x3121
+#define EGL_IMAGE_EXT_BUFFER_BASE_ADDR_LOW_QCOM 0x341A
+#define EGL_IMAGE_EXT_BUFFER_BASE_ADDR_HIGH_QCOM 0x341B
+#define EGL_IMAGE_EXT_BUFFER_DESCRIPTOR_LOW_QCOM 0x3428
+#define EGL_IMAGE_EXT_BUFFER_DESCRIPTOR_HIGH_QCOM 0x3429
+#define EGL_IMAGE_EXT_BUFFER_MEMORY_TYPE_QCOM 0x3424
+#define EGL_IMAGE_EXT_BUFFER_MEMORY_TYPE_ION_QCOM 0x3427
+#define EGL_IMAGE_EXT_BUFFER_STRIDE_QCOM 0x341D
+#define EGL_IMAGE_EXT_BUFFER_SIZE_QCOM 0x341C
+#define EGL_NEW_IMAGE_QCOM 0x3120
+#else
 #include <drm/drm_fourcc.h>
 #include <gbm.h>
 #include <gbm_priv.h>
 #include <xf86drm.h>
+#endif
 
 #include "QC/component/ComponentIF.hpp"
 
@@ -134,8 +151,8 @@ public:
      * @param[in] pInputBuffers the input shared buffers array
      * @param[in] numOfInputBuffers the number of shared buffers
      * @return QC_STATUS_OK on success, others on failure
-     * @note This API is optional but recommended to call after input buffers allocation finished.
-     * If skip to do this, the Execute API will register input buffers automatically.
+     * @note This API is optional but recommended to call after input buffers allocation
+     * finished. If skip to do this, the Execute API will register input buffers automatically.
      * This API need to be called in the same thread with Execute API
      */
     QCStatus_e RegisterInputBuffers( const QCSharedBuffer_t *pInputBuffers,
@@ -147,8 +164,8 @@ public:
      * @param[in] pOutputBuffers the output shared buffers array
      * @param[in] numOfOutputBuffers the number of shared buffers
      * @return QC_STATUS_OK on success, others on failure
-     * @note This API is optional but recommended to call after output buffers allocation finished.
-     * If skip to do this, the Execute API will register output buffers automatically.
+     * @note This API is optional but recommended to call after output buffers allocation
+     * finished. If skip to do this, the Execute API will register output buffers automatically.
      * This API need to be called in the same thread with Execute API
      */
     QCStatus_e RegisterOutputBuffers( const QCSharedBuffer_t *pOutputBuffers,
@@ -178,7 +195,10 @@ public:
 private:
     typedef struct
     {
+#if defined( __QNXNTO__ )
+#else
         gbm_bo *bo;
+#endif
         int fd;
         EGLImageKHR image;
         GLuint texture;
@@ -203,20 +223,19 @@ private:
     QCStatus_e GetOutputImageInfo( const QCSharedBuffer_t *pOutputBuffer,
                                    std::shared_ptr<GL_ImageInfo_t> &outputInfo, uint32_t batchIdx );
 
-    QCStatus_e CreateGLInputImage( void *bufferAddr, QCImageFormat_e format, uint32_t width,
-                                   uint32_t height, uint32_t stride, uint32_t handle, size_t offset,
+    QCStatus_e CreateGLInputImage( const QCSharedBuffer_t *pBuffer,
                                    std::shared_ptr<GL_ImageInfo_t> &inputInfo );
 
-    QCStatus_e CreateGLOutputImage( void *bufferAddr, QCImageFormat_e format, uint32_t width,
-                                    uint32_t height, uint32_t stride, uint32_t handle,
-                                    size_t offset, std::shared_ptr<GL_ImageInfo_t> &inputInfo );
+    QCStatus_e CreateGLOutputImage( const QCSharedBuffer_t *pBuffer,
+                                    std::shared_ptr<GL_ImageInfo_t> &outputInfo );
 
     QCStatus_e Draw( std::shared_ptr<GL_ImageInfo_t> &inputInfo,
                      std::shared_ptr<GL_ImageInfo_t> &outputInfo, uint32_t batchIdx );
 
     uint32_t GetEGLFormatType( QCImageFormat_e format );
-
+#if !defined( __QNXNTO__ )
     uint32_t GetGBMFormatType( QCImageFormat_e format );
+#endif
 
     inline QCStatus_e GLErrorCheck();
 

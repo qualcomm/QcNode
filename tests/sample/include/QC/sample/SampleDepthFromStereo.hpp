@@ -9,7 +9,7 @@
 #include "QC/component/DepthFromStereo.hpp"
 #include "QC/sample/SampleIF.hpp"
 
-using namespace QC::common;
+using namespace QC;
 using namespace QC::component;
 
 namespace QC

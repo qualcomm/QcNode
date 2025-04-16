@@ -8,7 +8,7 @@
 
 #include "QC/component/CL2DFlex.hpp"
 
-using namespace QC::common;
+using namespace QC;
 using namespace QC::libs::OpenclIface;
 
 namespace QC

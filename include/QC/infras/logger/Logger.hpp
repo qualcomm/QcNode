@@ -13,8 +13,6 @@
 
 namespace QC
 {
-namespace common
-{
 
 #ifndef DISABLE_QC_LOG
 
@@ -272,7 +270,6 @@ private:
 
 };   // class Logger
 
-}   // namespace common
 }   // namespace QC
 
 #endif   // QC_LOGGER_HPP

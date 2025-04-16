@@ -8,8 +8,6 @@
 
 namespace QC
 {
-namespace common
-{
 
 typedef struct
 {
@@ -70,5 +68,4 @@ void Logger::DefaultDestory( Logger_Handle_t hHandle )
     }
 }
 
-}   // namespace common
 }   // namespace QC

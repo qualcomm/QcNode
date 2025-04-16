@@ -770,11 +770,18 @@ QCStatus_e Camera::Deinit()
         }
         else
         {
-            status = QCarCamRelease( m_QcarCamHndl );
-            if ( QCARCAM_RET_OK != status )
+            if ( true == m_bReservedOK )
             {
-                QC_ERROR( "QCarCamRelease failed %d", status );
-                ret = QC_STATUS_FAIL;
+                status = QCarCamRelease( m_QcarCamHndl );
+                if ( QCARCAM_RET_OK != status )
+                {
+                    QC_ERROR( "QCarCamRelease failed %d", status );
+                    ret = QC_STATUS_FAIL;
+                }
+                else
+                {
+                    m_bReservedOK = false;
+                }
             }
 
             status = QCarCamClose( m_QcarCamHndl );

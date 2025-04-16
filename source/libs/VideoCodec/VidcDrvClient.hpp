@@ -22,7 +22,7 @@
 #include <sys/uio.h>
 #include <unordered_map>
 
-using namespace QC::common;
+using namespace QC;
 using std::string;
 
 namespace QC

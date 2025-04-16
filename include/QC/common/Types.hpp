@@ -6,12 +6,11 @@
 #ifndef QC_TYPES_HPP
 #define QC_TYPES_HPP
 
+#include "QC/common/QCDefs.hpp"
 #include <cinttypes>
 #include <cstddef>
 
 namespace QC
-{
-namespace common
 {
 
 /** @brief The maximum number of a image planes. */
@@ -34,22 +33,6 @@ namespace common
 
 #define QC_BUFFER_FLAGS_CACHE_MASK (QCBufferFlags_t) 0x0000000FU
 
-/** @brief QC Errors
- *  Errors for Component API call */
-typedef enum
-{
-    QC_STATUS_OK = 0,          /**< No error. */
-    QC_STATUS_BAD_ARGUMENTS,   /**< Bad arguments. */
-    QC_STATUS_BAD_STATE,       /**< Bad state */
-    QC_STATUS_NOMEM,           /**< No memory. */
-    QC_STATUS_INVALID_BUF,     /**< Invalid buffer. */
-    QC_STATUS_UNSUPPORTED,     /**< Unsupported. */
-    QC_STATUS_ALREADY,         /**< The operation is already done */
-    QC_STATUS_TIMEOUT,         /**< Timeout */
-    QC_STATUS_OUT_OF_BOUND,    /**< Out of bound */
-    QC_STATUS_FAIL,            /**< General failure. */
-    QC_STATUS_MAX = 0x7FFFFFFF /**< Do not use. */
-} QCStatus_e;
 
 /** @brief QC Buffer Flags */
 typedef uint32_t QCBufferFlags_t;
@@ -173,24 +156,7 @@ typedef struct
     uint32_t numDims;                  /**< The number of dimensions */
 } QCTensorProps_t;
 
-/** @brief QC Component state */
-typedef enum
-{
-    QC_OBJECT_STATE_INITIAL = 0,    /**< the initial state */
-    QC_OBJECT_STATE_INITIALIZING,   /**< the state during initializing */
-    QC_OBJECT_STATE_READY,          /**< the ready state */
-    QC_OBJECT_STATE_STARTING,       /**< the state during starting */
-    QC_OBJECT_STATE_RUNNING,        /**< the running state */
-    QC_OBJECT_STATE_STOPING,        /**< the state during stopping */
-    QC_OBJECT_STATE_ERROR,          /**< the error state */
-    QC_OBJECT_STATE_PAUSING,        /**< the state during pausing */
-    QC_OBJECT_STATE_PAUSE,          /**< the paused state */
-    QC_OBJECT_STATE_RESUMING,       /**< the state during resuming */
-    QC_OBJECT_STATE_DEINITIALIZING, /**< the state during deinitializing */
-    QC_OBJECT_STATE_MAX
-} QCObjectState_e;
 
-}   // namespace common
 }   // namespace QC
 
 #endif   // QC_TYPES_HPP

@@ -16,7 +16,7 @@
 #include <mutex>
 #include <thread>
 
-using namespace QC::common;
+using namespace QC;
 
 namespace QC
 {

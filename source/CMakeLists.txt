@@ -11,7 +11,6 @@ set( QCNODE_SOURCES ${CMAKE_BINARY_DIR}/null.cpp )
 
 set( TARGET_LIBRARIES
     QCNodeCommon
-    QCNodeC2D
     QCNodeCamera
     QCNodeRemap
     QCNodeVideoEncoder
@@ -19,18 +18,21 @@ set( TARGET_LIBRARIES
     QCNodeVoxelization
     QCNodePostCenterPoint
     QCNodeCL2DFlex
-    QCNodeOpticalFlow
-    QCNodeDepthFromStereo
+    QCNodeGL2DFlex
 )
+
+if ( ENABLE_C2D )
+  list( APPEND TARGET_LIBRARIES QCNodeC2D )
+endif()
+
+if ( ENABLE_EVA )
+  list( APPEND TARGET_LIBRARIES QCNodeOpticalFlow QCNodeDepthFromStereo )
+endif()
 
 if( NOT TARGET QCNodeQnnRuntime )
   message(STATUS "build QCNode without QNN")
 else()
   list( APPEND TARGET_LIBRARIES QCNodeQnnRuntime )
-endif()
-
-if( "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" AND "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "aarch64" )
-    list( APPEND TARGET_LIBRARIES QCNodeGL2DFlex )
 endif()
 
 add_library( QCNode SHARED ${QCNODE_SOURCES} )

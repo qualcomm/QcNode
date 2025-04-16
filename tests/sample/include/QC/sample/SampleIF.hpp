@@ -23,7 +23,7 @@
 #include <rsm_client_v2.h>
 #endif
 
-using namespace QC::common;
+using namespace QC;
 
 namespace QC
 {

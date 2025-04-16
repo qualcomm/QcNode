@@ -17,14 +17,12 @@
 #include "OpenclIface.hpp"
 #include "QC/component/ComponentIF.hpp"
 
-using namespace QC::common;
-using namespace QC::libs::FadasIface;
-using namespace QC::libs::OpenclIface;
-
 namespace QC
 {
 namespace component
 {
+using namespace QC::libs::FadasIface;
+using namespace QC::libs::OpenclIface;
 
 #define VOXELIZATION_PILLAR_COORDS_DIM ( sizeof( FadasVM_PointPillar_t ) / sizeof( float ) )
 

@@ -8,7 +8,7 @@
 #include <chrono>
 
 
-using namespace QC::common;
+using namespace QC;
 
 namespace QC
 {

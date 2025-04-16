@@ -9,7 +9,6 @@
 #include "QC/component/CL2DFlex.hpp"
 #include "QC/sample/SampleIF.hpp"
 
-using namespace QC::common;
 using namespace QC::component;
 
 namespace QC

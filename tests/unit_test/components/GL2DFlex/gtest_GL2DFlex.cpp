@@ -8,7 +8,7 @@
 
 #include "QC/component/GL2DFlex.hpp"
 
-using namespace QC::common;
+using namespace QC;
 using namespace QC::component;
 
 void GL2DFlexTestNormal( GL2DFlex_Config_t *pConfig, QCImageFormat_e outputFormat,

@@ -11,7 +11,7 @@
 #include <map>
 #include <mutex>
 
-using namespace QC::common;
+using namespace QC;
 using namespace QC::component;
 
 namespace QC

@@ -9,7 +9,7 @@
 #include "OpenclIface.hpp"
 #include "QC/sample/SampleIF.hpp"
 
-using namespace QC::common;
+using namespace QC;
 using namespace QC::libs::OpenclIface;
 
 namespace QC

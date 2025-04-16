@@ -15,14 +15,11 @@
 #include "QC/component/ComponentIF.hpp"
 #include "fadas.h"
 
-using namespace QC::common;
-using namespace QC::libs::FadasIface;
-
 namespace QC
 {
 namespace component
 {
-
+using namespace QC::libs::FadasIface;
 /*=================================================================================================
 ** Typedefs
 =================================================================================================*/

@@ -18,8 +18,6 @@
 #include <eva_session.h>
 #include <eva_utils.h>
 
-using namespace QC::common;
-
 namespace QC
 {
 namespace component

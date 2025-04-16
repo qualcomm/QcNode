@@ -12,8 +12,6 @@
 #include "QC/infras/logger/Logger.hpp"
 #include "QC/infras/memory/SharedBuffer.hpp"
 
-using namespace QC::common;
-
 /** @brief The QC Version */
 #define QC_VERSION_MAJOR 1
 #define QC_VERSION_MINOR 9

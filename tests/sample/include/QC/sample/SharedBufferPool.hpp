@@ -16,7 +16,7 @@
 #include "QC/infras/memory/SharedBuffer.hpp"
 
 
-using namespace QC::common;
+using namespace QC;
 
 namespace QC
 {

@@ -15,8 +15,6 @@
 
 namespace QC
 {
-namespace common
-{
 
 /**
  * @brief Buffer Manager
@@ -76,7 +74,6 @@ private:
     static BufferManager *s_pDefaultBufferManager;
 };
 
-}   // namespace common
 }   // namespace QC
 
 #endif   // QC_BUFFER_MANAGER_HPP

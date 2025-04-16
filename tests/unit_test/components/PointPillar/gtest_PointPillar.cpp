@@ -11,7 +11,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
-using namespace QC::common;
+using namespace QC;
 using namespace QC::component;
 
 static Voxelization_Config_t plrPreConfig0 = {

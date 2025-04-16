@@ -14,7 +14,7 @@
 #include "VidcDemuxer.hpp"
 #include "md5_utils.hpp"
 
-using namespace QC::common;
+using namespace QC;
 using namespace QC::component;
 using namespace QC::sample;
 using namespace QC::test::utils;

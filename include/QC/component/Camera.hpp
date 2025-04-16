@@ -12,8 +12,6 @@
 #include <mutex>
 #include <queue>
 
-using namespace QC::common;
-
 namespace QC
 {
 namespace component

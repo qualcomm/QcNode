@@ -10,7 +10,7 @@
 
 #include "QC/sample/SharedBufferPool.hpp"
 
-using namespace QC::common;
+using namespace QC;
 
 namespace QC
 {

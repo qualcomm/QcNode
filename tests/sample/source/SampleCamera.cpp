@@ -16,6 +16,29 @@ SampleCamera ::~SampleCamera() {}
 
 void SampleCamera::FrameCallBack( CameraFrame_t *pFrame )
 {
+    CameraFrame_t camFrame = *pFrame;
+
+    if ( !m_stop )
+    {
+        std::unique_lock<std::mutex> lck( m_lock );
+        m_camFrameQueue.push( camFrame );
+        m_condVar.notify_one();
+    }
+    else
+    {
+        if ( false == m_camConfig.bRequestMode )
+        {
+            m_camera.ReleaseFrame( &camFrame );
+        }
+        else
+        {
+            m_camera.RequestFrame( &camFrame );
+        }
+    }
+}
+
+void SampleCamera::ProcessFrame( CameraFrame_t *pFrame )
+{
     DataFrames_t frames;
     DataFrame_t frame;
     SharedBuffer_t *pSharedBuffer = new SharedBuffer_t;
@@ -283,12 +306,48 @@ QCStatus_e SampleCamera::Start()
         }
     }
 
+    if ( QC_STATUS_OK == ret )
+    {
+        m_stop = false;
+        m_thread = std::thread( &SampleCamera::ThreadMain, this );
+    }
+
     return ret;
+}
+
+void SampleCamera::ThreadMain()
+{
+    while ( !m_stop )
+    {
+        CameraFrame_t frame;
+        std::unique_lock<std::mutex> lck( m_lock );
+        (void) m_condVar.wait_for( lck, std::chrono::milliseconds( 10 ) );
+        if ( !m_camFrameQueue.empty() )
+        {
+            frame = m_camFrameQueue.front();
+            m_camFrameQueue.pop();
+            ProcessFrame( &frame );
+        }
+    }
 }
 
 QCStatus_e SampleCamera::Stop()
 {
     QCStatus_e ret = QC_STATUS_OK;
+
+    m_stop = true;
+    if ( m_thread.joinable() )
+    {
+        m_thread.join();
+    }
+
+    while ( !m_camFrameQueue.empty() )
+    {
+        std::unique_lock<std::mutex> lck( m_lock );
+        CameraFrame_t frame = m_camFrameQueue.front();
+        m_camFrameQueue.pop();
+        ProcessFrame( &frame );
+    }
 
     TRACE_BEGIN( SYSTRACE_TASK_STOP );
     ret = m_camera.Stop();

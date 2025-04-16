@@ -3,12 +3,12 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#ifndef _QC_SAMPLE_QNN_HPP_
-#define _QC_SAMPLE_QNN_HPP_
+#ifndef QC_SAMPLE_QNN_HPP
+#define QC_SAMPLE_QNN_HPP
 
 #include "QC/component/QnnRuntime.hpp"
 #include "QC/sample/SampleIF.hpp"
-using namespace QC::common;
+using namespace QC;
 using namespace QC::component;
 
 namespace QC
@@ -93,4 +93,4 @@ private:
 }   // namespace sample
 }   // namespace QC
 
-#endif   // _QC_SAMPLE_QNN_HPP_
+#endif   // QC_SAMPLE_QNN_HPP

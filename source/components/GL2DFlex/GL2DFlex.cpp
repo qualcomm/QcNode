@@ -162,6 +162,7 @@ QCStatus_e GL2DFlex::Init( const char *pName, const GL2DFlex_Config_t *pConfig,
             m_outputResolution.height = pConfig->outputResolution.height;
 
             std::lock_guard<std::mutex> l( s_mutLock );
+#if !defined( __QNXNTO__ )
 
             if ( QC_STATUS_OK == ret )
             {
@@ -190,7 +191,7 @@ QCStatus_e GL2DFlex::Init( const char *pName, const GL2DFlex_Config_t *pConfig,
             {
                 s_devRefCnt++;
             }
-
+#endif
             /* Complete initialization */
             if ( QC_STATUS_OK == ret )
             {
@@ -272,11 +273,12 @@ QCStatus_e GL2DFlex::Deinit()
                         QC_ERROR( "Failed to destroy ImageKHR for input, error code: 0x%x", rc );
                     }
                 }
-
+#if !defined( __QNXNTO__ )
                 if ( it->second->bo != nullptr )
                 {
                     gbm_bo_destroy( it->second->bo );
                 }
+#endif
             }
         }
         m_inputImageMap.clear();
@@ -294,11 +296,12 @@ QCStatus_e GL2DFlex::Deinit()
                         QC_ERROR( "Failed to destroy ImageKHR for output, error code: 0x%x", rc );
                     }
                 }
-
+#if !defined( __QNXNTO__ )
                 if ( it->second->bo != nullptr )
                 {
                     gbm_bo_destroy( it->second->bo );
                 }
+#endif
             }
         }
         m_outputImageMap.clear();
@@ -309,7 +312,7 @@ QCStatus_e GL2DFlex::Deinit()
         {
             QC_ERROR( "Failed to delete GL program" );
         }
-
+#if !defined( __QNXNTO__ )
         if ( ( s_devRefCnt == 0 ) && ( s_gbmDev != nullptr ) )
         {
             s_drmDevFd = drmClose( s_drmDevFd );
@@ -321,6 +324,7 @@ QCStatus_e GL2DFlex::Deinit()
 
             gbm_device_destroy( s_gbmDev );
         }
+#endif
     }
 
     ret = ComponentIF::Deinit();
@@ -467,15 +471,7 @@ QCStatus_e GL2DFlex::RegisterInputBuffers( const QCSharedBuffer_t *pInputBuffers
         bufferAddr = pInputBuffers[i].data();
         if ( m_inputImageMap.find( bufferAddr ) == m_inputImageMap.end() )
         {
-            QCImageFormat_e format = pInputBuffers[i].imgProps.format;
-            uint32_t width = pInputBuffers[i].imgProps.width;
-            uint32_t height = pInputBuffers[i].imgProps.height;
-            uint32_t stride = pInputBuffers[i].imgProps.stride[0];
-            uint32_t handle = pInputBuffers[i].buffer.dmaHandle;
-            size_t offset = pInputBuffers[i].offset;
-
-            ret = CreateGLInputImage( bufferAddr, format, width, height, stride, handle, offset,
-                                      inputInfo );
+            ret = CreateGLInputImage( &pInputBuffers[i], inputInfo );
             if ( ret != QC_STATUS_OK )
             {
                 QC_ERROR( "Failed to create GL input image for input buffer %u", i );
@@ -503,15 +499,7 @@ QCStatus_e GL2DFlex::RegisterOutputBuffers( const QCSharedBuffer_t *pOutputBuffe
             bufferAddr = (void *) ( (uint8_t *) pOutputBuffers[i].data() + k * outputSize );
             if ( m_outputImageMap.find( bufferAddr ) == m_outputImageMap.end() )
             {
-                QCImageFormat_e format = pOutputBuffers[i].imgProps.format;
-                uint32_t width = pOutputBuffers[i].imgProps.width;
-                uint32_t height = pOutputBuffers[i].imgProps.height;
-                uint32_t stride = pOutputBuffers[i].imgProps.stride[0];
-                uint32_t handle = pOutputBuffers[i].buffer.dmaHandle;
-                size_t offset = pOutputBuffers[i].offset;
-
-                ret = CreateGLOutputImage( bufferAddr, format, width, height, stride, handle,
-                                           offset, outputInfo );
+                ret = CreateGLOutputImage( &pOutputBuffers[i], outputInfo );
                 if ( ret != QC_STATUS_OK )
                 {
                     QC_ERROR( "Failed to create GL output image for output buffer %u batch %u", i,
@@ -556,11 +544,12 @@ QCStatus_e GL2DFlex::DeregisterInputBuffers( const QCSharedBuffer_t *pInputBuffe
                                 i, rc );
                     }
                 }
-
+#if !defined( __QNXNTO__ )
                 if ( m_inputImageMap[bufferAddr]->bo != nullptr )
                 {
                     gbm_bo_destroy( m_inputImageMap[bufferAddr]->bo );
                 }
+#endif
 
                 (void) m_inputImageMap.erase( bufferAddr );
             }
@@ -605,11 +594,12 @@ QCStatus_e GL2DFlex::DeregisterOutputBuffers( const QCSharedBuffer_t *pOutputBuf
                                       i, k, rc );
                         }
                     }
-
+#if !defined( __QNXNTO__ )
                     if ( m_outputImageMap[bufferAddr]->bo != nullptr )
                     {
                         gbm_bo_destroy( m_outputImageMap[bufferAddr]->bo );
                     }
+#endif
 
                     (void) m_outputImageMap.erase( bufferAddr );
                 }
@@ -639,7 +629,11 @@ QCStatus_e GL2DFlex::EGLInit()
 
     if ( !m_bEGLReady )
     {
+#if defined( __QNXNTO__ )
+        m_display = eglGetDisplay( EGL_DEFAULT_DISPLAY );
+#else
         m_display = eglGetPlatformDisplay( EGL_PLATFORM_GBM_KHR, NULL, NULL );
+#endif
         if ( nullptr == m_display )
         {
             ret = QC_STATUS_FAIL;
@@ -873,15 +867,7 @@ QCStatus_e GL2DFlex::GetInputImageInfo( const QCSharedBuffer_t *pInputBuffer,
 
     if ( m_inputImageMap.find( bufferAddr ) == m_inputImageMap.end() )
     {
-        QCImageFormat_e format = pInputBuffer->imgProps.format;
-        uint32_t width = pInputBuffer->imgProps.width;
-        uint32_t height = pInputBuffer->imgProps.height;
-        uint32_t stride = pInputBuffer->imgProps.stride[0];
-        uint32_t handle = pInputBuffer->buffer.dmaHandle;
-        size_t offset = pInputBuffer->offset;
-
-        ret = CreateGLInputImage( bufferAddr, format, width, height, stride, handle, offset,
-                                  inputInfo );
+        ret = CreateGLInputImage( pInputBuffer, inputInfo );
     }
     else
     {
@@ -903,15 +889,7 @@ QCStatus_e GL2DFlex::GetOutputImageInfo( const QCSharedBuffer_t *pOutputBuffer,
 
     if ( m_outputImageMap.find( bufferAddr ) == m_outputImageMap.end() )
     {
-        QCImageFormat_e format = pOutputBuffer->imgProps.format;
-        uint32_t width = pOutputBuffer->imgProps.width;
-        uint32_t height = pOutputBuffer->imgProps.height;
-        uint32_t stride = pOutputBuffer->imgProps.stride[0];
-        uint32_t handle = pOutputBuffer->buffer.dmaHandle;
-        size_t offset = pOutputBuffer->offset;
-
-        ret = CreateGLOutputImage( bufferAddr, format, width, height, stride, handle, offset,
-                                   outputInfo );
+        ret = CreateGLOutputImage( pOutputBuffer, outputInfo );
     }
     else
     {
@@ -922,12 +900,21 @@ QCStatus_e GL2DFlex::GetOutputImageInfo( const QCSharedBuffer_t *pOutputBuffer,
 }
 
 
-QCStatus_e GL2DFlex::CreateGLInputImage( void *bufferAddr, QCImageFormat_e format, uint32_t width,
-                                         uint32_t height, uint32_t stride, uint32_t handle,
-                                         size_t offset, std::shared_ptr<GL_ImageInfo_t> &inputInfo )
+QCStatus_e GL2DFlex::CreateGLInputImage( const QCSharedBuffer_t *pBuffer,
+                                         std::shared_ptr<GL_ImageInfo_t> &inputInfo )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
+    void *bufferAddr = pBuffer->data();
+    QCImageFormat_e format = pBuffer->imgProps.format;
+    uint32_t width = pBuffer->imgProps.width;
+    uint32_t height = pBuffer->imgProps.height;
+    uint32_t stride = pBuffer->imgProps.stride[0];
+    uint32_t handle = pBuffer->buffer.dmaHandle;
+    size_t offset = pBuffer->offset;
+    size_t size = pBuffer->size;
+
+#if !defined( __QNXNTO__ )
     struct gbm_import_fd_data fdData = { (int) handle, width, height, stride,
                                          GetGBMFormatType( format ) };
     inputInfo->bo =
@@ -937,6 +924,7 @@ QCStatus_e GL2DFlex::CreateGLInputImage( void *bufferAddr, QCImageFormat_e forma
         ret = QC_STATUS_FAIL;
         QC_ERROR( "Failed to import gbm bo for input" );
     }
+#endif
 
     if ( QC_STATUS_OK == ret )
     {
@@ -957,7 +945,36 @@ QCStatus_e GL2DFlex::CreateGLInputImage( void *bufferAddr, QCImageFormat_e forma
                 QC_ERROR( "Failed to Create GL Pipeline" );
             }
         }
+#if defined( __QNXNTO__ )
+        EGLint eglImageAttribs[] = { EGL_WIDTH,
+                                     (EGLint) width,
+                                     EGL_HEIGHT,
+                                     (EGLint) height,
+                                     EGL_IMAGE_FORMAT_QCOM,
+                                     (EGLint) GetEGLFormatType( format ),
+#ifdef EGLIMAGE_WITH_UVA
+                                     EGL_IMAGE_EXT_BUFFER_BASE_ADDR_LOW_QCOM,
+                                     ( EGLint )( ( uint64_t )(uintptr_t) bufferAddr & 0xFFFFFFFF ),
+                                     EGL_IMAGE_EXT_BUFFER_BASE_ADDR_HIGH_QCOM,
+                                     ( EGLint )( ( uint64_t )(uintptr_t) bufferAddr >> 32 ),
+#else
+                                     EGL_IMAGE_EXT_BUFFER_DESCRIPTOR_LOW_QCOM,
+                                     ( EGLint )( ( uint64_t )(uintptr_t) handle & 0xFFFFFFFF ),
+                                     EGL_IMAGE_EXT_BUFFER_DESCRIPTOR_HIGH_QCOM,
+                                     ( EGLint )( ( uint64_t )(uintptr_t) handle >> 32 ),
+                                     EGL_IMAGE_EXT_BUFFER_MEMORY_TYPE_QCOM,
+                                     EGL_IMAGE_EXT_BUFFER_MEMORY_TYPE_ION_QCOM,
+#endif
+                                     EGL_IMAGE_EXT_BUFFER_STRIDE_QCOM,
+                                     (EGLint) stride,
+                                     EGL_IMAGE_EXT_BUFFER_SIZE_QCOM,
+                                     (EGLint) size,
+                                     EGL_NONE };
 
+        // Create EGLImage from PMEM with specified format
+        inputInfo->image = eglCreateImageKHR( m_display, EGL_NO_CONTEXT, EGL_NEW_IMAGE_QCOM,
+                                              (EGLClientBuffer) 0, eglImageAttribs );
+#else
         int fd = gbm_bo_get_fd( inputInfo->bo );
         EGLint eglImageAttribs[] = { EGL_WIDTH,
                                      (EGLint) width,
@@ -974,6 +991,7 @@ QCStatus_e GL2DFlex::CreateGLInputImage( void *bufferAddr, QCImageFormat_e forma
                                      EGL_NONE };
         inputInfo->image = eglCreateImageKHR( m_display, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT,
                                               NULL, eglImageAttribs );
+#endif
         if ( nullptr == inputInfo->image )
         {
             ret = QC_STATUS_FAIL;
@@ -1022,13 +1040,21 @@ QCStatus_e GL2DFlex::CreateGLInputImage( void *bufferAddr, QCImageFormat_e forma
 }
 
 
-QCStatus_e GL2DFlex::CreateGLOutputImage( void *bufferAddr, QCImageFormat_e format, uint32_t width,
-                                          uint32_t height, uint32_t stride, uint32_t handle,
-                                          size_t offset,
+QCStatus_e GL2DFlex::CreateGLOutputImage( const QCSharedBuffer_t *pBuffer,
                                           std::shared_ptr<GL_ImageInfo_t> &outputInfo )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
+    void *bufferAddr = pBuffer->data();
+    QCImageFormat_e format = pBuffer->imgProps.format;
+    uint32_t width = pBuffer->imgProps.width;
+    uint32_t height = pBuffer->imgProps.height;
+    uint32_t stride = pBuffer->imgProps.stride[0];
+    uint32_t handle = pBuffer->buffer.dmaHandle;
+    size_t offset = pBuffer->offset;
+    size_t size = pBuffer->size;
+
+#if !defined( __QNXNTO__ )
     struct gbm_import_fd_data fdData = { (int) handle, width, height, stride,
                                          GetGBMFormatType( format ) };
     outputInfo->bo =
@@ -1038,6 +1064,7 @@ QCStatus_e GL2DFlex::CreateGLOutputImage( void *bufferAddr, QCImageFormat_e form
         ret = QC_STATUS_FAIL;
         QC_ERROR( "Failed to import gbm bo for output" );
     }
+#endif
 
     if ( QC_STATUS_OK == ret )
     {
@@ -1058,7 +1085,36 @@ QCStatus_e GL2DFlex::CreateGLOutputImage( void *bufferAddr, QCImageFormat_e form
                 QC_ERROR( "Failed to Create GL Pipeline" );
             }
         }
+#if defined( __QNXNTO__ )
+        EGLint eglImageAttribs[] = { EGL_WIDTH,
+                                     (EGLint) width,
+                                     EGL_HEIGHT,
+                                     (EGLint) height,
+                                     EGL_IMAGE_FORMAT_QCOM,
+                                     (EGLint) GetEGLFormatType( format ),
+#ifdef EGLIMAGE_WITH_UVA
+                                     EGL_IMAGE_EXT_BUFFER_BASE_ADDR_LOW_QCOM,
+                                     ( EGLint )( ( uint64_t )(uintptr_t) bufferAddr & 0xFFFFFFFF ),
+                                     EGL_IMAGE_EXT_BUFFER_BASE_ADDR_HIGH_QCOM,
+                                     ( EGLint )( ( uint64_t )(uintptr_t) bufferAddr >> 32 ),
+#else
+                                     EGL_IMAGE_EXT_BUFFER_DESCRIPTOR_LOW_QCOM,
+                                     ( EGLint )( ( uint64_t )(uintptr_t) handle & 0xFFFFFFFF ),
+                                     EGL_IMAGE_EXT_BUFFER_DESCRIPTOR_HIGH_QCOM,
+                                     ( EGLint )( ( uint64_t )(uintptr_t) handle >> 32 ),
+                                     EGL_IMAGE_EXT_BUFFER_MEMORY_TYPE_QCOM,
+                                     EGL_IMAGE_EXT_BUFFER_MEMORY_TYPE_ION_QCOM,
+#endif
+                                     EGL_IMAGE_EXT_BUFFER_STRIDE_QCOM,
+                                     (EGLint) stride,
+                                     EGL_IMAGE_EXT_BUFFER_SIZE_QCOM,
+                                     (EGLint) size,
+                                     EGL_NONE };
 
+        // Create EGLImage from PMEM with specified format
+        outputInfo->image = eglCreateImageKHR( m_display, EGL_NO_CONTEXT, EGL_NEW_IMAGE_QCOM,
+                                               (EGLClientBuffer) 0, eglImageAttribs );
+#else
         int fd = gbm_bo_get_fd( outputInfo->bo );
         EGLint eglImageAttribs[] = { EGL_WIDTH,
                                      (EGLint) width,
@@ -1076,6 +1132,7 @@ QCStatus_e GL2DFlex::CreateGLOutputImage( void *bufferAddr, QCImageFormat_e form
 
         outputInfo->image = eglCreateImageKHR( m_display, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT,
                                                NULL, eglImageAttribs );
+#endif
         if ( nullptr == outputInfo->image )
         {
             ret = QC_STATUS_FAIL;
@@ -1315,6 +1372,15 @@ uint32_t GL2DFlex::GetEGLFormatType( QCImageFormat_e format )
     uint32_t eglFormat = (uint32_t) QC_IMAGE_FORMAT_MAX;
     switch ( format )
     {
+#if defined( __QNXNTO__ )
+        case QC_IMAGE_FORMAT_UYVY:
+            eglFormat = EGL_FORMAT_UYVY_QCOM;
+            break;
+        case QC_IMAGE_FORMAT_RGB888:
+            eglFormat = EGL_FORMAT_RGB_888_QCOM;
+            break;
+
+#else
         case QC_IMAGE_FORMAT_UYVY:
             eglFormat = DRM_FORMAT_UYVY;
             break;
@@ -1327,6 +1393,7 @@ uint32_t GL2DFlex::GetEGLFormatType( QCImageFormat_e format )
         case QC_IMAGE_FORMAT_RGB888:
             eglFormat = DRM_FORMAT_RGB888;
             break;
+#endif
         default:
             QC_ERROR( "Unsupported EGL image format" );
             break;
@@ -1335,7 +1402,7 @@ uint32_t GL2DFlex::GetEGLFormatType( QCImageFormat_e format )
     return eglFormat;
 }
 
-
+#if !defined( __QNXNTO__ )
 uint32_t GL2DFlex::GetGBMFormatType( QCImageFormat_e format )
 {
     uint32_t gbmFormat = (uint32_t) QC_IMAGE_FORMAT_MAX;
@@ -1360,6 +1427,7 @@ uint32_t GL2DFlex::GetGBMFormatType( QCImageFormat_e format )
 
     return gbmFormat;
 }
+#endif
 
 
 inline QCStatus_e GL2DFlex::GLErrorCheck()

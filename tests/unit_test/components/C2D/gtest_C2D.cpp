@@ -11,7 +11,7 @@
 #include "md5_utils.hpp"
 #include "gtest/gtest.h"
 
-using namespace QC::common;
+using namespace QC;
 using namespace QC::component;
 using namespace QC::test::utils;
 

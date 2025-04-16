@@ -9,8 +9,6 @@
 
 namespace QC
 {
-namespace common
-{
 
 static uint32_t s_usageToPMemID[QC_BUFFER_USAGE_MAX] = {
         PMEM_DMA_ID,                  /* QC_BUFFER_USAGE_DEFAULT */
@@ -187,5 +185,4 @@ QCStatus_e QCDmaUnImport( void *pData, uint64_t dmaHandle, size_t size )
 
     return ret;
 }
-}   // namespace common
 }   // namespace QC

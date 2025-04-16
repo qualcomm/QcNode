@@ -10,7 +10,7 @@
 #define LOGGER_UNIT_TEST
 #include "QC/infras/logger/Logger.hpp"
 
-using namespace QC::common;
+using namespace QC;
 
 typedef struct
 {

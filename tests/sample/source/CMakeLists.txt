@@ -7,7 +7,6 @@ set( HEADERS_DIR
 
 set( QCNODE_SAMPLE_SOURCES
     SampleIF.cpp
-    SampleC2D.cpp
     SamplePlrPost.cpp
     SamplePlrPre.cpp
     SamplePostProcCenternet.cpp
@@ -22,16 +21,21 @@ set( QCNODE_SAMPLE_SOURCES
     SampleDataOnline.cpp
     SampleSharedRing.cpp
     SampleFpsAdapter.cpp
-    SampleOpticalFlow.cpp
-    SampleOpticalFlowViz.cpp
-    SampleDepthFromStereo.cpp
-    SampleDepthFromStereoViz.cpp
     SampleFrameSync.cpp
     SysTrace.cpp
+    SampleGL2DFlex.cpp
 )
 
-if( "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" AND "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "aarch64" )
-    list( APPEND QCNODE_SAMPLE_SOURCES SampleGL2DFlex.cpp )
+if ( ENABLE_C2D )
+  list( APPEND QCNODE_SAMPLE_SOURCES SampleC2D.cpp )
+endif()
+
+if ( ENABLE_EVA )
+  list( APPEND QCNODE_SAMPLE_SOURCES
+            SampleOpticalFlow.cpp
+            SampleOpticalFlowViz.cpp
+            SampleDepthFromStereo.cpp
+            SampleDepthFromStereoViz.cpp )
 endif()
 
 set( QCNODE_SAMPLE_DEFINITIONS )

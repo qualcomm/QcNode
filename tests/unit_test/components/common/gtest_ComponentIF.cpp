@@ -8,7 +8,7 @@
 
 #include "QC/component/ComponentIF.hpp"
 
-using namespace QC::common;
+using namespace QC;
 using namespace QC::component;
 
 typedef struct

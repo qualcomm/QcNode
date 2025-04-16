@@ -14,7 +14,7 @@
 
 
 using namespace QC;
-using namespace QC::common;
+using namespace QC;
 using namespace QC::component;
 using namespace QC::sample;
 

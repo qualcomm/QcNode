@@ -18,7 +18,7 @@
 
 #include "QC/common/Types.hpp"
 
-using namespace QC::common;
+using namespace QC;
 
 namespace QC
 {

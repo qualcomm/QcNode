@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-using namespace QC::common;
+using namespace QC;
 
 using namespace QC::sample;
 using namespace QC::sample::shared_ring;
