@@ -3,10 +3,10 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#include "ridehal/sample/shared_ring/SharedRing.hpp"
-#include "ridehal/sample/shared_ring/SpinLock.hpp"
+#include "QC/sample/shared_ring/SharedRing.hpp"
+#include "QC/sample/shared_ring/SpinLock.hpp"
 
-namespace ridehal
+namespace QC
 {
 namespace sample
 {
@@ -15,33 +15,33 @@ namespace shared_ring
 
 #define SPINLOCK_TIMEOUT 100
 
-RideHalError_e SharedRing_Ring::Push( uint16_t idx )
+QCStatus_e SharedRing_Ring::Push( uint16_t idx )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
-    ret = RideHal_SpinLock( &spinlock, SPINLOCK_TIMEOUT );
-    if ( RIDEHAL_ERROR_NONE == ret )
+    ret = QCSpinLock( &spinlock, SPINLOCK_TIMEOUT );
+    if ( QC_STATUS_OK == ret )
     {
         ring[writeIdx % SHARED_RING_NUM_DESC] = idx;
         writeIdx++;
-        ret = RideHal_SpinUnLock( &spinlock );
+        ret = QCSpinUnLock( &spinlock );
     }
 
-    if ( RIDEHAL_ERROR_NONE != ret )
+    if ( QC_STATUS_OK != ret )
     {
-        RIDEHAL_LOG_ERROR( "ring push %d to %s failed", idx, name );
+        QC_LOG_ERROR( "ring push %d to %s failed", idx, name );
     }
 
     return ret;
 }
 
-RideHalError_e SharedRing_Ring::Pop( uint16_t &idx )
+QCStatus_e SharedRing_Ring::Pop( uint16_t &idx )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
-    RideHalError_e ret2;
+    QCStatus_e ret = QC_STATUS_OK;
+    QCStatus_e ret2;
 
-    ret = RideHal_SpinLock( &spinlock, SPINLOCK_TIMEOUT );
-    if ( RIDEHAL_ERROR_NONE == ret )
+    ret = QCSpinLock( &spinlock, SPINLOCK_TIMEOUT );
+    if ( QC_STATUS_OK == ret )
     {
         if ( readIdx != writeIdx )
         {
@@ -50,18 +50,18 @@ RideHalError_e SharedRing_Ring::Pop( uint16_t &idx )
         }
         else
         {
-            ret = RIDEHAL_ERROR_OUT_OF_BOUND;
+            ret = QC_STATUS_OUT_OF_BOUND;
         }
-        ret2 = RideHal_SpinUnLock( &spinlock );
-        if ( RIDEHAL_ERROR_NONE != ret2 )
+        ret2 = QCSpinUnLock( &spinlock );
+        if ( QC_STATUS_OK != ret2 )
         {
-            RIDEHAL_LOG_ERROR( "ring pop %d from %s unlock failed", idx, name );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_LOG_ERROR( "ring pop %d from %s unlock failed", idx, name );
+            ret = QC_STATUS_FAIL;
         }
     }
     else
     {
-        RIDEHAL_LOG_ERROR( "ring pop from %s lock failed", name );
+        QC_LOG_ERROR( "ring pop from %s lock failed", name );
     }
 
     return ret;
@@ -89,4 +89,4 @@ void SharedRing_Memory::SetName( std::string name )
 
 }   // namespace shared_ring
 }   // namespace sample
-}   // namespace ridehal
+}   // namespace QC

@@ -13,7 +13,7 @@ class OnlineInference():
         self.modelInfo = self.dol.GetModelInfo()
 
     def convert(self, x, encoding):
-        dtype = RideHalTypeToNumpyType[encoding['tensor_type']]
+        dtype = QCTypeToNumpyType[encoding['tensor_type']]
         if x.dtype != dtype:
             quant_scale = encoding['quant_scale']
             quant_offset = encoding['quant_offset']
@@ -77,7 +77,7 @@ class OnlineInference():
 if __name__ == '__main__':
     # NOTE: This is a demo about how to use OnlineInference
     import argparse
-    parser = argparse.ArgumentParser(description='RideHal online inference')
+    parser = argparse.ArgumentParser(description='QC online inference')
     parser.add_argument('--target', type=str, default='192.168.1.1:6666', help='the target device ip address')
     args = parser.parse_args()
     olif = OnlineInference(target=args.target)

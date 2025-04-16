@@ -3,10 +3,10 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#include "ridehal/sample/SysTrace.hpp"
+#include "QC/sample/SysTrace.hpp"
 #include <stdlib.h>
 
-namespace ridehal
+namespace QC
 {
 namespace sample
 {
@@ -31,18 +31,18 @@ void SysTrace::Init( std::string name )
     std::lock_guard<std::mutex> l( s_lock );
     if ( nullptr == s_pTraceFile )
     {
-        const char *envValue = getenv( "RIDEHAL_SYSTRACE" );
+        const char *envValue = getenv( "QC_SYSTRACE" );
         if ( nullptr != envValue )
         {
             s_pTraceFile = fopen( envValue, "wb" );
             if ( nullptr != s_pTraceFile )
             {
                 atexit( SysTrace_CloseFile );
-                fprintf( stdout, "RideHal SysTrace File: <%s>.\n", envValue );
+                fprintf( stdout, "QC SysTrace File: <%s>.\n", envValue );
             }
             else
             {
-                fprintf( stderr, "Failed to create ridehal systrace bin file <%s>.\n", envValue );
+                fprintf( stderr, "Failed to create qcnode systrace bin file <%s>.\n", envValue );
             }
         }
     }
@@ -161,4 +161,4 @@ void SysTrace::Event( SysTrace_Category_e cat )
 }
 
 }   // namespace sample
-}   // namespace ridehal
+}   // namespace QC

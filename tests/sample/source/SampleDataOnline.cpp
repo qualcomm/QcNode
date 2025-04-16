@@ -2,7 +2,7 @@
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
-#include "ridehal/sample/SampleDataOnline.hpp"
+#include "QC/sample/SampleDataOnline.hpp"
 #include <arpa/inet.h>
 #include <assert.h>
 #include <errno.h>
@@ -12,7 +12,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-namespace ridehal
+namespace QC
 {
 namespace sample
 {
@@ -20,9 +20,9 @@ namespace sample
 SampleDataOnline::SampleDataOnline() {}
 SampleDataOnline::~SampleDataOnline() {}
 
-RideHalError_e SampleDataOnline::ParseConfig( SampleConfig_t &config )
+QCStatus_e SampleDataOnline::ParseConfig( SampleConfig_t &config )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     bool bCache = Get( config, "cache", true );
     if ( false == bCache )
@@ -31,7 +31,7 @@ RideHalError_e SampleDataOnline::ParseConfig( SampleConfig_t &config )
     }
     else
     {
-        m_bufferFlags = RIDEHAL_BUFFER_FLAGS_CACHE_WB_WA;
+        m_bufferFlags = QC_BUFFER_FLAGS_CACHE_WB_WA;
     }
 
     m_port = Get( config, "port", 6666 );
@@ -41,15 +41,15 @@ RideHalError_e SampleDataOnline::ParseConfig( SampleConfig_t &config )
     m_inputTopicName = Get( config, "input_topic", "" );
     if ( "" == m_inputTopicName )
     {
-        RIDEHAL_ERROR( "no input topic\n" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "no input topic\n" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     m_outputTopicName = Get( config, "output_topic", "" );
     if ( "" == m_outputTopicName )
     {
-        RIDEHAL_ERROR( "no output topic\n" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "no output topic\n" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     m_modelInOutInfoTopicName =
@@ -58,18 +58,18 @@ RideHalError_e SampleDataOnline::ParseConfig( SampleConfig_t &config )
     m_poolSize = Get( config, "pool_size", 4 );
     if ( 0 == m_poolSize )
     {
-        RIDEHAL_ERROR( "invalid pool_size = %d\n", m_poolSize );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "invalid pool_size = %d\n", m_poolSize );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     return ret;
 }
 
-RideHalError_e SampleDataOnline::Init( std::string name, SampleConfig_t &config )
+QCStatus_e SampleDataOnline::Init( std::string name, SampleConfig_t &config )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
-    assert( sizeof( RideHal_BufferType_e ) == 4 );
+    assert( sizeof( QCBufferType_e ) == 4 );
     assert( sizeof( Meta ) == 128 );
     assert( sizeof( MetaModelInfo ) == 128 );
     assert( sizeof( DataMeta ) == 128 );
@@ -77,23 +77,23 @@ RideHalError_e SampleDataOnline::Init( std::string name, SampleConfig_t &config 
     assert( sizeof( DataTensorMeta ) == 128 );
 
     ret = SampleIF::Init( name );
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         TRACE_ON( DATA_ONLINE );
         ret = ParseConfig( config );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = m_sub.Init( name, m_inputTopicName );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = m_modelInOutInfoSub.Init( name, m_modelInOutInfoTopicName );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = m_pub.Init( name, m_outputTopicName );
     }
@@ -101,9 +101,9 @@ RideHalError_e SampleDataOnline::Init( std::string name, SampleConfig_t &config 
     return ret;
 }
 
-RideHalError_e SampleDataOnline::Start()
+QCStatus_e SampleDataOnline::Start()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     m_stop = false;
     m_bOnline = false;
     m_bHasInfInfo = false;
@@ -112,8 +112,8 @@ RideHalError_e SampleDataOnline::Start()
     if ( m_server < 0 )
     {
         perror( "socket:" );
-        RIDEHAL_ERROR( "Failed to create server socket" );
-        ret = RIDEHAL_ERROR_FAIL;
+        QC_ERROR( "Failed to create server socket" );
+        ret = QC_STATUS_FAIL;
     }
     else
     {
@@ -121,12 +121,12 @@ RideHalError_e SampleDataOnline::Start()
         int rv = setsockopt( m_server, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof( int ) );
         if ( 0 != rv )
         {
-            RIDEHAL_ERROR( "Failed to enable socket to reuse address: %d", rv );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Failed to enable socket to reuse address: %d", rv );
+            ret = QC_STATUS_FAIL;
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         struct sockaddr_in serverAddr;
         memset( &serverAddr, 0, sizeof( struct sockaddr_in ) );
@@ -137,23 +137,23 @@ RideHalError_e SampleDataOnline::Start()
         if ( 0 != rv )
         {
             close( m_server );
-            RIDEHAL_ERROR( "Failed to bind server port = %d, errno = %d", m_port, rv );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Failed to bind server port = %d, errno = %d", m_port, rv );
+            ret = QC_STATUS_FAIL;
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         int rv = listen( m_server, 1 ); /* only allow 1 client connection */
         if ( 0 != rv )
         {
             close( m_server );
-            RIDEHAL_ERROR( "Failed to listen to port = %d, errno = %d", m_port, rv );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Failed to listen to port = %d, errno = %d", m_port, rv );
+            ret = QC_STATUS_FAIL;
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         m_subThread = std::thread( &SampleDataOnline::ThreadSubMain, this );
         m_pubThread = std::thread( &SampleDataOnline::ThreadPubMain, this );
@@ -162,10 +162,10 @@ RideHalError_e SampleDataOnline::Start()
     return ret;
 }
 
-RideHalError_e SampleDataOnline::ReceiveData( Meta &meta )
+QCStatus_e SampleDataOnline::ReceiveData( Meta &meta )
 {
 
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     std::vector<DataMeta> dataMetas;
     DataFrames_t outputs;
     uint8_t *pData;
@@ -192,29 +192,29 @@ RideHalError_e SampleDataOnline::ReceiveData( Meta &meta )
             for ( uint32_t i = 0; i < meta.numOfDatas; i++ )
             {
                 auto &dataMeta = dataMetas[i];
-                if ( RIDEHAL_BUFFER_TYPE_IMAGE == dataMeta.dataType )
+                if ( QC_BUFFER_TYPE_IMAGE == dataMeta.dataType )
                 {
                     DataImageMeta *pImageMeta = (DataImageMeta *) &dataMeta;
                     ret = m_bufferPools[i].Init( m_name + std::to_string( i ), LOGGER_LEVEL_INFO,
                                                  m_poolSize, pImageMeta->imageProps,
-                                                 RIDEHAL_BUFFER_USAGE_DEFAULT, m_bufferFlags );
+                                                 QC_BUFFER_USAGE_DEFAULT, m_bufferFlags );
                 }
-                else if ( RIDEHAL_BUFFER_TYPE_TENSOR == dataMeta.dataType )
+                else if ( QC_BUFFER_TYPE_TENSOR == dataMeta.dataType )
                 {
                     DataTensorMeta *pTensorMeta = (DataTensorMeta *) &dataMeta;
                     ret = m_bufferPools[i].Init(
                             m_name + "_" + pTensorMeta->name, LOGGER_LEVEL_INFO, m_poolSize,
-                            pTensorMeta->tensorProps, RIDEHAL_BUFFER_USAGE_DEFAULT, m_bufferFlags );
+                            pTensorMeta->tensorProps, QC_BUFFER_USAGE_DEFAULT, m_bufferFlags );
                 }
                 else
                 {
-                    RIDEHAL_ERROR( "Invalid buffer type %d", dataMetas[i].dataType );
-                    ret = RIDEHAL_ERROR_FAIL;
+                    QC_ERROR( "Invalid buffer type %d", dataMetas[i].dataType );
+                    ret = QC_STATUS_FAIL;
                 }
 
-                if ( RIDEHAL_ERROR_NONE != ret )
+                if ( QC_STATUS_OK != ret )
                 {
-                    RIDEHAL_ERROR( "Failed to create data buffer pool %d", i );
+                    QC_ERROR( "Failed to create data buffer pool %d", i );
                     rv = (int) -ret;
                     break;
                 }
@@ -230,18 +230,18 @@ RideHalError_e SampleDataOnline::ReceiveData( Meta &meta )
             std::shared_ptr<SharedBuffer_t> buffer = m_bufferPools[i].Get();
             if ( nullptr == buffer )
             {
-                RIDEHAL_ERROR( "Failed to get data buffer for input %u", i );
+                QC_ERROR( "Failed to get data buffer for input %u", i );
                 rv = -ENOENT;
             }
             else if ( buffer->sharedBuffer.size != dataMeta.size )
             {
-                RIDEHAL_ERROR( "size mismatch for input %u, expect %u, given %u", i, dataMeta.size,
-                               buffer->sharedBuffer.size );
+                QC_ERROR( "size mismatch for input %u, expect %u, given %u", i, dataMeta.size,
+                          buffer->sharedBuffer.size );
                 rv = -EINVAL;
             }
             else
             {
-                if ( RIDEHAL_BUFFER_TYPE_IMAGE == dataMeta.dataType )
+                if ( QC_BUFFER_TYPE_IMAGE == dataMeta.dataType )
                 {
                     DataFrame_t frame;
                     frame.buffer = buffer;
@@ -272,14 +272,13 @@ RideHalError_e SampleDataOnline::ReceiveData( Meta &meta )
 
         if ( size != meta.payloadSize )
         {
-            RIDEHAL_ERROR( "invalid payload size, expect %" PRIu64 ", given %" PRIu64, size,
-                           meta.payloadSize );
+            QC_ERROR( "invalid payload size, expect %" PRIu64 ", given %" PRIu64, size,
+                      meta.payloadSize );
             rv = -EINVAL;
         }
         else
         {
-            RIDEHAL_DEBUG( "publish frame %" PRIu64 " timestamp %" PRIu64, meta.Id,
-                           meta.timestamp );
+            QC_DEBUG( "publish frame %" PRIu64 " timestamp %" PRIu64, meta.Id, meta.timestamp );
         }
     }
 
@@ -298,8 +297,8 @@ RideHalError_e SampleDataOnline::ReceiveData( Meta &meta )
 
     if ( rv <= 0 )
     {
-        RIDEHAL_ERROR( "recv socket failed, errno = %d", rv );
-        ret = RIDEHAL_ERROR_FAIL;
+        QC_ERROR( "recv socket failed, errno = %d", rv );
+        ret = QC_STATUS_FAIL;
     }
     else
     {
@@ -310,16 +309,16 @@ RideHalError_e SampleDataOnline::ReceiveData( Meta &meta )
     return ret;
 }
 
-RideHalError_e SampleDataOnline::ReplyModelInfo()
+QCStatus_e SampleDataOnline::ReplyModelInfo()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     int rv;
     std::vector<uint8_t> payload;
 
     if ( false == m_bHasInfInfo )
     {
         ret = m_modelInOutInfoSub.Receive( m_modelInOutInfo );
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             m_bHasInfInfo = true;
         }
@@ -327,15 +326,15 @@ RideHalError_e SampleDataOnline::ReplyModelInfo()
 
     if ( false == m_bHasInfInfo )
     {
-        RIDEHAL_ERROR( "no inference info" );
+        QC_ERROR( "no inference info" );
         Meta meta;
         memset( &meta, 0, sizeof( meta ) );
         meta.command = MetaCommand::META_COMMAND_MODEL_INFO;
         rv = send( m_client, &meta, sizeof( meta ), 0 );
         if ( rv != sizeof( meta ) )
         {
-            RIDEHAL_ERROR( "send failed: %d", rv );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "send failed: %d", rv );
+            ret = QC_STATUS_FAIL;
         }
     }
     else
@@ -354,7 +353,7 @@ RideHalError_e SampleDataOnline::ReplyModelInfo()
         for ( size_t i = 0; i < m_modelInOutInfo.inputs.size(); i++ )
         {
             auto &input = m_modelInOutInfo.inputs[i];
-            pTensorMeta->dataType = RIDEHAL_BUFFER_TYPE_TENSOR;
+            pTensorMeta->dataType = QC_BUFFER_TYPE_TENSOR;
             pTensorMeta->tensorProps = input.properties;
             pTensorMeta->quantScale = input.quantScale;
             pTensorMeta->quantOffset = input.quantOffset;
@@ -364,7 +363,7 @@ RideHalError_e SampleDataOnline::ReplyModelInfo()
         for ( size_t i = 0; i < m_modelInOutInfo.outputs.size(); i++ )
         {
             auto &output = m_modelInOutInfo.outputs[i];
-            pTensorMeta->dataType = RIDEHAL_BUFFER_TYPE_TENSOR;
+            pTensorMeta->dataType = QC_BUFFER_TYPE_TENSOR;
             pTensorMeta->tensorProps = output.properties;
             pTensorMeta->quantScale = output.quantScale;
             pTensorMeta->quantOffset = output.quantOffset;
@@ -374,17 +373,17 @@ RideHalError_e SampleDataOnline::ReplyModelInfo()
         rv = send( m_client, payload.data(), payloadSize, 0 );
         if ( rv != payloadSize )
         {
-            RIDEHAL_ERROR( "send failed: %d", rv );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "send failed: %d", rv );
+            ret = QC_STATUS_FAIL;
         }
     }
 
     return ret;
 }
 
-RideHalError_e SampleDataOnline::ReceiveMain()
+QCStatus_e SampleDataOnline::ReceiveMain()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     Meta meta;
     std::vector<DataMeta> dataMetas;
     DataFrames_t outputs;
@@ -414,8 +413,8 @@ RideHalError_e SampleDataOnline::ReceiveMain()
     }
     else
     {
-        RIDEHAL_ERROR( "recv socket failed, errno = %d", r );
-        ret = RIDEHAL_ERROR_FAIL;
+        QC_ERROR( "recv socket failed, errno = %d", r );
+        ret = QC_STATUS_FAIL;
     }
 
     return ret;
@@ -423,7 +422,7 @@ RideHalError_e SampleDataOnline::ReceiveMain()
 
 void SampleDataOnline::ThreadPubMain()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     while ( false == m_stop )
     {
         struct sockaddr_in clientAddr;
@@ -431,7 +430,7 @@ void SampleDataOnline::ThreadPubMain()
         m_client = accept( m_server, (struct sockaddr *) &clientAddr, &socklen );
         if ( m_client < 0 )
         {
-            RIDEHAL_ERROR( "accept failed, try again" );
+            QC_ERROR( "accept failed, try again" );
             std::this_thread::sleep_for( std::chrono::milliseconds( 100 ) );
             continue;
         }
@@ -442,23 +441,23 @@ void SampleDataOnline::ThreadPubMain()
         int rv = setsockopt( m_client, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof( timeout ) );
         if ( 0 != rv )
         {
-            RIDEHAL_WARN( "Failed to set socket %u s timeout, errno = %d", m_timeout, rv );
+            QC_WARN( "Failed to set socket %u s timeout, errno = %d", m_timeout, rv );
         }
 
-        RIDEHAL_INFO( "remote client online from port %d", m_port );
+        QC_INFO( "remote client online from port %d", m_port );
         m_bOnline = true;
 
         while ( false == m_stop )
         {
             ret = ReceiveMain();
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
                 break;
             }
         }
         close( m_client );
         m_client = -1;
-        RIDEHAL_INFO( "remote client offline" );
+        QC_INFO( "remote client offline" );
         m_bOnline = false;
     }
 }
@@ -466,7 +465,7 @@ void SampleDataOnline::ThreadPubMain()
 
 void SampleDataOnline::ThreadSubMain()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     int rv;
     size_t payloadSize;
     uint8_t *pData;
@@ -475,10 +474,10 @@ void SampleDataOnline::ThreadSubMain()
     {
         DataFrames_t frames;
         ret = m_sub.Receive( frames );
-        if ( ( RIDEHAL_ERROR_NONE == ret ) && ( m_bOnline ) )
+        if ( ( QC_STATUS_OK == ret ) && ( m_bOnline ) )
         {
-            RIDEHAL_DEBUG( "receive frameId %" PRIu64 ", timestamp %" PRIu64 "\n",
-                           frames.FrameId( 0 ), frames.Timestamp( 0 ) );
+            QC_DEBUG( "receive frameId %" PRIu64 ", timestamp %" PRIu64 "\n", frames.FrameId( 0 ),
+                      frames.Timestamp( 0 ) );
             payloadSize = sizeof( DataMeta ) * frames.frames.size();
             for ( auto &frame : frames.frames )
             {
@@ -494,17 +493,17 @@ void SampleDataOnline::ThreadSubMain()
             DataMeta *pDataMeta = (DataMeta *) &pMeta[1];
             for ( auto &frame : frames.frames )
             {
-                if ( RIDEHAL_BUFFER_TYPE_IMAGE == frame.BufferType() )
+                if ( QC_BUFFER_TYPE_IMAGE == frame.BufferType() )
                 {
                     DataImageMeta *pImageMeta = (DataImageMeta *) pDataMeta;
-                    pImageMeta->dataType = RIDEHAL_BUFFER_TYPE_IMAGE;
+                    pImageMeta->dataType = QC_BUFFER_TYPE_IMAGE;
                     pImageMeta->size = frame.size();
                     pImageMeta->imageProps = frame.buffer->sharedBuffer.imgProps;
                 }
                 else
                 {
                     DataTensorMeta *pTensorMeta = (DataTensorMeta *) pDataMeta;
-                    pTensorMeta->dataType = RIDEHAL_BUFFER_TYPE_TENSOR;
+                    pTensorMeta->dataType = QC_BUFFER_TYPE_TENSOR;
                     pTensorMeta->size = frame.size();
                     pTensorMeta->tensorProps = frame.buffer->sharedBuffer.tensorProps;
                     pTensorMeta->quantScale = frame.quantScale;
@@ -533,7 +532,7 @@ void SampleDataOnline::ThreadSubMain()
                 }
                 else
                 {
-                    RIDEHAL_ERROR( "send failed: %d", rv );
+                    QC_ERROR( "send failed: %d", rv );
                     break;
                 }
             } while ( offset < totalSize );
@@ -541,9 +540,9 @@ void SampleDataOnline::ThreadSubMain()
     }
 }
 
-RideHalError_e SampleDataOnline::Stop()
+QCStatus_e SampleDataOnline::Stop()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     if ( m_server >= 0 )
     {
@@ -567,9 +566,9 @@ RideHalError_e SampleDataOnline::Stop()
     return ret;
 }
 
-RideHalError_e SampleDataOnline::Deinit()
+QCStatus_e SampleDataOnline::Deinit()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     m_bufferPools.clear();
 
@@ -579,4 +578,4 @@ RideHalError_e SampleDataOnline::Deinit()
 REGISTER_SAMPLE( DataOnline, SampleDataOnline );
 
 }   // namespace sample
-}   // namespace ridehal
+}   // namespace QC

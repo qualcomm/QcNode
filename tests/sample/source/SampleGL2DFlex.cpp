@@ -3,11 +3,10 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
+#include "QC/sample/SampleGL2DFlex.hpp"
 
-#include "ridehal/sample/SampleGL2DFlex.hpp"
 
-
-namespace ridehal
+namespace QC
 {
 namespace sample
 {
@@ -15,36 +14,36 @@ namespace sample
 SampleGL2DFlex::SampleGL2DFlex() {}
 SampleGL2DFlex::~SampleGL2DFlex() {}
 
-RideHalError_e SampleGL2DFlex::ParseConfig( SampleConfig_t &config )
+QCStatus_e SampleGL2DFlex::ParseConfig( SampleConfig_t &config )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     m_config.outputResolution.width = Get( config, "output_width", 1928 );
     if ( 0 == m_config.outputResolution.width )
     {
-        RIDEHAL_ERROR( "invalid output_width\n" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "invalid output_width\n" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     m_config.outputResolution.height = Get( config, "output_height", 1928 );
     if ( 0 == m_config.outputResolution.height )
     {
-        RIDEHAL_ERROR( "invalid output_height\n" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "invalid output_height\n" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
-    m_config.outputFormat = Get( config, "output_format", RIDEHAL_IMAGE_FORMAT_UYVY );
-    if ( RIDEHAL_IMAGE_FORMAT_MAX == m_config.outputFormat )
+    m_config.outputFormat = Get( config, "output_format", QC_IMAGE_FORMAT_UYVY );
+    if ( QC_IMAGE_FORMAT_MAX == m_config.outputFormat )
     {
-        RIDEHAL_ERROR( "invalid output_format\n" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "invalid output_format\n" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     m_config.numOfInputs = Get( config, "batch_size", 1 );
     if ( 0 == m_config.numOfInputs )
     {
-        RIDEHAL_ERROR( "invalid batch_size\n" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "invalid batch_size\n" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     for ( uint32_t i = 0; i < m_config.numOfInputs; i++ )
@@ -53,38 +52,38 @@ RideHalError_e SampleGL2DFlex::ParseConfig( SampleConfig_t &config )
                 Get( config, "input_width" + std::to_string( i ), 1928 );
         if ( 0 == m_config.inputConfigs[i].inputResolution.width )
         {
-            RIDEHAL_ERROR( "invalid input_width%u\n", i );
-            ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+            QC_ERROR( "invalid input_width%u\n", i );
+            ret = QC_STATUS_BAD_ARGUMENTS;
         }
 
         m_config.inputConfigs[i].inputResolution.height =
                 Get( config, "input_height" + std::to_string( i ), 1208 );
         if ( 0 == m_config.inputConfigs[i].inputResolution.height )
         {
-            RIDEHAL_ERROR( "invalid input_height%u\n", i );
-            ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+            QC_ERROR( "invalid input_height%u\n", i );
+            ret = QC_STATUS_BAD_ARGUMENTS;
         }
 
         m_config.inputConfigs[i].inputFormat =
-                Get( config, "input_format" + std::to_string( i ), RIDEHAL_IMAGE_FORMAT_NV12 );
-        if ( RIDEHAL_IMAGE_FORMAT_MAX == m_config.inputConfigs[i].inputFormat )
+                Get( config, "input_format" + std::to_string( i ), QC_IMAGE_FORMAT_NV12 );
+        if ( QC_IMAGE_FORMAT_MAX == m_config.inputConfigs[i].inputFormat )
         {
-            RIDEHAL_ERROR( "invalid input_format%u\n", i );
-            ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+            QC_ERROR( "invalid input_format%u\n", i );
+            ret = QC_STATUS_BAD_ARGUMENTS;
         }
 
         m_config.inputConfigs[i].ROI.topX = Get( config, "roi_x" + std::to_string( i ), 0 );
         if ( m_config.inputConfigs[i].ROI.topX >= m_config.inputConfigs[i].inputResolution.width )
         {
-            RIDEHAL_ERROR( "invalid roi_x%u\n", i );
-            ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+            QC_ERROR( "invalid roi_x%u\n", i );
+            ret = QC_STATUS_BAD_ARGUMENTS;
         }
 
         m_config.inputConfigs[i].ROI.topY = Get( config, "roi_y" + std::to_string( i ), 0 );
         if ( m_config.inputConfigs[i].ROI.topY >= m_config.inputConfigs[i].inputResolution.height )
         {
-            RIDEHAL_ERROR( "invalid roi_y%u\n", i );
-            ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+            QC_ERROR( "invalid roi_y%u\n", i );
+            ret = QC_STATUS_BAD_ARGUMENTS;
         }
 
         m_config.inputConfigs[i].ROI.width = Get( config, "roi_width" + std::to_string( i ),
@@ -101,8 +100,8 @@ RideHalError_e SampleGL2DFlex::ParseConfig( SampleConfig_t &config )
     m_poolSize = Get( config, "pool_size", 4 );
     if ( 0 == m_poolSize )
     {
-        RIDEHAL_ERROR( "invalid pool_size = %d\n", m_poolSize );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "invalid pool_size = %d\n", m_poolSize );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     bool bCache = Get( config, "cache", true );
@@ -112,58 +111,58 @@ RideHalError_e SampleGL2DFlex::ParseConfig( SampleConfig_t &config )
     }
     else
     {
-        m_bufferFlags = RIDEHAL_BUFFER_FLAGS_CACHE_WB_WA;
+        m_bufferFlags = QC_BUFFER_FLAGS_CACHE_WB_WA;
     }
 
     m_inputTopicName = Get( config, "input_topic", "" );
     if ( "" == m_inputTopicName )
     {
-        RIDEHAL_ERROR( "no input topic\n" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "no input topic\n" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     m_outputTopicName = Get( config, "output_topic", "" );
     if ( "" == m_outputTopicName )
     {
-        RIDEHAL_ERROR( "no output topic\n" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "no output topic\n" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     return ret;
 }
 
-RideHalError_e SampleGL2DFlex::Init( std::string name, SampleConfig_t &config )
+QCStatus_e SampleGL2DFlex::Init( std::string name, SampleConfig_t &config )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     ret = SampleIF::Init( name );
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         TRACE_ON( GPU );
         ret = ParseConfig( config );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
 
         ret = m_imagePool.Init( name, LOGGER_LEVEL_INFO, m_poolSize, m_config.numOfInputs,
-                                m_outputWidth, m_outputHeight, m_outputFormat,
-                                RIDEHAL_BUFFER_USAGE_GPU, m_bufferFlags );
+                                m_outputWidth, m_outputHeight, m_outputFormat, QC_BUFFER_USAGE_GPU,
+                                m_bufferFlags );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         TRACE_BEGIN( SYSTRACE_TASK_INIT );
         ret = m_GL2DFlex.Init( name.c_str(), &m_config );
         TRACE_END( SYSTRACE_TASK_INIT );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = m_sub.Init( name, m_inputTopicName );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = m_pub.Init( name, m_outputTopicName );
     }
@@ -171,15 +170,15 @@ RideHalError_e SampleGL2DFlex::Init( std::string name, SampleConfig_t &config )
     return ret;
 }
 
-RideHalError_e SampleGL2DFlex::Start()
+QCStatus_e SampleGL2DFlex::Start()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     TRACE_BEGIN( SYSTRACE_TASK_START );
     ret = m_GL2DFlex.Start();
     TRACE_END( SYSTRACE_TASK_START );
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         m_stop = false;
         m_thread = std::thread( &SampleGL2DFlex::ThreadMain, this );
@@ -190,19 +189,19 @@ RideHalError_e SampleGL2DFlex::Start()
 
 void SampleGL2DFlex::ThreadMain()
 {
-    RideHalError_e ret;
+    QCStatus_e ret;
     while ( false == m_stop )
     {
         DataFrames_t frames;
         ret = m_sub.Receive( frames );
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
-            RIDEHAL_DEBUG( "receive frameId %" PRIu64 ", timestamp %" PRIu64 "\n",
-                           frames.FrameId( 0 ), frames.Timestamp( 0 ) );
+            QC_DEBUG( "receive frameId %" PRIu64 ", timestamp %" PRIu64 "\n", frames.FrameId( 0 ),
+                      frames.Timestamp( 0 ) );
             std::shared_ptr<SharedBuffer_t> buffer = m_imagePool.Get();
             if ( nullptr != buffer )
             {
-                std::vector<RideHal_SharedBuffer_t> inputs;
+                std::vector<QCSharedBuffer_t> inputs;
                 for ( auto &frame : frames.frames )
                 {
                     inputs.push_back( frame.buffer->sharedBuffer );
@@ -215,7 +214,7 @@ void SampleGL2DFlex::ThreadMain()
                 memset( pOutputData, 0, buffer->sharedBuffer.size );
 
                 ret = m_GL2DFlex.Execute( inputs.data(), inputs.size(), &buffer->sharedBuffer );
-                if ( RIDEHAL_ERROR_NONE == ret )
+                if ( QC_STATUS_OK == ret )
                 {
                     PROFILER_END();
                     TRACE_END( frames.FrameId( 0 ) );
@@ -229,17 +228,17 @@ void SampleGL2DFlex::ThreadMain()
                 }
                 else
                 {
-                    RIDEHAL_ERROR( "GL2D execute failed for %" PRIu64 " : %d", frames.FrameId( 0 ),
-                                   ret );
+                    QC_ERROR( "GL2D execute failed for %" PRIu64 " : %d", frames.FrameId( 0 ),
+                              ret );
                 }
             }
         }
     }
 }
 
-RideHalError_e SampleGL2DFlex::Stop()
+QCStatus_e SampleGL2DFlex::Stop()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     m_stop = true;
     if ( m_thread.joinable() )
@@ -256,9 +255,9 @@ RideHalError_e SampleGL2DFlex::Stop()
     return ret;
 }
 
-RideHalError_e SampleGL2DFlex::Deinit()
+QCStatus_e SampleGL2DFlex::Deinit()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     TRACE_BEGIN( SYSTRACE_TASK_DEINIT );
     ret = m_GL2DFlex.Deinit();
@@ -270,5 +269,4 @@ RideHalError_e SampleGL2DFlex::Deinit()
 REGISTER_SAMPLE( GL2DFlex, SampleGL2DFlex );
 
 }   // namespace sample
-}   // namespace ridehal
-
+}   // namespace QC

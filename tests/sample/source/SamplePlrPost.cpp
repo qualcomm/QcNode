@@ -3,12 +3,11 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-
-#include "ridehal/sample/SamplePlrPost.hpp"
+#include "QC/sample/SamplePlrPost.hpp"
 #include <cmath>
 #include <math.h>
 
-namespace ridehal
+namespace QC
 {
 namespace sample
 {
@@ -16,15 +15,15 @@ namespace sample
 SamplePlrPost::SamplePlrPost() {}
 SamplePlrPost::~SamplePlrPost() {}
 
-RideHalError_e SamplePlrPost::ParseConfig( SampleConfig_t &config )
+QCStatus_e SamplePlrPost::ParseConfig( SampleConfig_t &config )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
-    m_config.processor = Get( config, "processor", RIDEHAL_PROCESSOR_HTP0 );
-    if ( RIDEHAL_PROCESSOR_MAX == m_config.processor )
+    m_config.processor = Get( config, "processor", QC_PROCESSOR_HTP0 );
+    if ( QC_PROCESSOR_MAX == m_config.processor )
     {
-        RIDEHAL_ERROR( "invalid processor %s\n", Get( config, "processor", "" ).c_str() );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "invalid processor %s\n", Get( config, "processor", "" ).c_str() );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     m_config.pillarXSize = Get( config, "pillar_size_x", 0.16f );
@@ -51,85 +50,85 @@ RideHalError_e SamplePlrPost::ParseConfig( SampleConfig_t &config )
     m_bDebug = Get( config, "debug", false );
 
     m_indexs = Get( config, "output_indexs", m_indexs );
-    RIDEHAL_INFO( "output indexs = [%u %u %u %u %u]", m_indexs[0], m_indexs[1], m_indexs[2],
-                  m_indexs[3], m_indexs[4] );
+    QC_INFO( "output indexs = [%u %u %u %u %u]", m_indexs[0], m_indexs[1], m_indexs[2], m_indexs[3],
+             m_indexs[4] );
 
     m_poolSize = Get( config, "pool_size", 4 );
     if ( 0 == m_poolSize )
     {
-        RIDEHAL_ERROR( "invalid pool_size = %d\n", m_poolSize );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "invalid pool_size = %d\n", m_poolSize );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     m_inputLidarTopicName = Get( config, "input_lidar_topic", "" );
     if ( "" == m_inputLidarTopicName )
     {
-        RIDEHAL_ERROR( "no input lidar topic\n" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "no input lidar topic\n" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     m_inputTopicName = Get( config, "input_topic", "" );
     if ( "" == m_inputTopicName )
     {
-        RIDEHAL_ERROR( "no input topic\n" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "no input topic\n" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     m_outputTopicName = Get( config, "output_topic", "" );
     if ( "" == m_outputTopicName )
     {
-        RIDEHAL_ERROR( "no output topic\n" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "no output topic\n" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     return ret;
 }
 
-RideHalError_e SamplePlrPost::Init( std::string name, SampleConfig_t &config )
+QCStatus_e SamplePlrPost::Init( std::string name, SampleConfig_t &config )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     ret = SampleIF::Init( name );
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = ParseConfig( config );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
-        RideHal_TensorProps_t detTsProp = {
-                RIDEHAL_TENSOR_TYPE_FLOAT_32,
+        QCTensorProps_t detTsProp = {
+                QC_TENSOR_TYPE_FLOAT_32,
                 { m_config.maxNumDetOut, POSTCENTERPOINT_OBJECT_3D_DIM },
                 2,
         };
 
         ret = m_objsPool.Init( name, LOGGER_LEVEL_INFO, m_poolSize, detTsProp,
-                               RIDEHAL_BUFFER_USAGE_HTP );
+                               QC_BUFFER_USAGE_HTP );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = SampleIF::Init( m_config.processor );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         TRACE_BEGIN( SYSTRACE_TASK_INIT );
         ret = m_plrPost.Init( name.c_str(), &m_config );
         TRACE_END( SYSTRACE_TASK_INIT );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = m_lidarSub.Init( name, m_inputLidarTopicName );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = m_infSub.Init( name, m_inputTopicName );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = m_pub.Init( name, m_outputTopicName );
     }
@@ -137,14 +136,14 @@ RideHalError_e SamplePlrPost::Init( std::string name, SampleConfig_t &config )
     return ret;
 }
 
-RideHalError_e SamplePlrPost::Start()
+QCStatus_e SamplePlrPost::Start()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     TRACE_BEGIN( SYSTRACE_TASK_START );
     ret = m_plrPost.Start();
     TRACE_END( SYSTRACE_TASK_START );
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         m_stop = false;
         m_thread = std::thread( &SamplePlrPost::ThreadMain, this );
@@ -200,41 +199,41 @@ Point2D_t SamplePlrPost::ProjectToImage( Point2D_t &pt, Point2D_t &center, float
 
 void SamplePlrPost::ThreadMain()
 {
-    RideHalError_e ret;
+    QCStatus_e ret;
     while ( false == m_stop )
     {
         DataFrames_t lidarFrames;
         ret = m_lidarSub.Receive( lidarFrames );
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
-            RIDEHAL_DEBUG( "receive lidar frameId %" PRIu64 ", timestamp %" PRIu64 "\n",
-                           lidarFrames.FrameId( 0 ), lidarFrames.Timestamp( 0 ) );
+            QC_DEBUG( "receive lidar frameId %" PRIu64 ", timestamp %" PRIu64 "\n",
+                      lidarFrames.FrameId( 0 ), lidarFrames.Timestamp( 0 ) );
             DataFrames_t infFrames;
             /* lidar frame inference generally in 10 fps */
             ret = m_infSub.Receive( infFrames, 500 );
-            if ( RIDEHAL_ERROR_NONE == ret )
+            if ( QC_STATUS_OK == ret )
             {
-                RIDEHAL_DEBUG( "receive inference frameId %" PRIu64 ", timestamp %" PRIu64 "\n",
-                               infFrames.FrameId( 0 ), infFrames.Timestamp( 0 ) );
+                QC_DEBUG( "receive inference frameId %" PRIu64 ", timestamp %" PRIu64 "\n",
+                          infFrames.FrameId( 0 ), infFrames.Timestamp( 0 ) );
                 std::shared_ptr<SharedBuffer_t> detOut = m_objsPool.Get();
                 if ( nullptr != detOut )
                 {
-                    RideHal_SharedBuffer_t &inPts = lidarFrames.SharedBuffer( 0 );
-                    RideHal_SharedBuffer_t &heatmap = infFrames.SharedBuffer( m_indexs[0] );
-                    RideHal_SharedBuffer_t &xy = infFrames.SharedBuffer( m_indexs[1] );
-                    RideHal_SharedBuffer_t &z = infFrames.SharedBuffer( m_indexs[2] );
-                    RideHal_SharedBuffer_t &size = infFrames.SharedBuffer( m_indexs[3] );
-                    RideHal_SharedBuffer_t &theta = infFrames.SharedBuffer( m_indexs[4] );
+                    QCSharedBuffer_t &inPts = lidarFrames.SharedBuffer( 0 );
+                    QCSharedBuffer_t &heatmap = infFrames.SharedBuffer( m_indexs[0] );
+                    QCSharedBuffer_t &xy = infFrames.SharedBuffer( m_indexs[1] );
+                    QCSharedBuffer_t &z = infFrames.SharedBuffer( m_indexs[2] );
+                    QCSharedBuffer_t &size = infFrames.SharedBuffer( m_indexs[3] );
+                    QCSharedBuffer_t &theta = infFrames.SharedBuffer( m_indexs[4] );
 
                     ret = SampleIF::Lock();
-                    if ( RIDEHAL_ERROR_NONE == ret )
+                    if ( QC_STATUS_OK == ret )
                     {
                         PROFILER_BEGIN();
                         TRACE_BEGIN( infFrames.FrameId( 0 ) );
                         detOut->sharedBuffer.tensorProps.dims[0] = m_config.maxNumDetOut;
                         ret = m_plrPost.Execute( &heatmap, &xy, &z, &size, &theta, &inPts,
                                                  &detOut->sharedBuffer );
-                        if ( RIDEHAL_ERROR_NONE == ret )
+                        if ( QC_STATUS_OK == ret )
                         {
                             PROFILER_END();
                             TRACE_END( infFrames.FrameId( 0 ) );
@@ -280,8 +279,8 @@ void SamplePlrPost::ThreadMain()
                         }
                         else
                         {
-                            RIDEHAL_ERROR( "Extract BBox failed for %" PRIu64 " : %d",
-                                           infFrames.FrameId( 0 ), ret );
+                            QC_ERROR( "Extract BBox failed for %" PRIu64 " : %d",
+                                      infFrames.FrameId( 0 ), ret );
                         }
                         (void) SampleIF::Unlock();
                     }
@@ -291,9 +290,9 @@ void SamplePlrPost::ThreadMain()
     }
 }
 
-RideHalError_e SamplePlrPost::Stop()
+QCStatus_e SamplePlrPost::Stop()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     m_stop = true;
     if ( m_thread.joinable() )
@@ -310,9 +309,9 @@ RideHalError_e SamplePlrPost::Stop()
     return ret;
 }
 
-RideHalError_e SamplePlrPost::Deinit()
+QCStatus_e SamplePlrPost::Deinit()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     TRACE_BEGIN( SYSTRACE_TASK_DEINIT );
     ret = m_plrPost.Deinit();
@@ -324,4 +323,4 @@ RideHalError_e SamplePlrPost::Deinit()
 REGISTER_SAMPLE( PlrPost, SamplePlrPost );
 
 }   // namespace sample
-}   // namespace ridehal
+}   // namespace QC

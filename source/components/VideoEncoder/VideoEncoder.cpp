@@ -6,10 +6,10 @@
 #include <cmath>
 #include <malloc.h>
 
-#include "ridehal/common/Types.hpp"
-#include "ridehal/component/VideoEncoder.hpp"
+#include "QC/common/Types.hpp"
+#include "QC/component/VideoEncoder.hpp"
 
-namespace ridehal
+namespace QC
 {
 namespace component
 {
@@ -129,7 +129,7 @@ static const ProfileLevelTableRef_t s_profileLevelTables[] = {
         { s_profileLevelHevcMain10Table, ARRAY_SIZE( s_profileLevelHevcMain10Table ) } };
 
 
-RideHalError_e VideoEncoder::InitFromConfig( const VideoEncoder_Config_t *cfg )
+QCStatus_e VideoEncoder::InitFromConfig( const VideoEncoder_Config_t *cfg )
 {
     m_width = cfg->width;
     m_height = cfg->height;
@@ -172,131 +172,130 @@ RideHalError_e VideoEncoder::InitFromConfig( const VideoEncoder_Config_t *cfg )
         m_bNonDynamicAppAllocBuffer[VIDEO_CODEC_BUF_OUTPUT] = false;
     }
 
-    RIDEHAL_INFO(
-            "enc-init: w:%u, h:%u, fps:%u, inbuf: dynamicMode:%d, num:%u, appAloc:%d; outbuf: "
-            "dynamicMode:%d, num:%u, appAloc:%d",
-            m_width, m_height, m_frameRate, m_bDynamicMode[VIDEO_CODEC_BUF_INPUT],
-            m_bufNum[VIDEO_CODEC_BUF_INPUT], m_bNonDynamicAppAllocBuffer[VIDEO_CODEC_BUF_INPUT],
-            m_bDynamicMode[VIDEO_CODEC_BUF_OUTPUT], m_bufNum[VIDEO_CODEC_BUF_OUTPUT],
-            m_bNonDynamicAppAllocBuffer[VIDEO_CODEC_BUF_OUTPUT] );
+    QC_INFO( "enc-init: w:%u, h:%u, fps:%u, inbuf: dynamicMode:%d, num:%u, appAloc:%d; outbuf: "
+             "dynamicMode:%d, num:%u, appAloc:%d",
+             m_width, m_height, m_frameRate, m_bDynamicMode[VIDEO_CODEC_BUF_INPUT],
+             m_bufNum[VIDEO_CODEC_BUF_INPUT], m_bNonDynamicAppAllocBuffer[VIDEO_CODEC_BUF_INPUT],
+             m_bDynamicMode[VIDEO_CODEC_BUF_OUTPUT], m_bufNum[VIDEO_CODEC_BUF_OUTPUT],
+             m_bNonDynamicAppAllocBuffer[VIDEO_CODEC_BUF_OUTPUT] );
 
-    return RIDEHAL_ERROR_NONE;
+    return QC_STATUS_OK;
 }
 
-RideHalError_e VideoEncoder::Init( const char *pName, const VideoEncoder_Config_t *pConfig,
-                                   Logger_Level_e level )
+QCStatus_e VideoEncoder::Init( const char *pName, const VideoEncoder_Config_t *pConfig,
+                               Logger_Level_e level )
 {
     int i;
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     ret = VidcCompBase::Init( pName, VIDEO_ENC, level );
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = ValidateConfig( pName, pConfig );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
-        m_state = RIDEHAL_COMPONENT_STATE_INITIALIZING;
-        RIDEHAL_INFO( "video-encoder %s init begin", pName );
+        m_state = QC_OBJECT_STATE_INITIALIZING;
+        QC_INFO( "video-encoder %s init begin", pName );
         ret = InitFromConfig( pConfig );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         /* init profile */
         ret = SetVidcProfileLevel( pConfig->profile );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         m_drvClient.Init( pName, level, VIDEO_ENC );
         ret = m_drvClient.OpenDriver( VideoEncoder::InFrameCallback, VideoEncoder::OutFrameCallback,
                                       VideoEncoder::EventCallback, (void *) this );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = InitDrvProperty();
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = GetInputInformation();
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = VidcCompBase::NegotiateBufferReq( VIDEO_CODEC_BUF_INPUT );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = VidcCompBase::NegotiateBufferReq( VIDEO_CODEC_BUF_OUTPUT );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         if ( m_bNonDynamicAppAllocBuffer[VIDEO_CODEC_BUF_INPUT] )
         {
             for ( i = 0; i < m_bufNum[VIDEO_CODEC_BUF_INPUT]; i++ )
             {
                 ret = CheckBuffer( &pConfig->pInputBufferList[i], VIDEO_CODEC_BUF_INPUT );
-                if ( RIDEHAL_ERROR_NONE != ret )
+                if ( QC_STATUS_OK != ret )
                 {
-                    RIDEHAL_ERROR( "validate VIDC_BUFFER_INPUT failed" );
+                    QC_ERROR( "validate VIDC_BUFFER_INPUT failed" );
                     break;
                 }
             }
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         if ( m_bNonDynamicAppAllocBuffer[VIDEO_CODEC_BUF_OUTPUT] )
         {
             for ( i = 0; i < m_bufNum[VIDEO_CODEC_BUF_OUTPUT]; i++ )
             {
                 ret = CheckBuffer( &pConfig->pOutputBufferList[i], VIDEO_CODEC_BUF_OUTPUT );
-                if ( RIDEHAL_ERROR_NONE != ret )
+                if ( QC_STATUS_OK != ret )
                 {
-                    RIDEHAL_ERROR( "validate VIDC_BUFFER_OUTPUT failed" );
+                    QC_ERROR( "validate VIDC_BUFFER_OUTPUT failed" );
                     break;
                 }
             }
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = VidcCompBase::PostInit( pConfig->pInputBufferList, pConfig->pOutputBufferList );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         PrintEncoderConfig();
-        RIDEHAL_INFO( "video-encoder init done" );
+        QC_INFO( "video-encoder init done" );
     }
     else
     {
-        RIDEHAL_ERROR( "Something wrong happened in Init, Deiniting vidc" );
-        m_state = RIDEHAL_COMPONENT_STATE_ERROR;
+        QC_ERROR( "Something wrong happened in Init, Deiniting vidc" );
+        m_state = QC_OBJECT_STATE_ERROR;
         (void) Deinit();
     }
 
     return ret;
 }
 
-RideHalError_e VideoEncoder::InitDrvProperty()
+QCStatus_e VideoEncoder::InitDrvProperty()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     VidcCodecMeta_t meta;
     meta.width = m_width;
     meta.height = m_height;
     meta.frameRate = m_frameRate;
-    if ( RIDEHAL_IMAGE_FORMAT_COMPRESSED_H265 == m_outFormat )
+    if ( QC_IMAGE_FORMAT_COMPRESSED_H265 == m_outFormat )
     {
         meta.codecType = VIDEO_CODEC_H265;
     }
@@ -306,80 +305,80 @@ RideHalError_e VideoEncoder::InitDrvProperty()
     }
     ret = m_drvClient.InitDriver( meta );
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         /**< The encoder rate control type */
         vidc_rate_control_mode_type rateControl = (vidc_rate_control_mode_type) m_rateControl;
 
-        RIDEHAL_DEBUG( "Setting VIDC_I_ENC_RATE_CONTROL" );
+        QC_DEBUG( "Setting VIDC_I_ENC_RATE_CONTROL" );
         ret = m_drvClient.SetDrvProperty( VIDC_I_ENC_RATE_CONTROL,
                                           sizeof( vidc_rate_control_mode_type ),
                                           (uint8_t *) ( &rateControl ) );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         /**< Configures the uncompressed Buffer format */
         vidc_color_format_config_type colorFormatConfig;
         colorFormatConfig.buf_type = VIDC_BUFFER_INPUT;
         colorFormatConfig.color_format = VidcCompBase::GetVidcFormat( m_inFormat );
 
-        RIDEHAL_DEBUG( "Setting VIDC_I_COLOR_FORMAT" );
+        QC_DEBUG( "Setting VIDC_I_COLOR_FORMAT" );
         ret = m_drvClient.SetDrvProperty( VIDC_I_COLOR_FORMAT,
                                           sizeof( vidc_color_format_config_type ),
                                           (uint8_t *) ( &colorFormatConfig ) );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
-        RIDEHAL_DEBUG( "Setting GOP" );
+        QC_DEBUG( "Setting GOP" );
         m_vidcEncoderData.iPeriod.p_frames = m_gop;
         m_vidcEncoderData.iPeriod.b_frames = VIDEO_ENCODER_DEFAULT_NUM_B_BET_2I;
         ret = m_drvClient.SetDrvProperty( VIDC_I_ENC_INTRA_PERIOD, sizeof( vidc_iperiod_type ),
                                           (uint8_t *) ( &m_vidcEncoderData.iPeriod ) );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
-        RIDEHAL_DEBUG( "Setting ENC_IDR_PERIOD" );
+        QC_DEBUG( "Setting ENC_IDR_PERIOD" );
         m_vidcEncoderData.idrPeriod.idr_period = VIDEO_ENCODER_DEFAULT_IDR_PERIOD;
         ret = m_drvClient.SetDrvProperty( VIDC_I_ENC_IDR_PERIOD, sizeof( vidc_idr_period_type ),
                                           (uint8_t *) ( &m_vidcEncoderData.idrPeriod ) );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
-        RIDEHAL_DEBUG( "Setting VIDC_I_TARGET_BITRATE" );
+        QC_DEBUG( "Setting VIDC_I_TARGET_BITRATE" );
         m_vidcEncoderData.bitrate.target_bitrate = m_bitRate;
         ret = m_drvClient.SetDrvProperty( VIDC_I_TARGET_BITRATE, sizeof( vidc_target_bitrate_type ),
                                           (uint8_t *) ( &m_vidcEncoderData.bitrate ) );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
-        RIDEHAL_DEBUG( "Setting VIDC_I_ENC_SYNC_FRAME_SEQ_HDR" );
+        QC_DEBUG( "Setting VIDC_I_ENC_SYNC_FRAME_SEQ_HDR" );
         m_vidcEncoderData.enableSyncFrameSeq.enable = m_bEnableSyncFrameSeq;
         ret = m_drvClient.SetDrvProperty( VIDC_I_ENC_SYNC_FRAME_SEQ_HDR, sizeof( vidc_enable_type ),
                                           (uint8_t *) ( &m_vidcEncoderData.enableSyncFrameSeq ) );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
-        RIDEHAL_DEBUG( "Setting VIDC_I_PROFILE" );
+        QC_DEBUG( "Setting VIDC_I_PROFILE" );
         ret = m_drvClient.SetDrvProperty( VIDC_I_PROFILE, sizeof( vidc_profile_type ),
                                           (uint8_t *) ( &m_vidcEncoderData.profile ) );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
-        RIDEHAL_DEBUG( "Setting VIDC_I_LEVEL" );
+        QC_DEBUG( "Setting VIDC_I_LEVEL" );
         ret = m_drvClient.SetDrvProperty( VIDC_I_LEVEL, sizeof( vidc_level_type ),
                                           (uint8_t *) ( &m_vidcEncoderData.level ) );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
-        RIDEHAL_DEBUG( "Setting VIDC_I_VPE_SPATIAL_TRANSFORM" );
+        QC_DEBUG( "Setting VIDC_I_VPE_SPATIAL_TRANSFORM" );
         vidc_spatial_transform_type vidcSpatialTransform = { VIDC_ROTATE_NONE, VIDC_FLIP_NONE };
         ret = m_drvClient.SetDrvProperty( VIDC_I_VPE_SPATIAL_TRANSFORM,
                                           sizeof( vidc_spatial_transform_type ),
@@ -389,181 +388,180 @@ RideHalError_e VideoEncoder::InitDrvProperty()
     return ret;
 }
 
-RideHalError_e VideoEncoder::Start()
+QCStatus_e VideoEncoder::Start()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     int32_t i;
 
     if ( ( nullptr == m_inputDoneCb ) || ( nullptr == m_outputDoneCb ) )
     {
-        RIDEHAL_ERROR( "Not start since callback is not registered!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "Not start since callback is not registered!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = VidcCompBase::Start();
     }
 
-    if ( ( RIDEHAL_ERROR_NONE == ret ) && ( false == m_bDynamicMode[VIDEO_CODEC_BUF_OUTPUT] ) )
+    if ( ( QC_STATUS_OK == ret ) && ( false == m_bDynamicMode[VIDEO_CODEC_BUF_OUTPUT] ) )
     {
-        RIDEHAL_INFO( "submit output frame begin, cnt:%u", m_bufNum[VIDEO_CODEC_BUF_OUTPUT] );
+        QC_INFO( "submit output frame begin, cnt:%u", m_bufNum[VIDEO_CODEC_BUF_OUTPUT] );
         for ( i = 0; i < m_bufNum[VIDEO_CODEC_BUF_OUTPUT]; i++ )
         {
             VideoEncoder_OutputFrame_t outputFrame;
             outputFrame.sharedBuffer = m_pOutputList[i];
             ret = SubmitOutputFrame( &outputFrame );
         }
-        RIDEHAL_INFO( "submit output frame done" );
+        QC_INFO( "submit output frame done" );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
-        RIDEHAL_INFO( "enc start succeed" );
+        QC_INFO( "enc start succeed" );
     }
 
     return ret;
 }
 
-RideHalError_e VideoEncoder::SubmitInputFrame( const VideoEncoder_InputFrame_t *pInput )
+QCStatus_e VideoEncoder::SubmitInputFrame( const VideoEncoder_InputFrame_t *pInput )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
-    if ( RIDEHAL_COMPONENT_STATE_RUNNING != m_state )
+    if ( QC_OBJECT_STATE_RUNNING != m_state )
     {
-        RIDEHAL_WARN( "Not submitting inputBuffer since encoder is shutting down!" );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_WARN( "Not submitting inputBuffer since encoder is shutting down!" );
+        ret = QC_STATUS_BAD_STATE;
     }
 
-    if ( ( RIDEHAL_ERROR_NONE == ret ) &&
+    if ( ( QC_STATUS_OK == ret ) &&
          ( ( nullptr == pInput ) || ( nullptr == pInput->sharedBuffer.data() ) ) )
     {
-        RIDEHAL_ERROR( "Not submitting empty inputBuffer!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "Not submitting empty inputBuffer!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = CheckBuffer( &pInput->sharedBuffer, VIDEO_CODEC_BUF_INPUT );
     }
 
-    if ( ( RIDEHAL_ERROR_NONE == ret ) && ( nullptr != pInput->pOnTheFlyCmd ) )
+    if ( ( QC_STATUS_OK == ret ) && ( nullptr != pInput->pOnTheFlyCmd ) )
     {
         int32_t i;
         for ( i = 0; i < pInput->numCmd; i++ )
         {
             ret = Configure( &pInput->pOnTheFlyCmd[i] );
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
-                RIDEHAL_ERROR( "config propID %d failed", pInput->pOnTheFlyCmd[i].propID );
+                QC_ERROR( "config propID %d failed", pInput->pOnTheFlyCmd[i].propID );
                 break;
             }
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = m_drvClient.EmptyBuffer( &pInput->sharedBuffer, pInput->timestampNs / 1000,
                                        pInput->appMarkData );
     }
 
-    RIDEHAL_DEBUG( "SubmitInputFrame done" );
+    QC_DEBUG( "SubmitInputFrame done" );
 
     return ret;
 }
 
-RideHalError_e VideoEncoder::SubmitOutputFrame( const VideoEncoder_OutputFrame_t *pOutput )
+QCStatus_e VideoEncoder::SubmitOutputFrame( const VideoEncoder_OutputFrame_t *pOutput )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
-    const RideHal_SharedBuffer_t *outputBuffer = nullptr;
+    QCStatus_e ret = QC_STATUS_OK;
+    const QCSharedBuffer_t *outputBuffer = nullptr;
 
-    RIDEHAL_DEBUG( "SubmitOutputFrame in" );
+    QC_DEBUG( "SubmitOutputFrame in" );
 
-    if ( RIDEHAL_COMPONENT_STATE_RUNNING != m_state )
+    if ( QC_OBJECT_STATE_RUNNING != m_state )
     {
-        RIDEHAL_WARN( "Not submitting outputBuffer since encoder is shutting down!" );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_WARN( "Not submitting outputBuffer since encoder is shutting down!" );
+        ret = QC_STATUS_BAD_STATE;
     }
 
-    if ( ( RIDEHAL_ERROR_NONE == ret ) && ( nullptr == pOutput ) )
+    if ( ( QC_STATUS_OK == ret ) && ( nullptr == pOutput ) )
     {
-        RIDEHAL_ERROR( "Not submitting empty outputBuffer!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "Not submitting empty outputBuffer!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
-        RIDEHAL_DEBUG( "check buffer begin" );
+        QC_DEBUG( "check buffer begin" );
         outputBuffer = &pOutput->sharedBuffer;
         ret = CheckBuffer( outputBuffer, VIDEO_CODEC_BUF_OUTPUT );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
-        RIDEHAL_DEBUG( "fill buffer begin" );
+        QC_DEBUG( "fill buffer begin" );
         ret = m_drvClient.FillBuffer( outputBuffer );
-        RIDEHAL_DEBUG( "fill buffer done" );
+        QC_DEBUG( "fill buffer done" );
     }
 
     return ret;
 }
 
-RideHalError_e VideoEncoder::Stop()
+QCStatus_e VideoEncoder::Stop()
 {
-    RideHalError_e ret = VidcCompBase::Stop();
+    QCStatus_e ret = VidcCompBase::Stop();
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
-        RIDEHAL_INFO( "enc stop succeed" );
+        QC_INFO( "enc stop succeed" );
     }
     else
     {
-        RIDEHAL_ERROR( "enc stop failed" );
+        QC_ERROR( "enc stop failed" );
     }
 
     return ret;
 }
 
-RideHalError_e VideoEncoder::Deinit()
+QCStatus_e VideoEncoder::Deinit()
 {
-    RideHalError_e ret = VidcCompBase::Deinit();
+    QCStatus_e ret = VidcCompBase::Deinit();
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
-        RIDEHAL_INFO( "enc Deinit succeed" );
+        QC_INFO( "enc Deinit succeed" );
     }
     else
     {
-        RIDEHAL_ERROR( "enc Deinit failed" );
+        QC_ERROR( "enc Deinit failed" );
     }
 
     return ret;
 }
 
-RideHalError_e VideoEncoder::Configure( const VideoEncoder_OnTheFlyCmd_t *pCmd )
+QCStatus_e VideoEncoder::Configure( const VideoEncoder_OnTheFlyCmd_t *pCmd )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
-    if ( ( RIDEHAL_COMPONENT_STATE_RUNNING != m_state ) &&
-         ( RIDEHAL_COMPONENT_STATE_READY != m_state ) )
+    if ( ( QC_OBJECT_STATE_RUNNING != m_state ) && ( QC_OBJECT_STATE_READY != m_state ) )
     {
-        RIDEHAL_WARN( "Not Configure since encoder is not ready or running!" );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_WARN( "Not Configure since encoder is not ready or running!" );
+        ret = QC_STATUS_BAD_STATE;
     }
 
-    if ( ( RIDEHAL_ERROR_NONE == ret ) && ( nullptr == pCmd ) )
+    if ( ( QC_STATUS_OK == ret ) && ( nullptr == pCmd ) )
     {
-        RIDEHAL_ERROR( "pCmd is NULL pointer!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "pCmd is NULL pointer!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
-        RIDEHAL_INFO( "Configuring vidc" );
+        QC_INFO( "Configuring vidc" );
         switch ( pCmd->propID )
         {
             case VIDEO_ENCODER_PROP_BITRATE:
-                RIDEHAL_DEBUG( "Setting VIDC_I_TARGET_BITRATE %" PRIu32, m_bitRate );
+                QC_DEBUG( "Setting VIDC_I_TARGET_BITRATE %" PRIu32, m_bitRate );
                 m_bitRate = pCmd->value;
                 m_vidcEncoderData.bitrate.target_bitrate = m_bitRate;
                 ret = m_drvClient.SetDrvProperty( VIDC_I_TARGET_BITRATE,
@@ -572,8 +570,7 @@ RideHalError_e VideoEncoder::Configure( const VideoEncoder_OnTheFlyCmd_t *pCmd )
                 break;
             case VIDEO_ENCODER_PROP_FRAME_RATE:
                 m_frameRate = pCmd->value;
-                RIDEHAL_DEBUG( "Setting VIDC_I_FRAME_RATE.VIDC_BUFFER_OUTPUT %" PRIu32,
-                               m_frameRate );
+                QC_DEBUG( "Setting VIDC_I_FRAME_RATE.VIDC_BUFFER_OUTPUT %" PRIu32, m_frameRate );
                 m_vidcEncoderData.frameRate.buf_type = VIDC_BUFFER_OUTPUT;
                 m_vidcEncoderData.frameRate.fps_numerator = m_frameRate;
                 m_vidcEncoderData.frameRate.fps_denominator = 1;
@@ -581,8 +578,8 @@ RideHalError_e VideoEncoder::Configure( const VideoEncoder_OnTheFlyCmd_t *pCmd )
                                                   (uint8_t *) ( &m_vidcEncoderData.frameRate ) );
                 break;
             default:
-                RIDEHAL_ERROR( "propID %d not supported", pCmd->propID );
-                ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+                QC_ERROR( "propID %d not supported", pCmd->propID );
+                ret = QC_STATUS_BAD_ARGUMENTS;
                 break;
         }
     }
@@ -591,29 +588,29 @@ RideHalError_e VideoEncoder::Configure( const VideoEncoder_OnTheFlyCmd_t *pCmd )
 
 void VideoEncoder::PrintEncoderConfig()
 {
-    if ( RIDEHAL_IMAGE_FORMAT_COMPRESSED_H265 == m_outFormat )
+    if ( QC_IMAGE_FORMAT_COMPRESSED_H265 == m_outFormat )
     {
-        RIDEHAL_DEBUG( "EncoderConfig: Codec = H265" );
-        RIDEHAL_DEBUG( "EncoderConfig: Profile = 0x%x", m_vidcEncoderData.profile.profile );
-        RIDEHAL_DEBUG( "EncoderConfig: Level = 0x%x", m_vidcEncoderData.level.level );
+        QC_DEBUG( "EncoderConfig: Codec = H265" );
+        QC_DEBUG( "EncoderConfig: Profile = 0x%x", m_vidcEncoderData.profile.profile );
+        QC_DEBUG( "EncoderConfig: Level = 0x%x", m_vidcEncoderData.level.level );
     }
     else
     {
-        RIDEHAL_DEBUG( "EncoderConfig: Codec = H264" );
-        RIDEHAL_DEBUG( "EncoderConfig: Profile = 0x%x", m_vidcEncoderData.profile.profile );
-        RIDEHAL_DEBUG( "EncoderConfig: Level = 0x%x", m_vidcEncoderData.level.level );
+        QC_DEBUG( "EncoderConfig: Codec = H264" );
+        QC_DEBUG( "EncoderConfig: Profile = 0x%x", m_vidcEncoderData.profile.profile );
+        QC_DEBUG( "EncoderConfig: Level = 0x%x", m_vidcEncoderData.level.level );
     }
 
-    RIDEHAL_DEBUG( "EncoderConfig: RateControl = 0x%x ", m_rateControl );
-    RIDEHAL_DEBUG( "EncoderConfig: BitRate = %" PRIu32, m_vidcEncoderData.bitrate.target_bitrate );
-    RIDEHAL_DEBUG( "EncoderConfig: NumPframes = %" PRIu32, m_vidcEncoderData.iPeriod.p_frames );
-    RIDEHAL_DEBUG( "EncoderConfig: NumBframes = %" PRIu32, m_vidcEncoderData.iPeriod.b_frames );
-    RIDEHAL_DEBUG( "EncoderConfig: IdrPeriod = %" PRIu32, m_vidcEncoderData.idrPeriod.idr_period );
+    QC_DEBUG( "EncoderConfig: RateControl = 0x%x ", m_rateControl );
+    QC_DEBUG( "EncoderConfig: BitRate = %" PRIu32, m_vidcEncoderData.bitrate.target_bitrate );
+    QC_DEBUG( "EncoderConfig: NumPframes = %" PRIu32, m_vidcEncoderData.iPeriod.p_frames );
+    QC_DEBUG( "EncoderConfig: NumBframes = %" PRIu32, m_vidcEncoderData.iPeriod.b_frames );
+    QC_DEBUG( "EncoderConfig: IdrPeriod = %" PRIu32, m_vidcEncoderData.idrPeriod.idr_period );
 }
 
-RideHalError_e VideoEncoder::SetVidcProfileLevel( VideoEncoder_Profile_e profile )
+QCStatus_e VideoEncoder::SetVidcProfileLevel( VideoEncoder_Profile_e profile )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     uint32_t i, num = 0;
     const ProfileLevel_t *pTable = nullptr;
     uint32_t mbPerFrame = 0, mbPerSec = 0;
@@ -627,12 +624,12 @@ RideHalError_e VideoEncoder::SetVidcProfileLevel( VideoEncoder_Profile_e profile
         pTable = s_profileLevelTables[profile].pTable;
         num = s_profileLevelTables[profile].num;
 
-        if ( ( RIDEHAL_IMAGE_FORMAT_COMPRESSED_H264 == m_outFormat ) &&
+        if ( ( QC_IMAGE_FORMAT_COMPRESSED_H264 == m_outFormat ) &&
              ( profile <= VIDEO_ENCODER_PROFILE_H264_MAIN ) )
         {
             mbPerFrame = ( ( m_height + 15 ) >> 4 ) * ( ( m_width + 15 ) >> 4 );
             mbPerSec = mbPerFrame * m_frameRate;
-            RIDEHAL_DEBUG( "mbPerFrame %" PRIu32 " mbPerSec %" PRIu32, mbPerFrame, mbPerSec );
+            QC_DEBUG( "mbPerFrame %" PRIu32 " mbPerSec %" PRIu32, mbPerFrame, mbPerSec );
             for ( i = 0; ( i < num ) && ( false == bFindFlag ); i++ )
             {
                 if ( mbPerFrame <= pTable[i].maxFrameSize )
@@ -641,8 +638,8 @@ RideHalError_e VideoEncoder::SetVidcProfileLevel( VideoEncoder_Profile_e profile
                     {
                         if ( m_bitRate <= pTable[i].maxBitRate )
                         {
-                            RIDEHAL_DEBUG( "set level = %" PRIu32 ", profile = %" PRIu32,
-                                           pTable[i].level, pTable[i].profile );
+                            QC_DEBUG( "set level = %" PRIu32 ", profile = %" PRIu32,
+                                      pTable[i].level, pTable[i].profile );
                             m_vidcEncoderData.level.level = pTable[i].level;
                             m_vidcEncoderData.profile.profile = pTable[i].profile;
                         }
@@ -650,13 +647,13 @@ RideHalError_e VideoEncoder::SetVidcProfileLevel( VideoEncoder_Profile_e profile
                 }
             }
         }
-        else if ( ( RIDEHAL_IMAGE_FORMAT_COMPRESSED_H265 == m_outFormat ) &&
+        else if ( ( QC_IMAGE_FORMAT_COMPRESSED_H265 == m_outFormat ) &&
                   ( profile >= VIDEO_ENCODER_PROFILE_HEVC_MAIN ) )
         {
             samplePerFrame = (uint64_t) m_height * m_width;
             samplePerSec = samplePerFrame * m_frameRate;
-            RIDEHAL_DEBUG( "samplePerFrame %" PRIu64 " samplePerSec %" PRIu64, samplePerFrame,
-                           samplePerSec );
+            QC_DEBUG( "samplePerFrame %" PRIu64 " samplePerSec %" PRIu64, samplePerFrame,
+                      samplePerSec );
             for ( i = 0; ( i < num ) && ( false == bFindFlag ); i++ )
             {
                 if ( samplePerFrame <= pTable[i].maxFrameSize )
@@ -665,8 +662,8 @@ RideHalError_e VideoEncoder::SetVidcProfileLevel( VideoEncoder_Profile_e profile
                     {
                         if ( m_bitRate <= pTable[i].maxBitRate )
                         {
-                            RIDEHAL_DEBUG( "set level = %" PRIu32 ", profile = %" PRIu32,
-                                           pTable[i].level, pTable[i].profile );
+                            QC_DEBUG( "set level = %" PRIu32 ", profile = %" PRIu32,
+                                      pTable[i].level, pTable[i].profile );
                             m_vidcEncoderData.level.level = pTable[i].level;
                             m_vidcEncoderData.profile.profile = pTable[i].profile;
                         }
@@ -676,109 +673,105 @@ RideHalError_e VideoEncoder::SetVidcProfileLevel( VideoEncoder_Profile_e profile
         }
         else
         {
-            RIDEHAL_ERROR( "m_outFormat %d not match with profile %d", m_outFormat, profile );
-            ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+            QC_ERROR( "m_outFormat %d not match with profile %d", m_outFormat, profile );
+            ret = QC_STATUS_BAD_ARGUMENTS;
         }
     }
 
     if ( ( 0 == m_vidcEncoderData.level.level ) || ( 0 == m_vidcEncoderData.profile.profile ) )
     {
-        RIDEHAL_ERROR( "profile %d not supported", profile );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "profile %d not supported", profile );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     return ret;
 }
 
-RideHalError_e VideoEncoder::ValidateConfig( const char *name, const VideoEncoder_Config_t *cfg )
+QCStatus_e VideoEncoder::ValidateConfig( const char *name, const VideoEncoder_Config_t *cfg )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     if ( nullptr == cfg )
     {
-        RIDEHAL_ERROR( "cfg is null pointer!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "cfg is null pointer!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         if ( ( cfg->width < 128 ) || ( cfg->height < 128 ) || ( cfg->width > 8192 ) ||
              ( cfg->height > 8192 ) )
         {
-            RIDEHAL_ERROR( "width %" PRIu32 " height %" PRIu32 " not in [128, 8192] ", cfg->width,
-                           cfg->height );
-            ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+            QC_ERROR( "width %" PRIu32 " height %" PRIu32 " not in [128, 8192] ", cfg->width,
+                      cfg->height );
+            ret = QC_STATUS_BAD_ARGUMENTS;
         }
     }
 
-    if ( ( RIDEHAL_ERROR_NONE == ret ) &&
+    if ( ( QC_STATUS_OK == ret ) &&
          ( VIDC_COLOR_FORMAT_UNUSED == VidcCompBase::GetVidcFormat( cfg->inFormat ) ) )
     {
-        RIDEHAL_ERROR( "input format: %d not supported!", cfg->inFormat );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "input format: %d not supported!", cfg->inFormat );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
-    if ( ( RIDEHAL_ERROR_NONE == ret ) && ( VIDEO_ENCODER_RCM_UNUSED == cfg->rateControlMode ) )
+    if ( ( QC_STATUS_OK == ret ) && ( VIDEO_ENCODER_RCM_UNUSED == cfg->rateControlMode ) )
     {
-        RIDEHAL_ERROR( "rate control mode: 0x%x not supported!", cfg->rateControlMode );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "rate control mode: 0x%x not supported!", cfg->rateControlMode );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
-    if ( ( RIDEHAL_ERROR_NONE == ret ) &&
-         ( RIDEHAL_IMAGE_FORMAT_COMPRESSED_H265 != cfg->outFormat ) &&
-         ( RIDEHAL_IMAGE_FORMAT_COMPRESSED_H264 != cfg->outFormat ) )
+    if ( ( QC_STATUS_OK == ret ) && ( QC_IMAGE_FORMAT_COMPRESSED_H265 != cfg->outFormat ) &&
+         ( QC_IMAGE_FORMAT_COMPRESSED_H264 != cfg->outFormat ) )
     {
-        RIDEHAL_ERROR( "output format: %d not supported!", cfg->outFormat );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "output format: %d not supported!", cfg->outFormat );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
-    if ( ( RIDEHAL_ERROR_NONE == ret ) &&
-         ( ( cfg->numInputBufferReq > VIDEO_ENCODER_MAX_BUFFER_REQ ) ||
-           ( cfg->numInputBufferReq < VIDEO_ENCODER_MIN_BUFFER_REQ ) ) )
+    if ( ( QC_STATUS_OK == ret ) && ( ( cfg->numInputBufferReq > VIDEO_ENCODER_MAX_BUFFER_REQ ) ||
+                                      ( cfg->numInputBufferReq < VIDEO_ENCODER_MIN_BUFFER_REQ ) ) )
     {
-        RIDEHAL_ERROR( "numInputBufferReq: %" PRIu32 " too small or too large! (MIN_BUFFER_REQ %d, "
-                       "MAX_BUFFER_REQ %d) ",
-                       cfg->numInputBufferReq, VIDEO_ENCODER_MIN_BUFFER_REQ,
-                       VIDEO_ENCODER_MAX_BUFFER_REQ );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "numInputBufferReq: %" PRIu32 " too small or too large! (MIN_BUFFER_REQ %d, "
+                  "MAX_BUFFER_REQ %d) ",
+                  cfg->numInputBufferReq, VIDEO_ENCODER_MIN_BUFFER_REQ,
+                  VIDEO_ENCODER_MAX_BUFFER_REQ );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
-    if ( ( RIDEHAL_ERROR_NONE == ret ) &&
-         ( ( cfg->numOutputBufferReq > VIDEO_ENCODER_MAX_BUFFER_REQ ) ||
-           ( cfg->numOutputBufferReq < VIDEO_ENCODER_MIN_BUFFER_REQ ) ) )
+    if ( ( QC_STATUS_OK == ret ) && ( ( cfg->numOutputBufferReq > VIDEO_ENCODER_MAX_BUFFER_REQ ) ||
+                                      ( cfg->numOutputBufferReq < VIDEO_ENCODER_MIN_BUFFER_REQ ) ) )
     {
-        RIDEHAL_ERROR( "numOutputBufferReq: %" PRIu32
-                       " too small or too large! (MIN_BUFFER_REQ %d, "
-                       "MAX_BUFFER_REQ %d) ",
-                       cfg->numOutputBufferReq, VIDEO_ENCODER_MIN_BUFFER_REQ,
-                       VIDEO_ENCODER_MAX_BUFFER_REQ );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "numOutputBufferReq: %" PRIu32 " too small or too large! (MIN_BUFFER_REQ %d, "
+                  "MAX_BUFFER_REQ %d) ",
+                  cfg->numOutputBufferReq, VIDEO_ENCODER_MIN_BUFFER_REQ,
+                  VIDEO_ENCODER_MAX_BUFFER_REQ );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
-    if ( ( RIDEHAL_ERROR_NONE == ret ) && ( true == cfg->bInputDynamicMode ) &&
+    if ( ( QC_STATUS_OK == ret ) && ( true == cfg->bInputDynamicMode ) &&
          ( nullptr != cfg->pInputBufferList ) )
     {
-        RIDEHAL_ERROR( "should not provide inputbuffer in config in dynamic mode!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "should not provide inputbuffer in config in dynamic mode!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
-    if ( ( RIDEHAL_ERROR_NONE == ret ) && ( true == cfg->bOutputDynamicMode ) &&
+    if ( ( QC_STATUS_OK == ret ) && ( true == cfg->bOutputDynamicMode ) &&
          ( nullptr != cfg->pOutputBufferList ) )
     {
-        RIDEHAL_ERROR( "should not provide outputbuffer in config in dynamic mode!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "should not provide outputbuffer in config in dynamic mode!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     return ret;
 }
 
-RideHalError_e VideoEncoder::CheckBuffer( const RideHal_SharedBuffer_t *pBuffer,
-                                          VideoCodec_BufType_e bufferType )
+QCStatus_e VideoEncoder::CheckBuffer( const QCSharedBuffer_t *pBuffer,
+                                      VideoCodec_BufType_e bufferType )
 {
-    RideHalError_e ret = ValidateBuffer( pBuffer, bufferType );
-    if ( RIDEHAL_ERROR_NONE != ret )
+    QCStatus_e ret = ValidateBuffer( pBuffer, bufferType );
+    if ( QC_STATUS_OK != ret )
     {
-        RIDEHAL_ERROR( "validate buffer failed, type:%d", bufferType );
+        QC_ERROR( "validate buffer failed, type:%d", bufferType );
     }
     else
     {
@@ -787,18 +780,18 @@ RideHalError_e VideoEncoder::CheckBuffer( const RideHal_SharedBuffer_t *pBuffer,
             if ( ( pBuffer->imgProps.stride[0] != m_vidcEncoderData.planeDefY.actual_stride ) ||
                  ( pBuffer->imgProps.stride[1] != m_vidcEncoderData.planeDefUV.actual_stride ) )
             {
-                RIDEHAL_ERROR( "pBuffer stride [%" PRIu32 "][%" PRIu32
-                               "] is not same with actual stride [%" PRIu32 "][%" PRIu32 "] ",
-                               pBuffer->imgProps.stride[0], pBuffer->imgProps.stride[1],
-                               m_vidcEncoderData.planeDefY.actual_stride,
-                               m_vidcEncoderData.planeDefUV.actual_stride );
-                ret = RIDEHAL_ERROR_INVALID_BUF;
+                QC_ERROR( "pBuffer stride [%" PRIu32 "][%" PRIu32
+                          "] is not same with actual stride [%" PRIu32 "][%" PRIu32 "] ",
+                          pBuffer->imgProps.stride[0], pBuffer->imgProps.stride[1],
+                          m_vidcEncoderData.planeDefY.actual_stride,
+                          m_vidcEncoderData.planeDefUV.actual_stride );
+                ret = QC_STATUS_INVALID_BUF;
             }
             if ( (size_t) m_bufSize[VIDEO_CODEC_BUF_INPUT] > pBuffer->size )
             {
-                RIDEHAL_ERROR( "pBuffer size %zu is smaller than Input BufSize %" PRIu32,
-                               pBuffer->size, m_bufSize[VIDEO_CODEC_BUF_INPUT] );
-                ret = RIDEHAL_ERROR_INVALID_BUF;
+                QC_ERROR( "pBuffer size %zu is smaller than Input BufSize %" PRIu32, pBuffer->size,
+                          m_bufSize[VIDEO_CODEC_BUF_INPUT] );
+                ret = QC_STATUS_INVALID_BUF;
             }
         }
     }
@@ -806,31 +799,31 @@ RideHalError_e VideoEncoder::CheckBuffer( const RideHal_SharedBuffer_t *pBuffer,
     return ret;
 }
 
-RideHalError_e VideoEncoder::GetInputInformation()
+QCStatus_e VideoEncoder::GetInputInformation()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         m_vidcEncoderData.frameRate.buf_type = VIDC_BUFFER_INPUT;
         ret = m_drvClient.GetDrvProperty( VIDC_I_FRAME_RATE, sizeof( vidc_frame_rate_type ),
                                           (uint8_t *) ( &m_vidcEncoderData.frameRate ) );
         if ( m_vidcEncoderData.frameRate.fps_numerator != m_frameRate )
         {
-            RIDEHAL_ERROR( " frameRate: set:%u, get:%u is different! ", m_frameRate,
-                           m_vidcEncoderData.frameRate.fps_numerator );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( " frameRate: set:%u, get:%u is different! ", m_frameRate,
+                      m_vidcEncoderData.frameRate.fps_numerator );
+            ret = QC_STATUS_FAIL;
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         m_vidcEncoderData.planeDefY.buf_type = VIDC_BUFFER_INPUT;
         m_vidcEncoderData.planeDefY.plane_index = 1;
         ret = m_drvClient.GetDrvProperty( VIDC_I_PLANE_DEF, sizeof( vidc_plane_def_type ),
                                           (uint8_t *) ( &m_vidcEncoderData.planeDefY ) );
     }
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         m_vidcEncoderData.planeDefUV.buf_type = VIDC_BUFFER_INPUT;
         m_vidcEncoderData.planeDefUV.plane_index = 2;
@@ -841,20 +834,19 @@ RideHalError_e VideoEncoder::GetInputInformation()
     return ret;
 }
 
-RideHalError_e VideoEncoder::RegisterCallback( VideoEncoder_InFrameCallback_t inputDoneCb,
-                                               VideoEncoder_OutFrameCallback_t outputDoneCb,
-                                               VideoEncoder_EventCallback_t eventCb,
-                                               void *pAppPriv )
+QCStatus_e VideoEncoder::RegisterCallback( VideoEncoder_InFrameCallback_t inputDoneCb,
+                                           VideoEncoder_OutFrameCallback_t outputDoneCb,
+                                           VideoEncoder_EventCallback_t eventCb, void *pAppPriv )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     if ( ( nullptr == inputDoneCb ) || ( nullptr == outputDoneCb ) )
     {
-        RIDEHAL_ERROR( "callback is NULL pointer!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "callback is NULL pointer!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         m_inputDoneCb = inputDoneCb;
         m_outputDoneCb = outputDoneCb;
@@ -876,7 +868,7 @@ void VideoEncoder::InFrameCallback( const VideoCodec_InputFrame_t *pInputFrame )
     }
     else
     {
-        RIDEHAL_ERROR( "m_inputDoneCb is nullptr" );
+        QC_ERROR( "m_inputDoneCb is nullptr" );
     }
 }
 
@@ -895,13 +887,13 @@ void VideoEncoder::OutFrameCallback( const VideoCodec_OutputFrame_t *pOutputFram
     }
     else
     {
-        RIDEHAL_ERROR( "m_outputDoneCb is nullptr" );
+        QC_ERROR( "m_outputDoneCb is nullptr" );
     }
 }
 
 void VideoEncoder::EventCallback( const VideoCodec_EventType_e eventId, const void *pPayload )
 {
-    RIDEHAL_INFO( "Received event: %d, pPayload:%p\n", eventId, pPayload );
+    QC_INFO( "Received event: %d, pPayload:%p\n", eventId, pPayload );
 
     VidcCompBase::EventCallback( eventId, pPayload );
 
@@ -931,6 +923,4 @@ void VideoEncoder::EventCallback( const VideoCodec_EventType_e eventId, const vo
 }
 
 }   // namespace component
-}   // namespace ridehal
-
-
+}   // namespace QC

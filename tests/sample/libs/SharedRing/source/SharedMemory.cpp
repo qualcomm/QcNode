@@ -3,7 +3,7 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#include "ridehal/sample/shared_ring/SharedMemory.hpp"
+#include "QC/sample/shared_ring/SharedMemory.hpp"
 
 #include <fcntl.h>
 #include <string.h>
@@ -12,7 +12,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-namespace ridehal
+namespace QC
 {
 namespace sample
 {
@@ -21,17 +21,17 @@ namespace shared_ring
 
 SharedMemory::SharedMemory()
 {
-    RIDEHAL_LOGGER_INIT( "SHM", LOGGER_LEVEL_ERROR );
+    QC_LOGGER_INIT( "SHM", LOGGER_LEVEL_ERROR );
 }
 
 SharedMemory::~SharedMemory()
 {
-    RIDEHAL_LOGGER_DEINIT();
+    QC_LOGGER_DEINIT();
 }
 
-RideHalError_e SharedMemory::Create( std::string name, size_t size )
+QCStatus_e SharedMemory::Create( std::string name, size_t size )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     int fd;
     void *ptr;
     int rv;
@@ -42,9 +42,9 @@ RideHalError_e SharedMemory::Create( std::string name, size_t size )
         rv = ftruncate( fd, size );
         if ( 0 != rv )
         {
-            RIDEHAL_ERROR( "Failed to reserve shm <%s> size to %" PRIu64 ": %d", name.c_str(), size,
-                           rv );
-            ret = RIDEHAL_ERROR_NOMEM;
+            QC_ERROR( "Failed to reserve shm <%s> size to %" PRIu64 ": %d", name.c_str(), size,
+                      rv );
+            ret = QC_STATUS_NOMEM;
             shm_unlink( name.c_str() );
         }
         else
@@ -60,25 +60,25 @@ RideHalError_e SharedMemory::Create( std::string name, size_t size )
             }
             else
             {
-                RIDEHAL_ERROR( "Failed to mmap shm <%s>", name.c_str() );
-                ret = RIDEHAL_ERROR_FAIL;
+                QC_ERROR( "Failed to mmap shm <%s>", name.c_str() );
+                ret = QC_STATUS_FAIL;
                 shm_unlink( name.c_str() );
             }
         }
     }
     else
     {
-        RIDEHAL_ERROR( "Failed to create shm <%s>: %d", name.c_str(), fd );
-        ret = RIDEHAL_ERROR_FAIL;
+        QC_ERROR( "Failed to create shm <%s>: %d", name.c_str(), fd );
+        ret = QC_STATUS_FAIL;
     }
 
     return ret;
 }
 
 
-RideHalError_e SharedMemory::Destroy()
+QCStatus_e SharedMemory::Destroy()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     int rv;
     if ( m_fd >= 0 )
@@ -86,29 +86,29 @@ RideHalError_e SharedMemory::Destroy()
         rv = munmap( m_ptr, m_size );
         if ( 0 != rv )
         {
-            RIDEHAL_LOG_ERROR( "Failed to do munmap shm <%s>: %d", m_name.c_str(), rv );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_LOG_ERROR( "Failed to do munmap shm <%s>: %d", m_name.c_str(), rv );
+            ret = QC_STATUS_FAIL;
         }
 
         rv = shm_unlink( m_name.c_str() );
         if ( 0 != rv )
         {
-            RIDEHAL_ERROR( "Failed to destroy shm <%s>: %d", m_name.c_str(), rv );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Failed to destroy shm <%s>: %d", m_name.c_str(), rv );
+            ret = QC_STATUS_FAIL;
         }
     }
     else
     {
-        ret = RIDEHAL_ERROR_BAD_STATE;
-        RIDEHAL_ERROR( "shm not created" );
+        ret = QC_STATUS_BAD_STATE;
+        QC_ERROR( "shm not created" );
     }
 
     return ret;
 }
 
-RideHalError_e SharedMemory::Open( std::string name )
+QCStatus_e SharedMemory::Open( std::string name )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     int fd;
     void *ptr;
     int rv;
@@ -120,8 +120,8 @@ RideHalError_e SharedMemory::Open( std::string name )
         off = lseek( fd, 0, SEEK_END );
         if ( off <= 0 )
         {
-            RIDEHAL_ERROR( "Failed to get shm <%s> size: %d", name.c_str(), (int) off );
-            ret = RIDEHAL_ERROR_NOMEM;
+            QC_ERROR( "Failed to get shm <%s> size: %d", name.c_str(), (int) off );
+            ret = QC_STATUS_NOMEM;
             close( fd );
         }
         else
@@ -136,24 +136,24 @@ RideHalError_e SharedMemory::Open( std::string name )
             }
             else
             {
-                RIDEHAL_ERROR( "Failed to mmap shm <%s>", name.c_str() );
-                ret = RIDEHAL_ERROR_FAIL;
+                QC_ERROR( "Failed to mmap shm <%s>", name.c_str() );
+                ret = QC_STATUS_FAIL;
                 close( fd );
             }
         }
     }
     else
     {
-        RIDEHAL_ERROR( "Failed to open shm <%s>: %d", name.c_str(), fd );
-        ret = RIDEHAL_ERROR_FAIL;
+        QC_ERROR( "Failed to open shm <%s>: %d", name.c_str(), fd );
+        ret = QC_STATUS_FAIL;
     }
 
     return ret;
 }
 
-RideHalError_e SharedMemory::Close()
+QCStatus_e SharedMemory::Close()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     int rv;
     if ( m_fd >= 0 )
@@ -161,21 +161,21 @@ RideHalError_e SharedMemory::Close()
         rv = munmap( m_ptr, m_size );
         if ( 0 != rv )
         {
-            RIDEHAL_LOG_ERROR( "Failed to do munmap shm <%s>: %d", m_name.c_str(), rv );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_LOG_ERROR( "Failed to do munmap shm <%s>: %d", m_name.c_str(), rv );
+            ret = QC_STATUS_FAIL;
         }
 
         rv = close( m_fd );
         if ( 0 != rv )
         {
-            RIDEHAL_ERROR( "Failed to close shm <%s>: %d", m_name.c_str(), rv );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Failed to close shm <%s>: %d", m_name.c_str(), rv );
+            ret = QC_STATUS_FAIL;
         }
     }
     else
     {
-        ret = RIDEHAL_ERROR_BAD_STATE;
-        RIDEHAL_ERROR( "shm not opened" );
+        ret = QC_STATUS_BAD_STATE;
+        QC_ERROR( "shm not opened" );
     }
 
     return ret;
@@ -183,4 +183,4 @@ RideHalError_e SharedMemory::Close()
 
 }   // namespace shared_ring
 }   // namespace sample
-}   // namespace ridehal
+}   // namespace QC

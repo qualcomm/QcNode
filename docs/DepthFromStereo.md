@@ -8,7 +8,7 @@
   - [4.3 Register buffer to DepthFromStereo](#43-register-buffer-to-depthfromstereo)
   - [4.4 Start and Run](#44-start-and-run)
   - [4.5 Stop and Deinit](#45-stop-and-deinit)
-  - [4.6 RideHal E2E sample](#46-ridehal-e2e-sample)
+  - [4.6 QC E2E sample](#46-qc-e2e-sample)
 
 # 1. DepthFromStereo overview
 
@@ -18,7 +18,7 @@ This DepthFromStereo component offers a user-friendly API to leverage the EVA ha
 
 # 2. DepthFromStereo Data Structures
 
-- [DepthFromStereo_Config_t](../include/ridehal/component/DepthFromStereo.hpp#L55)
+- [DepthFromStereo_Config_t](../include/QC/component/DepthFromStereo.hpp#L55)
 
 This configuration data structure comes with a default initializer that sets up its members with suggested default values. Refer to [DepthFromStereo_Config::DepthFromStereo_Config](../source/components/DepthFromStereo/DepthFromStereo.cpp#L41). For startup, you only need to update the relevant information for the input image.
 
@@ -30,13 +30,13 @@ This configuration data structure comes with a default initializer that sets up 
 
 # 3. DepthFromStereo APIs
 
-- [Init](../include/ridehal/component/DepthFromStereo.hpp#L74)
-- [RegisterBuffers](../include/ridehal/component/DepthFromStereo.hpp#L85)
-- [Start](../include/ridehal/component/DepthFromStereo.hpp#L91)
-- [Execute](../include/ridehal/component/DepthFromStereo.hpp#L101)
-- [Stop](../include/ridehal/component/DepthFromStereo.hpp#L110)
-- [DeRegisterBuffers](../include/ridehal/component/DepthFromStereo.hpp#L120)
-- [Deinit](../include/ridehal/component/DepthFromStereo.hpp#L126)
+- [Init](../include/QC/component/DepthFromStereo.hpp#L74)
+- [RegisterBuffers](../include/QC/component/DepthFromStereo.hpp#L85)
+- [Start](../include/QC/component/DepthFromStereo.hpp#L91)
+- [Execute](../include/QC/component/DepthFromStereo.hpp#L101)
+- [Stop](../include/QC/component/DepthFromStereo.hpp#L110)
+- [DeRegisterBuffers](../include/QC/component/DepthFromStereo.hpp#L120)
+- [Deinit](../include/QC/component/DepthFromStereo.hpp#L126)
 
 
 # 4. DepthFromStereo Examples
@@ -57,22 +57,22 @@ This configuration data structure comes with a default initializer that sets up 
 
 ```c
     // below allocate a buffer to hold image
-    RideHal_SharedBuffer_t priImg;
-    RideHal_SharedBuffer_t auxImg;
-    ret = refImg.Allocate( 1280, 720, RIDEHAL_IMAGE_FORMAT_NV12 );
-    ret = curImg.Allocate( 1280, 720, RIDEHAL_IMAGE_FORMAT_NV12 );
+    QCSharedBuffer_t priImg;
+    QCSharedBuffer_t auxImg;
+    ret = refImg.Allocate( 1280, 720, QC_IMAGE_FORMAT_NV12 );
+    ret = curImg.Allocate( 1280, 720, QC_IMAGE_FORMAT_NV12 );
 
     // define the output tensor properties that used to allocate the output tensor buffer
-    RideHal_TensorProps_t dispMapTsProp = {
-            RIDEHAL_TENSOR_TYPE_UINT_16,
+    QCTensorProps_t dispMapTsProp = {
+            QC_TENSOR_TYPE_UINT_16,
             { 1, ALIGN_S( config.height, 2 ), ALIGN_S( config.width, 128 ), 1 },
             4 };
-    RideHal_TensorProps_t confMapTsProp = {
-            RIDEHAL_TENSOR_TYPE_UINT_8,
+    QCTensorProps_t confMapTsProp = {
+            QC_TENSOR_TYPE_UINT_8,
             { 1, ALIGN_S( config.height, 2 ), ALIGN_S( config.width, 128 ), 1 },
             4 };
-    RideHal_SharedBuffer_t dispMap;
-    RideHal_SharedBuffer_t confMap;
+    QCSharedBuffer_t dispMap;
+    QCSharedBuffer_t confMap;
     // do allocate buffer to hold DFS output
     ret = dispMap.Allocate( &dispMapTsProp );
     ret = confMap.Allocate( &confMapTsProp );
@@ -109,6 +109,6 @@ This step is optional, if it was not done, the Execute API will help to do the b
     ret = dfs.Deinit();
 ```
 
-## 4.6 RideHal E2E sample
+## 4.6 QC E2E sample
 
 The [SampleDepthFromStereo](../tests/sample/source/SampleDepthFromStereo.cpp#L145) and [SampleDepthFromStereoViz](../tests/sample/source/SampleDepthFromStereoViz.cpp#L212) is an end-to-end pipeline demo that demonstrates how to use the DepthFromStereo component. And the [SampleDepthFromStereoViz](../tests/sample/source/SampleDepthFromStereoViz.cpp#L212) demonstrates how to decode the DFS output.

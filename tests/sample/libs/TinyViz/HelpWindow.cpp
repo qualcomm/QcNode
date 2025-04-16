@@ -8,7 +8,7 @@
 
 #include "HelpWindow.hpp"
 
-namespace ridehal
+namespace QC
 {
 namespace sample
 {
@@ -115,4 +115,4 @@ bool HelpWindowInfo::close()
 }
 
 }   // namespace sample
-}   // namespace ridehal
+}   // namespace QC

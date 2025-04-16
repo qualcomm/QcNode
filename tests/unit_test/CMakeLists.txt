@@ -1,15 +1,15 @@
 
-set( GTEST_RIDEHAL_SOURCES gtest_RideHal.cpp )
-set( GTEST_RIDEHAL_INCLUDES ${PROJECT_SOURCE_DIR}/include )
-set( GTEST_RIDEHAL_LIBS gtest RideHal RideHalTestUtils RideHalSample)
+set( GTEST_QCNODE_SOURCES gtest_QCNode.cpp )
+set( GTEST_QCNODE_INCLUDES ${PROJECT_SOURCE_DIR}/include )
+set( GTEST_QCNODE_LIBS gtest QCNode QCNodeTestUtils QCNodeSample)
 
 add_subdirectory(buffer)
 add_subdirectory(components)
 add_subdirectory(logger)
 
-add_executable( gtest_RideHal ${GTEST_RIDEHAL_SOURCES} )
-target_link_libraries( gtest_RideHal ${GTEST_RIDEHAL_LIBS} )
-target_compile_definitions( gtest_RideHal PUBLIC GTEST_RIDEHAL )
-target_include_directories( gtest_RideHal PUBLIC ${GTEST_RIDEHAL_INCLUDES} )
+add_executable( gtest_QCNode ${GTEST_QCNODE_SOURCES} )
+target_link_libraries( gtest_QCNode ${GTEST_QCNODE_LIBS} )
+target_compile_definitions( gtest_QCNode PUBLIC GTEST_QCNODE )
+target_include_directories( gtest_QCNode PUBLIC ${GTEST_QCNODE_INCLUDES} )
 
-install(TARGETS gtest_RideHal DESTINATION bin)
+install(TARGETS gtest_QCNode DESTINATION bin)

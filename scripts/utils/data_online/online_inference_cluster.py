@@ -76,7 +76,7 @@ class OnlineInferenceCluster():
         return session, timestamp, outputs
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='RideHal online inference cluster')
+    parser = argparse.ArgumentParser(description='QC online inference cluster')
     parser.add_argument('--targets', nargs='*', type=str, default=['192.168.1.1:6666', '192.168.1.1:6667'],
       help='the target infomation list:\n\tip:port')
     parser.add_argument('--batch', type=int, default=10, help='the batch size to test')

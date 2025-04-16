@@ -3,12 +3,12 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#ifndef RIDEHAL_SAMPLE_TINYVIZ_MACROS_HPP
-#define RIDEHAL_SAMPLE_TINYVIZ_MACROS_HPP
+#ifndef QC_SAMPLE_TINYVIZ_MACROS_HPP
+#define QC_SAMPLE_TINYVIZ_MACROS_HPP
 
 #include <SDL2/SDL.h>
 
-namespace ridehal
+namespace QC
 {
 namespace sample
 {
@@ -26,6 +26,6 @@ constexpr SDL_Color COLOR_PINK = { 0xFF, 0, 0xFF, 0xFF };
 constexpr SDL_Color COLOR_LIGHTGRAY = { 0xCC, 0xCC, 0xCC, 0xFF };
 
 }   // namespace sample
-}   // namespace ridehal
+}   // namespace QC
 
-#endif   // #ifndef RIDEHAL_SAMPLE_TINYVIZ_MACROS_HPP
+#endif   // #ifndef QC_SAMPLE_TINYVIZ_MACROS_HPP

@@ -1,22 +1,22 @@
 *Menu*:
 - [1. Introduction](#1-introduction)
-- [2. RideHal C2D Data Structures](#2-ridehal-c2d-data-structures)
+- [2. QC C2D Data Structures](#2-qc-c2d-data-structures)
   - [2.1 The details of C2D_Config_t](#21-the-details-of-c2d_config_t)
   - [2.2 The details of C2D_InputConfig_t](#22-the-details-of-c2d_inputconfig_t)
   - [2.3 The details of C2D_ROIConfig_t](#23-the-details-of-c2d_roiconfig_t)
   - [2.4 The details of C2D_ImageResolution_t](#24-the-details-of-c2d_imageresolution_t)
-- [3. RideHal C2D APIs](#3-ridehal-c2d-apis)
+- [3. QC C2D APIs](#3-qc-c2d-apis)
 - [4. Typical Use Case](#4-typical-use-case)
 
 # 1. Introduction
-The RideHal C2D component is a system-level programming interface designed to accelerate 2D bit manipulation. It supports camera image processing functions for RideHal, including cropping, downscaling, upscaling, and color conversion. This component is compatible with the QNX platform and offers a user-friendly API along with a high-performance function library.
+The QC C2D component is a system-level programming interface designed to accelerate 2D bit manipulation. It supports camera image processing functions for QC, including cropping, downscaling, upscaling, and color conversion. This component is compatible with the QNX platform and offers a user-friendly API along with a high-performance function library.
 
-# 2. RideHal C2D Data Structures
+# 2. QC C2D Data Structures
 
-- [C2D_Config_t](../include/ridehal/component/C2D.hpp#L53)
-- [C2D_InputConfig_t](../include/ridehal/component/C2D.hpp#L46)
-- [C2D_ROIConfig_t](../include/ridehal/component/C2D.hpp#L38)
-- [C2D_ImageResolution_t](../include/ridehal/component/C2D.hpp#L29)
+- [C2D_Config_t](../include/QC/component/C2D.hpp#L53)
+- [C2D_InputConfig_t](../include/QC/component/C2D.hpp#L46)
+- [C2D_ROIConfig_t](../include/QC/component/C2D.hpp#L38)
+- [C2D_ImageResolution_t](../include/QC/component/C2D.hpp#L29)
 
 ## 2.1 The details of C2D_Config_t
 C2D_Config_t is the data structure that used to initialize C2D component. It contains C2D input configurations, all the parameters needs to be set by user.
@@ -42,17 +42,17 @@ C2D_ImageResolution_t is the data structure that contains image resolution infor
 - width: Image width
 - height: Image height
 
-# 3. RideHal C2D APIs
+# 3. QC C2D APIs
 
-- [Initialize the C2D component](../include/ridehal/component/C2D.hpp#L79)
-- [Start the C2D pipeline](../include/ridehal/component/C2D.hpp#L87)
-- [Stop the C2D pipeline](../include/ridehal/component/C2D.hpp#L94)
-- [Deinitialize the C2D component](../include/ridehal/component/C2D.hpp#L101)
-- [Execute the C2D pipeline](../include/ridehal/component/C2D.hpp#L111)
-- [Register shared buffers for each input](../include/ridehal/component/C2D.hpp#L121)
-- [Register shared buffers for output](../include/ridehal/component/C2D.hpp#L131)
-- [Deregister shared buffers for each input](../include/ridehal/component/C2D.hpp#L141)
-- [Deregister shared buffers for output](../include/ridehal/component/C2D.hpp#L151)
+- [Initialize the C2D component](../include/QC/component/C2D.hpp#L79)
+- [Start the C2D pipeline](../include/QC/component/C2D.hpp#L87)
+- [Stop the C2D pipeline](../include/QC/component/C2D.hpp#L94)
+- [Deinitialize the C2D component](../include/QC/component/C2D.hpp#L101)
+- [Execute the C2D pipeline](../include/QC/component/C2D.hpp#L111)
+- [Register shared buffers for each input](../include/QC/component/C2D.hpp#L121)
+- [Register shared buffers for output](../include/QC/component/C2D.hpp#L131)
+- [Deregister shared buffers for each input](../include/QC/component/C2D.hpp#L141)
+- [Deregister shared buffers for output](../include/QC/component/C2D.hpp#L151)
 
 # 4. Typical Use Case
 
@@ -68,7 +68,7 @@ It needs just several steps to configure and launch C2D component. User needs to
 
     for ( size_t i = 0; i < C2DConfig.numOfInputs; i++ )
     {
-        C2DConfig.inputConfigs[i].inputFormat = RIDEHAL_IMAGE_FORMAT_NV12;
+        C2DConfig.inputConfigs[i].inputFormat = QC_IMAGE_FORMAT_NV12;
         C2DConfig.inputConfigs[i].inputResolution.width = 1920;
         C2DConfig.inputConfigs[i].inputResolution.height = 1080;
         C2DConfig.inputConfigs[i].ROI.topX = 100;
@@ -77,7 +77,7 @@ It needs just several steps to configure and launch C2D component. User needs to
         C2DConfig.inputConfigs[i].ROI.height = 600;
     }
 
-    RideHal_ImageFormat_e C2DOutputFormat = RIDEHAL_IMAGE_FORMAT_UYVY;
+    QCImageFormat_e C2DOutputFormat = QC_IMAGE_FORMAT_UYVY;
     uint32_t C2DOutputWidth = 1080;
     uint32_t C2DOutputHeight = 720;
 
@@ -86,12 +86,12 @@ It needs just several steps to configure and launch C2D component. User needs to
 
 - Step 2: Allocate and register input/output buffers
 ```c++
-    RideHal_SharedBuffer_t inputs[C2DConfig.numOfInputs];
+    QCSharedBuffer_t inputs[C2DConfig.numOfInputs];
     ret = inputs[0].Allocate( C2DConfig.inputConfigs[0].inputResolution.width,
                                 C2DConfig.inputConfigs[0].inputResolution.height,
                                 C2DConfig.inputConfigs[0].inputFormat );
 
-    RideHal_SharedBuffer_t output;
+    QCSharedBuffer_t output;
     ret = output.Allocate( C2DOutputWidth, C2DOutputHeight, C2DOutputFormat );
 
     for ( size_t i = 0; i < numInputs; i++ )

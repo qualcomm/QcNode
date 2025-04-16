@@ -3,8 +3,8 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#ifndef RIDEHAL_CL2DFLEX_CLH
-#define RIDEHAL_CL2DFLEX_CLH
+#ifndef QC_CL2DFLEX_CLH
+#define QC_CL2DFLEX_CLH
 
 #define KernelCode( ... ) #__VA_ARGS__
 
@@ -25,4 +25,4 @@ inline const char *Kernels()
 
 static const char *s_pSourceCL2DFlex = Kernels();
 
-#endif   // RIDEHAL_CL2DFLEX_CLH
+#endif   // QC_CL2DFLEX_CLH

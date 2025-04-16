@@ -3,63 +3,62 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#include "ridehal/component/ComponentIF.hpp"
+#include "QC/component/ComponentIF.hpp"
 #include <stdio.h>
 
-namespace ridehal
+namespace QC
 {
 namespace component
 {
 
-RideHalError_e ComponentIF::Init( const char *pName, Logger_Level_e level )
+QCStatus_e ComponentIF::Init( const char *pName, Logger_Level_e level )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     if ( nullptr == pName )
     {
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
-    else if ( RIDEHAL_COMPONENT_STATE_INITIAL != m_state )
+    else if ( QC_OBJECT_STATE_INITIAL != m_state )
     {
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        ret = QC_STATUS_BAD_STATE;
     }
     else
     {
         m_name = pName;
-        ret = RIDEHAL_LOGGER_INIT( pName, level );
-        if ( RIDEHAL_ERROR_NONE != ret )
+        ret = QC_LOGGER_INIT( pName, level );
+        if ( QC_STATUS_OK != ret )
         {
             (void) fprintf( stderr,
                             "WARINING: failed to create logger for component %s: ret = %d\n", pName,
                             ret );
         }
-        ret = RIDEHAL_ERROR_NONE;
-        RIDEHAL_INFO( "RideHal version %d.%d.%d", RIDEHAL_VERSION_MAJOR, RIDEHAL_VERSION_MINOR,
-                      RIDEHAL_VERSION_PATCH );
+        ret = QC_STATUS_OK;
+        QC_INFO( "QC version %d.%d.%d", QC_VERSION_MAJOR, QC_VERSION_MINOR, QC_VERSION_PATCH );
     }
 
     return ret;
 }
 
-RideHalError_e ComponentIF::Deinit()
+QCStatus_e ComponentIF::Deinit()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
-    ret = RIDEHAL_LOGGER_DEINIT();
-    if ( RIDEHAL_ERROR_NONE != ret )
+    ret = QC_LOGGER_DEINIT();
+    if ( QC_STATUS_OK != ret )
     {
         (void) fprintf( stderr, "WARINING: failed to deinit logger for component %s: ret = %d\n",
                         GetName(), ret );
     }
-    ret = RIDEHAL_ERROR_NONE; /* ignore logger init error */
+    ret = QC_STATUS_OK; /* ignore logger init error */
 
-    m_state = RIDEHAL_COMPONENT_STATE_INITIAL;
+    m_state = QC_OBJECT_STATE_INITIAL;
 
     return ret;
 }
 
 
-RideHal_ComponentState_t ComponentIF::GetState()
+QCObjectState_e ComponentIF::GetState()
 {
     return m_state;
 }
@@ -70,4 +69,4 @@ const char *ComponentIF::GetName()
 }
 
 }   // namespace component
-}   // namespace ridehal
+}   // namespace QC

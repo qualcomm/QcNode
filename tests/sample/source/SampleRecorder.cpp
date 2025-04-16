@@ -3,10 +3,10 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#include "ridehal/sample/SampleRecorder.hpp"
+#include "QC/sample/SampleRecorder.hpp"
 
 
-namespace ridehal
+namespace QC
 {
 namespace sample
 {
@@ -14,70 +14,70 @@ namespace sample
 SampleRecorder::SampleRecorder() {}
 SampleRecorder::~SampleRecorder() {}
 
-RideHalError_e SampleRecorder::ParseConfig( SampleConfig_t &config )
+QCStatus_e SampleRecorder::ParseConfig( SampleConfig_t &config )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     m_maxImages = Get( config, "max", 1000 );
     if ( 0 == m_maxImages )
     {
-        RIDEHAL_ERROR( "invalid max = %d\n", m_maxImages );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "invalid max = %d\n", m_maxImages );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     m_topicName = Get( config, "topic", "" );
     if ( "" == m_topicName )
     {
-        RIDEHAL_ERROR( "no topic\n" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "no topic\n" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     return ret;
 }
 
-RideHalError_e SampleRecorder::Init( std::string name, SampleConfig_t &config )
+QCStatus_e SampleRecorder::Init( std::string name, SampleConfig_t &config )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     ret = SampleIF::Init( name );
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = ParseConfig( config );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = m_sub.Init( name, m_topicName );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         std::string path = "/tmp/" + name + ".raw";
         m_file = fopen( path.c_str(), "wb" );
         if ( nullptr == m_file )
         {
-            RIDEHAL_ERROR( "can't create file %s", path.c_str() );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "can't create file %s", path.c_str() );
+            ret = QC_STATUS_FAIL;
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         std::string path = "/tmp/" + name + ".meta";
         m_meta = fopen( path.c_str(), "wb" );
         if ( nullptr == m_meta )
         {
-            RIDEHAL_ERROR( "can't create meta file %s", path.c_str() );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "can't create meta file %s", path.c_str() );
+            ret = QC_STATUS_FAIL;
         }
     }
 
     return ret;
 }
 
-RideHalError_e SampleRecorder::Start()
+QCStatus_e SampleRecorder::Start()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     m_stop = false;
     m_thread = std::thread( &SampleRecorder::ThreadMain, this );
@@ -87,25 +87,25 @@ RideHalError_e SampleRecorder::Start()
 
 void SampleRecorder::ThreadMain()
 {
-    RideHalError_e ret;
+    QCStatus_e ret;
     uint32_t num = 0;
     while ( false == m_stop )
     {
         DataFrames_t frames;
         DataFrame_t frame;
         ret = m_sub.Receive( frames );
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             frame = frames.frames[0];
-            RIDEHAL_DEBUG( "receive frameId %" PRIu64 ", timestamp %" PRIu64 "\n", frame.frameId,
-                           frame.timestamp );
+            QC_DEBUG( "receive frameId %" PRIu64 ", timestamp %" PRIu64 "\n", frame.frameId,
+                      frame.timestamp );
             if ( num < m_maxImages )
             {
                 PROFILER_BEGIN();
-                if ( RIDEHAL_BUFFER_TYPE_IMAGE == frame.BufferType() )
+                if ( QC_BUFFER_TYPE_IMAGE == frame.BufferType() )
                 { /* for Image, dump the first one only */
                     auto &buffer = frame.buffer->sharedBuffer;
-                    if ( buffer.imgProps.format < RIDEHAL_IMAGE_FORMAT_MAX )
+                    if ( buffer.imgProps.format < QC_IMAGE_FORMAT_MAX )
                     {
                         uint32_t sizeOne = buffer.size / buffer.imgProps.batchSize;
                         for ( uint32_t i = 0; i < buffer.imgProps.batchSize; i++ )
@@ -121,7 +121,7 @@ void SampleRecorder::ThreadMain()
                             }
                             else
                             {
-                                RIDEHAL_ERROR( "failed to create file: %s", path.c_str() );
+                                QC_ERROR( "failed to create file: %s", path.c_str() );
                             }
                         }
                         fprintf( m_meta,
@@ -159,7 +159,7 @@ void SampleRecorder::ThreadMain()
                         }
                         else
                         {
-                            RIDEHAL_ERROR( "failed to create file: %s", path.c_str() );
+                            QC_ERROR( "failed to create file: %s", path.c_str() );
                         }
                     }
                 }
@@ -172,7 +172,7 @@ void SampleRecorder::ThreadMain()
                 fclose( m_file );
                 m_meta = nullptr;
                 m_file = nullptr;
-                RIDEHAL_INFO( "recording done!" );
+                QC_INFO( "recording done!" );
                 printf( "recording done!\n" );
             }
             else
@@ -182,9 +182,9 @@ void SampleRecorder::ThreadMain()
     }
 }
 
-RideHalError_e SampleRecorder::Stop()
+QCStatus_e SampleRecorder::Stop()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     m_stop = true;
     if ( m_thread.joinable() )
@@ -198,7 +198,7 @@ RideHalError_e SampleRecorder::Stop()
         fclose( m_file );
         m_meta = nullptr;
         m_file = nullptr;
-        RIDEHAL_INFO( "recording done!" );
+        QC_INFO( "recording done!" );
         printf( "recording done!\n" );
     }
 
@@ -207,9 +207,9 @@ RideHalError_e SampleRecorder::Stop()
     return ret;
 }
 
-RideHalError_e SampleRecorder::Deinit()
+QCStatus_e SampleRecorder::Deinit()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     return ret;
 }
@@ -217,4 +217,4 @@ RideHalError_e SampleRecorder::Deinit()
 REGISTER_SAMPLE( Recorder, SampleRecorder );
 
 }   // namespace sample
-}   // namespace ridehal
+}   // namespace QC

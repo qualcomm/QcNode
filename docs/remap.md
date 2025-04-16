@@ -9,23 +9,23 @@
 
 # 1. Remap Overview
 
-The RideHal Remap component is based on [FastADAS Remap APIs](https://developer.qualcomm.com/sites/default/files/docs/adas-sdk/api/group__remap.html). It can do undistortion, downscaling, color conversion, normalization and ROI scaling in one singel API calling on specific processor(CPU, GPU or DSP). 
+The QC Remap component is based on [FastADAS Remap APIs](https://developer.qualcomm.com/sites/default/files/docs/adas-sdk/api/group__remap.html). It can do undistortion, downscaling, color conversion, normalization and ROI scaling in one singel API calling on specific processor(CPU, GPU or DSP). 
 
 # 2. Remap Data Structures
 
-- [Remap_InputConfig_t](../include/ridehal/component/Remap.hpp#L48)
-- [Remap_Config_t](../include/ridehal/component/Remap.hpp#L64) 
-- [Remap_MapTable_t](../include/ridehal/component/Remap.hpp#L35) 
+- [Remap_InputConfig_t](../include/QC/component/Remap.hpp#L48)
+- [Remap_Config_t](../include/QC/component/Remap.hpp#L64) 
+- [Remap_MapTable_t](../include/QC/component/Remap.hpp#L35) 
 
 # 3. Remap APIs 
 
-- [Remap::Init](../include/ridehal/component/Remap.hpp#L85) 
-- [Remap::RegisterBuffers](../include/ridehal/component/Remap.hpp#L97)
-- [Remap::Start](../include/ridehal/component/Remap.hpp#L104) 
-- [Remap::Execute](../include/ridehal/component/Remap.hpp#L115) 
-- [Remap::Stop](../include/ridehal/component/Remap.hpp#L122) 
-- [Remap::DeRegisterBuffers](../include/ridehal/component/Remap.hpp#L132) 
-- [Remap::Deinit](../include/ridehal/component/Remap.hpp#L140) 
+- [Remap::Init](../include/QC/component/Remap.hpp#L85) 
+- [Remap::RegisterBuffers](../include/QC/component/Remap.hpp#L97)
+- [Remap::Start](../include/QC/component/Remap.hpp#L104) 
+- [Remap::Execute](../include/QC/component/Remap.hpp#L115) 
+- [Remap::Stop](../include/QC/component/Remap.hpp#L122) 
+- [Remap::DeRegisterBuffers](../include/QC/component/Remap.hpp#L132) 
+- [Remap::Deinit](../include/QC/component/Remap.hpp#L140) 
 
 # 4. Remap examples
 
@@ -35,10 +35,10 @@ The remap configuration parameters of 2 different input images can be set as fol
 ```c++
     Remap_Config_t RemapConfig;
     char pName[10] = "Remap";
-    RemapConfig.processor = RIDEHAL_PROCESSOR_HTP0;
+    RemapConfig.processor = QC_PROCESSOR_HTP0;
     RemapConfig.numOfInputs = 2;
 
-    RemapConfig.inputConfigs[0].inputFormat = RIDEHAL_IMAGE_FORMAT_UYVY;
+    RemapConfig.inputConfigs[0].inputFormat = QC_IMAGE_FORMAT_UYVY;
     RemapConfig.inputConfigs[0].inputWidth = 512;
     RemapConfig.inputConfigs[0].inputHeight = 512;
     RemapConfig.inputConfigs[0].mapWidth = 256;
@@ -48,7 +48,7 @@ The remap configuration parameters of 2 different input images can be set as fol
     RemapConfig.inputConfigs[0].ROI.width = 256;
     RemapConfig.inputConfigs[0].ROI.height = 256;
 
-    RemapConfig.inputConfigs[1].inputFormat = RIDEHAL_IMAGE_FORMAT_UYVY;
+    RemapConfig.inputConfigs[1].inputFormat = QC_IMAGE_FORMAT_UYVY;
     RemapConfig.inputConfigs[1].inputWidth = 768;
     RemapConfig.inputConfigs[1].inputHeight = 768;
     RemapConfig.inputConfigs[1].mapWidth = 512;
@@ -58,7 +58,7 @@ The remap configuration parameters of 2 different input images can be set as fol
     RemapConfig.inputConfigs[1].ROI.width = 256;
     RemapConfig.inputConfigs[1].ROI.height = 256;
 
-    RemapConfig.outputFormat = RIDEHAL_IMAGE_FORMAT_RGB888;
+    RemapConfig.outputFormat = QC_IMAGE_FORMAT_RGB888;
     RemapConfig.outputWidth = 256;
     RemapConfig.outputHeight = 256;
     RemapConfig.bEnableUndistortion = false;
@@ -78,21 +78,21 @@ The relationship of input, map, ROI, output scales are showed in following pictu
 
 If bEnableUndistortion is set to true, user can do undistortion or lens distortion correction for fisheye type camera by using the calibrated mapping table mapX and mapY. The mapping table mapX and mapY are floating point matrixs, each element is the column/row coordinate of the mapped location in the source image. The following example show how to set a map table with linear resize. 
 ```c++
-            RideHal_TensorProps_t mapXProp;
+            QCTensorProps_t mapXProp;
             mapXProp = {
-                    RIDEHAL_TENSOR_TYPE_FLOAT_32,
+                    QC_TENSOR_TYPE_FLOAT_32,
                     { mapWidth, mapHeight, 0 },
                     2,
             };
             ret = mapXBuffer[inputId].Allocate( &mapXProp );
-            RideHal_TensorProps_t mapYProp;
+            QCTensorProps_t mapYProp;
             mapYProp = {
-                    RIDEHAL_TENSOR_TYPE_FLOAT_32,
+                    QC_TENSOR_TYPE_FLOAT_32,
                     { mapWidth, mapHeight, 0 },
                     2,
             };
             ret = mapYBuffer[inputId].Allocate( &mapYProp );
-            ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+            ASSERT_EQ( QC_STATUS_OK, ret );
             float *mapX = (float *) mapXBuffer[inputId].data();
             float *mapY = (float *) mapYBuffer[inputId].data();
             for ( int i = 0; i < mapHeight; i++ )
@@ -109,18 +109,18 @@ If bEnableUndistortion is set to true, user can do undistortion or lens distorti
 
 ## 4.2 API Call flow
 
-The typical call flow of a Ridehal Remap pipeline is showed as following example:
+The typical call flow of a QC Remap pipeline is showed as following example:
 ```c++
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     ret = RemapObj.Init( pName, pRemapConfig );
-    RideHal_SharedBuffer_t inputs[RemapConfig.numOfInputs];
+    QCSharedBuffer_t inputs[RemapConfig.numOfInputs];
     for ( uint32_t inputId = 0; inputId < RemapConfig.numOfInputs; inputId++ )
     {
         ret = inputs[inputId].Allocate( RemapConfig.inputConfigs[inputId].inputWidth,
                                         RemapConfig.inputConfigs[inputId].inputHeight,
                                         RemapConfig.inputConfigs[inputId].inputFormat );
     }
-    RideHal_SharedBuffer_t output;
+    QCSharedBuffer_t output;
     ret = output.Allocate( RemapConfig.numOfInputs, RemapConfig.outputWidth,
                            RemapConfig.outputHeight, RemapConfig.outputFormat );
     ret = RemapObj.RegisterBuffers( inputs, RemapConfig.numOfInputs, FADAS_BUF_TYPE_IN );

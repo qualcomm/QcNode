@@ -2,17 +2,17 @@
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
+#include "QC/component/DepthFromStereo.hpp"
 #include "md5_utils.hpp"
-#include "ridehal/component/DepthFromStereo.hpp"
 #include "gtest/gtest.h"
 #include <chrono>
 #include <cstdlib>
 #include <stdio.h>
 #include <unistd.h>
 
-using namespace ridehal::common;
-using namespace ridehal::component;
-using namespace ridehal::test::utils;
+using namespace QC::common;
+using namespace QC::component;
+using namespace QC::test::utils;
 
 #define ALIGN_S( size, align ) ( ( size + align - 1 ) / align ) * align
 
@@ -46,35 +46,35 @@ static void Eva_DepthFromStereoRun( std::string name, DepthFromStereo_Config_t &
                                     std::string goldenDispMap = "", std::string goldenConfMap = "" )
 {
     DepthFromStereo dfs;
-    RideHalError_e ret;
-    RideHal_SharedBuffer_t priImg;
-    RideHal_SharedBuffer_t auxImg;
-    RideHal_SharedBuffer_t dispMap;
-    RideHal_SharedBuffer_t confMap;
-    RideHal_SharedBuffer_t dispMapG;
-    RideHal_SharedBuffer_t confMapG;
+    QCStatus_e ret;
+    QCSharedBuffer_t priImg;
+    QCSharedBuffer_t auxImg;
+    QCSharedBuffer_t dispMap;
+    QCSharedBuffer_t confMap;
+    QCSharedBuffer_t dispMapG;
+    QCSharedBuffer_t confMapG;
 
     uint32_t width = config.width;
     uint32_t height = config.height;
 
-    RideHal_TensorProps_t dispMapTsProp = { RIDEHAL_TENSOR_TYPE_UINT_16,
-                                            { 1, ALIGN_S( height, 2 ), ALIGN_S( width, 128 ), 1 },
-                                            4 };
-    RideHal_TensorProps_t confMapTsProp = { RIDEHAL_TENSOR_TYPE_UINT_8,
-                                            { 1, ALIGN_S( height, 2 ), ALIGN_S( width, 128 ), 1 },
-                                            4 };
+    QCTensorProps_t dispMapTsProp = { QC_TENSOR_TYPE_UINT_16,
+                                      { 1, ALIGN_S( height, 2 ), ALIGN_S( width, 128 ), 1 },
+                                      4 };
+    QCTensorProps_t confMapTsProp = { QC_TENSOR_TYPE_UINT_8,
+                                      { 1, ALIGN_S( height, 2 ), ALIGN_S( width, 128 ), 1 },
+                                      4 };
 
 
     printf( "-- Test for %s\n", name.c_str() );
 
     ret = priImg.Allocate( config.width, config.height, config.format );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
     ret = auxImg.Allocate( config.width, config.height, config.format );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
     ret = dispMap.Allocate( &dispMapTsProp );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
     ret = confMap.Allocate( &confMapTsProp );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     if ( false == img1.empty() )
     {
@@ -93,22 +93,22 @@ static void Eva_DepthFromStereoRun( std::string name, DepthFromStereo_Config_t &
     }
 
     ret = dfs.Init( name.c_str(), &config, LOGGER_LEVEL_VERBOSE );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = dfs.RegisterBuffers( &priImg, 1 );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
     ret = dfs.RegisterBuffers( &auxImg, 1 );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
     ret = dfs.RegisterBuffers( &dispMap, 1 );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
     ret = dfs.RegisterBuffers( &confMap, 1 );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = dfs.Start();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = dfs.Execute( &priImg, &auxImg, &dispMap, &confMap );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     if ( ( false == goldenDispMap.empty() ) && ( false == goldenConfMap.empty() ) )
     {
@@ -118,9 +118,9 @@ static void Eva_DepthFromStereoRun( std::string name, DepthFromStereo_Config_t &
         SaveRaw( goldenConfMap, confMap.data(), confMap.size );
 #endif
         ret = dispMapG.Allocate( &dispMapTsProp );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
         ret = confMapG.Allocate( &confMapTsProp );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         LoadRaw( dispMapG.data(), dispMapG.size, goldenDispMap );
         LoadRaw( confMapG.data(), confMapG.size, goldenConfMap );
@@ -138,31 +138,31 @@ static void Eva_DepthFromStereoRun( std::string name, DepthFromStereo_Config_t &
     }
 
     ret = dfs.Execute( &auxImg, &priImg, &dispMap, &confMap );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = dfs.Stop();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = dfs.DeRegisterBuffers( &priImg, 1 );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
     ret = dfs.DeRegisterBuffers( &auxImg, 1 );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
     ret = dfs.DeRegisterBuffers( &dispMap, 1 );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
     ret = dfs.DeRegisterBuffers( &confMap, 1 );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = dfs.Deinit();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = priImg.Free();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
     ret = auxImg.Free();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
     ret = dispMap.Free();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
     ret = confMap.Free();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 }
 
 TEST( EVA, SANITY_DepthFromStereo )
@@ -181,7 +181,7 @@ TEST( EVA, L2_DepthFromStereoFormat )
         DepthFromStereo_Config_t config;
         config.width = 1280;
         config.height = 720;
-        config.format = RIDEHAL_IMAGE_FORMAT_P010;
+        config.format = QC_IMAGE_FORMAT_P010;
         Eva_DepthFromStereoRun( "DFS0_P010", config );
     }
 
@@ -189,7 +189,7 @@ TEST( EVA, L2_DepthFromStereoFormat )
         DepthFromStereo_Config_t config;
         config.width = 1280;
         config.height = 720;
-        config.format = RIDEHAL_IMAGE_FORMAT_NV12_UBWC;
+        config.format = QC_IMAGE_FORMAT_NV12_UBWC;
         Eva_DepthFromStereoRun( "DFS0_NV12_UBWC", config );
     }
 
@@ -198,7 +198,7 @@ TEST( EVA, L2_DepthFromStereoFormat )
         DepthFromStereo_Config_t config;
         config.width = 1280;
         config.height = 720;
-        config.format = RIDEHAL_IMAGE_FORMAT_TP10_UBWC;
+        config.format = QC_IMAGE_FORMAT_TP10_UBWC;
         Eva_DepthFromStereoRun( "DFS0_TP10_UBWC", config );
     }
 }
@@ -216,7 +216,7 @@ TEST( EVA, L2_DepthFromStereoR2L )
 
 TEST( EVA, L2_DepthFromStereoError )
 {
-    RideHalError_e ret;
+    QCStatus_e ret;
     {
         DepthFromStereo dfs;
         DepthFromStereo_Config_t configDft;
@@ -225,238 +225,238 @@ TEST( EVA, L2_DepthFromStereoError )
         DepthFromStereo_Config_t config = configDft;
 
         ret = dfs.Init( nullptr, &config );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         ret = dfs.Init( "DFS0", nullptr );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         config = configDft;
-        config.format = RIDEHAL_IMAGE_FORMAT_UYVY;
+        config.format = QC_IMAGE_FORMAT_UYVY;
         ret = dfs.Init( "DFS0", &config );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         config = configDft;
         config.dfsSearchDir = EVA_DFS_SEARCH_MAX;
         ret = dfs.Init( "DFS0", &config );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         config = configDft; /* super large image */
         config.width = 409600;
         config.height = 409600;
         ret = dfs.Init( "DFS0", &config );
-        ASSERT_EQ( RIDEHAL_ERROR_FAIL, ret );
+        ASSERT_EQ( QC_STATUS_FAIL, ret );
 
         ret = dfs.Deinit();
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
         config = configDft;
-        RideHal_SharedBuffer_t priImg;
-        RideHal_SharedBuffer_t auxImg;
-        RideHal_SharedBuffer_t dispMap;
-        RideHal_SharedBuffer_t confMap;
+        QCSharedBuffer_t priImg;
+        QCSharedBuffer_t auxImg;
+        QCSharedBuffer_t dispMap;
+        QCSharedBuffer_t confMap;
 
-        RideHal_TensorProps_t dispMapTsProp = {
-                RIDEHAL_TENSOR_TYPE_UINT_16,
+        QCTensorProps_t dispMapTsProp = {
+                QC_TENSOR_TYPE_UINT_16,
                 { 1, ALIGN_S( config.height, 2 ), ALIGN_S( config.width, 128 ), 1 },
                 4 };
-        RideHal_TensorProps_t confMapTsProp = {
-                RIDEHAL_TENSOR_TYPE_UINT_8,
+        QCTensorProps_t confMapTsProp = {
+                QC_TENSOR_TYPE_UINT_8,
                 { 1, ALIGN_S( config.height, 2 ), ALIGN_S( config.width, 128 ), 1 },
                 4 };
         ret = priImg.Allocate( config.width, config.height, config.format );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
         ret = auxImg.Allocate( config.width, config.height, config.format );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
         ret = dispMap.Allocate( &dispMapTsProp );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
         ret = confMap.Allocate( &confMapTsProp );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = dfs.RegisterBuffers( &priImg, 1 );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
         ret = dfs.DeRegisterBuffers( &priImg, 1 );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
         ret = dfs.Execute( &priImg, &auxImg, &dispMap, &confMap );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
         ret = dfs.Start();
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
         ret = dfs.Stop();
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
         ret = dfs.Init( "DFS0", &config );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = dfs.RegisterBuffers( nullptr, 1 );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         ret = dfs.RegisterBuffers( &priImg, 0 );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
-        RideHal_SharedBuffer_t invalidImg = priImg;
+        QCSharedBuffer_t invalidImg = priImg;
         invalidImg.buffer.dmaHandle = 0xdeadbeef;
         ret = dfs.RegisterBuffers( &invalidImg, 1 );
-        ASSERT_EQ( RIDEHAL_ERROR_FAIL, ret );
+        ASSERT_EQ( QC_STATUS_FAIL, ret );
 
         ret = dfs.Start();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = dfs.RegisterBuffers( &auxImg, 1 );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = dfs.Execute( &priImg, &auxImg, &dispMap, nullptr );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         ret = dfs.Execute( &priImg, &auxImg, nullptr, &confMap );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         ret = dfs.Execute( &priImg, nullptr, &dispMap, &confMap );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         ret = dfs.Execute( nullptr, &auxImg, &dispMap, &confMap );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
-        RideHal_SharedBuffer_t invalidDispMap = dispMap;
-        invalidDispMap.type = RIDEHAL_BUFFER_TYPE_IMAGE;
+        QCSharedBuffer_t invalidDispMap = dispMap;
+        invalidDispMap.type = QC_BUFFER_TYPE_IMAGE;
         ret = dfs.Execute( &priImg, &auxImg, &invalidDispMap, &confMap );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidDispMap = dispMap;
         invalidDispMap.buffer.pData = nullptr;
         ret = dfs.Execute( &priImg, &auxImg, &invalidDispMap, &confMap );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidDispMap = dispMap;
         invalidDispMap.tensorProps.numDims = 8;
         ret = dfs.Execute( &priImg, &auxImg, &invalidDispMap, &confMap );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidDispMap = dispMap;
-        invalidDispMap.tensorProps.type = RIDEHAL_TENSOR_TYPE_INT_16;
+        invalidDispMap.tensorProps.type = QC_TENSOR_TYPE_INT_16;
         ret = dfs.Execute( &priImg, &auxImg, &invalidDispMap, &confMap );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidDispMap = dispMap;
         invalidDispMap.tensorProps.dims[0] = 2;
         ret = dfs.Execute( &priImg, &auxImg, &invalidDispMap, &confMap );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidDispMap = dispMap;
         invalidDispMap.tensorProps.dims[1] += 2;
         ret = dfs.Execute( &priImg, &auxImg, &invalidDispMap, &confMap );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidDispMap = dispMap;
         invalidDispMap.tensorProps.dims[2] += 2;
         ret = dfs.Execute( &priImg, &auxImg, &invalidDispMap, &confMap );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidDispMap = dispMap;
         invalidDispMap.tensorProps.dims[3] += 2;
         ret = dfs.Execute( &priImg, &auxImg, &invalidDispMap, &confMap );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
-        RideHal_SharedBuffer_t invalidConfMap = confMap;
-        invalidConfMap.type = RIDEHAL_BUFFER_TYPE_IMAGE;
+        QCSharedBuffer_t invalidConfMap = confMap;
+        invalidConfMap.type = QC_BUFFER_TYPE_IMAGE;
         ret = dfs.Execute( &priImg, &auxImg, &dispMap, &invalidConfMap );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidConfMap = confMap;
         invalidConfMap.buffer.pData = nullptr;
         ret = dfs.Execute( &priImg, &auxImg, &dispMap, &invalidConfMap );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidConfMap = confMap;
         invalidConfMap.tensorProps.numDims = 8;
         ret = dfs.Execute( &priImg, &auxImg, &dispMap, &invalidConfMap );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidConfMap = confMap;
-        invalidConfMap.tensorProps.type = RIDEHAL_TENSOR_TYPE_INT_16;
+        invalidConfMap.tensorProps.type = QC_TENSOR_TYPE_INT_16;
         ret = dfs.Execute( &priImg, &auxImg, &dispMap, &invalidConfMap );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidConfMap = confMap;
         invalidConfMap.tensorProps.dims[0] = 2;
         ret = dfs.Execute( &priImg, &auxImg, &dispMap, &invalidConfMap );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidConfMap = confMap;
         invalidConfMap.tensorProps.dims[1] += 2;
         ret = dfs.Execute( &priImg, &auxImg, &dispMap, &invalidConfMap );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidConfMap = confMap;
         invalidConfMap.tensorProps.dims[2] += 2;
         ret = dfs.Execute( &priImg, &auxImg, &dispMap, &invalidConfMap );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidConfMap = confMap;
         invalidConfMap.tensorProps.dims[3] += 2;
         ret = dfs.Execute( &priImg, &auxImg, &dispMap, &invalidConfMap );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidImg = priImg;
-        invalidImg.type = RIDEHAL_BUFFER_TYPE_TENSOR;
+        invalidImg.type = QC_BUFFER_TYPE_TENSOR;
         ret = dfs.Execute( &invalidImg, &auxImg, &dispMap, &confMap );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidImg = priImg;
         invalidImg.buffer.pData = nullptr;
         ret = dfs.Execute( &invalidImg, &auxImg, &dispMap, &confMap );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidImg = priImg;
-        invalidImg.imgProps.format = RIDEHAL_IMAGE_FORMAT_RGB888;
+        invalidImg.imgProps.format = QC_IMAGE_FORMAT_RGB888;
         ret = dfs.Execute( &invalidImg, &auxImg, &dispMap, &confMap );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidImg = priImg;
         invalidImg.imgProps.width += 1;
         ret = dfs.Execute( &invalidImg, &auxImg, &dispMap, &confMap );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidImg = priImg;
         invalidImg.imgProps.height += 1;
         ret = dfs.Execute( &invalidImg, &auxImg, &dispMap, &confMap );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidImg = priImg;
         invalidImg.imgProps.numPlanes += 1;
         ret = dfs.Execute( &invalidImg, &auxImg, &dispMap, &confMap );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidImg = priImg;
         invalidImg.imgProps.stride[0] += 1;
         ret = dfs.Execute( &invalidImg, &auxImg, &dispMap, &confMap );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidImg = priImg;
         invalidImg.imgProps.planeBufSize[0] += 1;
         ret = dfs.Execute( &invalidImg, &auxImg, &dispMap, &confMap );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         ret = dfs.Stop();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = dfs.Deinit();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = priImg.Free();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
         ret = auxImg.Free();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
         ret = dispMap.Free();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
         ret = confMap.Free();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
     }
 }
 
-#ifndef GTEST_RIDEHAL
+#ifndef GTEST_QCNODE
 int main( int argc, char **argv )
 {
     ::testing::InitGoogleTest( &argc, argv );

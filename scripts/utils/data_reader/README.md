@@ -108,7 +108,7 @@ Note this tool is only verified with the data set from [semantic kitti velodyne]
 python scripts/utils/data_reader/lidar2dr.py -i /path/to/dataset/sequences/00/velodyne -o LIDAR0 -m 500
 ```
 
-Note: the "LIDAR0/info.txt" contains the "max points"/"offsetX"/"offsetY"/"ratioW"/"rationH" which will be used by the RideHalSampleApp as parameters.
+Note: the "LIDAR0/info.txt" contains the "max points"/"offsetX"/"offsetY"/"ratioW"/"rationH" which will be used by the QCNodeSampleApp as parameters.
 
 ```sh
 # contents of LIDAR0/info.txt

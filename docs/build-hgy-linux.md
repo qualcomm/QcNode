@@ -1,4 +1,4 @@
-# How to build RideHal with TinyViz for HGY Linux
+# How to build QC with TinyViz for HGY Linux
 
 ## Set WORKSPACE path:
 export WORKSPACE=$PWD (or other path.)
@@ -78,9 +78,9 @@ export LDFLAGS="--sysroot=$TOOLCHAIN_SYSROOT"
 - Set and create object file path
 ```sh
 export TARGET=aarch64-linux
-export PKG_NAME=ridehal-$TARGET.tar.gz
-export INSTALL_PATH=/opt/ridehal
-export DST_DIR=$WORKSPACE/opt/ridehal
+export PKG_NAME=qc-$TARGET.tar.gz
+export INSTALL_PATH=/opt/qcnode
+export DST_DIR=$WORKSPACE/opt/qcnode
 
 mkdir -p $DST_DIR
 ```
@@ -167,7 +167,7 @@ make -j16 destdir=${DST_DIR} C_FLAGS="${CFLAGS}" LD_FLAGS="${LDFLAGS}"
 make install
 ```
 
-## Build RideHal package
+## Build QCNode package
 - Setup QNN SDK env:
 Unzip QNN SDK package to $WORKSPACE and rename as qnn_sdk.
 ```sh
@@ -177,10 +177,10 @@ source $WORKSPACE/qnn_sdk/bin/envsetup.sh
     - Find parserinternaldefs.h file in chipcode
     - copy it to path: $WORKSPACE/linux/sysroots/aarch64-oe-linux/usr/include
 
-- Build RideHal SDK:
+- Build QC SDK:
 Get source code and put at $WORKSPACE path, then use the following commands to build:
 ```sh
-cd $WORKSPACE/ridehal
+cd $WORKSPACE/qcnode
 mkdir build
 cd build
 cmake -DCMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE \
@@ -194,14 +194,14 @@ make -j16
 make DESTDIR=$WORKSPACE install
 ```
 
-- copy QNN library to RideHal
+- copy QNN library to QC
 ```sh
 cp $QNN_SDK_ROOT/bin/aarch64-oe-linux-gcc9.3/* $DST_DIR/bin
 cp $QNN_SDK_ROOT/lib/aarch64-oe-linux-gcc9.3/* $DST_DIR/lib
 cp $QNN_SDK_ROOT/lib/hexagon-v73/unsigned/libQnn* $DST_DIR/lib/dsp
 ```
 
-- copy font file to RideHal
+- copy font file to QC
 ```sh
 cd $WORKSPACE
 mkdir font
@@ -212,7 +212,7 @@ mkdir $DST_DIR/lib/runtime
 cp LiberationSans-Regular.ttf $DST_DIR/lib/runtime
 ```
 
-- copy dependent libraries to RideHal
+- copy dependent libraries to QC
 ```sh
 cd $WORKSPACE
 readelf -d $DST_DIR/lib/libSDL2.so | \
@@ -222,12 +222,12 @@ readelf -d $DST_DIR/lib/libSDL2.so | \
     xargs -i cp {} $DST_DIR/lib
 ```
 
-- generate RideHal package
+- generate QCNode package
 ```sh
 cd $WORKSPACE
 tar -C $WORKSPACE --exclude="*.a" \
     --exclude="*.la" --exclude="include" \
     --exclude="share" --exclude="cmake" \
-    --use-compress-program=pigz -cf $PKG_NAME opt/ridehal
+    --use-compress-program=pigz -cf $PKG_NAME opt/qcnode
 ```
 

@@ -3,10 +3,10 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#include "ridehal/component/PostCenterPoint.hpp"
+#include "QC/component/PostCenterPoint.hpp"
 #include <cmath>
 
-namespace ridehal
+namespace QC
 {
 namespace component
 {
@@ -15,29 +15,29 @@ PostCenterPoint::PostCenterPoint() {}
 
 PostCenterPoint::~PostCenterPoint() {}
 
-RideHalError_e PostCenterPoint::Init( const char *pName, const PostCenterPoint_Config_t *pConfig,
-                                      Logger_Level_e level )
+QCStatus_e PostCenterPoint::Init( const char *pName, const PostCenterPoint_Config_t *pConfig,
+                                  Logger_Level_e level )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     bool bIFInitOK = false;
     bool bFadasInitOK = false;
 
     ret = ComponentIF::Init( pName, level );
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         bIFInitOK = true;
         if ( nullptr == pConfig )
         {
-            RIDEHAL_ERROR( "pConfig is nullptr!" );
-            ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+            QC_ERROR( "pConfig is nullptr!" );
+            ret = QC_STATUS_BAD_ARGUMENTS;
         }
         else
         {
             m_config = *pConfig;
             if ( ( 0 == m_config.stride ) || ( 0 != ( m_config.stride % 2 ) ) )
             {
-                RIDEHAL_ERROR( "stride is invalid!" );
-                ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+                QC_ERROR( "stride is invalid!" );
+                ret = QC_STATUS_BAD_ARGUMENTS;
             }
             else
             {
@@ -52,12 +52,12 @@ RideHalError_e PostCenterPoint::Init( const char *pName, const PostCenterPoint_C
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = m_plrPost.Init( m_config.processor, pName, level );
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
-            RIDEHAL_ERROR( "Failed to init FadasPlrPost!" );
+            QC_ERROR( "Failed to init FadasPlrPost!" );
         }
         else
         {
@@ -67,7 +67,7 @@ RideHalError_e PostCenterPoint::Init( const char *pName, const PostCenterPoint_C
                     m_config.minYRange, m_config.maxXRange, m_config.maxYRange, m_config.numClass,
                     m_config.maxNumInPts, m_config.numInFeatureDim, m_config.maxNumDetOut,
                     m_config.threshScore, m_config.threshIOU, m_config.bMapPtsToBBox );
-            if ( ( RIDEHAL_ERROR_NONE == ret ) && ( true == m_config.bBBoxFilter ) )
+            if ( ( QC_STATUS_OK == ret ) && ( true == m_config.bBBoxFilter ) )
             {
                 ret = m_plrPost.SetFilterParams(
                         m_config.filterParams.minCentreX, m_config.filterParams.minCentreY,
@@ -78,66 +78,66 @@ RideHalError_e PostCenterPoint::Init( const char *pName, const PostCenterPoint_C
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
-        RideHal_TensorProps_t tensorProps;
-        tensorProps.type = RIDEHAL_TENSOR_TYPE_FLOAT_32;
+        QCTensorProps_t tensorProps;
+        tensorProps.type = QC_TENSOR_TYPE_FLOAT_32;
         tensorProps.dims[0] = m_config.maxNumDetOut;
         tensorProps.dims[1] = sizeof( FadasCuboidf32_t ) / sizeof( float );
         tensorProps.numDims = 2;
         ret = m_BBoxList.Allocate( &tensorProps );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
-        RideHal_TensorProps_t tensorProps;
-        tensorProps.type = RIDEHAL_TENSOR_TYPE_UINT_32;
+        QCTensorProps_t tensorProps;
+        tensorProps.type = QC_TENSOR_TYPE_UINT_32;
         tensorProps.dims[0] = m_config.maxNumDetOut;
         tensorProps.numDims = 1;
         ret = m_labels.Allocate( &tensorProps );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
-        RideHal_TensorProps_t tensorProps;
-        tensorProps.type = RIDEHAL_TENSOR_TYPE_FLOAT_32;
+        QCTensorProps_t tensorProps;
+        tensorProps.type = QC_TENSOR_TYPE_FLOAT_32;
         tensorProps.dims[0] = m_config.maxNumDetOut;
         tensorProps.numDims = 1;
         ret = m_scores.Allocate( &tensorProps );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
-        RideHal_TensorProps_t tensorProps;
-        tensorProps.type = RIDEHAL_TENSOR_TYPE_UINT_8;
+        QCTensorProps_t tensorProps;
+        tensorProps.type = QC_TENSOR_TYPE_UINT_8;
         tensorProps.dims[0] = m_config.maxNumDetOut;
         tensorProps.dims[1] = sizeof( FadasPlr3DBBoxMetadata_t );
         tensorProps.numDims = 2;
         ret = m_metadata.Allocate( &tensorProps );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
-        RideHal_SharedBuffer_t buffers[4] = { m_BBoxList, m_labels, m_scores, m_metadata };
+        QCSharedBuffer_t buffers[4] = { m_BBoxList, m_labels, m_scores, m_metadata };
         ret = RegisterBuffersToFadas( buffers, 4, FADAS_BUF_TYPE_OUT );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = m_plrPost.CreatePostProc();
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
             /* do deregister */
-            RideHal_SharedBuffer_t buffers[4] = { m_BBoxList, m_labels, m_scores, m_metadata };
+            QCSharedBuffer_t buffers[4] = { m_BBoxList, m_labels, m_scores, m_metadata };
             (void) DeRegisterBuffersToFadas( buffers, 4 );
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE != ret )
+    if ( QC_STATUS_OK != ret )
     {
         if ( bIFInitOK )
         { /* do error clean up */
-            RIDEHAL_ERROR( "PlrPost Init failed: %d!", ret );
+            QC_ERROR( "PlrPost Init failed: %d!", ret );
             /* do clean up */
             if ( nullptr != m_BBoxList.buffer.pData )
             {
@@ -166,119 +166,119 @@ RideHalError_e PostCenterPoint::Init( const char *pName, const PostCenterPoint_C
     }
     else
     {
-        m_state = RIDEHAL_COMPONENT_STATE_READY;
+        m_state = QC_OBJECT_STATE_READY;
         m_height = (uint32_t) std::round( ( m_config.maxYRange - m_config.minYRange ) /
                                           m_config.pillarYSize / m_config.stride );
         m_width = (uint32_t) std::round( ( m_config.maxXRange - m_config.minXRange ) /
                                          m_config.pillarXSize / m_config.stride );
-        RIDEHAL_INFO( "PlrPost with feature dim [%u, %u]", m_height, m_width );
+        QC_INFO( "PlrPost with feature dim [%u, %u]", m_height, m_width );
     }
 
 
     return ret;
 }
 
-RideHalError_e PostCenterPoint::Start()
+QCStatus_e PostCenterPoint::Start()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
-    if ( RIDEHAL_COMPONENT_STATE_READY == m_state )
+    if ( QC_OBJECT_STATE_READY == m_state )
     {
-        m_state = RIDEHAL_COMPONENT_STATE_RUNNING;
+        m_state = QC_OBJECT_STATE_RUNNING;
     }
     else
     {
-        RIDEHAL_ERROR( "Start is not allowed when in state %d!", m_state );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_ERROR( "Start is not allowed when in state %d!", m_state );
+        ret = QC_STATUS_BAD_STATE;
     }
 
     return ret;
 }
 
-RideHalError_e PostCenterPoint::Stop()
+QCStatus_e PostCenterPoint::Stop()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
-    if ( RIDEHAL_COMPONENT_STATE_RUNNING == m_state )
+    if ( QC_OBJECT_STATE_RUNNING == m_state )
     {
-        m_state = RIDEHAL_COMPONENT_STATE_READY;
+        m_state = QC_OBJECT_STATE_READY;
     }
     else
     {
-        RIDEHAL_ERROR( "Stop is not allowed when in state %d!", m_state );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_ERROR( "Stop is not allowed when in state %d!", m_state );
+        ret = QC_STATUS_BAD_STATE;
     }
 
     return ret;
 }
 
-RideHalError_e PostCenterPoint::Deinit()
+QCStatus_e PostCenterPoint::Deinit()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
-    if ( RIDEHAL_COMPONENT_STATE_READY != m_state )
+    if ( QC_OBJECT_STATE_READY != m_state )
     {
-        RIDEHAL_ERROR( "Deinit is not allowed when in state %d!", m_state );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_ERROR( "Deinit is not allowed when in state %d!", m_state );
+        ret = QC_STATUS_BAD_STATE;
     }
     else
     {
-        RideHalError_e ret2;
+        QCStatus_e ret2;
         /* do deregister */
-        RideHal_SharedBuffer_t buffers[4] = { m_BBoxList, m_labels, m_scores, m_metadata };
+        QCSharedBuffer_t buffers[4] = { m_BBoxList, m_labels, m_scores, m_metadata };
         ret2 = DeRegisterBuffers( buffers, 4 );
-        if ( RIDEHAL_ERROR_NONE != ret2 )
+        if ( QC_STATUS_OK != ret2 )
         {
-            RIDEHAL_ERROR( "PlrPost deregister buffers failed: %d!", ret2 );
+            QC_ERROR( "PlrPost deregister buffers failed: %d!", ret2 );
             ret = ret2;
         }
 
         ret2 = m_BBoxList.Free();
-        if ( RIDEHAL_ERROR_NONE != ret2 )
+        if ( QC_STATUS_OK != ret2 )
         {
-            RIDEHAL_ERROR( "PlrPost Free m_BBoxList failed: %d!", ret2 );
+            QC_ERROR( "PlrPost Free m_BBoxList failed: %d!", ret2 );
             ret = ret2;
         }
 
         ret2 = m_labels.Free();
-        if ( RIDEHAL_ERROR_NONE != ret2 )
+        if ( QC_STATUS_OK != ret2 )
         {
-            RIDEHAL_ERROR( "PlrPost Free m_labels failed: %d!", ret2 );
+            QC_ERROR( "PlrPost Free m_labels failed: %d!", ret2 );
             ret = ret2;
         }
 
         ret2 = m_scores.Free();
-        if ( RIDEHAL_ERROR_NONE != ret2 )
+        if ( QC_STATUS_OK != ret2 )
         {
-            RIDEHAL_ERROR( "PlrPost Free m_scores failed: %d!", ret2 );
+            QC_ERROR( "PlrPost Free m_scores failed: %d!", ret2 );
             ret = ret2;
         }
 
         ret2 = m_metadata.Free();
-        if ( RIDEHAL_ERROR_NONE != ret2 )
+        if ( QC_STATUS_OK != ret2 )
         {
-            RIDEHAL_ERROR( "PlrPost Free m_metadata failed: %d!", ret2 );
+            QC_ERROR( "PlrPost Free m_metadata failed: %d!", ret2 );
             ret = ret2;
         }
 
         ret2 = m_plrPost.DestroyPostProc();
-        if ( RIDEHAL_ERROR_NONE != ret2 )
+        if ( QC_STATUS_OK != ret2 )
         {
-            RIDEHAL_ERROR( "PlrPost DestroyPostProc failed: %d!", ret2 );
+            QC_ERROR( "PlrPost DestroyPostProc failed: %d!", ret2 );
             ret = ret2;
         }
 
         ret2 = m_plrPost.Deinit();
-        if ( RIDEHAL_ERROR_NONE != ret2 )
+        if ( QC_STATUS_OK != ret2 )
         {
-            RIDEHAL_ERROR( "PlrPost Deinit failed: %d!", ret2 );
+            QC_ERROR( "PlrPost Deinit failed: %d!", ret2 );
             ret = ret2;
         }
 
         ret2 = ComponentIF::Deinit();
-        if ( RIDEHAL_ERROR_NONE != ret2 )
+        if ( QC_STATUS_OK != ret2 )
         {
-            RIDEHAL_ERROR( "Deinit ComponentIF failed!" );
+            QC_ERROR( "Deinit ComponentIF failed!" );
             ret = ret2;
         }
     }
@@ -286,31 +286,30 @@ RideHalError_e PostCenterPoint::Deinit()
     return ret;
 }
 
-RideHalError_e PostCenterPoint::RegisterBuffersToFadas( const RideHal_SharedBuffer_t *pBuffers,
-                                                        uint32_t numBuffers,
-                                                        FadasBufType_e bufferType )
+QCStatus_e PostCenterPoint::RegisterBuffersToFadas( const QCSharedBuffer_t *pBuffers,
+                                                    uint32_t numBuffers, FadasBufType_e bufferType )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     for ( uint32_t i = 0; i < numBuffers; i++ )
     {
-        const RideHal_SharedBuffer_t *pBuf = &pBuffers[i];
-        if ( RIDEHAL_BUFFER_TYPE_TENSOR == pBuf->type )
+        const QCSharedBuffer_t *pBuf = &pBuffers[i];
+        if ( QC_BUFFER_TYPE_TENSOR == pBuf->type )
         {
             int32_t fd = m_plrPost.RegBuf( pBuf, bufferType );
             if ( 0 > fd )
             {
-                RIDEHAL_ERROR( "Failed to register buffer[%d]!", i );
-                ret = RIDEHAL_ERROR_FAIL;
+                QC_ERROR( "Failed to register buffer[%d]!", i );
+                ret = QC_STATUS_FAIL;
             }
         }
         else
         {
-            RIDEHAL_ERROR( "buffer[%d] is not tensor!", i );
-            ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+            QC_ERROR( "buffer[%d] is not tensor!", i );
+            ret = QC_STATUS_BAD_ARGUMENTS;
         }
 
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
             break;
         }
@@ -319,21 +318,20 @@ RideHalError_e PostCenterPoint::RegisterBuffersToFadas( const RideHal_SharedBuff
     return ret;
 }
 
-RideHalError_e PostCenterPoint::RegisterBuffers( const RideHal_SharedBuffer_t *pBuffers,
-                                                 uint32_t numBuffers, FadasBufType_e bufferType )
+QCStatus_e PostCenterPoint::RegisterBuffers( const QCSharedBuffer_t *pBuffers, uint32_t numBuffers,
+                                             FadasBufType_e bufferType )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
-    if ( ( RIDEHAL_COMPONENT_STATE_READY != m_state ) &&
-         ( RIDEHAL_COMPONENT_STATE_RUNNING != m_state ) )
+    if ( ( QC_OBJECT_STATE_READY != m_state ) && ( QC_OBJECT_STATE_RUNNING != m_state ) )
     {
-        RIDEHAL_ERROR( "PlrPost component not in ready or running status!" );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_ERROR( "PlrPost component not in ready or running status!" );
+        ret = QC_STATUS_BAD_STATE;
     }
     else if ( nullptr == pBuffers )
     {
-        RIDEHAL_ERROR( "Empty buffers pointer!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "Empty buffers pointer!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
@@ -343,25 +341,25 @@ RideHalError_e PostCenterPoint::RegisterBuffers( const RideHal_SharedBuffer_t *p
     return ret;
 }
 
-RideHalError_e PostCenterPoint::DeRegisterBuffersToFadas( const RideHal_SharedBuffer_t *pBuffers,
-                                                          uint32_t numBuffers )
+QCStatus_e PostCenterPoint::DeRegisterBuffersToFadas( const QCSharedBuffer_t *pBuffers,
+                                                      uint32_t numBuffers )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     for ( uint32_t i = 0; i < numBuffers; i++ )
     {
-        const RideHal_SharedBuffer_t *pBuf = &pBuffers[i];
-        if ( RIDEHAL_BUFFER_TYPE_TENSOR == pBuf->type )
+        const QCSharedBuffer_t *pBuf = &pBuffers[i];
+        if ( QC_BUFFER_TYPE_TENSOR == pBuf->type )
         {
             m_plrPost.DeregBuf( pBuf->data() );
         }
         else
         {
-            RIDEHAL_ERROR( "buffer[%d] is not tensor!", i );
-            ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+            QC_ERROR( "buffer[%d] is not tensor!", i );
+            ret = QC_STATUS_BAD_ARGUMENTS;
         }
 
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
             break;
         }
@@ -370,21 +368,20 @@ RideHalError_e PostCenterPoint::DeRegisterBuffersToFadas( const RideHal_SharedBu
     return ret;
 }
 
-RideHalError_e PostCenterPoint::DeRegisterBuffers( const RideHal_SharedBuffer_t *pBuffers,
-                                                   uint32_t numBuffers )
+QCStatus_e PostCenterPoint::DeRegisterBuffers( const QCSharedBuffer_t *pBuffers,
+                                               uint32_t numBuffers )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
-    if ( ( RIDEHAL_COMPONENT_STATE_READY != m_state ) &&
-         ( RIDEHAL_COMPONENT_STATE_RUNNING != m_state ) )
+    if ( ( QC_OBJECT_STATE_READY != m_state ) && ( QC_OBJECT_STATE_RUNNING != m_state ) )
     {
-        RIDEHAL_ERROR( "PlrPost component not in ready or running status!" );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_ERROR( "PlrPost component not in ready or running status!" );
+        ret = QC_STATUS_BAD_STATE;
     }
     else if ( nullptr == pBuffers )
     {
-        RIDEHAL_ERROR( "Empty buffers pointer!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "Empty buffers pointer!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
@@ -394,15 +391,12 @@ RideHalError_e PostCenterPoint::DeRegisterBuffers( const RideHal_SharedBuffer_t 
     return ret;
 }
 
-RideHalError_e PostCenterPoint::Execute( const RideHal_SharedBuffer_t *pHeatmap,
-                                         const RideHal_SharedBuffer_t *pXY,
-                                         const RideHal_SharedBuffer_t *pZ,
-                                         const RideHal_SharedBuffer_t *pSize,
-                                         const RideHal_SharedBuffer_t *pTheta,
-                                         const RideHal_SharedBuffer_t *pInPts,
-                                         RideHal_SharedBuffer_t *pDetections )
+QCStatus_e PostCenterPoint::Execute( const QCSharedBuffer_t *pHeatmap, const QCSharedBuffer_t *pXY,
+                                     const QCSharedBuffer_t *pZ, const QCSharedBuffer_t *pSize,
+                                     const QCSharedBuffer_t *pTheta, const QCSharedBuffer_t *pInPts,
+                                     QCSharedBuffer_t *pDetections )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     uint32_t numDetOut = 0;
     PostCenterPoint_Object3D_t *pObj;
     FadasCuboidf32_t *pBBoxList;
@@ -410,117 +404,117 @@ RideHalError_e PostCenterPoint::Execute( const RideHal_SharedBuffer_t *pHeatmap,
     float32_t *pScores;
     FadasPlr3DBBoxMetadata_t *pMetadata;
 
-    if ( RIDEHAL_COMPONENT_STATE_RUNNING != m_state )
+    if ( QC_OBJECT_STATE_RUNNING != m_state )
     {
-        RIDEHAL_ERROR( "Execute is not allowed when in state %d!", m_state );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_ERROR( "Execute is not allowed when in state %d!", m_state );
+        ret = QC_STATUS_BAD_STATE;
     }
     else if ( nullptr == pHeatmap )
     {
-        RIDEHAL_ERROR( "pHeatmap is nullptr!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "pHeatmap is nullptr!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
-    else if ( ( RIDEHAL_BUFFER_TYPE_TENSOR != pHeatmap->type ) ||
+    else if ( ( QC_BUFFER_TYPE_TENSOR != pHeatmap->type ) ||
               ( nullptr == pHeatmap->buffer.pData ) || ( 4 != pHeatmap->tensorProps.numDims ) ||
-              ( RIDEHAL_TENSOR_TYPE_FLOAT_32 != pHeatmap->tensorProps.type ) ||
+              ( QC_TENSOR_TYPE_FLOAT_32 != pHeatmap->tensorProps.type ) ||
               ( 1 != pHeatmap->tensorProps.dims[0] ) ||
               ( m_height != pHeatmap->tensorProps.dims[1] ) ||
               ( m_width != pHeatmap->tensorProps.dims[2] ) ||
               ( m_config.numClass != pHeatmap->tensorProps.dims[3] ) )
     {
-        RIDEHAL_ERROR( "pHeatmap is invalid!" );
-        ret = RIDEHAL_ERROR_INVALID_BUF;
+        QC_ERROR( "pHeatmap is invalid!" );
+        ret = QC_STATUS_INVALID_BUF;
     }
     else if ( nullptr == pXY )
     {
-        RIDEHAL_ERROR( "pXY is nullptr!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "pXY is nullptr!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
-    else if ( ( RIDEHAL_BUFFER_TYPE_TENSOR != pXY->type ) || ( nullptr == pXY->buffer.pData ) ||
+    else if ( ( QC_BUFFER_TYPE_TENSOR != pXY->type ) || ( nullptr == pXY->buffer.pData ) ||
               ( 4 != pXY->tensorProps.numDims ) ||
-              ( RIDEHAL_TENSOR_TYPE_FLOAT_32 != pXY->tensorProps.type ) ||
+              ( QC_TENSOR_TYPE_FLOAT_32 != pXY->tensorProps.type ) ||
               ( 1 != pXY->tensorProps.dims[0] ) || ( m_height != pXY->tensorProps.dims[1] ) ||
               ( m_width != pXY->tensorProps.dims[2] ) || ( 2 != pXY->tensorProps.dims[3] ) )
     {
-        RIDEHAL_ERROR( "pXY is invalid!" );
-        ret = RIDEHAL_ERROR_INVALID_BUF;
+        QC_ERROR( "pXY is invalid!" );
+        ret = QC_STATUS_INVALID_BUF;
     }
     else if ( nullptr == pZ )
     {
-        RIDEHAL_ERROR( "pZ is nullptr!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "pZ is nullptr!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
-    else if ( ( RIDEHAL_BUFFER_TYPE_TENSOR != pZ->type ) || ( nullptr == pZ->buffer.pData ) ||
+    else if ( ( QC_BUFFER_TYPE_TENSOR != pZ->type ) || ( nullptr == pZ->buffer.pData ) ||
               ( 4 != pZ->tensorProps.numDims ) ||
-              ( RIDEHAL_TENSOR_TYPE_FLOAT_32 != pZ->tensorProps.type ) ||
+              ( QC_TENSOR_TYPE_FLOAT_32 != pZ->tensorProps.type ) ||
               ( 1 != pZ->tensorProps.dims[0] ) || ( m_height != pZ->tensorProps.dims[1] ) ||
               ( m_width != pZ->tensorProps.dims[2] ) || ( 1 != pZ->tensorProps.dims[3] ) )
     {
-        RIDEHAL_ERROR( "pZ is invalid!" );
-        ret = RIDEHAL_ERROR_INVALID_BUF;
+        QC_ERROR( "pZ is invalid!" );
+        ret = QC_STATUS_INVALID_BUF;
     }
     else if ( nullptr == pSize )
     {
-        RIDEHAL_ERROR( "pSize is nullptr!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "pSize is nullptr!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
-    else if ( ( RIDEHAL_BUFFER_TYPE_TENSOR != pSize->type ) || ( nullptr == pSize->buffer.pData ) ||
+    else if ( ( QC_BUFFER_TYPE_TENSOR != pSize->type ) || ( nullptr == pSize->buffer.pData ) ||
               ( 4 != pSize->tensorProps.numDims ) ||
-              ( RIDEHAL_TENSOR_TYPE_FLOAT_32 != pSize->tensorProps.type ) ||
+              ( QC_TENSOR_TYPE_FLOAT_32 != pSize->tensorProps.type ) ||
               ( 1 != pSize->tensorProps.dims[0] ) || ( m_height != pSize->tensorProps.dims[1] ) ||
               ( m_width != pSize->tensorProps.dims[2] ) || ( 3 != pSize->tensorProps.dims[3] ) )
     {
-        RIDEHAL_ERROR( "pSize is invalid!" );
-        ret = RIDEHAL_ERROR_INVALID_BUF;
+        QC_ERROR( "pSize is invalid!" );
+        ret = QC_STATUS_INVALID_BUF;
     }
     else if ( nullptr == pTheta )
     {
-        RIDEHAL_ERROR( "pTheta is nullptr!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "pTheta is nullptr!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
-    else if ( ( RIDEHAL_BUFFER_TYPE_TENSOR != pTheta->type ) ||
-              ( nullptr == pTheta->buffer.pData ) || ( 4 != pTheta->tensorProps.numDims ) ||
-              ( RIDEHAL_TENSOR_TYPE_FLOAT_32 != pTheta->tensorProps.type ) ||
+    else if ( ( QC_BUFFER_TYPE_TENSOR != pTheta->type ) || ( nullptr == pTheta->buffer.pData ) ||
+              ( 4 != pTheta->tensorProps.numDims ) ||
+              ( QC_TENSOR_TYPE_FLOAT_32 != pTheta->tensorProps.type ) ||
               ( 1 != pTheta->tensorProps.dims[0] ) || ( m_height != pTheta->tensorProps.dims[1] ) ||
               ( m_width != pTheta->tensorProps.dims[2] ) || ( 2 != pTheta->tensorProps.dims[3] ) )
     {
-        RIDEHAL_ERROR( "pTheta is invalid!" );
-        ret = RIDEHAL_ERROR_INVALID_BUF;
+        QC_ERROR( "pTheta is invalid!" );
+        ret = QC_STATUS_INVALID_BUF;
     }
     else if ( nullptr == pInPts )
     {
-        RIDEHAL_ERROR( "pInPts is nullptr!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "pInPts is nullptr!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
-    else if ( ( RIDEHAL_BUFFER_TYPE_TENSOR != pInPts->type ) ||
-              ( nullptr == pInPts->buffer.pData ) || ( 2 != pInPts->tensorProps.numDims ) ||
-              ( RIDEHAL_TENSOR_TYPE_FLOAT_32 != pInPts->tensorProps.type ) ||
+    else if ( ( QC_BUFFER_TYPE_TENSOR != pInPts->type ) || ( nullptr == pInPts->buffer.pData ) ||
+              ( 2 != pInPts->tensorProps.numDims ) ||
+              ( QC_TENSOR_TYPE_FLOAT_32 != pInPts->tensorProps.type ) ||
               ( m_config.numInFeatureDim != pInPts->tensorProps.dims[1] ) )
     {
-        RIDEHAL_ERROR( "pInPts is invalid!" );
-        ret = RIDEHAL_ERROR_INVALID_BUF;
+        QC_ERROR( "pInPts is invalid!" );
+        ret = QC_STATUS_INVALID_BUF;
     }
     else if ( nullptr == pDetections )
     {
-        RIDEHAL_ERROR( "pDetections is nullptr!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "pDetections is nullptr!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
-    else if ( ( RIDEHAL_BUFFER_TYPE_TENSOR != pDetections->type ) ||
+    else if ( ( QC_BUFFER_TYPE_TENSOR != pDetections->type ) ||
               ( nullptr == pDetections->buffer.pData ) ||
               ( 2 != pDetections->tensorProps.numDims ) ||
-              ( RIDEHAL_TENSOR_TYPE_FLOAT_32 != pDetections->tensorProps.type ) ||
+              ( QC_TENSOR_TYPE_FLOAT_32 != pDetections->tensorProps.type ) ||
               ( m_config.maxNumDetOut != pDetections->tensorProps.dims[0] ) ||
               ( POSTCENTERPOINT_OBJECT_3D_DIM != pDetections->tensorProps.dims[1] ) )
     {
-        RIDEHAL_ERROR( "pDetections is invalid!" );
-        ret = RIDEHAL_ERROR_INVALID_BUF;
+        QC_ERROR( "pDetections is invalid!" );
+        ret = QC_STATUS_INVALID_BUF;
     }
     else
     {
         ret = m_plrPost.ExtractBBoxRun( pHeatmap, pXY, pZ, pSize, pTheta, pInPts, &m_BBoxList,
                                         &m_labels, &m_scores, &m_metadata, &numDetOut );
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             pObj = (PostCenterPoint_Object3D_t *) pDetections->data();
             pBBoxList = (FadasCuboidf32_t *) m_BBoxList.data();
@@ -528,7 +522,7 @@ RideHalError_e PostCenterPoint::Execute( const RideHal_SharedBuffer_t *pHeatmap,
             pScores = (float32_t *) m_scores.data();
             pMetadata = (FadasPlr3DBBoxMetadata_t *) m_metadata.data();
             pDetections->tensorProps.dims[0] = numDetOut;
-            RIDEHAL_DEBUG( "number of detections %" PRIu32, numDetOut );
+            QC_DEBUG( "number of detections %" PRIu32, numDetOut );
             for ( uint32_t i = 0; i < numDetOut; i++ )
             {
                 pObj->label = pLabels[i];
@@ -556,11 +550,11 @@ RideHalError_e PostCenterPoint::Execute( const RideHal_SharedBuffer_t *pHeatmap,
                     pObj->numPts = 0;
                     pObj->meanIntensity = 0;
                 }
-                RIDEHAL_DEBUG( "class=%d score=%.3f bbox=[%.3f %.3f %.3f %.3f %.3f %.3f] "
-                               "theta=%.3f, mean=[%.3f %.3f %.3f %.3f]x%u",
-                               pObj->label, pObj->score, pObj->x, pObj->y, pObj->z, pObj->length,
-                               pObj->width, pObj->height, pObj->theta, pObj->meanPtX, pObj->meanPtY,
-                               pObj->meanPtZ, pObj->meanIntensity, pObj->numPts );
+                QC_DEBUG( "class=%d score=%.3f bbox=[%.3f %.3f %.3f %.3f %.3f %.3f] "
+                          "theta=%.3f, mean=[%.3f %.3f %.3f %.3f]x%u",
+                          pObj->label, pObj->score, pObj->x, pObj->y, pObj->z, pObj->length,
+                          pObj->width, pObj->height, pObj->theta, pObj->meanPtX, pObj->meanPtY,
+                          pObj->meanPtZ, pObj->meanIntensity, pObj->numPts );
                 pObj++;
             }
         }
@@ -570,4 +564,4 @@ RideHalError_e PostCenterPoint::Execute( const RideHal_SharedBuffer_t *pHeatmap,
 }
 
 }   // namespace component
-}   // namespace ridehal
+}   // namespace QC

@@ -2,8 +2,8 @@
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
-#ifndef RIDEHAL_SAMPLE_TINYVIZ_IF_HPP
-#define RIDEHAL_SAMPLE_TINYVIZ_IF_HPP
+#ifndef QC_SAMPLE_TINYVIZ_IF_HPP
+#define QC_SAMPLE_TINYVIZ_IF_HPP
 
 #include <list>
 #include <map>
@@ -12,11 +12,11 @@
 #include <thread>
 #include <vector>
 
-#include "ridehal/sample/DataTypes.hpp"
+#include "QC/sample/DataTypes.hpp"
 
-using namespace ridehal::sample;
+using namespace QC::sample;
 
-namespace ridehal
+namespace QC
 {
 namespace sample
 {
@@ -38,6 +38,6 @@ public:
     virtual bool addData( const std::string camName, Road2DObjects_t & ) = 0;
 };
 }   // namespace sample
-}   // namespace ridehal
+}   // namespace QC
 
-#endif   // #ifndef RIDEHAL_SAMPLE_TINYVIZ_IF_HPP
+#endif   // #ifndef QC_SAMPLE_TINYVIZ_IF_HPP

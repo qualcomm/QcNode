@@ -3,8 +3,8 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#ifndef RIDEHAL_CL2D_PIPELINE_LETTERBOX_CLH
-#define RIDEHAL_CL2D_PIPELINE_LETTERBOX_CLH
+#ifndef QC_CL2D_PIPELINE_LETTERBOX_CLH
+#define QC_CL2D_PIPELINE_LETTERBOX_CLH
 
 KernelCode(
 
@@ -82,4 +82,4 @@ KernelCode(
 
 )
 
-#endif   // RIDEHAL_CL2D_PIPELINE_LETTERBOX_CLH
+#endif   // QC_CL2D_PIPELINE_LETTERBOX_CLH

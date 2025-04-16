@@ -1,16 +1,16 @@
 *Menu*:
-- [1. RideHal buffer life cycle management between threads in the same process](#1-ridehal-buffer-life-cycle-management-between-threads-in-the-same-process)
-  - [1.1 Using C++ std::shared_ptr to do the RideHal buffer life cycle management](#11-using-c-stdshared_ptr-to-do-the-ridehal-buffer-life-cycle-management)
+- [1. QC buffer life cycle management between threads in the same process](#1-qc-buffer-life-cycle-management-between-threads-in-the-same-process)
+  - [1.1 Using C++ std::shared_ptr to do the QC buffer life cycle management](#11-using-c-stdshared_ptr-to-do-the-qc-buffer-life-cycle-management)
     - [1.1.1 The buffer life cycle management for Camera](#111-the-buffer-life-cycle-management-for-camera)
     - [1.1.2 The buffer life cycle management for the Video Encoder](#112-the-buffer-life-cycle-management-for-the-video-encoder)
     - [1.1.3 The buffer life cycle management of the SharedBufferPool](#113-the-buffer-life-cycle-management-of-the-sharedbufferpool)
-- [2. RideHal buffer life cycle management between processes](#2-ridehal-buffer-life-cycle-management-between-processes)
+- [2. QC buffer life cycle management between processes](#2-qc-buffer-life-cycle-management-between-processes)
 
-# 1. RideHal buffer life cycle management between threads in the same process
+# 1. QC buffer life cycle management between threads in the same process
 
-## 1.1 Using C++ std::shared_ptr to do the RideHal buffer life cycle management
+## 1.1 Using C++ std::shared_ptr to do the QC buffer life cycle management
 
-The [RideHal Sample Application](../tests/sample/README.md) is an application to demonstrate how to use the RideHal components. And here this document will introduce the buffer life cycle management that used by the RideHal Sample Application by using the C++ [std::shared_ptr](https://en.cppreference.com/w/cpp/memory/shared_ptr).
+The [QC Sample Application](../tests/sample/README.md) is an application to demonstrate how to use the QC components. And here this document will introduce the buffer life cycle management that used by the QC Sample Application by using the C++ [std::shared_ptr](https://en.cppreference.com/w/cpp/memory/shared_ptr).
 
 Generally, by customization of the "Deleter" function of the std::shared_ptr to do the buffer release at the end of its life cycle.
 
@@ -20,17 +20,17 @@ std::shared_ptr<SharedBuffer_t> buffer( pSharedBuffer, [&]( SharedBuffer_t *pSha
 } );
 ```
 
-Note: As the RideHal Sample is a demo, it still has memory allocation during running after the initialization which was not good, for example for the above std::shared_ptr "buffer" construction, it's strongly suggested that to customize the allocation of the std::shared_ptr by using a std::shared_ptr allocation memory pool, refer [Allocator](https://en.cppreference.com/w/cpp/named_req/Allocator).
+Note: As the QC Sample is a demo, it still has memory allocation during running after the initialization which was not good, for example for the above std::shared_ptr "buffer" construction, it's strongly suggested that to customize the allocation of the std::shared_ptr by using a std::shared_ptr allocation memory pool, refer [Allocator](https://en.cppreference.com/w/cpp/named_req/Allocator).
 
 And as below 2 pictures shows, the C++ std::shared_ptr will be a part of the message that to be published by the single producer and can be received by the 1 or multiple consumers, thus it can ensure that when the last consumer release the std::shared_ptr, the customized "Deleter" function will be called to do the specified buffer release action.
 
 ![data-broker](./images/data-broker.jpg)
 
-![ridehal-sample-1cam-pipeline-0](./images/ridehal-sample-1cam-pipeline-0.jpg)
+![qc-sample-1cam-pipeline-0](./images/qc-sample-1cam-pipeline-0.jpg)
 
 ### 1.1.1 The buffer life cycle management for Camera
 
-Refer [SampleCamera::FrameCallBack](../tests/sample/source/SampleCamera.cpp#L26), when this callback from the Camera called, it means that a camera frame is ready, and by using the RideHal DataBroker message queue to publish it out.
+Refer [SampleCamera::FrameCallBack](../tests/sample/source/SampleCamera.cpp#L26), when this callback from the Camera called, it means that a camera frame is ready, and by using the QC DataBroker message queue to publish it out.
 
 ```c++
 void SampleCamera::FrameCallBack( CameraFrame_t *pFrame )
@@ -69,7 +69,7 @@ Refer [SampleVideoEncoder::ThreadMain](../tests/sample/source/SampleVideoEncoder
 ```c++
 void SampleVideoEncoder::ThreadMain()
 {
-    RideHalError_e ret;
+    QCStatus_e ret;
     while ( false == m_stop )
     {
         DataFrames_t frames;
@@ -98,7 +98,7 @@ void SampleVideoEncoder::InFrameCallback( const VideoEncoder_InputFrame_t *pInpu
 {
     uint64_t frameId = pInputFrame->appMarkData;
 
-    RIDEHAL_DEBUG( "InFrameCallback for frameId %" PRIu64, frameId );
+    QC_DEBUG( "InFrameCallback for frameId %" PRIu64, frameId );
 
     std::lock_guard<std::mutex> l( m_lock );
     auto it = m_camFrameMap.find( frameId );
@@ -108,12 +108,12 @@ void SampleVideoEncoder::InFrameCallback( const VideoEncoder_InputFrame_t *pInpu
     }
     else
     {
-        RIDEHAL_ERROR( "InFrameCallback with invalid frameId %" PRIu64, frameId );
+        QC_ERROR( "InFrameCallback with invalid frameId %" PRIu64, frameId );
     }
 }
 ```
 
-Refer [SampleVideoEncoder::OutFrameCallback](../tests/sample/source/SampleVideoEncoder.cpp#L47), when this callback from the Video Encoder called, it means that a encoded video frame is ready, and by using the RideHal DataBroker message queue to publish it out.
+Refer [SampleVideoEncoder::OutFrameCallback](../tests/sample/source/SampleVideoEncoder.cpp#L47), when this callback from the Video Encoder called, it means that a encoded video frame is ready, and by using the QC DataBroker message queue to publish it out.
 
 ```c++
 void SampleVideoEncoder::OutFrameCallback( const VideoEncoder_OutputFrame_t *pOutputFrame )
@@ -140,7 +140,7 @@ void SampleVideoEncoder::OutFrameCallback( const VideoEncoder_OutputFrame_t *pOu
 
 ### 1.1.3 The buffer life cycle management of the SharedBufferPool
 
-The RideHal Sample [SharedBufferPool](../tests/sample/include/ridehal/sample/SharedBufferPool.hpp#L33) gives a demo that how to create a ping-pong buffer pool that the buffer can be shared between threads in the process. It was by using a flag ["dirty"](../tests/sample/include/ridehal/sample/SharedBufferPool.hpp#L126) for each buffer to indicate whether the buffer is in use(dirty = true) or free (dirty = false).
+The QC Sample [SharedBufferPool](../tests/sample/include/QC/sample/SharedBufferPool.hpp#L33) gives a demo that how to create a ping-pong buffer pool that the buffer can be shared between threads in the process. It was by using a flag ["dirty"](../tests/sample/include/QC/sample/SharedBufferPool.hpp#L126) for each buffer to indicate whether the buffer is in use(dirty = true) or free (dirty = false).
 
 Here it was the ["Get"](../tests/sample/source/SharedBufferPool.cpp#L34) API to try to get a free buffer from the pool, as the code shows, if no buffer's flag "dirty" is false, a nullptr will be returned to indicate that all buffers are in busy state which means still hold in the DataBroker queue or hold by the consumers.
 
@@ -184,6 +184,6 @@ void SharedBufferPool::Deleter( SharedBuffer_t *ptrToDelete )
 And refer the [SampleRemap](../tests/sample/source/SampleRemap.cpp#L206) or [SampleQnn](../tests/sample/source/SampleQnn.cpp#L128) to know how to use this SharedBufferPool.
 
 
-# 2. RideHal buffer life cycle management between processes
+# 2. QC buffer life cycle management between processes
 
-It's up to the user application's middleware to do such support, now the RideHal doesn't provide such a demo.
+It's up to the user application's middleware to do such support, now the QC doesn't provide such a demo.

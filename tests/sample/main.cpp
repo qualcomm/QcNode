@@ -3,11 +3,11 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#include "ridehal/sample/SampleCamera.hpp"
-#include "ridehal/sample/SampleDataReader.hpp"
-#include "ridehal/sample/SampleRemap.hpp"
+#include "QC/sample/SampleCamera.hpp"
+#include "QC/sample/SampleDataReader.hpp"
+#include "QC/sample/SampleRemap.hpp"
 #ifdef WITH_TINYVIZ
-#include "ridehal/sample/SampleTinyViz.hpp"
+#include "QC/sample/SampleTinyViz.hpp"
 #endif
 
 #include <chrono>
@@ -19,7 +19,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-using namespace ridehal::sample;
+using namespace QC::sample;
 
 typedef struct
 {
@@ -37,14 +37,14 @@ static void UserLog( Logger_Handle_t hHandle, Logger_Level_e level, const char *
     printf( "%s: %s\n", pContext->name.c_str(), msg );
 }
 
-static RideHalError_e UserLoggerHandleCreate( const char *pName, Logger_Level_e level,
-                                              Logger_Handle_t *pHandle )
+static QCStatus_e UserLoggerHandleCreate( const char *pName, Logger_Level_e level,
+                                          Logger_Handle_t *pHandle )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     if ( ( nullptr == pName ) || ( nullptr == pHandle ) )
     {
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
@@ -57,7 +57,7 @@ static RideHalError_e UserLoggerHandleCreate( const char *pName, Logger_Level_e 
         }
         else
         {
-            ret = RIDEHAL_ERROR_NOMEM;
+            ret = QC_STATUS_NOMEM;
         }
     }
 
@@ -101,7 +101,7 @@ int Usage( const char *program, int error )
 
 int main( int argc, char *argv[] )
 {
-    RideHalError_e ret;
+    QCStatus_e ret;
     int timeS = 0;
     std::vector<SampleIF *> samples;
 
@@ -165,7 +165,7 @@ int main( int argc, char *argv[] )
         if ( nullptr != pSample )
         {
             ret = pSample->Init( config.name, config.config );
-            if ( ret != RIDEHAL_ERROR_NONE )
+            if ( ret != QC_STATUS_OK )
             {
                 printf( "Init %s failed: ret = %d\n", config.name.c_str(), ret );
                 return -1;
@@ -186,7 +186,7 @@ int main( int argc, char *argv[] )
     for ( auto sample : samples )
     {
         ret = sample->Start();
-        if ( ret != RIDEHAL_ERROR_NONE )
+        if ( ret != QC_STATUS_OK )
         {
             printf( "Start %s failed: ret = %d\n", sample->GetName(), ret );
             return -1;
@@ -215,7 +215,7 @@ int main( int argc, char *argv[] )
     {
         auto sample = samples[i];
         ret = sample->Stop();
-        if ( ret != RIDEHAL_ERROR_NONE )
+        if ( ret != QC_STATUS_OK )
         {
             printf( "Stop %s failed: ret = %d\n", sample->GetName(), ret );
         }
@@ -229,7 +229,7 @@ int main( int argc, char *argv[] )
     {
         auto sample = samples[i];
         ret = sample->Deinit();
-        if ( ret != RIDEHAL_ERROR_NONE )
+        if ( ret != QC_STATUS_OK )
         {
             printf( "Deinit %s failed: ret = %d\n", sample->GetName(), ret );
         }

@@ -1,0 +1,257 @@
+// Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+// All rights reserved.
+// Confidential and Proprietary - Qualcomm Technologies, Inc.
+
+
+#ifndef QC_GL2DFLEX_HPP
+#define QC_GL2DFLEX_HPP
+
+#include <cinttypes>
+#include <memory>
+#include <unordered_map>
+#include <vector>
+
+#define EGL_EGLEXT_PROTOTYPES
+#define GL_GLEXT_PROTOTYPES
+
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
+#include <GLES2/gl2.h>
+#include <GLES2/gl2ext.h>
+#include <GLES3/gl32.h>
+
+#include <drm/drm_fourcc.h>
+#include <gbm.h>
+#include <gbm_priv.h>
+#include <xf86drm.h>
+
+#include "QC/component/ComponentIF.hpp"
+
+namespace QC
+{
+namespace component
+{
+
+/*=================================================================================================
+** Typedefs
+=================================================================================================*/
+
+/** @brief GL2DFlex Image resolution */
+typedef struct
+{
+    uint32_t width;  /**< Image width */
+    uint32_t height; /**< Image height */
+} GL2DFlex_ImageResolution_t;
+
+/** @brief GL2DFlex ROI Configuration*/
+typedef struct
+{
+    uint32_t topX;   /**< X coordinate of top left point */
+    uint32_t topY;   /**< Y coordinate of top left point */
+    uint32_t width;  /**< ROI width */
+    uint32_t height; /**< ROI height */
+} GL2DFlex_ROIConfig_t;
+
+/** @brief GL2DFlex Input Configuration*/
+typedef struct
+{
+    QCImageFormat_e inputFormat;                /**< Image format of Input frame */
+    GL2DFlex_ImageResolution_t inputResolution; /**< Image Resolution of Input frame */
+    GL2DFlex_ROIConfig_t ROI;                   /**< Reigion of Interest in Input frame */
+} GL2DFlex_InputConfig_t;
+
+/** @brief GL2DFlex Component Initialization Configuration*/
+typedef struct
+{
+    uint32_t numOfInputs; /**< Number of Input Images in each processing */
+    GL2DFlex_InputConfig_t inputConfigs[QC_MAX_INPUTS]; /**< Array of Input Configurations */
+    GL2DFlex_ImageResolution_t outputResolution;        /**< Image Resolution of Output frame */
+    QCImageFormat_e outputFormat;                       /**< Image format of Output frame */
+} GL2DFlex_Config_t;
+
+
+/**
+ * @brief Component GL2DFlex
+ * @brief GL2DFlex converts camera frames to another image format and do cropping and resizing
+ */
+class GL2DFlex final : public ComponentIF
+{
+
+    /*=================================================================================================
+    ** API Functions
+    =================================================================================================*/
+
+public:
+    GL2DFlex();
+    ~GL2DFlex();
+
+    /**
+     * @cond GL2DFlex::Init @endcond
+     * @brief Initialize the GL2DFlex component
+     * @param[in] name the component unique instance name
+     * @param[in] pConfig the GL2DFlex configuration paramaters
+     * @param[in] level the logger message level
+     * @return QC_STATUS_OK on success, others on failure
+     */
+    QCStatus_e Init( const char *pName, const GL2DFlex_Config_t *pConfig,
+                     Logger_Level_e level = LOGGER_LEVEL_ERROR );
+
+    /**
+     * @cond GL2DFlex::Start @endcond
+     * @brief Start the GL2DFlex pipeline
+     * @return QC_STATUS_OK on success, others on failure
+     */
+    QCStatus_e Start();
+
+    /**
+     * @cond GL2DFlex::Stop @endcond
+     * @brief stop the GL2DFlex pipeline
+     * @return QC_STATUS_OK on success, others on failure
+     */
+    QCStatus_e Stop();
+
+    /**
+     * @cond GL2DFlex::Deinit @endcond
+     * @brief deinitialize the GL2DFlex component
+     * @return QC_STATUS_OK on success, others on failure
+     */
+    QCStatus_e Deinit();
+
+    /**
+     * @cond GL2DFlex::Execute @endcond
+     * @brief Execute the GL2DFlex pipeline
+     * @param[in] pInputs the input shared buffers
+     * @param[in] numInputs the number of the input shared buffers
+     * @param[out] pOutput the output shared buffer
+     * @return QC_STATUS_OK on success, others on failure
+     */
+    QCStatus_e Execute( const QCSharedBuffer_t *pInputs, uint32_t numInputs,
+                        const QCSharedBuffer_t *pOutput );
+
+    /**
+     * @cond GL2DFlex::RegisterInputBuffers @endcond
+     * @brief Register shared buffers for each input
+     * @param[in] pInputBuffers the input shared buffers array
+     * @param[in] numOfInputBuffers the number of shared buffers
+     * @return QC_STATUS_OK on success, others on failure
+     * @note This API is optional but recommended to call after input buffers allocation finished.
+     * If skip to do this, the Execute API will register input buffers automatically.
+     * This API need to be called in the same thread with Execute API
+     */
+    QCStatus_e RegisterInputBuffers( const QCSharedBuffer_t *pInputBuffers,
+                                     uint32_t numOfInputBuffers );
+
+    /**
+     * @cond GL2DFlex::RegisterOutputBuffers @endcond
+     * @brief Register shared buffers for output
+     * @param[in] pOutputBuffers the output shared buffers array
+     * @param[in] numOfOutputBuffers the number of shared buffers
+     * @return QC_STATUS_OK on success, others on failure
+     * @note This API is optional but recommended to call after output buffers allocation finished.
+     * If skip to do this, the Execute API will register output buffers automatically.
+     * This API need to be called in the same thread with Execute API
+     */
+    QCStatus_e RegisterOutputBuffers( const QCSharedBuffer_t *pOutputBuffers,
+                                      uint32_t numOfOutputBuffers );
+
+    /**
+     * @cond GL2DFlex::DeregisterInputBuffers @endcond
+     * @brief Deregister shared buffers for each input
+     * @param[in] pInputBuffers the input shared buffers array
+     * @param[in] numOfInputBuffers the number of shared buffers
+     * @return QC_STATUS_OK on success, others on failure
+     */
+    QCStatus_e DeregisterInputBuffers( const QCSharedBuffer_t *pInputBuffers,
+                                       uint32_t numOfInputBuffers );
+
+    /**
+     * @cond GL2DFlex::DeregisterOutputBuffers @endcond
+     * @brief Deregister shared buffers for output
+     * @param[in] pOutputBuffers the output shared buffers
+     * @param[in] numOfOutputBuffers the number of shared buffers
+     * @return QC_STATUS_OK on success, others on failure
+     */
+    QCStatus_e DeregisterOutputBuffers( const QCSharedBuffer_t *pOutputBuffers,
+                                        uint32_t numOfOutputBuffers );
+
+
+private:
+    typedef struct
+    {
+        gbm_bo *bo;
+        int fd;
+        EGLImageKHR image;
+        GLuint texture;
+        GLuint framebuffer;
+        uint64_t handle;
+        int32_t offset;
+    } GL_ImageInfo_t;
+
+    typedef struct
+    {
+        GLfloat texcoord[4][2];
+    } GL_TexCoord_t;
+
+    QCStatus_e EGLInit();
+
+    QCStatus_e CreateGLPipeline();
+
+
+    QCStatus_e GetInputImageInfo( const QCSharedBuffer_t *pInputBuffer,
+                                  std::shared_ptr<GL_ImageInfo_t> &inputInfo );
+
+    QCStatus_e GetOutputImageInfo( const QCSharedBuffer_t *pOutputBuffer,
+                                   std::shared_ptr<GL_ImageInfo_t> &outputInfo, uint32_t batchIdx );
+
+    QCStatus_e CreateGLInputImage( void *bufferAddr, QCImageFormat_e format, uint32_t width,
+                                   uint32_t height, uint32_t stride, uint32_t handle, size_t offset,
+                                   std::shared_ptr<GL_ImageInfo_t> &inputInfo );
+
+    QCStatus_e CreateGLOutputImage( void *bufferAddr, QCImageFormat_e format, uint32_t width,
+                                    uint32_t height, uint32_t stride, uint32_t handle,
+                                    size_t offset, std::shared_ptr<GL_ImageInfo_t> &inputInfo );
+
+    QCStatus_e Draw( std::shared_ptr<GL_ImageInfo_t> &inputInfo,
+                     std::shared_ptr<GL_ImageInfo_t> &outputInfo, uint32_t batchIdx );
+
+    uint32_t GetEGLFormatType( QCImageFormat_e format );
+
+    uint32_t GetGBMFormatType( QCImageFormat_e format );
+
+    inline QCStatus_e GLErrorCheck();
+
+
+private:
+    uint32_t m_numOfInputs = 1;
+
+    bool m_bEGLReady = false;
+    bool m_bGLPipelineReady = false;
+
+    EGLDisplay m_display = nullptr;
+    EGLContext m_context = nullptr;
+    EGLSurface m_surface = nullptr;
+    GLuint m_vertShader = 0;
+    GLuint m_fragShader = 0;
+    GLuint m_program = 0;
+
+    GL2DFlex_ImageResolution_t m_inputResolutions[QC_MAX_INPUTS];
+    QCImageFormat_e m_inputFormats[QC_MAX_INPUTS];
+    GL_TexCoord_t m_textcoords[QC_MAX_INPUTS];
+
+    GL2DFlex_ImageResolution_t m_outputResolution;
+    QCImageFormat_e m_outputFormat;
+
+    static std::mutex s_mutLock;
+    static int s_drmDevFd;
+    static struct gbm_device *s_gbmDev;
+    static uint32_t s_devRefCnt;
+
+    std::unordered_map<void *, std::shared_ptr<GL_ImageInfo_t>> m_inputImageMap;
+    std::unordered_map<void *, std::shared_ptr<GL_ImageInfo_t>> m_outputImageMap;
+
+};   // class GL2DFLEX
+
+}   // namespace component
+}   // namespace QC
+
+#endif   // QC_GL2DFLEX_HPP

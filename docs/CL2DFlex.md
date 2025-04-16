@@ -8,55 +8,55 @@
   - [4.3 Supported Pipelines](#43-supported-pipelines)
 
 # 1. CL2DFlex Overview
-The RideHal CL2DFlex component is based on OpenCL library, it provides user-friendly APIs and visible CL kernels to do color conversion and resize on single image input. Currently support color conversion and resize of multiple image inputs to single output. The supported color conversion pipelines are NV12 to RGB, UYVY to RGB, UYVY to NV12.
+The QC CL2DFlex component is based on OpenCL library, it provides user-friendly APIs and visible CL kernels to do color conversion and resize on single image input. Currently support color conversion and resize of multiple image inputs to single output. The supported color conversion pipelines are NV12 to RGB, UYVY to RGB, UYVY to NV12.
 
 # 2. CL2DFlex Data Structures
-- [CL2DFlex_WorkMode_e](../include/ridehal/component/CL2DFlex.hpp#L52)
-- [CL2DFlex_MapTable_t](../include/ridehal/component/CL2DFlex.hpp#L63)
-- [CL2DFlex_ROIConfig_t](../include/ridehal/component/CL2DFlex.hpp#L74)
-- [CL2DFlex_Config_t](../include/ridehal/component/CL2DFlex.hpp#L95)
+- [CL2DFlex_WorkMode_e](../include/QC/component/CL2DFlex.hpp#L52)
+- [CL2DFlex_MapTable_t](../include/QC/component/CL2DFlex.hpp#L63)
+- [CL2DFlex_ROIConfig_t](../include/QC/component/CL2DFlex.hpp#L74)
+- [CL2DFlex_Config_t](../include/QC/component/CL2DFlex.hpp#L95)
 
 # 3. CL2DFlex APIs 
-- [CL2DFlex::Init](../include/ridehal/component/CL2DFlex.hpp#L120)
-- [CL2DFlex::RegisterBuffers](../include/ridehal/component/CL2DFlex.hpp#L131)
-- [CL2DFlex::Start](../include/ridehal/component/CL2DFlex.hpp#L137)
-- [CL2DFlex::Execute](../include/ridehal/component/CL2DFlex.hpp#L149)
-- [CL2DFlex::ExecuteWithROI](../include/ridehal/component/CL2DFlex.hpp#L163)
-- [CL2DFlex::Stop](../include/ridehal/component/CL2DFlex.hpp#L171)
-- [CL2DFlex::DeRegisterBuffers](../include/ridehal/component/CL2DFlex.hpp#L181)
-- [CL2DFlex::Deinit](../include/ridehal/component/CL2DFlex.hpp#L190)
+- [CL2DFlex::Init](../include/QC/component/CL2DFlex.hpp#L120)
+- [CL2DFlex::RegisterBuffers](../include/QC/component/CL2DFlex.hpp#L131)
+- [CL2DFlex::Start](../include/QC/component/CL2DFlex.hpp#L137)
+- [CL2DFlex::Execute](../include/QC/component/CL2DFlex.hpp#L149)
+- [CL2DFlex::ExecuteWithROI](../include/QC/component/CL2DFlex.hpp#L163)
+- [CL2DFlex::Stop](../include/QC/component/CL2DFlex.hpp#L171)
+- [CL2DFlex::DeRegisterBuffers](../include/QC/component/CL2DFlex.hpp#L181)
+- [CL2DFlex::Deinit](../include/QC/component/CL2DFlex.hpp#L190)
 
 # 4. Typical Use Case
 
 ## 4.1 Set Configurations
 
-Ridehal CL2DFlex component can do image color conversion, resize and ROI scaling for input images. Take a NV12 to RGB resize pipeline as example, the configuration parameters can be set as:
+QC CL2DFlex component can do image color conversion, resize and ROI scaling for input images. Take a NV12 to RGB resize pipeline as example, the configuration parameters can be set as:
 ```c++
     CL2DFlex_Config_t CL2DFlexConfig;
     CL2DFlexConfig.numOfInputs = 1;
     CL2DFlexConfig.workModes[0] = CL2DFLEX_WORK_MODE_RESIZE_NEAREST;
     CL2DFlexConfig.inputWidths[0] = 128;
     CL2DFlexConfig.inputHeights[0] = 128;
-    CL2DFlexConfig.inputFormats[0] = RIDEHAL_IMAGE_FORMAT_NV12;
+    CL2DFlexConfig.inputFormats[0] = QC_IMAGE_FORMAT_NV12;
     CL2DFlexConfig.ROIs[0].x = 64;
     CL2DFlexConfig.ROIs[0].y = 64;
     CL2DFlexConfig.ROIs[0].width = 64;
     CL2DFlexConfig.ROIs[0].height = 64;
     CL2DFlexConfig.outputWidth = 64;
     CL2DFlexConfig.outputHeight = 64;
-    CL2DFlexConfig.outputFormat = RIDEHAL_IMAGE_FORMAT_RGB888;
+    CL2DFlexConfig.outputFormat = QC_IMAGE_FORMAT_RGB888;
 ```
 Note that the ROI.width+ROI.x must not be larger than inputWidth and the ROI.height+ROI.y must not be larger than inputHeight.
 
 ## 4.2 API Call Flow
 
-The typical call flow of a Ridehal CL2DFlex pipeline is showed as following example:
+The typical call flow of a QC CL2DFlex pipeline is showed as following example:
 ```c++
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
-    RideHal_SharedBuffer_t input;
+    QCStatus_e ret = QC_STATUS_OK;
+    QCSharedBuffer_t input;
     ret = input.Allocate( CL2DFlexConfig.inputWidths[0], CL2DFlexConfig.inputHeights[0],
                           CL2DFlexConfig.inputFormats[0] );
-    RideHal_SharedBuffer_t output;
+    QCSharedBuffer_t output;
     ret = output.Allocate( CL2DFlexConfig.outputWidth, CL2DFlexConfig.outputHeight,
                            CL2DFlexConfig.outputFormat );
     ret = CL2DFlexObj.Init( pName, &CL2DFlexConfig );

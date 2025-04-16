@@ -5,7 +5,7 @@
 
 #include "include/CL2DPipelineRemap.hpp"
 
-namespace ridehal
+namespace QC
 {
 namespace component
 {
@@ -14,85 +14,85 @@ CL2DPipelineRemap::CL2DPipelineRemap() {}
 
 CL2DPipelineRemap::~CL2DPipelineRemap() {}
 
-RideHalError_e CL2DPipelineRemap::Init( uint32_t inputId, cl_kernel *pKernel,
-                                        CL2DFlex_Config_t *pConfig, OpenclSrv *pOpenclSrvObj )
+QCStatus_e CL2DPipelineRemap::Init( uint32_t inputId, cl_kernel *pKernel,
+                                    CL2DFlex_Config_t *pConfig, OpenclSrv *pOpenclSrvObj )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     m_inputId = inputId;
     m_pOpenclSrvObj = pOpenclSrvObj;
     m_config = *pConfig;
 
-    if ( ( RIDEHAL_IMAGE_FORMAT_NV12 == m_config.inputFormats[m_inputId] ) &&
-         ( RIDEHAL_IMAGE_FORMAT_RGB888 == m_config.outputFormat ) )
+    if ( ( QC_IMAGE_FORMAT_NV12 == m_config.inputFormats[m_inputId] ) &&
+         ( QC_IMAGE_FORMAT_RGB888 == m_config.outputFormat ) )
     {
         m_pipeline = CL2DFLEX_PIPELINE_REMAP_NEAREST_NV12_TO_RGB;
         ret = m_pOpenclSrvObj->CreateKernel( pKernel, "RemapNV12ToRGB" );
     }
-    else if ( ( RIDEHAL_IMAGE_FORMAT_NV12 == m_config.inputFormats[m_inputId] ) &&
-              ( RIDEHAL_IMAGE_FORMAT_BGR888 == m_config.outputFormat ) )
+    else if ( ( QC_IMAGE_FORMAT_NV12 == m_config.inputFormats[m_inputId] ) &&
+              ( QC_IMAGE_FORMAT_BGR888 == m_config.outputFormat ) )
     {
         m_pipeline = CL2DFLEX_PIPELINE_REMAP_NEAREST_NV12_TO_BGR;
         ret = m_pOpenclSrvObj->CreateKernel( pKernel, "RemapNV12ToBGR" );
     }
     else
     {
-        RIDEHAL_ERROR( "Invalid CL2DFlex Remap pipeline for inputId=%d!", m_inputId );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "Invalid CL2DFlex Remap pipeline for inputId=%d!", m_inputId );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     m_pKernel = pKernel;
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = m_pOpenclSrvObj->RegBuf( &( m_config.remapTable[inputId].pMapX->buffer ),
                                        &m_bufferMapX );
     }
-    if ( RIDEHAL_ERROR_NONE != ret )
+    if ( QC_STATUS_OK != ret )
     {
-        RIDEHAL_ERROR( "Failed to register mapX buffer!" );
+        QC_ERROR( "Failed to register mapX buffer!" );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = m_pOpenclSrvObj->RegBuf( &( m_config.remapTable[inputId].pMapY->buffer ),
                                        &m_bufferMapY );
     }
-    if ( RIDEHAL_ERROR_NONE != ret )
+    if ( QC_STATUS_OK != ret )
     {
-        RIDEHAL_ERROR( "Failed to register mapY buffer!" );
+        QC_ERROR( "Failed to register mapY buffer!" );
     }
 
     return ret;
 }
 
-RideHalError_e CL2DPipelineRemap::Deinit()
+QCStatus_e CL2DPipelineRemap::Deinit()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     // empty function
 
     return ret;
 }
 
-RideHalError_e CL2DPipelineRemap::Execute( const RideHal_SharedBuffer_t *pInput,
-                                           const RideHal_SharedBuffer_t *pOutput )
+QCStatus_e CL2DPipelineRemap::Execute( const QCSharedBuffer_t *pInput,
+                                       const QCSharedBuffer_t *pOutput )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     cl_mem bufferDst;
     ret = m_pOpenclSrvObj->RegBuf( &( pOutput->buffer ), &bufferDst );
-    if ( RIDEHAL_ERROR_NONE != ret )
+    if ( QC_STATUS_OK != ret )
     {
-        RIDEHAL_ERROR( "Failed to register output buffer!" );
+        QC_ERROR( "Failed to register output buffer!" );
     }
     else
     {
         cl_mem bufferSrc;
         ret = m_pOpenclSrvObj->RegBuf( &( pInput->buffer ), &bufferSrc );
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
-            RIDEHAL_ERROR( "Failed to register input buffer!" );
+            QC_ERROR( "Failed to register input buffer!" );
         }
         else
         {
@@ -112,8 +112,8 @@ RideHalError_e CL2DPipelineRemap::Execute( const RideHal_SharedBuffer_t *pInput,
             }
             else
             {
-                RIDEHAL_ERROR( "Invalid CL2DFlex Remap pipeline for m_inputId=%d!", m_inputId );
-                ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+                QC_ERROR( "Invalid CL2DFlex Remap pipeline for m_inputId=%d!", m_inputId );
+                ret = QC_STATUS_BAD_ARGUMENTS;
             }
         }
     }
@@ -121,24 +121,24 @@ RideHalError_e CL2DPipelineRemap::Execute( const RideHal_SharedBuffer_t *pInput,
     return ret;
 }
 
-RideHalError_e CL2DPipelineRemap::ExecuteWithROI( const RideHal_SharedBuffer_t *pInput,
-                                                  const RideHal_SharedBuffer_t *pOutput,
-                                                  const CL2DFlex_ROIConfig_t *pROIs,
-                                                  const uint32_t numROIs )
+QCStatus_e CL2DPipelineRemap::ExecuteWithROI( const QCSharedBuffer_t *pInput,
+                                              const QCSharedBuffer_t *pOutput,
+                                              const CL2DFlex_ROIConfig_t *pROIs,
+                                              const uint32_t numROIs )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+    QCStatus_e ret = QC_STATUS_BAD_ARGUMENTS;
 
     // empty function
 
     return ret;
 }
 
-RideHalError_e CL2DPipelineRemap::RemapFromNV12ToRGB( cl_mem bufferSrc, uint32_t srcOffset,
-                                                      cl_mem bufferDst, uint32_t dstOffset,
-                                                      const RideHal_SharedBuffer_t *pInput,
-                                                      const RideHal_SharedBuffer_t *pOutput )
+QCStatus_e CL2DPipelineRemap::RemapFromNV12ToRGB( cl_mem bufferSrc, uint32_t srcOffset,
+                                                  cl_mem bufferDst, uint32_t dstOffset,
+                                                  const QCSharedBuffer_t *pInput,
+                                                  const QCSharedBuffer_t *pOutput )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     size_t numOfArgs = 16;
     OpenclIfcae_Arg_t OpenclArgs[16];
@@ -185,21 +185,21 @@ RideHalError_e CL2DPipelineRemap::RemapFromNV12ToRGB( cl_mem bufferSrc, uint32_t
     OpenclWorkParams.pLocalWorkSize = NULL;
 
     ret = m_pOpenclSrvObj->Execute( m_pKernel, OpenclArgs, numOfArgs, &OpenclWorkParams );
-    if ( RIDEHAL_ERROR_NONE != ret )
+    if ( QC_STATUS_OK != ret )
     {
-        RIDEHAL_ERROR( "Failed to execute remap NV12 to RGB OpenCL kernel!" );
-        ret = RIDEHAL_ERROR_FAIL;
+        QC_ERROR( "Failed to execute remap NV12 to RGB OpenCL kernel!" );
+        ret = QC_STATUS_FAIL;
     }
 
     return ret;
 }
 
-RideHalError_e CL2DPipelineRemap::RemapFromNV12ToBGR( cl_mem bufferSrc, uint32_t srcOffset,
-                                                      cl_mem bufferDst, uint32_t dstOffset,
-                                                      const RideHal_SharedBuffer_t *pInput,
-                                                      const RideHal_SharedBuffer_t *pOutput )
+QCStatus_e CL2DPipelineRemap::RemapFromNV12ToBGR( cl_mem bufferSrc, uint32_t srcOffset,
+                                                  cl_mem bufferDst, uint32_t dstOffset,
+                                                  const QCSharedBuffer_t *pInput,
+                                                  const QCSharedBuffer_t *pOutput )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     size_t numOfArgs = 16;
     OpenclIfcae_Arg_t OpenclArgs[16];
@@ -246,14 +246,14 @@ RideHalError_e CL2DPipelineRemap::RemapFromNV12ToBGR( cl_mem bufferSrc, uint32_t
     OpenclWorkParams.pLocalWorkSize = NULL;
 
     ret = m_pOpenclSrvObj->Execute( m_pKernel, OpenclArgs, numOfArgs, &OpenclWorkParams );
-    if ( RIDEHAL_ERROR_NONE != ret )
+    if ( QC_STATUS_OK != ret )
     {
-        RIDEHAL_ERROR( "Failed to execute remap NV12 to BGR OpenCL kernel!" );
-        ret = RIDEHAL_ERROR_FAIL;
+        QC_ERROR( "Failed to execute remap NV12 to BGR OpenCL kernel!" );
+        ret = QC_STATUS_FAIL;
     }
 
     return ret;
 }
 
 }   // namespace component
-}   // namespace ridehal
+}   // namespace QC

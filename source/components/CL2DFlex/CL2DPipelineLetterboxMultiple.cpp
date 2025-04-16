@@ -5,7 +5,7 @@
 
 #include "include/CL2DPipelineLetterboxMultiple.hpp"
 
-namespace ridehal
+namespace QC
 {
 namespace component
 {
@@ -14,91 +14,91 @@ CL2DPipelineLetterboxMultiple::CL2DPipelineLetterboxMultiple() {}
 
 CL2DPipelineLetterboxMultiple::~CL2DPipelineLetterboxMultiple() {}
 
-RideHalError_e CL2DPipelineLetterboxMultiple::Init( uint32_t inputId, cl_kernel *pKernel,
-                                                    CL2DFlex_Config_t *pConfig,
-                                                    OpenclSrv *pOpenclSrvObj )
+QCStatus_e CL2DPipelineLetterboxMultiple::Init( uint32_t inputId, cl_kernel *pKernel,
+                                                CL2DFlex_Config_t *pConfig,
+                                                OpenclSrv *pOpenclSrvObj )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     m_inputId = inputId;
     m_pOpenclSrvObj = pOpenclSrvObj;
     m_config = *pConfig;
 
-    if ( ( RIDEHAL_IMAGE_FORMAT_NV12 == m_config.inputFormats[m_inputId] ) &&
-         ( RIDEHAL_IMAGE_FORMAT_RGB888 == m_config.outputFormat ) && ( 1 == m_config.numOfInputs ) )
+    if ( ( QC_IMAGE_FORMAT_NV12 == m_config.inputFormats[m_inputId] ) &&
+         ( QC_IMAGE_FORMAT_RGB888 == m_config.outputFormat ) && ( 1 == m_config.numOfInputs ) )
     {
         m_pipeline = CL2DFLEX_PIPELINE_LETTERBOX_NEAREST_NV12_TO_RGB_MULTIPLE;
         ret = m_pOpenclSrvObj->CreateKernel( pKernel, "LetterboxNV12ToRGBMultiple" );
     }
     else
     {
-        RIDEHAL_ERROR( "Invalid CL2DFlex letterbox multiple pipeline for inputId=%d!", m_inputId );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "Invalid CL2DFlex letterbox multiple pipeline for inputId=%d!", m_inputId );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     m_pKernel = pKernel;
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
-        RideHal_TensorProps_t roiProp = {
-                RIDEHAL_TENSOR_TYPE_INT_32,
-                { ( uint32_t )( RIDEHAL_CL2DFLEX_ROI_NUMBER_MAX * 4 ), 0 },
+        QCTensorProps_t roiProp = {
+                QC_TENSOR_TYPE_INT_32,
+                { ( uint32_t )( QC_CL2DFLEX_ROI_NUMBER_MAX * 4 ), 0 },
                 1,
         };
         ret = m_roiBuffer.Allocate( &roiProp );
     }
-    if ( RIDEHAL_ERROR_NONE != ret )
+    if ( QC_STATUS_OK != ret )
     {
-        RIDEHAL_ERROR( "Failed to allocate roi buffer!" );
+        QC_ERROR( "Failed to allocate roi buffer!" );
     }
 
 
     return ret;
 }
 
-RideHalError_e CL2DPipelineLetterboxMultiple::Deinit()
+QCStatus_e CL2DPipelineLetterboxMultiple::Deinit()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     ret = m_roiBuffer.Free();
-    if ( RIDEHAL_ERROR_NONE != ret )
+    if ( QC_STATUS_OK != ret )
     {
-        RIDEHAL_ERROR( "Failed to deallocate roi buffer!" );
+        QC_ERROR( "Failed to deallocate roi buffer!" );
     }
 
     return ret;
 }
 
-RideHalError_e CL2DPipelineLetterboxMultiple::Execute( const RideHal_SharedBuffer_t *pInput,
-                                                       const RideHal_SharedBuffer_t *pOutput )
+QCStatus_e CL2DPipelineLetterboxMultiple::Execute( const QCSharedBuffer_t *pInput,
+                                                   const QCSharedBuffer_t *pOutput )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+    QCStatus_e ret = QC_STATUS_BAD_ARGUMENTS;
 
     // empty function
 
     return ret;
 }
 
-RideHalError_e CL2DPipelineLetterboxMultiple::ExecuteWithROI( const RideHal_SharedBuffer_t *pInput,
-                                                              const RideHal_SharedBuffer_t *pOutput,
-                                                              const CL2DFlex_ROIConfig_t *pROIs,
-                                                              const uint32_t numROIs )
+QCStatus_e CL2DPipelineLetterboxMultiple::ExecuteWithROI( const QCSharedBuffer_t *pInput,
+                                                          const QCSharedBuffer_t *pOutput,
+                                                          const CL2DFlex_ROIConfig_t *pROIs,
+                                                          const uint32_t numROIs )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     cl_mem bufferDst;
     ret = m_pOpenclSrvObj->RegBuf( &( pOutput->buffer ), &bufferDst );
-    if ( RIDEHAL_ERROR_NONE != ret )
+    if ( QC_STATUS_OK != ret )
     {
-        RIDEHAL_ERROR( "Failed to register output buffer!" );
+        QC_ERROR( "Failed to register output buffer!" );
     }
     else
     {
         cl_mem bufferSrc;
         ret = m_pOpenclSrvObj->RegBuf( &( pInput->buffer ), &bufferSrc );
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
-            RIDEHAL_ERROR( "Failed to register input buffer!" );
+            QC_ERROR( "Failed to register input buffer!" );
         }
         else
         {
@@ -111,9 +111,9 @@ RideHalError_e CL2DPipelineLetterboxMultiple::ExecuteWithROI( const RideHal_Shar
             }
             else
             {
-                RIDEHAL_ERROR( "Invalid CL2DFlex letterbox multiple pipeline for inputId=%d!",
-                               m_inputId );
-                ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+                QC_ERROR( "Invalid CL2DFlex letterbox multiple pipeline for inputId=%d!",
+                          m_inputId );
+                ret = QC_STATUS_BAD_ARGUMENTS;
             }
         }
     }
@@ -121,12 +121,12 @@ RideHalError_e CL2DPipelineLetterboxMultiple::ExecuteWithROI( const RideHal_Shar
     return ret;
 }
 
-RideHalError_e CL2DPipelineLetterboxMultiple::LetterboxFromNV12ToRGBMultiple(
+QCStatus_e CL2DPipelineLetterboxMultiple::LetterboxFromNV12ToRGBMultiple(
         uint32_t numROIs, cl_mem bufferSrc, uint32_t srcOffset, cl_mem bufferDst,
-        uint32_t dstOffset, const RideHal_SharedBuffer_t *pInput,
-        const RideHal_SharedBuffer_t *pOutput, const CL2DFlex_ROIConfig_t *pROIs )
+        uint32_t dstOffset, const QCSharedBuffer_t *pInput, const QCSharedBuffer_t *pOutput,
+        const CL2DFlex_ROIConfig_t *pROIs )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     for ( int i = 0; i < numROIs; i++ )
     {
@@ -140,19 +140,19 @@ RideHalError_e CL2DPipelineLetterboxMultiple::LetterboxFromNV12ToRGBMultiple(
         }
         else
         {
-            ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
-            RIDEHAL_ERROR( "Invalid roi parameter for inputId=%d\n!", i );
+            ret = QC_STATUS_BAD_ARGUMENTS;
+            QC_ERROR( "Invalid roi parameter for inputId=%d\n!", i );
             break;
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         cl_mem roiBufferCL;
         ret = m_pOpenclSrvObj->RegBuf( &( m_roiBuffer.buffer ), &roiBufferCL );
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
-            RIDEHAL_ERROR( "Failed to register roi buffer!" );
+            QC_ERROR( "Failed to register roi buffer!" );
         }
         else
         {
@@ -194,16 +194,16 @@ RideHalError_e CL2DPipelineLetterboxMultiple::LetterboxFromNV12ToRGBMultiple(
             OpenclWorkParams.pLocalWorkSize = NULL;
 
             ret = m_pOpenclSrvObj->Execute( m_pKernel, OpenclArgs, numOfArgs, &OpenclWorkParams );
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
-                RIDEHAL_ERROR( "Failed to execute LetterboxMultiple NV12 to RGB OpenCL kernel!" );
-                ret = RIDEHAL_ERROR_FAIL;
+                QC_ERROR( "Failed to execute LetterboxMultiple NV12 to RGB OpenCL kernel!" );
+                ret = QC_STATUS_FAIL;
             }
 
             ret = m_pOpenclSrvObj->DeregBuf( &( m_roiBuffer.buffer ) );
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
-                RIDEHAL_ERROR( "Failed to deregister roi buffer!" );
+                QC_ERROR( "Failed to deregister roi buffer!" );
             }
         }
     }
@@ -212,4 +212,4 @@ RideHalError_e CL2DPipelineLetterboxMultiple::LetterboxFromNV12ToRGBMultiple(
 }
 
 }   // namespace component
-}   // namespace ridehal
+}   // namespace QC

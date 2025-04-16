@@ -3,21 +3,21 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#ifndef RIDEHAL_SAMPLE_TINYVIZ_CAM_INFO_HPP
-#define RIDEHAL_SAMPLE_TINYVIZ_CAM_INFO_HPP
+#ifndef QC_SAMPLE_TINYVIZ_CAM_INFO_HPP
+#define QC_SAMPLE_TINYVIZ_CAM_INFO_HPP
 
+#include "QC/infras/memory/SharedBuffer.hpp"
+#include "QC/sample/DataTypes.hpp"
 #include "TextRenderer.hpp"
-#include "ridehal/common/SharedBuffer.hpp"
-#include "ridehal/sample/DataTypes.hpp"
 #include <deque>
 #include <list>
 #include <map>
 #include <mutex>
 #include <vector>
 
-using namespace ridehal::sample;
+using namespace QC::sample;
 
-namespace ridehal
+namespace QC
 {
 namespace sample
 {
@@ -46,7 +46,7 @@ public:
     uint32_t width();
     uint32_t height();
     uint32_t stride();
-    RideHal_ImageFormat_e format();
+    QCImageFormat_e format();
 
     std::string camName;
     SDL_Color color;
@@ -79,6 +79,6 @@ private:
 };
 
 }   // namespace sample
-}   // namespace ridehal
+}   // namespace QC
 
-#endif   // #ifndef RIDEHAL_SAMPLE_TINYVIZ_CAM_INFO_HPP
+#endif   // #ifndef QC_SAMPLE_TINYVIZ_CAM_INFO_HPP

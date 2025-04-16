@@ -3,12 +3,12 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#ifndef RIDEHAL_CL2D_PIPELINE_CONVERTUBWC_HPP
-#define RIDEHAL_CL2D_PIPELINE_CONVERTUBWC_HPP
+#ifndef QC_CL2D_PIPELINE_CONVERTUBWC_HPP
+#define QC_CL2D_PIPELINE_CONVERTUBWC_HPP
 
 #include "include/CL2DPipelineBase.hpp"
 
-namespace ridehal
+namespace QC
 {
 namespace component
 {
@@ -20,25 +20,23 @@ public:
 
     ~CL2DPipelineConvertUBWC();
 
-    RideHalError_e Init( uint32_t inputId, cl_kernel *pKernel, CL2DFlex_Config_t *pConfig,
-                         OpenclSrv *pOpenclSrvObj );
+    QCStatus_e Init( uint32_t inputId, cl_kernel *pKernel, CL2DFlex_Config_t *pConfig,
+                     OpenclSrv *pOpenclSrvObj );
 
-    RideHalError_e Deinit();
+    QCStatus_e Deinit();
 
-    RideHalError_e Execute( const RideHal_SharedBuffer_t *pInput,
-                            const RideHal_SharedBuffer_t *pOutput );
+    QCStatus_e Execute( const QCSharedBuffer_t *pInput, const QCSharedBuffer_t *pOutput );
 
-    RideHalError_e ExecuteWithROI( const RideHal_SharedBuffer_t *pInput,
-                                   const RideHal_SharedBuffer_t *pOutput,
-                                   const CL2DFlex_ROIConfig_t *pROIs, const uint32_t numROIs );
+    QCStatus_e ExecuteWithROI( const QCSharedBuffer_t *pInput, const QCSharedBuffer_t *pOutput,
+                               const CL2DFlex_ROIConfig_t *pROIs, const uint32_t numROIs );
 
 private:
-    RideHalError_e ConvertUBWCFromNV12UBWCToNV12( const RideHal_SharedBuffer_t *pInput,
-                                                  const RideHal_SharedBuffer_t *pOutput );
+    QCStatus_e ConvertUBWCFromNV12UBWCToNV12( const QCSharedBuffer_t *pInput,
+                                              const QCSharedBuffer_t *pOutput );
 
 };   // class PipelineConvertUBWC
 
 }   // namespace component
-}   // namespace ridehal
+}   // namespace QC
 
-#endif   // RIDEHAL_CL2D_PIPELINE_CONVERTUBWC_HPP
+#endif   // QC_CL2D_PIPELINE_CONVERTUBWC_HPP

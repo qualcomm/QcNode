@@ -33,5 +33,5 @@ install(FILES prebuilt/dsp/v73/libFadasIface_skel.so DESTINATION lib/dsp/v73)
 install(FILES prebuilt/dsp/v75/libFadasIface_skel.so DESTINATION lib/dsp/v75)
 install(FILES prebuilt/dsp/v73/libFadasIface_skel.so DESTINATION lib/dsp)
 
-install( FILES ${FADASIFACE_HEADERS} DESTINATION include/ridehal/libs/FadasIface )
+install( FILES ${FADASIFACE_HEADERS} DESTINATION include/qcnode/libs/FadasIface )
 

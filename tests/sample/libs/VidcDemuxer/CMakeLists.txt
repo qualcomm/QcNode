@@ -11,7 +11,7 @@ add_library( VidcDemuxer STATIC ${VIDCDEMUX_SRC} )
 
 target_include_directories( VidcDemuxer PUBLIC  ${HEADERS_DIR} )
 
-set( TARGET_LIBRARIES RideHal vidc )
+set( TARGET_LIBRARIES QCNode vidc )
 
 if( "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" )
     list( APPEND TARGET_LIBRARIES filedemux )

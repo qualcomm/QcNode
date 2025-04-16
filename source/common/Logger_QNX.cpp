@@ -3,24 +3,24 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#include "ridehal/common/Logger.hpp"
+#include "QC/infras/logger/Logger.hpp"
 #include <map>
 #include <mutex>
 #include <sys/slog2.h>
 
 
-#ifndef RIDEHAL_LOG_MSG_MAX_LEN
-#define RIDEHAL_LOG_MSG_MAX_LEN 288
+#ifndef QC_LOG_MSG_MAX_LEN
+#define QC_LOG_MSG_MAX_LEN 288
 #endif
 
-namespace ridehal
+namespace QC
 {
 namespace common
 {
 
 extern "C" char *__progname;
 
-static uint8_t s_rideHalLoggerLevelToSlog2Level[] = {
+static uint8_t s_qcLoggerLevelToSlog2Level[] = {
         SLOG2_DEBUG2,  /* LOGGER_LEVEL_VERBOSE */
         SLOG2_DEBUG1,  /* LOGGER_LEVEL_DEBUG */
         SLOG2_INFO,    /* LOGGER_LEVEL_INFO */
@@ -34,7 +34,7 @@ static std::map<std::string, Logger_Handle_t> s_slog2Map;
 void Logger::DefaultLog( Logger_Handle_t hHandle, Logger_Level_e level, const char *pFormat,
                          va_list args )
 {
-    char msg[RIDEHAL_LOG_MSG_MAX_LEN];
+    char msg[QC_LOG_MSG_MAX_LEN];
     slog2_buffer_t hBuffer = static_cast<slog2_buffer_t>( hHandle );
     int len = 0;
     int rc;
@@ -45,8 +45,8 @@ void Logger::DefaultLog( Logger_Handle_t hHandle, Logger_Level_e level, const ch
     {
         // NOTE: always use SLOG2_INFO level as observed that the DEBUG/VERBOSE message are lost,
         // and this is a workaround
-        // rc = slog2f( hBuffer, 0, s_rideHalLoggerLevelToSlog2Level[level], msg );
-        (void) s_rideHalLoggerLevelToSlog2Level;
+        // rc = slog2f( hBuffer, 0, s_qcLoggerLevelToSlog2Level[level], msg );
+        (void) s_qcLoggerLevelToSlog2Level;
         rc = slog2f( hBuffer, 0, SLOG2_INFO, msg );
         if ( 0 != rc )
         {
@@ -61,17 +61,17 @@ void Logger::DefaultLog( Logger_Handle_t hHandle, Logger_Level_e level, const ch
     }
 }
 
-RideHalError_e Logger::DefaultCreate( const char *pName, Logger_Level_e level,
-                                      Logger_Handle_t *pHandle )
+QCStatus_e Logger::DefaultCreate( const char *pName, Logger_Level_e level,
+                                  Logger_Handle_t *pHandle )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     slog2_buffer_t hBuffer = nullptr;
     slog2_buffer_set_config_t bufferConfig;
     (void) level;
 
     if ( ( nullptr == pName ) || ( nullptr == pHandle ) )
     {
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
@@ -95,7 +95,7 @@ RideHalError_e Logger::DefaultCreate( const char *pName, Logger_Level_e level,
             else
             {
                 (void) fprintf( stderr, "ERROR: failed to create slog2 %s: %d\n", pName, rv );
-                ret = RIDEHAL_ERROR_FAIL;
+                ret = QC_STATUS_FAIL;
             }
         }
         else
@@ -111,4 +111,4 @@ void Logger::DefaultDestory( Logger_Handle_t hHandle ) {}
 
 
 }   // namespace common
-}   // namespace ridehal
+}   // namespace QC

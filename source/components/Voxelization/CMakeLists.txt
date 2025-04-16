@@ -2,21 +2,21 @@
 set( HEADERS_DIR ${PROJECT_SOURCE_DIR}/include )
 
 set( VOXELICATION_HEADERS
-    ${HEADERS_DIR}/ridehal/component/Voxelization.hpp
+    ${HEADERS_DIR}/QC/component/Voxelization.hpp
 )
 
 set( PLRPRE_SOURCES Voxelization.cpp )
 
-list( APPEND TARGET_LIBRARIES RideHalComponentCommon FadasIface OpenclIface )
+list( APPEND TARGET_LIBRARIES QCNodeComponentCommon FadasIface OpenclIface )
 list( APPEND HEADERS_DIR ${PROJECT_SOURCE_DIR}/source/libs/OpenclIface )
 list( APPEND HEADERS_DIR ${PROJECT_SOURCE_DIR}/source/components/Voxelization )
-add_library( RideHalVoxelization OBJECT ${PLRPRE_SOURCES} )
+add_library( QCNodeVoxelization OBJECT ${PLRPRE_SOURCES} )
 
-set_property( TARGET RideHalVoxelization PROPERTY LINKER_LANGUAGE CXX )
-set_property( TARGET RideHalVoxelization PROPERTY POSITION_INDEPENDENT_CODE ON )
+set_property( TARGET QCNodeVoxelization PROPERTY LINKER_LANGUAGE CXX )
+set_property( TARGET QCNodeVoxelization PROPERTY POSITION_INDEPENDENT_CODE ON )
 
-target_include_directories( RideHalVoxelization PUBLIC ${HEADERS_DIR} )
+target_include_directories( QCNodeVoxelization PUBLIC ${HEADERS_DIR} )
 
-target_link_libraries( RideHalVoxelization PUBLIC ${TARGET_LIBRARIES} )
+target_link_libraries( QCNodeVoxelization PUBLIC ${TARGET_LIBRARIES} )
 
-install( FILES ${VOXELICATION_HEADERS} DESTINATION include/ridehal/component )
+install( FILES ${VOXELICATION_HEADERS} DESTINATION include/QC/component )

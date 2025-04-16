@@ -3,8 +3,8 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#include "ridehal/common/BufferManager.hpp"
-#include "ridehal/common/SharedBuffer.hpp"
+#include "QC/infras/memory/BufferManager.hpp"
+#include "QC/infras/memory/SharedBuffer.hpp"
 
 #include <fcntl.h>
 #include <linux/dma-heap.h>
@@ -14,7 +14,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-namespace ridehal
+namespace QC
 {
 namespace common
 {
@@ -59,10 +59,10 @@ static void __attribute__( ( destructor ) ) LinuxHeapDevFdCleanUp( void )
     }
 }
 
-RideHalError_e RideHal_DmaAllocate( void **pData, uint64_t *pDmaHandle, size_t size,
-                                    RideHal_BufferFlags_t flags, RideHal_BufferUsage_e usage )
+QCStatus_e QCDmaAllocate( void **pData, uint64_t *pDmaHandle, size_t size, QCBufferFlags_t flags,
+                          QCBufferUsage_e usage )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     heap_type heapType = ID_DMA_BUF_HEAP_UNCACHED;
     void *pAddr = nullptr;
     int fd = -1;
@@ -72,50 +72,50 @@ RideHalError_e RideHal_DmaAllocate( void **pData, uint64_t *pDmaHandle, size_t s
 
     if ( ( nullptr == pData ) || ( nullptr == pDmaHandle ) )
     {
-        RIDEHAL_LOG_ERROR( "DmaAllocate with pData or pDmaHandle is nullptr" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_LOG_ERROR( "DmaAllocate with pData or pDmaHandle is nullptr" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         /* convert ride hal flags to the dma buf heap type */
-        if ( 0 != ( flags & RIDEHAL_BUFFER_FLAGS_CACHE_WB_WA ) )
+        if ( 0 != ( flags & QC_BUFFER_FLAGS_CACHE_WB_WA ) )
         {
             heapType = ID_DMA_BUF_HEAP_CACHED;
         }
 
-        if ( ( usage < RIDEHAL_BUFFER_USAGE_MAX ) && ( usage >= RIDEHAL_BUFFER_USAGE_DEFAULT ) )
+        if ( ( usage < QC_BUFFER_USAGE_MAX ) && ( usage >= QC_BUFFER_USAGE_DEFAULT ) )
         {
             /* usage OK but not used */
         }
         else
         {
-            RIDEHAL_LOG_ERROR( "DmaAllocate with invalid usage: %d", usage );
-            ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+            QC_LOG_ERROR( "DmaAllocate with invalid usage: %d", usage );
+            ret = QC_STATUS_BAD_ARGUMENTS;
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         devFd = GetLinuxHeapDevFd( heapType );
         if ( devFd < 0 )
         {
-            RIDEHAL_LOG_ERROR( "DmaAllocate failed to do dmabuf heap init: %d", devFd );
-            ret = RIDEHAL_ERROR_UNSUPPORTED;
+            QC_LOG_ERROR( "DmaAllocate failed to do dmabuf heap init: %d", devFd );
+            ret = QC_STATUS_UNSUPPORTED;
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         rc = dmabufheap_alloc( devFd, size, 0, &fd );
         if ( rc < 0 )
         {
-            RIDEHAL_LOG_ERROR( "DmaAllocate failed to do dmabuf heap alloc: %d", rc );
-            ret = RIDEHAL_ERROR_NOMEM;
+            QC_LOG_ERROR( "DmaAllocate failed to do dmabuf heap alloc: %d", rc );
+            ret = QC_STATUS_NOMEM;
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         pAddr = mmap( NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0 );
         if ( ( nullptr != pAddr ) && ( MAP_FAILED != pAddr ) )
@@ -125,8 +125,8 @@ RideHalError_e RideHal_DmaAllocate( void **pData, uint64_t *pDmaHandle, size_t s
         }
         else
         {
-            RIDEHAL_LOG_ERROR( "DmaAllocate failed to mmap: %d", errno );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_LOG_ERROR( "DmaAllocate failed to mmap: %d", errno );
+            ret = QC_STATUS_FAIL;
             close( fd );
         }
     }
@@ -135,98 +135,97 @@ RideHalError_e RideHal_DmaAllocate( void **pData, uint64_t *pDmaHandle, size_t s
     return ret;
 }
 
-RideHalError_e RideHal_DmaFree( void *pData, uint64_t dmaHandle, size_t size )
+QCStatus_e QCDmaFree( void *pData, uint64_t dmaHandle, size_t size )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     int fd = static_cast<int>( dmaHandle );
     int rc = 0;
 
     if ( nullptr == pData )
     {
-        RIDEHAL_LOG_ERROR( "DmaFree with pData is nullptr" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_LOG_ERROR( "DmaFree with pData is nullptr" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else if ( fd < 0 )
     {
-        RIDEHAL_LOG_ERROR( "DmaFree with invalid dmaHandle" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_LOG_ERROR( "DmaFree with invalid dmaHandle" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
         rc = munmap( pData, size );
         if ( 0 != rc )
         {
-            RIDEHAL_LOG_ERROR( "DmaFree failed to do munmap for buffer %p: %d", pData, rc );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_LOG_ERROR( "DmaFree failed to do munmap for buffer %p: %d", pData, rc );
+            ret = QC_STATUS_FAIL;
         }
 
         rc = close( fd );
         if ( 0 != rc )
         {
-            RIDEHAL_LOG_ERROR( "DmaFree failed to close buffer %" PRIu64 ": %d", dmaHandle, rc );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_LOG_ERROR( "DmaFree failed to close buffer %" PRIu64 ": %d", dmaHandle, rc );
+            ret = QC_STATUS_FAIL;
         }
     }
 
     return ret;
 }
 
-RideHalError_e RideHal_DmaImport( void **pData, uint64_t *pDmaHandle, uint64_t pid,
-                                  uint64_t dmaHandle, size_t size, RideHal_BufferFlags_t flags,
-                                  RideHal_BufferUsage_e usage )
+QCStatus_e QCDmaImport( void **pData, uint64_t *pDmaHandle, uint64_t pid, uint64_t dmaHandle,
+                        size_t size, QCBufferFlags_t flags, QCBufferUsage_e usage )
 {
     int rc = 0;
     heap_type heapType = ID_DMA_BUF_HEAP_UNCACHED;
     int devFd = -1;
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     int fd = static_cast<int>( dmaHandle );
     int newFd = -1;
     void *pAddr = nullptr;
 
     if ( ( nullptr == pData ) || ( nullptr == pDmaHandle ) || ( fd < 0 ) )
     {
-        RIDEHAL_LOG_ERROR( "DmaImport with invalid pData or dmaHandle" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_LOG_ERROR( "DmaImport with invalid pData or dmaHandle" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         /* convert ride hal flags to the dma buf heap type */
-        if ( 0 != ( flags & RIDEHAL_BUFFER_FLAGS_CACHE_WB_WA ) )
+        if ( 0 != ( flags & QC_BUFFER_FLAGS_CACHE_WB_WA ) )
         {
             heapType = ID_DMA_BUF_HEAP_CACHED;
         }
 
-        if ( ( usage < RIDEHAL_BUFFER_USAGE_MAX ) && ( usage >= RIDEHAL_BUFFER_USAGE_DEFAULT ) )
+        if ( ( usage < QC_BUFFER_USAGE_MAX ) && ( usage >= QC_BUFFER_USAGE_DEFAULT ) )
         {
             /* usage OK but not used */
         }
         else
         {
-            RIDEHAL_LOG_ERROR( "DmaImport with invalid usage: %d", usage );
-            ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+            QC_LOG_ERROR( "DmaImport with invalid usage: %d", usage );
+            ret = QC_STATUS_BAD_ARGUMENTS;
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         devFd = GetLinuxHeapDevFd( heapType );
         if ( devFd < 0 )
         {
-            RIDEHAL_LOG_ERROR( "DmaImport failed to do dmabuf heap init: %d", devFd );
-            ret = RIDEHAL_ERROR_UNSUPPORTED;
+            QC_LOG_ERROR( "DmaImport failed to do dmabuf heap init: %d", devFd );
+            ret = QC_STATUS_UNSUPPORTED;
         }
     }
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         if ( 0 != pid )
         {
             newFd = dmabufheap_import( static_cast<int>( pid ), fd );
             if ( newFd < 0 )
             {
-                RIDEHAL_LOG_ERROR( "DmaImport failed to import dma-buf pid %d fd %d: %d",
-                                   static_cast<int>( pid ), fd );
-                ret = RIDEHAL_ERROR_FAIL;
+                QC_LOG_ERROR( "DmaImport failed to import dma-buf pid %d fd %d: %d",
+                              static_cast<int>( pid ), fd );
+                ret = QC_STATUS_FAIL;
             }
         }
         else
@@ -235,13 +234,13 @@ RideHalError_e RideHal_DmaImport( void **pData, uint64_t *pDmaHandle, uint64_t p
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         pAddr = mmap( NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, newFd, 0 );
         if ( ( nullptr == pAddr ) || ( MAP_FAILED == pAddr ) )
         {
-            RIDEHAL_LOG_ERROR( "DmaImport map failed: %d", errno );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_LOG_ERROR( "DmaImport map failed: %d", errno );
+            ret = QC_STATUS_FAIL;
         }
         else
         {
@@ -253,41 +252,40 @@ RideHalError_e RideHal_DmaImport( void **pData, uint64_t *pDmaHandle, uint64_t p
     return ret;
 }
 
-RideHalError_e RideHal_DmaUnImport( void *pData, uint64_t dmaHandle, size_t size )
+QCStatus_e QCDmaUnImport( void *pData, uint64_t dmaHandle, size_t size )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     int fd = static_cast<int>( dmaHandle );
     int rc = 0;
 
     if ( nullptr == pData )
     {
-        RIDEHAL_LOG_ERROR( "DmaUnImport with pData is nullptr" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_LOG_ERROR( "DmaUnImport with pData is nullptr" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else if ( fd < 0 )
     {
-        RIDEHAL_LOG_ERROR( "DmaUnImport with invalid dmaHandle" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_LOG_ERROR( "DmaUnImport with invalid dmaHandle" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
         rc = munmap( pData, size );
         if ( 0 != rc )
         {
-            RIDEHAL_LOG_ERROR( "DmaUnImport failed to do munmap for buffer %p: %d", pData, rc );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_LOG_ERROR( "DmaUnImport failed to do munmap for buffer %p: %d", pData, rc );
+            ret = QC_STATUS_FAIL;
         }
 
         rc = close( fd );
         if ( 0 != rc )
         {
-            RIDEHAL_LOG_ERROR( "DmaUnImport failed to close buffer %" PRIu64 ": %d", dmaHandle,
-                               rc );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_LOG_ERROR( "DmaUnImport failed to close buffer %" PRIu64 ": %d", dmaHandle, rc );
+            ret = QC_STATUS_FAIL;
         }
     }
 
     return ret;
 }
 }   // namespace common
-}   // namespace ridehal
+}   // namespace QC

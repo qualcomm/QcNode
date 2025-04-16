@@ -3,12 +3,12 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#include "ridehal/component/Remap.hpp"
+#include "QC/component/Remap.hpp"
 
 #include <map>
 #include <vector>
 
-namespace ridehal
+namespace QC
 {
 namespace component
 {
@@ -17,69 +17,69 @@ Remap::Remap() {}
 
 Remap::~Remap() {}
 
-RideHalError_e Remap::Start()
+QCStatus_e Remap::Start()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
-    if ( RIDEHAL_COMPONENT_STATE_READY == m_state )
+    if ( QC_OBJECT_STATE_READY == m_state )
     {
-        m_state = RIDEHAL_COMPONENT_STATE_RUNNING;
+        m_state = QC_OBJECT_STATE_RUNNING;
     }
     else
     {
-        RIDEHAL_ERROR( "Remap component start failed due to wrong state!" );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_ERROR( "Remap component start failed due to wrong state!" );
+        ret = QC_STATUS_BAD_STATE;
     }
 
     return ret;
 }
 
-RideHalError_e Remap::Stop()
+QCStatus_e Remap::Stop()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
-    if ( RIDEHAL_COMPONENT_STATE_RUNNING == m_state )
+    if ( QC_OBJECT_STATE_RUNNING == m_state )
     {
-        m_state = RIDEHAL_COMPONENT_STATE_READY;
+        m_state = QC_OBJECT_STATE_READY;
     }
     else
     {
-        RIDEHAL_ERROR( "Remap component stop failed due to wrong state!" );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_ERROR( "Remap component stop failed due to wrong state!" );
+        ret = QC_STATUS_BAD_STATE;
     }
 
     return ret;
 }
 
-RideHalError_e Remap::Init( const char *pName, const Remap_Config_t *pConfig, Logger_Level_e level )
+QCStatus_e Remap::Init( const char *pName, const Remap_Config_t *pConfig, Logger_Level_e level )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     ret = ComponentIF::Init( pName, level );
-    if ( RIDEHAL_ERROR_NONE != ret )
+    if ( QC_STATUS_OK != ret )
     {
-        RIDEHAL_ERROR( "Failed to init component!" );
+        QC_ERROR( "Failed to init component!" );
     }
     else
     {
         if ( nullptr == pConfig )
         {
-            RIDEHAL_ERROR( "Empty config pointer!" );
-            RideHalError_e retVal = ComponentIF::Deinit();
-            if ( RIDEHAL_ERROR_NONE != retVal )
+            QC_ERROR( "Empty config pointer!" );
+            QCStatus_e retVal = ComponentIF::Deinit();
+            if ( QC_STATUS_OK != retVal )
             {
-                RIDEHAL_ERROR( "Deinit ComponentIF failed!" );
+                QC_ERROR( "Deinit ComponentIF failed!" );
             }
-            ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+            ret = QC_STATUS_BAD_ARGUMENTS;
         }
         else
         {
-            m_state = RIDEHAL_COMPONENT_STATE_INITIALIZING;
+            m_state = QC_OBJECT_STATE_INITIALIZING;
             m_config = *pConfig;
             ret = m_fadasRemapObj.Init( m_config.processor, pName, level );
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
-                RIDEHAL_ERROR( "Failed to init fadas remap!" );
+                QC_ERROR( "Failed to init fadas remap!" );
             }
             else
             {
@@ -88,9 +88,9 @@ RideHalError_e Remap::Init( const char *pName, const Remap_Config_t *pConfig, Lo
                         m_config.outputFormat, m_config.normlzR, m_config.normlzG, m_config.normlzB,
                         m_config.bEnableUndistortion, m_config.bEnableNormalize );
 
-                if ( RIDEHAL_ERROR_NONE != ret )
+                if ( QC_STATUS_OK != ret )
                 {
-                    RIDEHAL_ERROR( "Failed to set parameters!" );
+                    QC_ERROR( "Failed to set parameters!" );
                 }
                 else
                 {
@@ -101,19 +101,19 @@ RideHalError_e Remap::Init( const char *pName, const Remap_Config_t *pConfig, Lo
                                 m_config.inputConfigs[inputId].inputWidth,
                                 m_config.inputConfigs[inputId].inputHeight,
                                 m_config.inputConfigs[inputId].ROI );
-                        if ( RIDEHAL_ERROR_NONE != ret )
+                        if ( QC_STATUS_OK != ret )
                         {
-                            RIDEHAL_ERROR( "Create worker fail at inputId = %d", inputId );
-                            RideHalError_e retVal;
+                            QC_ERROR( "Create worker fail at inputId = %d", inputId );
+                            QCStatus_e retVal;
                             retVal = m_fadasRemapObj.DestroyMap();
-                            if ( RIDEHAL_ERROR_NONE != retVal )
+                            if ( QC_STATUS_OK != retVal )
                             {
-                                RIDEHAL_ERROR( "Destroy map failed!" );
+                                QC_ERROR( "Destroy map failed!" );
                             }
                             retVal = m_fadasRemapObj.DestroyWorkers();
-                            if ( RIDEHAL_ERROR_NONE != retVal )
+                            if ( QC_STATUS_OK != retVal )
                             {
-                                RIDEHAL_ERROR( "Destroy worker failed!" );
+                                QC_ERROR( "Destroy worker failed!" );
                             }
                             break;
                         }
@@ -123,19 +123,19 @@ RideHalError_e Remap::Init( const char *pName, const Remap_Config_t *pConfig, Lo
                                 m_config.inputConfigs[inputId].mapHeight,
                                 m_config.inputConfigs[inputId].remapTable.pMapX,
                                 m_config.inputConfigs[inputId].remapTable.pMapY );
-                        if ( RIDEHAL_ERROR_NONE != ret )
+                        if ( QC_STATUS_OK != ret )
                         {
-                            RIDEHAL_ERROR( "Create remap table fail at inputId = %d", inputId );
-                            RideHalError_e retVal;
+                            QC_ERROR( "Create remap table fail at inputId = %d", inputId );
+                            QCStatus_e retVal;
                             retVal = m_fadasRemapObj.DestroyMap();
-                            if ( RIDEHAL_ERROR_NONE != retVal )
+                            if ( QC_STATUS_OK != retVal )
                             {
-                                RIDEHAL_ERROR( "Destroy map failed!" );
+                                QC_ERROR( "Destroy map failed!" );
                             }
                             retVal = m_fadasRemapObj.DestroyWorkers();
-                            if ( RIDEHAL_ERROR_NONE != retVal )
+                            if ( QC_STATUS_OK != retVal )
                             {
-                                RIDEHAL_ERROR( "Destroy worker failed!" );
+                                QC_ERROR( "Destroy worker failed!" );
                             }
                             break;
                         }
@@ -143,23 +143,23 @@ RideHalError_e Remap::Init( const char *pName, const Remap_Config_t *pConfig, Lo
                 }
             }
 
-            if ( RIDEHAL_ERROR_NONE == ret )
+            if ( QC_STATUS_OK == ret )
             {
-                m_state = RIDEHAL_COMPONENT_STATE_READY;
+                m_state = QC_OBJECT_STATE_READY;
             }
             else
             {
-                m_state = RIDEHAL_COMPONENT_STATE_INITIAL;
-                RideHalError_e retVal;
+                m_state = QC_OBJECT_STATE_INITIAL;
+                QCStatus_e retVal;
                 retVal = m_fadasRemapObj.Deinit();
-                if ( RIDEHAL_ERROR_NONE != retVal )
+                if ( QC_STATUS_OK != retVal )
                 {
-                    RIDEHAL_ERROR( "Deinit fadas remap failed!" );
+                    QC_ERROR( "Deinit fadas remap failed!" );
                 }
                 retVal = ComponentIF::Deinit();
-                if ( RIDEHAL_ERROR_NONE != retVal )
+                if ( QC_STATUS_OK != retVal )
                 {
-                    RIDEHAL_ERROR( "Deinit ComponentIF failed!" );
+                    QC_ERROR( "Deinit ComponentIF failed!" );
                 }
             }
         }
@@ -168,74 +168,73 @@ RideHalError_e Remap::Init( const char *pName, const Remap_Config_t *pConfig, Lo
     return ret;
 }
 
-RideHalError_e Remap::Deinit()
+QCStatus_e Remap::Deinit()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
-    if ( RIDEHAL_COMPONENT_STATE_READY != m_state )
+    if ( QC_OBJECT_STATE_READY != m_state )
     {
-        RIDEHAL_ERROR( "Remap component not in ready status!" );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_ERROR( "Remap component not in ready status!" );
+        ret = QC_STATUS_BAD_STATE;
     }
     else
     {
-        RideHalError_e retVal = RIDEHAL_ERROR_NONE;
+        QCStatus_e retVal = QC_STATUS_OK;
 
         retVal = m_fadasRemapObj.DestroyMap();
-        if ( RIDEHAL_ERROR_NONE != retVal )
+        if ( QC_STATUS_OK != retVal )
         {
-            RIDEHAL_ERROR( "Destroy map failed!" );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Destroy map failed!" );
+            ret = QC_STATUS_FAIL;
         }
         retVal = m_fadasRemapObj.DestroyWorkers();
-        if ( RIDEHAL_ERROR_NONE != retVal )
+        if ( QC_STATUS_OK != retVal )
         {
-            RIDEHAL_ERROR( "Destroy worker failed!" );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Destroy worker failed!" );
+            ret = QC_STATUS_FAIL;
         }
         retVal = m_fadasRemapObj.Deinit();
-        if ( RIDEHAL_ERROR_NONE != retVal )
+        if ( QC_STATUS_OK != retVal )
         {
-            RIDEHAL_ERROR( "Deinit fadas remap failed!" );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Deinit fadas remap failed!" );
+            ret = QC_STATUS_FAIL;
         }
         retVal = ComponentIF::Deinit();
-        if ( RIDEHAL_ERROR_NONE != retVal )
+        if ( QC_STATUS_OK != retVal )
         {
-            RIDEHAL_ERROR( "Deinit ComponentIF failed!" );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Deinit ComponentIF failed!" );
+            ret = QC_STATUS_FAIL;
         }
     }
 
     return ret;
 }
 
-RideHalError_e Remap::RegisterBuffers( const RideHal_SharedBuffer_t *pBuffers, uint32_t numBuffers,
-                                       FadasBufType_e bufferType )
+QCStatus_e Remap::RegisterBuffers( const QCSharedBuffer_t *pBuffers, uint32_t numBuffers,
+                                   FadasBufType_e bufferType )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
-    if ( ( RIDEHAL_COMPONENT_STATE_READY != m_state ) &&
-         ( RIDEHAL_COMPONENT_STATE_RUNNING != m_state ) )
+    if ( ( QC_OBJECT_STATE_READY != m_state ) && ( QC_OBJECT_STATE_RUNNING != m_state ) )
     {
-        RIDEHAL_ERROR( "Remap component not in ready or running status!" );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_ERROR( "Remap component not in ready or running status!" );
+        ret = QC_STATUS_BAD_STATE;
     }
     else if ( nullptr == pBuffers )
     {
-        RIDEHAL_ERROR( "Empty buffers pointer!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "Empty buffers pointer!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
         for ( uint32_t inputId = 0; inputId < numBuffers; inputId++ )
         {
-            const RideHal_SharedBuffer_t *input = &pBuffers[inputId];
+            const QCSharedBuffer_t *input = &pBuffers[inputId];
             int32_t fd = m_fadasRemapObj.RegBuf( input, bufferType );
             if ( 0 > fd )
             {
-                RIDEHAL_ERROR( "Failed to register buffer for inputId = %d!", inputId );
-                ret = RIDEHAL_ERROR_FAIL;
+                QC_ERROR( "Failed to register buffer for inputId = %d!", inputId );
+                ret = QC_STATUS_FAIL;
                 break;
             }
         }
@@ -244,21 +243,19 @@ RideHalError_e Remap::RegisterBuffers( const RideHal_SharedBuffer_t *pBuffers, u
     return ret;
 }
 
-RideHalError_e Remap::DeRegisterBuffers( const RideHal_SharedBuffer_t *pBuffers,
-                                         uint32_t numBuffers )
+QCStatus_e Remap::DeRegisterBuffers( const QCSharedBuffer_t *pBuffers, uint32_t numBuffers )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
-    if ( ( RIDEHAL_COMPONENT_STATE_READY != m_state ) &&
-         ( RIDEHAL_COMPONENT_STATE_RUNNING != m_state ) )
+    if ( ( QC_OBJECT_STATE_READY != m_state ) && ( QC_OBJECT_STATE_RUNNING != m_state ) )
     {
-        RIDEHAL_ERROR( "Remap component not in ready or running status!" );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_ERROR( "Remap component not in ready or running status!" );
+        ret = QC_STATUS_BAD_STATE;
     }
     else if ( nullptr == pBuffers )
     {
-        RIDEHAL_ERROR( "Empty buffers pointer!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "Empty buffers pointer!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
@@ -271,34 +268,33 @@ RideHalError_e Remap::DeRegisterBuffers( const RideHal_SharedBuffer_t *pBuffers,
     return ret;
 }
 
-RideHalError_e Remap::Execute( const RideHal_SharedBuffer_t *pInputs, uint32_t numInputs,
-                               const RideHal_SharedBuffer_t *pOutput )
+QCStatus_e Remap::Execute( const QCSharedBuffer_t *pInputs, uint32_t numInputs,
+                           const QCSharedBuffer_t *pOutput )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
-    if ( ( RIDEHAL_COMPONENT_STATE_READY != m_state ) &&
-         ( RIDEHAL_COMPONENT_STATE_RUNNING != m_state ) )
+    if ( ( QC_OBJECT_STATE_READY != m_state ) && ( QC_OBJECT_STATE_RUNNING != m_state ) )
     {
-        RIDEHAL_ERROR( "Remap component not initialized!" );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_ERROR( "Remap component not initialized!" );
+        ret = QC_STATUS_BAD_STATE;
     }
     else if ( m_config.numOfInputs != numInputs )
     {
-        RIDEHAL_ERROR( "Number of input buffers not equal to config value!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "Number of input buffers not equal to config value!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
         ret = m_fadasRemapObj.RemapRun( pInputs, pOutput );
     }
 
-    if ( RIDEHAL_ERROR_NONE != ret )
+    if ( QC_STATUS_OK != ret )
     {
-        RIDEHAL_ERROR( "Failed to run remap component!" );
+        QC_ERROR( "Failed to run remap component!" );
     }
 
     return ret;
 }
 
 }   // namespace component
-}   // namespace ridehal
+}   // namespace QC

@@ -3,10 +3,10 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#include "ridehal/sample/SampleVideoDecoder.hpp"
+#include "QC/sample/SampleVideoDecoder.hpp"
 
 
-namespace ridehal
+namespace QC
 {
 namespace sample
 {
@@ -26,13 +26,13 @@ void SampleVideoDecoder::InFrameCallback( const VideoDecoder_InputFrame_t *pInpu
     {
         /* key-point: release the input buffer */
         TRACE_EVENT( SYSTRACE_EVENT_VDEC_INPUT_DONE );
-        RIDEHAL_DEBUG( "Dec-InFrameCallback for handle 0x%x frameId %" PRIu64, bufHandle, frameId );
+        QC_DEBUG( "Dec-InFrameCallback for handle 0x%x frameId %" PRIu64, bufHandle, frameId );
         m_inFrameMap.erase( bufHandle );
     }
     else
     {
-        RIDEHAL_ERROR( "Dec-InFrameCallback with invalid handle 0x%x frameId %" PRIu64, bufHandle,
-                       frameId );
+        QC_ERROR( "Dec-InFrameCallback with invalid handle 0x%x frameId %" PRIu64, bufHandle,
+                  frameId );
     }
 }
 
@@ -51,7 +51,7 @@ void SampleVideoDecoder::OutFrameCallback( const VideoDecoder_OutputFrame_t *pOu
         outFrame.sharedBuffer = pSharedBuffer->sharedBuffer;
         outFrame.appMarkData = 0;
 
-        RIDEHAL_DEBUG( "dec-out-buf back, handle:0x%x", bufHandle );
+        QC_DEBUG( "dec-out-buf back, handle:0x%x", bufHandle );
 
         m_decoder.SubmitOutputFrame( &outFrame );
         delete pSharedBuffer;
@@ -72,8 +72,8 @@ void SampleVideoDecoder::OutFrameCallback( const VideoDecoder_OutputFrame_t *pOu
         PROFILER_END();
         TRACE_END( frame.frameId );
         m_pub.Publish( frames );
-        RIDEHAL_DEBUG( "OutFrameCallback for frameId %" PRIu64 " handle 0x%x size %" PRIu32,
-                       info.frameId, bufHandle, pOutputFrame->sharedBuffer.size );
+        QC_DEBUG( "OutFrameCallback for frameId %" PRIu64 " handle 0x%x size %" PRIu32,
+                  info.frameId, bufHandle, pOutputFrame->sharedBuffer.size );
     }
     else
     {
@@ -83,13 +83,13 @@ void SampleVideoDecoder::OutFrameCallback( const VideoDecoder_OutputFrame_t *pOu
         frames.frames.push_back( frame );
         TRACE_EVENT( SYSTRACE_EVENT_VDEC_OUTPUT_WITH_2ND_FRAME );
         m_pub.Publish( frames );
-        RIDEHAL_DEBUG( "frame info queue is empty! handle 0x%x", bufHandle );
+        QC_DEBUG( "frame info queue is empty! handle 0x%x", bufHandle );
     }
 }
 
 void SampleVideoDecoder::EventCallback( const VideoCodec_EventType_e eventId, const void *pPayload )
 {
-    RIDEHAL_INFO( "Received event: %d, pPayload:%p\n", eventId, pPayload );
+    QC_INFO( "Received event: %d, pPayload:%p\n", eventId, pPayload );
 }
 
 void SampleVideoDecoder::InFrameCallback( const VideoDecoder_InputFrame_t *pInputFrame,
@@ -113,55 +113,55 @@ void SampleVideoDecoder::EventCallback( const VideoCodec_EventType_e eventId, co
     self->EventCallback( eventId, pPayload );
 }
 
-RideHalError_e SampleVideoDecoder::ParseConfig( SampleConfig_t &config )
+QCStatus_e SampleVideoDecoder::ParseConfig( SampleConfig_t &config )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     m_config.width = Get( config, "width", 0 );
     if ( 0 == m_config.width )
     {
-        RIDEHAL_ERROR( "invalid width = %u\n", m_config.width );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "invalid width = %u\n", m_config.width );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     m_config.height = Get( config, "height", 0 );
     if ( 0 == m_config.height )
     {
-        RIDEHAL_ERROR( "invalid height = %u\n", m_config.height );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "invalid height = %u\n", m_config.height );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     m_config.numInputBuffer = Get( config, "pool_size", 4 );
     if ( 0 == m_config.numInputBuffer )
     {
-        RIDEHAL_ERROR( "invalid pool_size = %u\n", m_config.numInputBuffer );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "invalid pool_size = %u\n", m_config.numInputBuffer );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     m_config.numOutputBuffer = m_config.numInputBuffer;
 
     m_config.frameRate = Get( config, "fps", 30 );
     if ( 0 == m_config.frameRate )
     {
-        RIDEHAL_ERROR( "invalid fps = %u\n", m_config.frameRate );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "invalid fps = %u\n", m_config.frameRate );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     m_inputTopicName = Get( config, "input_topic", "" );
     if ( "" == m_inputTopicName )
     {
-        RIDEHAL_ERROR( "no input topic\n" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "no input topic\n" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     m_outputTopicName = Get( config, "output_topic", "" );
     if ( "" == m_outputTopicName )
     {
-        RIDEHAL_ERROR( "no output topic\n" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "no output topic\n" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
-    m_config.inFormat = Get( config, "input_format", RIDEHAL_IMAGE_FORMAT_COMPRESSED_H265 );
-    m_config.outFormat = Get( config, "output_format", RIDEHAL_IMAGE_FORMAT_NV12 );
+    m_config.inFormat = Get( config, "input_format", QC_IMAGE_FORMAT_COMPRESSED_H265 );
+    m_config.outFormat = Get( config, "output_format", QC_IMAGE_FORMAT_NV12 );
 
     m_config.bInputDynamicMode = true;
     m_config.bOutputDynamicMode = false;
@@ -169,30 +169,30 @@ RideHalError_e SampleVideoDecoder::ParseConfig( SampleConfig_t &config )
     return ret;
 }
 
-RideHalError_e SampleVideoDecoder::Init( std::string name, SampleConfig_t &config )
+QCStatus_e SampleVideoDecoder::Init( std::string name, SampleConfig_t &config )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     ret = SampleIF::Init( name );
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         TRACE_ON( VPU );
         ret = ParseConfig( config );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = m_decoder.Init( (char *) name.c_str(), &m_config );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = m_decoder.RegisterCallback( SampleVideoDecoder::InFrameCallback,
                                           SampleVideoDecoder::OutFrameCallback,
                                           SampleVideoDecoder::EventCallback, (void *) this );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         TRACE_BEGIN( SYSTRACE_TASK_INIT );
         /* queueDepth should be bigger than input-buf num */
@@ -200,7 +200,7 @@ RideHalError_e SampleVideoDecoder::Init( std::string name, SampleConfig_t &confi
         TRACE_END( SYSTRACE_TASK_INIT );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = m_pub.Init( name, m_outputTopicName );
     }
@@ -208,14 +208,14 @@ RideHalError_e SampleVideoDecoder::Init( std::string name, SampleConfig_t &confi
     return ret;
 }
 
-RideHalError_e SampleVideoDecoder::Start()
+QCStatus_e SampleVideoDecoder::Start()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     TRACE_BEGIN( SYSTRACE_TASK_START );
     ret = m_decoder.Start();
     TRACE_END( SYSTRACE_TASK_START );
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         m_stop = false;
         m_thread = std::thread( &SampleVideoDecoder::ThreadMain, this );
@@ -227,7 +227,7 @@ RideHalError_e SampleVideoDecoder::Start()
 
 void SampleVideoDecoder::ThreadMain()
 {
-    RideHalError_e ret;
+    QCStatus_e ret;
     uint64_t bufHandle;
 
     while ( false == m_stop )
@@ -245,8 +245,8 @@ void SampleVideoDecoder::ThreadMain()
             inputFrame.appMarkData = frame.frameId;
             bufHandle = inputFrame.sharedBuffer.buffer.dmaHandle;
 
-            RIDEHAL_DEBUG( "receive frameId %" PRIu64 ", handle 0x%x ts %" PRIu64 "\n ",
-                           frame.frameId, bufHandle, frame.timestamp );
+            QC_DEBUG( "receive frameId %" PRIu64 ", handle 0x%x ts %" PRIu64 "\n ", frame.frameId,
+                      bufHandle, frame.timestamp );
             {
                 std::lock_guard<std::mutex> l( m_lock );
                 m_inFrameMap[bufHandle] = frame;
@@ -254,10 +254,10 @@ void SampleVideoDecoder::ThreadMain()
             PROFILER_BEGIN();
             TRACE_BEGIN( frame.frameId );
             ret = m_decoder.SubmitInputFrame( &inputFrame );
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
-                RIDEHAL_ERROR( "failed to submit input handle 0x%x frameId %" PRIu64, bufHandle,
-                               frame.frameId );
+                QC_ERROR( "failed to submit input handle 0x%x frameId %" PRIu64, bufHandle,
+                          frame.frameId );
                 std::lock_guard<std::mutex> l( m_lock );
                 m_inFrameMap.erase( bufHandle );
             }
@@ -271,9 +271,9 @@ void SampleVideoDecoder::ThreadMain()
     }
 }
 
-RideHalError_e SampleVideoDecoder::Stop()
+QCStatus_e SampleVideoDecoder::Stop()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     m_stop = true;
     if ( m_thread.joinable() )
@@ -288,9 +288,9 @@ RideHalError_e SampleVideoDecoder::Stop()
     return ret;
 }
 
-RideHalError_e SampleVideoDecoder::Deinit()
+QCStatus_e SampleVideoDecoder::Deinit()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     TRACE_BEGIN( SYSTRACE_TASK_DEINIT );
     ret = m_decoder.Deinit();
@@ -302,5 +302,4 @@ RideHalError_e SampleVideoDecoder::Deinit()
 REGISTER_SAMPLE( VideoDecoder, SampleVideoDecoder );
 
 }   // namespace sample
-}   // namespace ridehal
-
+}   // namespace QC

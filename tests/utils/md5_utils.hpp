@@ -3,13 +3,13 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#ifndef RIDEHAL_TEST_MD5_UTILS
-#define RIDEHAL_TEST_MD5_UTILS
+#ifndef QC_TEST_MD5_UTILS
+#define QC_TEST_MD5_UTILS
 
 #include <stdint.h>
 #include <string>
 
-namespace ridehal
+namespace QC
 {
 namespace test
 {
@@ -20,5 +20,5 @@ std::string MD5Sum( const void *data, uint32_t length );
 
 }   // namespace utils
 }   // namespace test
-}   // namespace ridehal
-#endif /* RIDEHAL_TEST_MD5_UTILS */
+}   // namespace QC
+#endif /* QC_TEST_MD5_UTILS */

@@ -7,9 +7,9 @@
 #include <cstring>
 #include <memory>
 
-#include "ridehal/component/GL2DFlex.hpp"
+#include "QC/component/GL2DFlex.hpp"
 
-namespace ridehal
+namespace QC
 {
 namespace component
 {
@@ -55,10 +55,10 @@ GL2DFlex::GL2DFlex() {}
 
 GL2DFlex::~GL2DFlex() {}
 
-RideHalError_e GL2DFlex::Init( const char *pName, const GL2DFlex_Config_t *pConfig,
-                               Logger_Level_e level )
+QCStatus_e GL2DFlex::Init( const char *pName, const GL2DFlex_Config_t *pConfig,
+                           Logger_Level_e level )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     uint32_t topX = 0;
     uint32_t topY = 0;
@@ -71,21 +71,21 @@ RideHalError_e GL2DFlex::Init( const char *pName, const GL2DFlex_Config_t *pConf
     float gl_bottomY = 0.0f;
 
     ret = ComponentIF::Init( pName, level );
-    if ( RIDEHAL_ERROR_NONE != ret )
+    if ( QC_STATUS_OK != ret )
     {
-        RIDEHAL_ERROR( "ComponentIF::Init failed" );
+        QC_ERROR( "ComponentIF::Init failed" );
     }
     else
     {
-        m_state = RIDEHAL_COMPONENT_STATE_INITIALIZING;
+        m_state = QC_OBJECT_STATE_INITIALIZING;
         m_numOfInputs = pConfig->numOfInputs;
-        if ( m_numOfInputs > RIDEHAL_MAX_INPUTS )
+        if ( m_numOfInputs > QC_MAX_INPUTS )
         {
-            ret = RIDEHAL_ERROR_OUT_OF_BOUND;
-            RIDEHAL_ERROR( "Number of Inputs exceeds maximum limit" );
+            ret = QC_STATUS_OUT_OF_BOUND;
+            QC_ERROR( "Number of Inputs exceeds maximum limit" );
         }
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             for ( uint32_t i = 0; i < m_numOfInputs; i++ )
             {
@@ -110,8 +110,8 @@ RideHalError_e GL2DFlex::Init( const char *pName, const GL2DFlex_Config_t *pConf
                 }
                 else
                 {
-                    ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
-                    RIDEHAL_ERROR( "ROI topX of input %u is out of range", i );
+                    ret = QC_STATUS_BAD_ARGUMENTS;
+                    QC_ERROR( "ROI topX of input %u is out of range", i );
                     break;
                 }
 
@@ -121,8 +121,8 @@ RideHalError_e GL2DFlex::Init( const char *pName, const GL2DFlex_Config_t *pConf
                 }
                 else
                 {
-                    ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
-                    RIDEHAL_ERROR( "ROI topY of input %u is out of range", i );
+                    ret = QC_STATUS_BAD_ARGUMENTS;
+                    QC_ERROR( "ROI topY of input %u is out of range", i );
                     break;
                 }
 
@@ -133,8 +133,8 @@ RideHalError_e GL2DFlex::Init( const char *pName, const GL2DFlex_Config_t *pConf
                 }
                 else
                 {
-                    ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
-                    RIDEHAL_ERROR( "ROI width of input %u is out of range", i );
+                    ret = QC_STATUS_BAD_ARGUMENTS;
+                    QC_ERROR( "ROI width of input %u is out of range", i );
                     break;
                 }
 
@@ -145,8 +145,8 @@ RideHalError_e GL2DFlex::Init( const char *pName, const GL2DFlex_Config_t *pConf
                 }
                 else
                 {
-                    ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
-                    RIDEHAL_ERROR( "ROI height of input %u is out of range", i );
+                    ret = QC_STATUS_BAD_ARGUMENTS;
+                    QC_ERROR( "ROI height of input %u is out of range", i );
                     break;
                 }
 
@@ -163,39 +163,39 @@ RideHalError_e GL2DFlex::Init( const char *pName, const GL2DFlex_Config_t *pConf
 
             std::lock_guard<std::mutex> l( s_mutLock );
 
-            if ( RIDEHAL_ERROR_NONE == ret )
+            if ( QC_STATUS_OK == ret )
             {
                 if ( nullptr == s_gbmDev )
                 {
                     s_drmDevFd = drmOpen( "msm_drm", NULL );
                     if ( s_drmDevFd < 0 )
                     {
-                        ret = RIDEHAL_ERROR_FAIL;
-                        RIDEHAL_ERROR( "drm open failed: %d", s_drmDevFd );
+                        ret = QC_STATUS_FAIL;
+                        QC_ERROR( "drm open failed: %d", s_drmDevFd );
                     }
                 }
             }
 
-            if ( RIDEHAL_ERROR_NONE == ret )
+            if ( QC_STATUS_OK == ret )
             {
                 s_gbmDev = gbm_create_device( s_drmDevFd );
                 if ( nullptr == s_gbmDev )
                 {
-                    ret = RIDEHAL_ERROR_FAIL;
-                    RIDEHAL_ERROR( "gbm create failed" );
+                    ret = QC_STATUS_FAIL;
+                    QC_ERROR( "gbm create failed" );
                 }
             }
 
-            if ( RIDEHAL_ERROR_NONE == ret )
+            if ( QC_STATUS_OK == ret )
             {
                 s_devRefCnt++;
             }
 
             /* Complete initialization */
-            if ( RIDEHAL_ERROR_NONE == ret )
+            if ( QC_STATUS_OK == ret )
             {
-                m_state = RIDEHAL_COMPONENT_STATE_READY;
-                RIDEHAL_INFO( "Component GL2DFlex is initialized" );
+                m_state = QC_OBJECT_STATE_READY;
+                QC_INFO( "Component GL2DFlex is initialized" );
             }
         }
     }
@@ -203,54 +203,54 @@ RideHalError_e GL2DFlex::Init( const char *pName, const GL2DFlex_Config_t *pConf
     return ret;
 }
 
-RideHalError_e GL2DFlex::Start()
+QCStatus_e GL2DFlex::Start()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
-    if ( RIDEHAL_COMPONENT_STATE_READY != m_state )
+    QCStatus_e ret = QC_STATUS_OK;
+    if ( QC_OBJECT_STATE_READY != m_state )
     {
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        ret = QC_STATUS_BAD_STATE;
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         // DO start
-        m_state = RIDEHAL_COMPONENT_STATE_RUNNING;
-        RIDEHAL_INFO( "Component GL2DFlex start to run" );
+        m_state = QC_OBJECT_STATE_RUNNING;
+        QC_INFO( "Component GL2DFlex start to run" );
     }
 
     return ret;
 }
 
-RideHalError_e GL2DFlex::Stop()
+QCStatus_e GL2DFlex::Stop()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
-    if ( RIDEHAL_COMPONENT_STATE_RUNNING != m_state )
+    if ( QC_OBJECT_STATE_RUNNING != m_state )
     {
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        ret = QC_STATUS_BAD_STATE;
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         // DO stop
-        m_state = RIDEHAL_COMPONENT_STATE_READY;
-        RIDEHAL_INFO( "Component GL2DFlex is stopped" );
+        m_state = QC_OBJECT_STATE_READY;
+        QC_INFO( "Component GL2DFlex is stopped" );
     }
 
     return ret;
 }
 
-RideHalError_e GL2DFlex::Deinit()
+QCStatus_e GL2DFlex::Deinit()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     EGLBoolean rc = EGL_FALSE;
 
-    if ( RIDEHAL_COMPONENT_STATE_READY != m_state )
+    if ( QC_OBJECT_STATE_READY != m_state )
     {
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        ret = QC_STATUS_BAD_STATE;
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         std::lock_guard<std::mutex> l( s_mutLock );
 
@@ -268,9 +268,8 @@ RideHalError_e GL2DFlex::Deinit()
                     rc = eglDestroyImageKHR( m_display, it->second->image );
                     if ( EGL_TRUE != rc )
                     {
-                        ret = RIDEHAL_ERROR_FAIL;
-                        RIDEHAL_ERROR( "Failed to destroy ImageKHR for input, error code: 0x%x",
-                                       rc );
+                        ret = QC_STATUS_FAIL;
+                        QC_ERROR( "Failed to destroy ImageKHR for input, error code: 0x%x", rc );
                     }
                 }
 
@@ -291,9 +290,8 @@ RideHalError_e GL2DFlex::Deinit()
                     rc = eglDestroyImageKHR( m_display, it->second->image );
                     if ( EGL_TRUE != rc )
                     {
-                        ret = RIDEHAL_ERROR_FAIL;
-                        RIDEHAL_ERROR( "Failed to destroy ImageKHR for output, error code: 0x%x",
-                                       rc );
+                        ret = QC_STATUS_FAIL;
+                        QC_ERROR( "Failed to destroy ImageKHR for output, error code: 0x%x", rc );
                     }
                 }
 
@@ -307,9 +305,9 @@ RideHalError_e GL2DFlex::Deinit()
 
         glDeleteProgram( m_program );
         ret = GLErrorCheck();
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
-            RIDEHAL_ERROR( "Failed to delete GL program" );
+            QC_ERROR( "Failed to delete GL program" );
         }
 
         if ( ( s_devRefCnt == 0 ) && ( s_gbmDev != nullptr ) )
@@ -317,8 +315,8 @@ RideHalError_e GL2DFlex::Deinit()
             s_drmDevFd = drmClose( s_drmDevFd );
             if ( s_drmDevFd < 0 )
             {
-                ret = RIDEHAL_ERROR_FAIL;
-                RIDEHAL_ERROR( "drm close failed: %d", s_drmDevFd );
+                ret = QC_STATUS_FAIL;
+                QC_ERROR( "drm close failed: %d", s_drmDevFd );
             }
 
             gbm_device_destroy( s_gbmDev );
@@ -326,104 +324,104 @@ RideHalError_e GL2DFlex::Deinit()
     }
 
     ret = ComponentIF::Deinit();
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         /* Complete deinitialization */
-        m_state = RIDEHAL_COMPONENT_STATE_INITIAL;
-        RIDEHAL_INFO( "Component GL2DFlex is deinitialized" );
+        m_state = QC_OBJECT_STATE_INITIAL;
+        QC_INFO( "Component GL2DFlex is deinitialized" );
     }
     else
     {
-        RIDEHAL_ERROR( "ComponentIF::Deinit failed" );
+        QC_ERROR( "ComponentIF::Deinit failed" );
     }
 
     return ret;
 }
 
-RideHalError_e GL2DFlex::Execute( const RideHal_SharedBuffer_t *pInputs, uint32_t numInputs,
-                                  const RideHal_SharedBuffer_t *pOutput )
+QCStatus_e GL2DFlex::Execute( const QCSharedBuffer_t *pInputs, uint32_t numInputs,
+                              const QCSharedBuffer_t *pOutput )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
-    if ( RIDEHAL_COMPONENT_STATE_RUNNING != m_state )
+    if ( QC_OBJECT_STATE_RUNNING != m_state )
     {
-        ret = RIDEHAL_ERROR_BAD_STATE;
-        RIDEHAL_ERROR( "Component GL2DFlex is not in running state" );
+        ret = QC_STATUS_BAD_STATE;
+        QC_ERROR( "Component GL2DFlex is not in running state" );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         if ( nullptr == pInputs )
         {
-            ret = RIDEHAL_ERROR_INVALID_BUF;
-            RIDEHAL_ERROR( "Input buffer is null" );
+            ret = QC_STATUS_INVALID_BUF;
+            QC_ERROR( "Input buffer is null" );
         }
         else if ( numInputs != m_numOfInputs )
         {
-            ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
-            RIDEHAL_ERROR( "Number of inputs not correct: %u != %u", m_numOfInputs, numInputs );
+            ret = QC_STATUS_BAD_ARGUMENTS;
+            QC_ERROR( "Number of inputs not correct: %u != %u", m_numOfInputs, numInputs );
         }
         else if ( nullptr == pOutput )
         {
-            ret = RIDEHAL_ERROR_INVALID_BUF;
-            RIDEHAL_ERROR( "Output buffer is null" );
+            ret = QC_STATUS_INVALID_BUF;
+            QC_ERROR( "Output buffer is null" );
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         for ( size_t i = 0; i < m_numOfInputs; i++ )
         {
             if ( pInputs[i].imgProps.format != m_inputFormats[i] )
             {
-                ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
-                RIDEHAL_ERROR( "Input %u format is not correct: %d != %d", i, (int) m_outputFormat,
-                               (int) pOutput->imgProps.format );
+                ret = QC_STATUS_BAD_ARGUMENTS;
+                QC_ERROR( "Input %u format is not correct: %d != %d", i, (int) m_outputFormat,
+                          (int) pOutput->imgProps.format );
             }
             else if ( pInputs[i].imgProps.width != m_inputResolutions[i].width )
             {
-                ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
-                RIDEHAL_ERROR( "Input %u width is not correct: %u != %u", i,
-                               m_inputResolutions[i].width, pInputs[i].imgProps.width );
+                ret = QC_STATUS_BAD_ARGUMENTS;
+                QC_ERROR( "Input %u width is not correct: %u != %u", i, m_inputResolutions[i].width,
+                          pInputs[i].imgProps.width );
             }
             else if ( pInputs[i].imgProps.height != m_inputResolutions[i].height )
             {
-                ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
-                RIDEHAL_ERROR( "Input %u height is not correct: %u != %u", i,
-                               m_inputResolutions[i].height, pInputs[i].imgProps.height );
+                ret = QC_STATUS_BAD_ARGUMENTS;
+                QC_ERROR( "Input %u height is not correct: %u != %u", i,
+                          m_inputResolutions[i].height, pInputs[i].imgProps.height );
             }
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         if ( pOutput->imgProps.format != m_outputFormat )
         {
-            ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
-            RIDEHAL_ERROR( "Output format is not correct: %d != %d", (int) m_outputFormat,
-                           (int) pOutput->imgProps.format );
+            ret = QC_STATUS_BAD_ARGUMENTS;
+            QC_ERROR( "Output format is not correct: %d != %d", (int) m_outputFormat,
+                      (int) pOutput->imgProps.format );
         }
         else if ( pOutput->imgProps.width != m_outputResolution.width )
         {
-            ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
-            RIDEHAL_ERROR( "Output width is not correct: %u != %u", m_outputResolution.width,
-                           pOutput->imgProps.width );
+            ret = QC_STATUS_BAD_ARGUMENTS;
+            QC_ERROR( "Output width is not correct: %u != %u", m_outputResolution.width,
+                      pOutput->imgProps.width );
         }
         else if ( pOutput->imgProps.height != m_outputResolution.height )
         {
-            ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
-            RIDEHAL_ERROR( "Output height is not correct: %u != %u", m_outputResolution.height,
-                           pOutput->imgProps.height );
+            ret = QC_STATUS_BAD_ARGUMENTS;
+            QC_ERROR( "Output height is not correct: %u != %u", m_outputResolution.height,
+                      pOutput->imgProps.height );
         }
         else if ( pOutput->imgProps.batchSize != m_numOfInputs )
         {
-            ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
-            RIDEHAL_ERROR( "Output batch size is not correct, numOfInputs %u != batchSize %u",
-                           m_numOfInputs, pOutput->imgProps.batchSize );
+            ret = QC_STATUS_BAD_ARGUMENTS;
+            QC_ERROR( "Output batch size is not correct, numOfInputs %u != batchSize %u",
+                      m_numOfInputs, pOutput->imgProps.batchSize );
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         std::shared_ptr<GL_ImageInfo_t> inputInfo = std::make_shared<GL_ImageInfo_t>();
         std::shared_ptr<GL_ImageInfo_t> outputInfo = std::make_shared<GL_ImageInfo_t>();
@@ -431,23 +429,23 @@ RideHalError_e GL2DFlex::Execute( const RideHal_SharedBuffer_t *pInputs, uint32_
         for ( size_t i = 0; i < m_numOfInputs; i++ )
         {
             ret = GetInputImageInfo( &pInputs[i], inputInfo );
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
-                RIDEHAL_ERROR( "Failed to get input image info for input %u", i );
+                QC_ERROR( "Failed to get input image info for input %u", i );
                 break;
             }
 
             ret = GetOutputImageInfo( pOutput, outputInfo, i );
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
-                RIDEHAL_ERROR( "Failed to get output image info for output batch %u", i );
+                QC_ERROR( "Failed to get output image info for output batch %u", i );
                 break;
             }
 
             ret = Draw( inputInfo, outputInfo, i );
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
-                RIDEHAL_ERROR( "Failed to draw EGL image for index %u", i );
+                QC_ERROR( "Failed to draw EGL image for index %u", i );
                 break;
             }
         }
@@ -456,10 +454,10 @@ RideHalError_e GL2DFlex::Execute( const RideHal_SharedBuffer_t *pInputs, uint32_
     return ret;
 }
 
-RideHalError_e GL2DFlex::RegisterInputBuffers( const RideHal_SharedBuffer_t *pInputBuffers,
-                                               uint32_t numOfInputBuffers )
+QCStatus_e GL2DFlex::RegisterInputBuffers( const QCSharedBuffer_t *pInputBuffers,
+                                           uint32_t numOfInputBuffers )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     void *bufferAddr = nullptr;
     std::shared_ptr<GL_ImageInfo_t> inputInfo = std::make_shared<GL_ImageInfo_t>();
@@ -469,7 +467,7 @@ RideHalError_e GL2DFlex::RegisterInputBuffers( const RideHal_SharedBuffer_t *pIn
         bufferAddr = pInputBuffers[i].data();
         if ( m_inputImageMap.find( bufferAddr ) == m_inputImageMap.end() )
         {
-            RideHal_ImageFormat_e format = pInputBuffers[i].imgProps.format;
+            QCImageFormat_e format = pInputBuffers[i].imgProps.format;
             uint32_t width = pInputBuffers[i].imgProps.width;
             uint32_t height = pInputBuffers[i].imgProps.height;
             uint32_t stride = pInputBuffers[i].imgProps.stride[0];
@@ -478,9 +476,9 @@ RideHalError_e GL2DFlex::RegisterInputBuffers( const RideHal_SharedBuffer_t *pIn
 
             ret = CreateGLInputImage( bufferAddr, format, width, height, stride, handle, offset,
                                       inputInfo );
-            if ( ret != RIDEHAL_ERROR_NONE )
+            if ( ret != QC_STATUS_OK )
             {
-                RIDEHAL_ERROR( "Failed to create GL input image for input buffer %u", i );
+                QC_ERROR( "Failed to create GL input image for input buffer %u", i );
                 break;
             }
         }
@@ -489,10 +487,10 @@ RideHalError_e GL2DFlex::RegisterInputBuffers( const RideHal_SharedBuffer_t *pIn
     return ret;
 }
 
-RideHalError_e GL2DFlex::RegisterOutputBuffers( const RideHal_SharedBuffer_t *pOutputBuffers,
-                                                uint32_t numOfOutputBuffers )
+QCStatus_e GL2DFlex::RegisterOutputBuffers( const QCSharedBuffer_t *pOutputBuffers,
+                                            uint32_t numOfOutputBuffers )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     void *bufferAddr = nullptr;
     size_t outputSize = pOutputBuffers->size / pOutputBuffers->imgProps.batchSize;
@@ -505,7 +503,7 @@ RideHalError_e GL2DFlex::RegisterOutputBuffers( const RideHal_SharedBuffer_t *pO
             bufferAddr = (void *) ( (uint8_t *) pOutputBuffers[i].data() + k * outputSize );
             if ( m_outputImageMap.find( bufferAddr ) == m_outputImageMap.end() )
             {
-                RideHal_ImageFormat_e format = pOutputBuffers[i].imgProps.format;
+                QCImageFormat_e format = pOutputBuffers[i].imgProps.format;
                 uint32_t width = pOutputBuffers[i].imgProps.width;
                 uint32_t height = pOutputBuffers[i].imgProps.height;
                 uint32_t stride = pOutputBuffers[i].imgProps.stride[0];
@@ -514,10 +512,10 @@ RideHalError_e GL2DFlex::RegisterOutputBuffers( const RideHal_SharedBuffer_t *pO
 
                 ret = CreateGLOutputImage( bufferAddr, format, width, height, stride, handle,
                                            offset, outputInfo );
-                if ( ret != RIDEHAL_ERROR_NONE )
+                if ( ret != QC_STATUS_OK )
                 {
-                    RIDEHAL_ERROR( "Failed to create GL output image for output buffer %u batch %u",
-                                   i, k );
+                    QC_ERROR( "Failed to create GL output image for output buffer %u batch %u", i,
+                              k );
                     break;
                 }
             }
@@ -527,19 +525,19 @@ RideHalError_e GL2DFlex::RegisterOutputBuffers( const RideHal_SharedBuffer_t *pO
     return ret;
 }
 
-RideHalError_e GL2DFlex::DeregisterInputBuffers( const RideHal_SharedBuffer_t *pInputBuffers,
-                                                 uint32_t numOfInputBuffers )
+QCStatus_e GL2DFlex::DeregisterInputBuffers( const QCSharedBuffer_t *pInputBuffers,
+                                             uint32_t numOfInputBuffers )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     void *bufferAddr = nullptr;
     if ( numOfInputBuffers > m_inputImageMap.size() )
     {
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
-        RIDEHAL_ERROR( "Number of deregister buffers greater than registered buffers " );
+        ret = QC_STATUS_BAD_ARGUMENTS;
+        QC_ERROR( "Number of deregister buffers greater than registered buffers " );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         EGLBoolean rc = EGL_FALSE;
         for ( size_t i = 0; i < numOfInputBuffers; i++ )
@@ -552,8 +550,8 @@ RideHalError_e GL2DFlex::DeregisterInputBuffers( const RideHal_SharedBuffer_t *p
                     rc = eglDestroyImageKHR( m_display, m_inputImageMap[bufferAddr]->image );
                     if ( EGL_TRUE != rc )
                     {
-                        ret = RIDEHAL_ERROR_FAIL;
-                        RIDEHAL_ERROR(
+                        ret = QC_STATUS_FAIL;
+                        QC_ERROR(
                                 "Failed to destroy ImageKHR for input buffer %u, error code: 0x%x",
                                 i, rc );
                     }
@@ -572,21 +570,21 @@ RideHalError_e GL2DFlex::DeregisterInputBuffers( const RideHal_SharedBuffer_t *p
     return ret;
 }
 
-RideHalError_e GL2DFlex::DeregisterOutputBuffers( const RideHal_SharedBuffer_t *pOutputBuffers,
-                                                  uint32_t numOfOutputBuffers )
+QCStatus_e GL2DFlex::DeregisterOutputBuffers( const QCSharedBuffer_t *pOutputBuffers,
+                                              uint32_t numOfOutputBuffers )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     void *bufferAddr = nullptr;
     uint32_t outputSize = pOutputBuffers->size / pOutputBuffers->imgProps.batchSize;
 
     if ( numOfOutputBuffers > m_outputImageMap.size() )
     {
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
-        RIDEHAL_ERROR( "Number of deregister buffers greater than registered buffers " );
+        ret = QC_STATUS_BAD_ARGUMENTS;
+        QC_ERROR( "Number of deregister buffers greater than registered buffers " );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         EGLBoolean rc = EGL_FALSE;
         for ( size_t i = 0; i < numOfOutputBuffers; i++ )
@@ -601,10 +599,10 @@ RideHalError_e GL2DFlex::DeregisterOutputBuffers( const RideHal_SharedBuffer_t *
                         rc = eglDestroyImageKHR( m_display, m_outputImageMap[bufferAddr]->image );
                         if ( EGL_TRUE != rc )
                         {
-                            ret = RIDEHAL_ERROR_FAIL;
-                            RIDEHAL_ERROR( "Failed to destroy ImageKHR for output buffer %u batch "
-                                           "%u, error code: 0x%x",
-                                           i, k, rc );
+                            ret = QC_STATUS_FAIL;
+                            QC_ERROR( "Failed to destroy ImageKHR for output buffer %u batch "
+                                      "%u, error code: 0x%x",
+                                      i, k, rc );
                         }
                     }
 
@@ -623,9 +621,9 @@ RideHalError_e GL2DFlex::DeregisterOutputBuffers( const RideHal_SharedBuffer_t *
 }
 
 
-RideHalError_e GL2DFlex::EGLInit()
+QCStatus_e GL2DFlex::EGLInit()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     EGLint major = -1;
     EGLint minor = -1;
@@ -644,68 +642,68 @@ RideHalError_e GL2DFlex::EGLInit()
         m_display = eglGetPlatformDisplay( EGL_PLATFORM_GBM_KHR, NULL, NULL );
         if ( nullptr == m_display )
         {
-            ret = RIDEHAL_ERROR_FAIL;
-            RIDEHAL_ERROR( "Failed to get EGL display" );
+            ret = QC_STATUS_FAIL;
+            QC_ERROR( "Failed to get EGL display" );
         }
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             rc = eglInitialize( m_display, &major, &minor );
             if ( EGL_TRUE != rc )
             {
-                ret = RIDEHAL_ERROR_FAIL;
-                RIDEHAL_ERROR( "Failed to initialize EGL: 0x%x", rc );
+                ret = QC_STATUS_FAIL;
+                QC_ERROR( "Failed to initialize EGL: 0x%x", rc );
             }
         }
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             rc = eglGetConfigs( m_display, NULL, 0, &num_config );
             if ( ( EGL_TRUE != rc ) || ( num_config <= 0 ) )
             {
-                ret = RIDEHAL_ERROR_FAIL;
-                RIDEHAL_ERROR( "Failed to get config number for EGL: 0x%x", rc );
+                ret = QC_STATUS_FAIL;
+                QC_ERROR( "Failed to get config number for EGL: 0x%x", rc );
             }
         }
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             configs.resize( num_config );
             rc = eglGetConfigs( m_display, configs.data(), num_config, &num_config );
             if ( EGL_TRUE != rc )
             {
-                ret = RIDEHAL_ERROR_FAIL;
-                RIDEHAL_ERROR( "Failed to get config for EGL: 0x%x", rc );
+                ret = QC_STATUS_FAIL;
+                QC_ERROR( "Failed to get config for EGL: 0x%x", rc );
             }
         }
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             m_context = eglCreateContext( m_display, configs[0], EGL_NO_CONTEXT, context_attribs );
             if ( nullptr == m_context )
             {
-                ret = RIDEHAL_ERROR_FAIL;
-                RIDEHAL_ERROR( "Failed to create EGL context" );
+                ret = QC_STATUS_FAIL;
+                QC_ERROR( "Failed to create EGL context" );
             }
         }
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             m_surface = eglCreatePbufferSurface( m_display, configs[0], surface_attribs );
             if ( nullptr == m_surface )
             {
-                ret = RIDEHAL_ERROR_FAIL;
-                RIDEHAL_ERROR( "Failed to create EGL surface" );
+                ret = QC_STATUS_FAIL;
+                QC_ERROR( "Failed to create EGL surface" );
             }
         }
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             rc = eglMakeCurrent( m_display, m_surface, m_surface, m_context );
             if ( EGL_TRUE != rc )
             {
-                ret = RIDEHAL_ERROR_FAIL;
-                RIDEHAL_ERROR( "Failed to make EGL current: 0x%x", rc );
+                ret = QC_STATUS_FAIL;
+                QC_ERROR( "Failed to make EGL current: 0x%x", rc );
             }
         }
 
@@ -715,137 +713,137 @@ RideHalError_e GL2DFlex::EGLInit()
     return ret;
 }
 
-RideHalError_e GL2DFlex::CreateGLPipeline()
+QCStatus_e GL2DFlex::CreateGLPipeline()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     if ( !m_bGLPipelineReady )
     {
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             m_vertShader = glCreateShader( GL_VERTEX_SHADER );
             if ( 0 == m_vertShader )
             {
-                ret = RIDEHAL_ERROR_FAIL;
-                RIDEHAL_ERROR( "Failed to create GL Vertex Shader" );
+                ret = QC_STATUS_FAIL;
+                QC_ERROR( "Failed to create GL Vertex Shader" );
             }
         }
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             glShaderSource( m_vertShader, 1, (char **) &s_pVertShaderText, NULL );
             ret = GLErrorCheck();
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
-                RIDEHAL_ERROR( "Failed to set GL Vertex Shader source" );
+                QC_ERROR( "Failed to set GL Vertex Shader source" );
             }
         }
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             glCompileShader( m_vertShader );
             ret = GLErrorCheck();
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
-                RIDEHAL_ERROR( "Failed to compile GL Vertex Shader source" );
+                QC_ERROR( "Failed to compile GL Vertex Shader source" );
             }
         }
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             m_fragShader = glCreateShader( GL_FRAGMENT_SHADER );
             if ( 0 == m_fragShader )
             {
-                ret = RIDEHAL_ERROR_FAIL;
-                RIDEHAL_ERROR( "Failed to create GL Fragment Shader" );
+                ret = QC_STATUS_FAIL;
+                QC_ERROR( "Failed to create GL Fragment Shader" );
             }
         }
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
-            if ( ( m_outputFormat == RIDEHAL_IMAGE_FORMAT_NV12 ) ||
-                 ( m_outputFormat == RIDEHAL_IMAGE_FORMAT_UYVY ) )
+            if ( ( m_outputFormat == QC_IMAGE_FORMAT_NV12 ) ||
+                 ( m_outputFormat == QC_IMAGE_FORMAT_UYVY ) )
             {
                 glShaderSource( m_fragShader, 1, (char **) &s_pFragShaderYUVText, NULL );
                 ret = GLErrorCheck();
-                if ( RIDEHAL_ERROR_NONE != ret )
+                if ( QC_STATUS_OK != ret )
                 {
-                    RIDEHAL_ERROR( "Failed to set GL Fragment YUV Shader source" );
+                    QC_ERROR( "Failed to set GL Fragment YUV Shader source" );
                 }
             }
-            else if ( m_outputFormat == RIDEHAL_IMAGE_FORMAT_RGB888 )
+            else if ( m_outputFormat == QC_IMAGE_FORMAT_RGB888 )
             {
                 glShaderSource( m_fragShader, 1, (char **) &s_pFragShaderText, NULL );
                 ret = GLErrorCheck();
-                if ( RIDEHAL_ERROR_NONE != ret )
+                if ( QC_STATUS_OK != ret )
                 {
-                    RIDEHAL_ERROR( "Failed to set GL Fragment Shader source" );
+                    QC_ERROR( "Failed to set GL Fragment Shader source" );
                 }
             }
             else
             {
-                ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
-                RIDEHAL_ERROR( "Unsupported output image format" );
+                ret = QC_STATUS_BAD_ARGUMENTS;
+                QC_ERROR( "Unsupported output image format" );
             }
         }
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             glCompileShader( m_fragShader );
             ret = GLErrorCheck();
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
-                RIDEHAL_ERROR( "Failed to compile GL Fragment Shader source" );
+                QC_ERROR( "Failed to compile GL Fragment Shader source" );
             }
         }
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             m_program = glCreateProgram();
             ret = GLErrorCheck();
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
-                RIDEHAL_ERROR( "Failed to create GL Program" );
+                QC_ERROR( "Failed to create GL Program" );
             }
         }
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             glAttachShader( m_program, m_vertShader );
             ret = GLErrorCheck();
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
-                RIDEHAL_ERROR( "Failed to attach GL Vertex Shader" );
+                QC_ERROR( "Failed to attach GL Vertex Shader" );
             }
         }
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             glAttachShader( m_program, m_fragShader );
             ret = GLErrorCheck();
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
-                RIDEHAL_ERROR( "Failed to attach GL Fragment Shader" );
+                QC_ERROR( "Failed to attach GL Fragment Shader" );
             }
         }
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             glLinkProgram( m_program );
             ret = GLErrorCheck();
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
-                RIDEHAL_ERROR( "Failed to link GL program" );
+                QC_ERROR( "Failed to link GL program" );
             }
         }
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             glUseProgram( m_program );
             ret = GLErrorCheck();
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
-                RIDEHAL_ERROR( "Failed to use GL program" );
+                QC_ERROR( "Failed to use GL program" );
             }
         }
 
@@ -866,16 +864,16 @@ RideHalError_e GL2DFlex::CreateGLPipeline()
 }
 
 
-RideHalError_e GL2DFlex::GetInputImageInfo( const RideHal_SharedBuffer_t *pInputBuffer,
-                                            std::shared_ptr<GL_ImageInfo_t> &inputInfo )
+QCStatus_e GL2DFlex::GetInputImageInfo( const QCSharedBuffer_t *pInputBuffer,
+                                        std::shared_ptr<GL_ImageInfo_t> &inputInfo )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     void *bufferAddr = pInputBuffer->data();
 
     if ( m_inputImageMap.find( bufferAddr ) == m_inputImageMap.end() )
     {
-        RideHal_ImageFormat_e format = pInputBuffer->imgProps.format;
+        QCImageFormat_e format = pInputBuffer->imgProps.format;
         uint32_t width = pInputBuffer->imgProps.width;
         uint32_t height = pInputBuffer->imgProps.height;
         uint32_t stride = pInputBuffer->imgProps.stride[0];
@@ -894,18 +892,18 @@ RideHalError_e GL2DFlex::GetInputImageInfo( const RideHal_SharedBuffer_t *pInput
 }
 
 
-RideHalError_e GL2DFlex::GetOutputImageInfo( const RideHal_SharedBuffer_t *pOutputBuffer,
-                                             std::shared_ptr<GL_ImageInfo_t> &outputInfo,
-                                             uint32_t batchIdx )
+QCStatus_e GL2DFlex::GetOutputImageInfo( const QCSharedBuffer_t *pOutputBuffer,
+                                         std::shared_ptr<GL_ImageInfo_t> &outputInfo,
+                                         uint32_t batchIdx )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     uint32_t outputSize = pOutputBuffer->size / m_numOfInputs;
     void *bufferAddr = (void *) ( (uint8_t *) pOutputBuffer->data() + batchIdx * outputSize );
 
     if ( m_outputImageMap.find( bufferAddr ) == m_outputImageMap.end() )
     {
-        RideHal_ImageFormat_e format = pOutputBuffer->imgProps.format;
+        QCImageFormat_e format = pOutputBuffer->imgProps.format;
         uint32_t width = pOutputBuffer->imgProps.width;
         uint32_t height = pOutputBuffer->imgProps.height;
         uint32_t stride = pOutputBuffer->imgProps.stride[0];
@@ -924,12 +922,11 @@ RideHalError_e GL2DFlex::GetOutputImageInfo( const RideHal_SharedBuffer_t *pOutp
 }
 
 
-RideHalError_e GL2DFlex::CreateGLInputImage( void *bufferAddr, RideHal_ImageFormat_e format,
-                                             uint32_t width, uint32_t height, uint32_t stride,
-                                             uint32_t handle, size_t offset,
-                                             std::shared_ptr<GL_ImageInfo_t> &inputInfo )
+QCStatus_e GL2DFlex::CreateGLInputImage( void *bufferAddr, QCImageFormat_e format, uint32_t width,
+                                         uint32_t height, uint32_t stride, uint32_t handle,
+                                         size_t offset, std::shared_ptr<GL_ImageInfo_t> &inputInfo )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     struct gbm_import_fd_data fdData = { (int) handle, width, height, stride,
                                          GetGBMFormatType( format ) };
@@ -937,27 +934,27 @@ RideHalError_e GL2DFlex::CreateGLInputImage( void *bufferAddr, RideHal_ImageForm
             gbm_bo_import( s_gbmDev, GBM_BO_IMPORT_FD, &fdData, GBM_BO_TRANSFER_READ_WRITE );
     if ( nullptr == inputInfo->bo )
     {
-        ret = RIDEHAL_ERROR_FAIL;
-        RIDEHAL_ERROR( "Failed to import gbm bo for input" );
+        ret = QC_STATUS_FAIL;
+        QC_ERROR( "Failed to import gbm bo for input" );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             ret = EGLInit();
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
-                RIDEHAL_ERROR( "Failed to Init EGL" );
+                QC_ERROR( "Failed to Init EGL" );
             }
         }
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             ret = CreateGLPipeline();
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
-                RIDEHAL_ERROR( "Failed to Create GL Pipeline" );
+                QC_ERROR( "Failed to Create GL Pipeline" );
             }
         }
 
@@ -979,42 +976,42 @@ RideHalError_e GL2DFlex::CreateGLInputImage( void *bufferAddr, RideHal_ImageForm
                                               NULL, eglImageAttribs );
         if ( nullptr == inputInfo->image )
         {
-            ret = RIDEHAL_ERROR_FAIL;
-            RIDEHAL_ERROR( "Failed to create image for input" );
+            ret = QC_STATUS_FAIL;
+            QC_ERROR( "Failed to create image for input" );
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         glGenTextures( 1, &inputInfo->texture );
         ret = GLErrorCheck();
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
-            RIDEHAL_ERROR( "Failed to generate GL textures for input" );
+            QC_ERROR( "Failed to generate GL textures for input" );
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         glBindTexture( GL_TEXTURE_EXTERNAL_OES, inputInfo->texture );
         ret = GLErrorCheck();
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
-            RIDEHAL_ERROR( "Failed to bind GL textures for input" );
+            QC_ERROR( "Failed to bind GL textures for input" );
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         glEGLImageTargetTexture2DOES( GL_TEXTURE_EXTERNAL_OES, inputInfo->image );
         ret = GLErrorCheck();
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
-            RIDEHAL_ERROR( "Failed to render GL target texture for input" );
+            QC_ERROR( "Failed to render GL target texture for input" );
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         inputInfo->handle = handle;
         inputInfo->offset = offset;
@@ -1025,12 +1022,12 @@ RideHalError_e GL2DFlex::CreateGLInputImage( void *bufferAddr, RideHal_ImageForm
 }
 
 
-RideHalError_e GL2DFlex::CreateGLOutputImage( void *bufferAddr, RideHal_ImageFormat_e format,
-                                              uint32_t width, uint32_t height, uint32_t stride,
-                                              uint32_t handle, size_t offset,
-                                              std::shared_ptr<GL_ImageInfo_t> &outputInfo )
+QCStatus_e GL2DFlex::CreateGLOutputImage( void *bufferAddr, QCImageFormat_e format, uint32_t width,
+                                          uint32_t height, uint32_t stride, uint32_t handle,
+                                          size_t offset,
+                                          std::shared_ptr<GL_ImageInfo_t> &outputInfo )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     struct gbm_import_fd_data fdData = { (int) handle, width, height, stride,
                                          GetGBMFormatType( format ) };
@@ -1038,27 +1035,27 @@ RideHalError_e GL2DFlex::CreateGLOutputImage( void *bufferAddr, RideHal_ImageFor
             gbm_bo_import( s_gbmDev, GBM_BO_IMPORT_FD, &fdData, GBM_BO_TRANSFER_READ_WRITE );
     if ( nullptr == outputInfo->bo )
     {
-        ret = RIDEHAL_ERROR_FAIL;
-        RIDEHAL_ERROR( "Failed to import gbm bo for output" );
+        ret = QC_STATUS_FAIL;
+        QC_ERROR( "Failed to import gbm bo for output" );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             ret = EGLInit();
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
-                RIDEHAL_ERROR( "Failed to Init EGL" );
+                QC_ERROR( "Failed to Init EGL" );
             }
         }
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             ret = CreateGLPipeline();
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
-                RIDEHAL_ERROR( "Failed to Create GL Pipeline" );
+                QC_ERROR( "Failed to Create GL Pipeline" );
             }
         }
 
@@ -1081,73 +1078,73 @@ RideHalError_e GL2DFlex::CreateGLOutputImage( void *bufferAddr, RideHal_ImageFor
                                                NULL, eglImageAttribs );
         if ( nullptr == outputInfo->image )
         {
-            ret = RIDEHAL_ERROR_FAIL;
-            RIDEHAL_ERROR( "Failed to create image for output" );
+            ret = QC_STATUS_FAIL;
+            QC_ERROR( "Failed to create image for output" );
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         glGenTextures( 1, &outputInfo->texture );
         ret = GLErrorCheck();
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
-            RIDEHAL_ERROR( "Failed to generate GL texture for output" );
+            QC_ERROR( "Failed to generate GL texture for output" );
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         glGenFramebuffers( 1, &outputInfo->framebuffer );
         ret = GLErrorCheck();
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
-            RIDEHAL_ERROR( "Failed to generate GL frame buffers for output" );
+            QC_ERROR( "Failed to generate GL frame buffers for output" );
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         glBindTexture( GL_TEXTURE_EXTERNAL_OES, outputInfo->texture );
         ret = GLErrorCheck();
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
-            RIDEHAL_ERROR( "Failed to bind GL texture for output" );
+            QC_ERROR( "Failed to bind GL texture for output" );
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         glEGLImageTargetTexture2DOES( GL_TEXTURE_EXTERNAL_OES, outputInfo->image );
         ret = GLErrorCheck();
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
-            RIDEHAL_ERROR( "Failed to render GL target texture for output" );
+            QC_ERROR( "Failed to render GL target texture for output" );
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         glBindFramebuffer( GL_FRAMEBUFFER, outputInfo->framebuffer );
         ret = GLErrorCheck();
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
-            RIDEHAL_ERROR( "Failed to bind GL frame buffer for output" );
+            QC_ERROR( "Failed to bind GL frame buffer for output" );
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_EXTERNAL_OES,
                                 outputInfo->texture, 0 );
         ret = GLErrorCheck();
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
-            RIDEHAL_ERROR( "Failed to attach GL texture to output buffer" );
+            QC_ERROR( "Failed to attach GL texture to output buffer" );
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         outputInfo->handle = handle;
         outputInfo->offset = offset;
@@ -1158,154 +1155,154 @@ RideHalError_e GL2DFlex::CreateGLOutputImage( void *bufferAddr, RideHal_ImageFor
 }
 
 
-RideHalError_e GL2DFlex::Draw( std::shared_ptr<GL_ImageInfo_t> &inputInfo,
-                               std::shared_ptr<GL_ImageInfo_t> &outputInfo, uint32_t batchIdx )
+QCStatus_e GL2DFlex::Draw( std::shared_ptr<GL_ImageInfo_t> &inputInfo,
+                           std::shared_ptr<GL_ImageInfo_t> &outputInfo, uint32_t batchIdx )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     glViewport( 0, 0, (GLint) m_outputResolution.width, (GLint) m_outputResolution.height );
     ret = GLErrorCheck();
-    if ( RIDEHAL_ERROR_NONE != ret )
+    if ( QC_STATUS_OK != ret )
     {
-        RIDEHAL_ERROR( "glViewport failed" );
+        QC_ERROR( "glViewport failed" );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         glClearColor( 1.0, 0.0, 0.0, 1.0 );
         ret = GLErrorCheck();
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
-            RIDEHAL_ERROR( "glClearColor failed" );
+            QC_ERROR( "glClearColor failed" );
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         glClear( GL_COLOR_BUFFER_BIT );
         ret = GLErrorCheck();
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
-            RIDEHAL_ERROR( "glClear failed" );
+            QC_ERROR( "glClear failed" );
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         glUniform1i( glGetUniformLocation( m_program, "tex" ), 0 );
         ret = GLErrorCheck();
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
-            RIDEHAL_ERROR( "glUniform1i failed" );
+            QC_ERROR( "glUniform1i failed" );
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         // bind input
         glBindTexture( GL_TEXTURE_EXTERNAL_OES, inputInfo->texture );
         glEGLImageTargetTexture2DOES( GL_TEXTURE_EXTERNAL_OES, inputInfo->image );
         ret = GLErrorCheck();
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
-            RIDEHAL_ERROR( "Failed to bind input" );
+            QC_ERROR( "Failed to bind input" );
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         // bind output
         glBindFramebuffer( GL_FRAMEBUFFER, outputInfo->framebuffer );
         ret = GLErrorCheck();
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
-            RIDEHAL_ERROR( "Failed to bind frame buffer" );
+            QC_ERROR( "Failed to bind frame buffer" );
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_EXTERNAL_OES,
                                 outputInfo->texture, 0 );
         ret = GLErrorCheck();
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
-            RIDEHAL_ERROR( "Failed to bind output" );
+            QC_ERROR( "Failed to bind output" );
         }
     }
 
     GLushort indices[] = { 0, 1, 3, 3, 1, 2 };
     GLfloat pos[4][2] = { { -1.0, -1.0 }, { 1.0, -1.0 }, { 1.0, 1.0 }, { -1.0, 1.0 } };
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         glVertexAttribPointer( glGetAttribLocation( m_program, "pos" ), 2, GL_FLOAT, GL_FALSE, 0,
                                pos );
         ret = GLErrorCheck();
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
-            RIDEHAL_ERROR( "Failed to set GL vertex pos" );
+            QC_ERROR( "Failed to set GL vertex pos" );
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         glVertexAttribPointer( glGetAttribLocation( m_program, "texcoord" ), 2, GL_FLOAT, GL_FALSE,
                                0, m_textcoords[batchIdx].texcoord );
         ret = GLErrorCheck();
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
-            RIDEHAL_ERROR( "Failed to set GL vertex texcoord" );
+            QC_ERROR( "Failed to set GL vertex texcoord" );
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         glEnableVertexAttribArray( glGetAttribLocation( m_program, "pos" ) );
         ret = GLErrorCheck();
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
-            RIDEHAL_ERROR( "Failed to enable GL vertex pos" );
+            QC_ERROR( "Failed to enable GL vertex pos" );
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         glEnableVertexAttribArray( glGetAttribLocation( m_program, "texcoord" ) );
         ret = GLErrorCheck();
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
-            RIDEHAL_ERROR( "Failed to enable GL vertex texcoord" );
+            QC_ERROR( "Failed to enable GL vertex texcoord" );
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         glDrawElements( GL_TRIANGLES, sizeof( indices ) / sizeof( indices[0] ), GL_UNSIGNED_SHORT,
                         indices );
         ret = GLErrorCheck();
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
-            RIDEHAL_ERROR( "Failed to draw GL elements" );
+            QC_ERROR( "Failed to draw GL elements" );
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         glFlush();
         ret = GLErrorCheck();
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
-            RIDEHAL_ERROR( "Failed to flush" );
+            QC_ERROR( "Failed to flush" );
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         eglSwapBuffers( m_display, m_surface );
         ret = GLErrorCheck();
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
-            RIDEHAL_ERROR( "Failed to swap GL buffers" );
+            QC_ERROR( "Failed to swap GL buffers" );
         }
     }
 
@@ -1313,25 +1310,25 @@ RideHalError_e GL2DFlex::Draw( std::shared_ptr<GL_ImageInfo_t> &inputInfo,
 }
 
 
-uint32_t GL2DFlex::GetEGLFormatType( RideHal_ImageFormat_e format )
+uint32_t GL2DFlex::GetEGLFormatType( QCImageFormat_e format )
 {
-    uint32_t eglFormat = (uint32_t) RIDEHAL_IMAGE_FORMAT_MAX;
+    uint32_t eglFormat = (uint32_t) QC_IMAGE_FORMAT_MAX;
     switch ( format )
     {
-        case RIDEHAL_IMAGE_FORMAT_UYVY:
+        case QC_IMAGE_FORMAT_UYVY:
             eglFormat = DRM_FORMAT_UYVY;
             break;
-        case RIDEHAL_IMAGE_FORMAT_NV12:
+        case QC_IMAGE_FORMAT_NV12:
             eglFormat = DRM_FORMAT_NV12;
             break;
-        case RIDEHAL_IMAGE_FORMAT_P010:
+        case QC_IMAGE_FORMAT_P010:
             eglFormat = DRM_FORMAT_P010;
             break;
-        case RIDEHAL_IMAGE_FORMAT_RGB888:
+        case QC_IMAGE_FORMAT_RGB888:
             eglFormat = DRM_FORMAT_RGB888;
             break;
         default:
-            RIDEHAL_ERROR( "Unsupported EGL image format" );
+            QC_ERROR( "Unsupported EGL image format" );
             break;
     }
 
@@ -1339,25 +1336,25 @@ uint32_t GL2DFlex::GetEGLFormatType( RideHal_ImageFormat_e format )
 }
 
 
-uint32_t GL2DFlex::GetGBMFormatType( RideHal_ImageFormat_e format )
+uint32_t GL2DFlex::GetGBMFormatType( QCImageFormat_e format )
 {
-    uint32_t gbmFormat = (uint32_t) RIDEHAL_IMAGE_FORMAT_MAX;
+    uint32_t gbmFormat = (uint32_t) QC_IMAGE_FORMAT_MAX;
     switch ( format )
     {
-        case RIDEHAL_IMAGE_FORMAT_UYVY:
+        case QC_IMAGE_FORMAT_UYVY:
             gbmFormat = GBM_FORMAT_UYVY;
             break;
-        case RIDEHAL_IMAGE_FORMAT_NV12:
+        case QC_IMAGE_FORMAT_NV12:
             gbmFormat = GBM_FORMAT_NV12;
             break;
-        case RIDEHAL_IMAGE_FORMAT_P010:
+        case QC_IMAGE_FORMAT_P010:
             gbmFormat = GBM_FORMAT_P010;
             break;
-        case RIDEHAL_IMAGE_FORMAT_RGB888:
+        case QC_IMAGE_FORMAT_RGB888:
             gbmFormat = GBM_FORMAT_RGB888;
             break;
         default:
-            RIDEHAL_ERROR( "Unsupported GBM image format" );
+            QC_ERROR( "Unsupported GBM image format" );
             break;
     }
 
@@ -1365,20 +1362,19 @@ uint32_t GL2DFlex::GetGBMFormatType( RideHal_ImageFormat_e format )
 }
 
 
-inline RideHalError_e GL2DFlex::GLErrorCheck()
+inline QCStatus_e GL2DFlex::GLErrorCheck()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     GLenum glError = glGetError();
 
     if ( glError != GL_NO_ERROR )
     {
-        ret = RIDEHAL_ERROR_FAIL;
-        RIDEHAL_ERROR( "GLErrorCheck failed, Err value: %u", (int) glError );
+        ret = QC_STATUS_FAIL;
+        QC_ERROR( "GLErrorCheck failed, Err value: %u", (int) glError );
     }
 
     return ret;
 }
 
 }   // namespace component
-}   // namespace ridehal
-
+}   // namespace QC

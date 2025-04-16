@@ -1,23 +1,23 @@
 set( HEADERS_DIR ${PROJECT_SOURCE_DIR}/include )
 
 set( COMPONENT_VIDEODECODER_HEADERS
-    ${HEADERS_DIR}/ridehal/component/VideoDecoder.hpp
+    ${HEADERS_DIR}/QC/component/VideoDecoder.hpp
 )
 
 set( COMPONENT_VIDEODECODER_SOURCES
     VideoDecoder.cpp
 )
 
-set( TARGET_LIBRARIES RideHalVideoCodec )
+set( TARGET_LIBRARIES QCNodeVideoCodec )
 
-add_library( RideHalVideoDecoder OBJECT ${COMPONENT_VIDEODECODER_SOURCES} )
+add_library( QCNodeVideoDecoder OBJECT ${COMPONENT_VIDEODECODER_SOURCES} )
 
-set_property( TARGET RideHalVideoDecoder PROPERTY LINKER_LANGUAGE CXX )
-set_property( TARGET RideHalVideoDecoder PROPERTY POSITION_INDEPENDENT_CODE ON )
+set_property( TARGET QCNodeVideoDecoder PROPERTY LINKER_LANGUAGE CXX )
+set_property( TARGET QCNodeVideoDecoder PROPERTY POSITION_INDEPENDENT_CODE ON )
 
-target_include_directories( RideHalVideoDecoder PUBLIC ${HEADERS_DIR} )
+target_include_directories( QCNodeVideoDecoder PUBLIC ${HEADERS_DIR} )
 
-target_link_libraries( RideHalVideoDecoder PUBLIC ${TARGET_LIBRARIES} )
+target_link_libraries( QCNodeVideoDecoder PUBLIC ${TARGET_LIBRARIES} )
 
-install( FILES ${COMPONENT_VIDEODECODER_HEADERS} DESTINATION include/ridehal/component )
+install( FILES ${COMPONENT_VIDEODECODER_HEADERS} DESTINATION include/QC/component )
 

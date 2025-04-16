@@ -11,7 +11,7 @@ endif()
 set( HEADERS_DIR ${PROJECT_SOURCE_DIR}/include )
 
 set( QNN_HEADERS
-    ${HEADERS_DIR}/ridehal/component/QnnRuntime.hpp
+    ${HEADERS_DIR}/QC/component/QnnRuntime.hpp
 )
 
 if (EXISTS "${QNN_SDK_ROOT}/examples/QNN/SampleApp/SampleApp")
@@ -37,12 +37,12 @@ set( QNN_SOURCES
     QnnRuntime.cpp
 )
 
-add_library( RideHalQnnRuntime OBJECT ${QNN_HEADERS} ${QNN_SOURCES} )
+add_library( QCNodeQnnRuntime OBJECT ${QNN_HEADERS} ${QNN_SOURCES} )
 # setting LINKER_LANGUAGE is necessary if QNN_SOURCES is empty
-set_property( TARGET RideHalQnnRuntime PROPERTY LINKER_LANGUAGE CXX )
-set_property( TARGET RideHalQnnRuntime PROPERTY POSITION_INDEPENDENT_CODE ON )
+set_property( TARGET QCNodeQnnRuntime PROPERTY LINKER_LANGUAGE CXX )
+set_property( TARGET QCNodeQnnRuntime PROPERTY POSITION_INDEPENDENT_CODE ON )
 
-target_include_directories( RideHalQnnRuntime PUBLIC
+target_include_directories( QCNodeQnnRuntime PUBLIC
     ${PROJECT_SOURCE_DIR}/include
     ${QNN_SAMPLEAPP_DIR}/src
     ${QNN_SAMPLEAPP_DIR}/src/Log
@@ -52,9 +52,9 @@ target_include_directories( RideHalQnnRuntime PUBLIC
     ${QNN_SDK_ROOT}/include/QNN
 )
 
-target_compile_definitions( RideHalQnnRuntime PUBLIC QNN_API= )
-set( TARGET_LIBRARIES RideHalComponentCommon stdc++ cdsprpc fastrpc )
+target_compile_definitions( QCNodeQnnRuntime PUBLIC QNN_API= )
+set( TARGET_LIBRARIES QCNodeComponentCommon stdc++ cdsprpc fastrpc )
 
-target_link_libraries( RideHalQnnRuntime PUBLIC ${TARGET_LIBRARIES} )
+target_link_libraries( QCNodeQnnRuntime PUBLIC ${TARGET_LIBRARIES} )
 
-install( FILES ${QNN_HEADERS} DESTINATION include/ridehal/component )
+install( FILES ${QNN_HEADERS} DESTINATION include/QC/component )

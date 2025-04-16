@@ -2,10 +2,10 @@
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
-#include "ridehal/sample/SampleFpsAdapter.hpp"
+#include "QC/sample/SampleFpsAdapter.hpp"
 
 
-namespace ridehal
+namespace QC
 {
 namespace sample
 {
@@ -28,15 +28,15 @@ SampleFpsAdapter::SampleFpsAdapter() {}
 SampleFpsAdapter::~SampleFpsAdapter() {}
 
 
-RideHalError_e SampleFpsAdapter::ParseConfig( SampleConfig_t &config )
+QCStatus_e SampleFpsAdapter::ParseConfig( SampleConfig_t &config )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     m_frameDropPattern = Get( config, "frame_drop_patten", (uint32_t) 0 );
     if ( 0 == m_frameDropPattern )
     {
-        RIDEHAL_ERROR( "invalid frame drop pattern" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "invalid frame drop pattern" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     m_frameDropPeriod = GetNumBitsOfInteger( m_frameDropPattern );
@@ -44,37 +44,37 @@ RideHalError_e SampleFpsAdapter::ParseConfig( SampleConfig_t &config )
     m_inputTopicName = Get( config, "input_topic", "" );
     if ( "" == m_inputTopicName )
     {
-        RIDEHAL_ERROR( "no input topic" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "no input topic" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     m_outputTopicName = Get( config, "output_topic", "" );
     if ( "" == m_outputTopicName )
     {
-        RIDEHAL_ERROR( "no output topic" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "no output topic" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     return ret;
 }
 
-RideHalError_e SampleFpsAdapter::Init( std::string name, SampleConfig_t &config )
+QCStatus_e SampleFpsAdapter::Init( std::string name, SampleConfig_t &config )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     ret = SampleIF::Init( name );
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = ParseConfig( config );
     }
 
     TRACE_BEGIN( SYSTRACE_TASK_INIT );
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = m_sub.Init( name, m_inputTopicName );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = m_pub.Init( name, m_outputTopicName );
     }
@@ -83,9 +83,9 @@ RideHalError_e SampleFpsAdapter::Init( std::string name, SampleConfig_t &config 
     return ret;
 }
 
-RideHalError_e SampleFpsAdapter::Start()
+QCStatus_e SampleFpsAdapter::Start()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     TRACE_BEGIN( SYSTRACE_TASK_START );
     m_curPeriod = 0;
@@ -98,15 +98,15 @@ RideHalError_e SampleFpsAdapter::Start()
 
 void SampleFpsAdapter::ThreadMain()
 {
-    RideHalError_e ret;
+    QCStatus_e ret;
     while ( false == m_stop )
     {
         DataFrames_t frames;
         ret = m_sub.Receive( frames );
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
-            RIDEHAL_DEBUG( "receive frameId %" PRIu64 ", timestamp %" PRIu64 "\n",
-                           frames.FrameId( 0 ), frames.Timestamp( 0 ) );
+            QC_DEBUG( "receive frameId %" PRIu64 ", timestamp %" PRIu64 "\n", frames.FrameId( 0 ),
+                      frames.Timestamp( 0 ) );
             if ( 0 != ( m_frameDropPattern & ( 1 << m_curPeriod ) ) )
             {
                 PROFILER_BEGIN();
@@ -124,9 +124,9 @@ void SampleFpsAdapter::ThreadMain()
     }
 }
 
-RideHalError_e SampleFpsAdapter::Stop()
+QCStatus_e SampleFpsAdapter::Stop()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     m_stop = true;
     if ( m_thread.joinable() )
@@ -141,9 +141,9 @@ RideHalError_e SampleFpsAdapter::Stop()
     return ret;
 }
 
-RideHalError_e SampleFpsAdapter::Deinit()
+QCStatus_e SampleFpsAdapter::Deinit()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     TRACE_BEGIN( SYSTRACE_TASK_DEINIT );
     TRACE_END( SYSTRACE_TASK_DEINIT );
@@ -154,4 +154,4 @@ RideHalError_e SampleFpsAdapter::Deinit()
 REGISTER_SAMPLE( FpsAdapter, SampleFpsAdapter );
 
 }   // namespace sample
-}   // namespace ridehal
+}   // namespace QC

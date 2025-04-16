@@ -3,8 +3,8 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#ifndef RIDEHAL_CL2DCONSTANT_CLH
-#define RIDEHAL_CL2DCONSTANT_CLH
+#ifndef QC_CL2DCONSTANT_CLH
+#define QC_CL2DCONSTANT_CLH
 
 KernelCode(
 
@@ -16,4 +16,4 @@ KernelCode(
 
 )
 
-#endif   // RIDEHAL_CONSTANT_CLH
+#endif   // QC_CONSTANT_CLH

@@ -3,14 +3,14 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#include "ridehal/sample/shared_ring/SpinLock.hpp"
-#include "ridehal/common/Logger.hpp"
+#include "QC/sample/shared_ring/SpinLock.hpp"
+#include "QC/infras/logger/Logger.hpp"
 #include <chrono>
 
 
-using namespace ridehal::common;
+using namespace QC::common;
 
-namespace ridehal
+namespace QC
 {
 namespace sample
 {
@@ -20,14 +20,14 @@ namespace shared_ring
 #define SPINLOCK_LOCKED 1
 
 #if SPINLOCK_IMPL_METHOD == SPINLOCK_OVER_INT32
-RideHalError_e RideHal_SpinLockInit( int32_t *pSpinlock )
+QCStatus_e QCSpinLockInit( int32_t *pSpinlock )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     if ( nullptr == pSpinlock )
     {
-        RIDEHAL_LOG_ERROR( "pSpinlock is nullptr" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_LOG_ERROR( "pSpinlock is nullptr" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
@@ -38,14 +38,14 @@ RideHalError_e RideHal_SpinLockInit( int32_t *pSpinlock )
 }
 
 /* refer: https://rigtorp.se/spinlock/ */
-RideHalError_e RideHal_SpinLock( int32_t *pSpinlock, uint32_t timeoutMs )
+QCStatus_e QCSpinLock( int32_t *pSpinlock, uint32_t timeoutMs )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     if ( nullptr == pSpinlock )
     {
-        RIDEHAL_LOG_ERROR( "pSpinlock is nullptr" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_LOG_ERROR( "pSpinlock is nullptr" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
@@ -63,24 +63,24 @@ RideHalError_e RideHal_SpinLock( int32_t *pSpinlock, uint32_t timeoutMs )
                                     .count();
                     if ( elapsed > timeoutMs )
                     {
-                        RIDEHAL_LOG_ERROR( "SpinLock %p timeout", pSpinlock );
-                        ret = RIDEHAL_ERROR_TIMEOUT;
+                        QC_LOG_ERROR( "SpinLock %p timeout", pSpinlock );
+                        ret = QC_STATUS_TIMEOUT;
                         break;
                     }
                 }
             }
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
                 break;
             }
         }
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             if ( SPINLOCK_LOCKED != __atomic_load_n( pSpinlock, __ATOMIC_RELAXED ) )
             {
-                RIDEHAL_LOG_ERROR( "pSpinlock %p lock failed ", pSpinlock );
-                ret = RIDEHAL_ERROR_BAD_STATE;
+                QC_LOG_ERROR( "pSpinlock %p lock failed ", pSpinlock );
+                ret = QC_STATUS_BAD_STATE;
             }
         }
     }
@@ -88,19 +88,19 @@ RideHalError_e RideHal_SpinLock( int32_t *pSpinlock, uint32_t timeoutMs )
     return ret;
 }
 
-RideHalError_e RideHal_SpinUnLock( int32_t *pSpinlock )
+QCStatus_e QCSpinUnLock( int32_t *pSpinlock )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     if ( nullptr == pSpinlock )
     {
-        RIDEHAL_LOG_ERROR( "pSpinlock is nullptr" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_LOG_ERROR( "pSpinlock is nullptr" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else if ( SPINLOCK_LOCKED != __atomic_load_n( pSpinlock, __ATOMIC_RELAXED ) )
     {
-        RIDEHAL_LOG_ERROR( "pSpinlock %p is not in lock state", pSpinlock );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_LOG_ERROR( "pSpinlock %p is not in lock state", pSpinlock );
+        ret = QC_STATUS_BAD_STATE;
     }
     else
     {
@@ -112,36 +112,36 @@ RideHalError_e RideHal_SpinUnLock( int32_t *pSpinlock )
 #endif /* SPINLOCK_IMPL_METHOD == SPINLOCK_OVER_INT32 */
 
 #if SPINLOCK_IMPL_METHOD == SPINLOCK_OVER_PTHREAD_SPIN
-RideHalError_e RideHal_SpinLockInit( RideHal_SpinLock_t *pSpinlock )
+QCStatus_e QCSpinLockInit( QCSpinLock_t *pSpinlock )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     if ( nullptr == pSpinlock )
     {
-        RIDEHAL_LOG_ERROR( "pSpinlock is nullptr" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_LOG_ERROR( "pSpinlock is nullptr" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
         int rv = pthread_spin_init( pSpinlock, PTHREAD_PROCESS_SHARED );
         if ( 0 != rv )
         {
-            RIDEHAL_LOG_ERROR( "pSpinlock init failed: %d", rv );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_LOG_ERROR( "pSpinlock init failed: %d", rv );
+            ret = QC_STATUS_FAIL;
         }
     }
 
     return ret;
 }
 
-RideHalError_e RideHal_SpinLock( RideHal_SpinLock_t *pSpinlock, uint32_t timeoutMs )
+QCStatus_e QCSpinLock( QCSpinLock_t *pSpinlock, uint32_t timeoutMs )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     if ( nullptr == pSpinlock )
     {
-        RIDEHAL_LOG_ERROR( "pSpinlock is nullptr" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_LOG_ERROR( "pSpinlock is nullptr" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
@@ -157,12 +157,12 @@ RideHalError_e RideHal_SpinLock( RideHal_SpinLock_t *pSpinlock, uint32_t timeout
                                        .count();
                 if ( elapsed > timeoutMs )
                 {
-                    RIDEHAL_LOG_ERROR( "SpinLock %p timeout", pSpinlock );
-                    ret = RIDEHAL_ERROR_TIMEOUT;
+                    QC_LOG_ERROR( "SpinLock %p timeout", pSpinlock );
+                    ret = QC_STATUS_TIMEOUT;
                     break;
                 }
             }
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
                 break;
             }
@@ -174,29 +174,29 @@ RideHalError_e RideHal_SpinLock( RideHal_SpinLock_t *pSpinlock, uint32_t timeout
 #endif
         if ( 0 != rv )
         {
-            RIDEHAL_LOG_ERROR( "SpinLock %p lock failed: %d", pSpinlock, rv );
+            QC_LOG_ERROR( "SpinLock %p lock failed: %d", pSpinlock, rv );
         }
     }
 
     return ret;
 }
 
-RideHalError_e RideHal_SpinUnLock( RideHal_SpinLock_t *pSpinlock )
+QCStatus_e QCSpinUnLock( QCSpinLock_t *pSpinlock )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     if ( nullptr == pSpinlock )
     {
-        RIDEHAL_LOG_ERROR( "pSpinlock is nullptr" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_LOG_ERROR( "pSpinlock is nullptr" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
         int rv = pthread_spin_unlock( pSpinlock );
         if ( 0 != rv )
         {
-            RIDEHAL_LOG_ERROR( "SpinLock %p unlock failed: %d", pSpinlock, rv );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_LOG_ERROR( "SpinLock %p unlock failed: %d", pSpinlock, rv );
+            ret = QC_STATUS_FAIL;
         }
     }
 
@@ -205,15 +205,15 @@ RideHalError_e RideHal_SpinUnLock( RideHal_SpinLock_t *pSpinlock )
 #endif /* SPINLOCK_IMPL_METHOD == SPINLOCK_OVER_PTHREAD_SPIN */
 
 #if SPINLOCK_IMPL_METHOD == SPINLOCK_OVER_PTHREAD_MUTEX
-RideHalError_e RideHal_SpinLockInit( RideHal_SpinLock_t *pSpinlock )
+QCStatus_e QCSpinLockInit( QCSpinLock_t *pSpinlock )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     pthread_mutexattr_t attr;
 
     if ( nullptr == pSpinlock )
     {
-        RIDEHAL_LOG_ERROR( "pSpinlock is nullptr" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_LOG_ERROR( "pSpinlock is nullptr" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
@@ -223,22 +223,22 @@ RideHalError_e RideHal_SpinLockInit( RideHal_SpinLock_t *pSpinlock )
         int rv = pthread_mutex_init( pSpinlock, &attr );
         if ( 0 != rv )
         {
-            RIDEHAL_LOG_ERROR( "pSpinlock init failed: %d", rv );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_LOG_ERROR( "pSpinlock init failed: %d", rv );
+            ret = QC_STATUS_FAIL;
         }
     }
 
     return ret;
 }
 
-RideHalError_e RideHal_SpinLock( RideHal_SpinLock_t *pSpinlock, uint32_t timeoutMs )
+QCStatus_e QCSpinLock( QCSpinLock_t *pSpinlock, uint32_t timeoutMs )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     if ( nullptr == pSpinlock )
     {
-        RIDEHAL_LOG_ERROR( "pSpinlock is nullptr" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_LOG_ERROR( "pSpinlock is nullptr" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
@@ -254,12 +254,12 @@ RideHalError_e RideHal_SpinLock( RideHal_SpinLock_t *pSpinlock, uint32_t timeout
                                        .count();
                 if ( elapsed > timeoutMs )
                 {
-                    RIDEHAL_LOG_ERROR( "SpinLock %p timeout", pSpinlock );
-                    ret = RIDEHAL_ERROR_TIMEOUT;
+                    QC_LOG_ERROR( "SpinLock %p timeout", pSpinlock );
+                    ret = QC_STATUS_TIMEOUT;
                     break;
                 }
             }
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
                 break;
             }
@@ -271,29 +271,29 @@ RideHalError_e RideHal_SpinLock( RideHal_SpinLock_t *pSpinlock, uint32_t timeout
 #endif
         if ( 0 != rv )
         {
-            RIDEHAL_LOG_ERROR( "SpinLock %p lock failed: %d", pSpinlock, rv );
+            QC_LOG_ERROR( "SpinLock %p lock failed: %d", pSpinlock, rv );
         }
     }
 
     return ret;
 }
 
-RideHalError_e RideHal_SpinUnLock( RideHal_SpinLock_t *pSpinlock )
+QCStatus_e QCSpinUnLock( QCSpinLock_t *pSpinlock )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     if ( nullptr == pSpinlock )
     {
-        RIDEHAL_LOG_ERROR( "pSpinlock is nullptr" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_LOG_ERROR( "pSpinlock is nullptr" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
         int rv = pthread_mutex_unlock( pSpinlock );
         if ( 0 != rv )
         {
-            RIDEHAL_LOG_ERROR( "SpinLock %p unlock failed: %d", pSpinlock, rv );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_LOG_ERROR( "SpinLock %p unlock failed: %d", pSpinlock, rv );
+            ret = QC_STATUS_FAIL;
         }
     }
 
@@ -302,4 +302,4 @@ RideHalError_e RideHal_SpinUnLock( RideHal_SpinLock_t *pSpinlock )
 #endif /* SPINLOCK_IMPL_METHOD == SPINLOCK_OVER_PTHREAD_MUTEX */
 }   // namespace shared_ring
 }   // namespace sample
-}   // namespace ridehal
+}   // namespace QC

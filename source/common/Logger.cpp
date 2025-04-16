@@ -3,10 +3,10 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#include "ridehal/common/Logger.hpp"
+#include "QC/infras/logger/Logger.hpp"
 #include <stdlib.h>
 
-namespace ridehal
+namespace QC
 {
 namespace common
 {
@@ -22,10 +22,10 @@ Logger::Logger() : m_hHandle( nullptr ) {}
 
 Logger::~Logger() {}
 
-RideHalError_e Logger::Setup( Logger_Log_t logFnc, Logger_Create_t createFnc,
-                              Logger_Destroy_t destoryFnc )
+QCStatus_e Logger::Setup( Logger_Log_t logFnc, Logger_Create_t createFnc,
+                          Logger_Destroy_t destoryFnc )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     if ( ( DefaultLog == s_logFnc ) && ( DefaultCreate == s_createFnc ) &&
          ( DefaultDestory == s_destroyFnc ) )
@@ -35,11 +35,11 @@ RideHalError_e Logger::Setup( Logger_Log_t logFnc, Logger_Create_t createFnc,
         s_createFnc = createFnc;
         s_destroyFnc = destoryFnc;
 
-        ret = s_defaultLogger.Init( "RIHDEHAL" );
+        ret = s_defaultLogger.Init( "QCNODE" );
     }
     else
     {
-        ret = RIDEHAL_ERROR_FAIL;
+        ret = QC_STATUS_FAIL;
     }
 
     return ret;
@@ -52,28 +52,28 @@ Logger &Logger::GetDefault()
         std::lock_guard<std::mutex> l( s_lock );
         // the mutext lock is need to ensure the 2 more threads reach here at the same time, thus
         // the first thread that call this API do the default logger initialization. The second
-        // thread Init call will get error RIDEHAL_ERROR_BAD_STATE as it was already initialized.
-        (void) s_defaultLogger.Init( "RIHDEHAL" );
+        // thread Init call will get error QC_STATUS_BAD_STATE as it was already initialized.
+        (void) s_defaultLogger.Init( "QCNODE" );
     }
 
     return s_defaultLogger;
 }
 
-RideHalError_e Logger::Init( const char *pName, Logger_Level_e level )
+QCStatus_e Logger::Init( const char *pName, Logger_Level_e level )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     if ( nullptr == pName )
     {
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else if ( ( level >= LOGGER_LEVEL_MAX ) || ( level < LOGGER_LEVEL_VERBOSE ) )
     {
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else if ( m_hHandle != nullptr )
     {
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        ret = QC_STATUS_BAD_STATE;
     }
     else
     {
@@ -104,13 +104,13 @@ void Logger::Log( Logger_Level_e level, const char *pFormat, va_list args )
     }
 }
 
-RideHalError_e Logger::Deinit()
+QCStatus_e Logger::Deinit()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     if ( m_hHandle == nullptr )
     {
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        ret = QC_STATUS_BAD_STATE;
     }
     else
     {
@@ -124,11 +124,11 @@ RideHalError_e Logger::Deinit()
 Logger_Level_e Logger::DecideLoggerLevel( std::string name, Logger_Level_e level )
 {
     Logger_Level_e loggerLevel = level;
-    std::string envName = name + "_RIDEHAL_LOG_LEVEL";
+    std::string envName = name + "_QC_LOG_LEVEL";
     const char *envValue = getenv( envName.c_str() );
     if ( nullptr == envValue )
     {
-        envName = "RIDEHAL_LOG_LEVEL";
+        envName = "QC_LOG_LEVEL";
         envValue = getenv( envName.c_str() );
     }
 
@@ -165,4 +165,4 @@ Logger_Level_e Logger::DecideLoggerLevel( std::string name, Logger_Level_e level
 }
 
 }   // namespace common
-}   // namespace ridehal
+}   // namespace QC

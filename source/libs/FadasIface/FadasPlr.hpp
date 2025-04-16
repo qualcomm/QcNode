@@ -2,13 +2,13 @@
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
-#ifndef RIDEHAL_FADAS_PLR_HPP
-#define RIDEHAL_FADAS_PLR_HPP
+#ifndef QC_FADAS_PLR_HPP
+#define QC_FADAS_PLR_HPP
 
 #include "FadasSrv.hpp"
 #include <vector>
 
-namespace ridehal
+namespace QC
 {
 namespace libs
 {
@@ -34,31 +34,28 @@ public:
     FadasPlrPreProc();
     ~FadasPlrPreProc();
 
-    RideHalError_e SetParams( float pillarXSize, float pillarYSize, float pillarZSize,
-                              float minXRange, float minYRange, float minZRange, float maxXRange,
-                              float maxYRange, float maxZRange, uint32_t maxNumInPts,
-                              uint32_t numInFeatureDim, uint32_t maxNumPlrs,
-                              uint32_t maxNumPtsPerPlr, uint32_t numOutFeatureDim );
+    QCStatus_e SetParams( float pillarXSize, float pillarYSize, float pillarZSize, float minXRange,
+                          float minYRange, float minZRange, float maxXRange, float maxYRange,
+                          float maxZRange, uint32_t maxNumInPts, uint32_t numInFeatureDim,
+                          uint32_t maxNumPlrs, uint32_t maxNumPtsPerPlr,
+                          uint32_t numOutFeatureDim );
 
-    RideHalError_e CreatePreProc();
-    RideHalError_e PointPillarRun( const RideHal_SharedBuffer_t *pInPts,
-                                   const RideHal_SharedBuffer_t *pOutPlrs,
-                                   const RideHal_SharedBuffer_t *pOutFeature );
-    RideHalError_e DestroyPreProc();
+    QCStatus_e CreatePreProc();
+    QCStatus_e PointPillarRun( const QCSharedBuffer_t *pInPts, const QCSharedBuffer_t *pOutPlrs,
+                               const QCSharedBuffer_t *pOutFeature );
+    QCStatus_e DestroyPreProc();
 
 private:
-    RideHalError_e CreatePreProcCPU();
-    RideHalError_e CreatePreProcDSP();
+    QCStatus_e CreatePreProcCPU();
+    QCStatus_e CreatePreProcDSP();
 
-    RideHalError_e PointPillarRunCPU( const RideHal_SharedBuffer_t *pInPts,
-                                      const RideHal_SharedBuffer_t *pOutPlrs,
-                                      const RideHal_SharedBuffer_t *pOutFeature );
-    RideHalError_e PointPillarRunDSP( const RideHal_SharedBuffer_t *pInPts,
-                                      const RideHal_SharedBuffer_t *pOutPlrs,
-                                      const RideHal_SharedBuffer_t *pOutFeature );
+    QCStatus_e PointPillarRunCPU( const QCSharedBuffer_t *pInPts, const QCSharedBuffer_t *pOutPlrs,
+                                  const QCSharedBuffer_t *pOutFeature );
+    QCStatus_e PointPillarRunDSP( const QCSharedBuffer_t *pInPts, const QCSharedBuffer_t *pOutPlrs,
+                                  const QCSharedBuffer_t *pOutFeature );
 
-    RideHalError_e DestroyPreProcCPU();
-    RideHalError_e DestroyPreProcDSP();
+    QCStatus_e DestroyPreProcCPU();
+    QCStatus_e DestroyPreProcDSP();
 
 private:
     typedef union
@@ -97,46 +94,43 @@ public:
     FadasPlrPostProc();
     ~FadasPlrPostProc();
 
-    RideHalError_e SetParams( float pillarXSize, float pillarYSize, float minXRange,
-                              float minYRange, float maxXRange, float maxYRange, uint32_t numClass,
-                              uint32_t maxNumInPts, uint32_t numInFeatureDim, uint32_t maxNumDetOut,
-                              float32_t threshScore, float32_t threshIOU, bool bMapPtsToBBox );
+    QCStatus_e SetParams( float pillarXSize, float pillarYSize, float minXRange, float minYRange,
+                          float maxXRange, float maxYRange, uint32_t numClass, uint32_t maxNumInPts,
+                          uint32_t numInFeatureDim, uint32_t maxNumDetOut, float32_t threshScore,
+                          float32_t threshIOU, bool bMapPtsToBBox );
 
-    RideHalError_e SetFilterParams( float minCentreX, float minCentreY, float minCentreZ,
-                                    float maxCentreX, float maxCentreY, float maxCentreZ,
-                                    bool *labelSelect, uint32_t maxNumFilter );
+    QCStatus_e SetFilterParams( float minCentreX, float minCentreY, float minCentreZ,
+                                float maxCentreX, float maxCentreY, float maxCentreZ,
+                                bool *labelSelect, uint32_t maxNumFilter );
 
-    RideHalError_e CreatePostProc();
-    RideHalError_e
-    ExtractBBoxRun( const RideHal_SharedBuffer_t *pHeatmap, const RideHal_SharedBuffer_t *pXY,
-                    const RideHal_SharedBuffer_t *pZ, const RideHal_SharedBuffer_t *pSize,
-                    const RideHal_SharedBuffer_t *pTheta, const RideHal_SharedBuffer_t *pInPts,
-                    const RideHal_SharedBuffer_t *pBBoxList, const RideHal_SharedBuffer_t *pLabels,
-                    const RideHal_SharedBuffer_t *pScores, const RideHal_SharedBuffer_t *pMetadata,
-                    uint32_t *pNumDetOut );
-    RideHalError_e DestroyPostProc();
+    QCStatus_e CreatePostProc();
+    QCStatus_e ExtractBBoxRun( const QCSharedBuffer_t *pHeatmap, const QCSharedBuffer_t *pXY,
+                               const QCSharedBuffer_t *pZ, const QCSharedBuffer_t *pSize,
+                               const QCSharedBuffer_t *pTheta, const QCSharedBuffer_t *pInPts,
+                               const QCSharedBuffer_t *pBBoxList, const QCSharedBuffer_t *pLabels,
+                               const QCSharedBuffer_t *pScores, const QCSharedBuffer_t *pMetadata,
+                               uint32_t *pNumDetOut );
+    QCStatus_e DestroyPostProc();
 
 private:
-    RideHalError_e CreatePostProcCPU();
-    RideHalError_e CreatePostProcDSP();
+    QCStatus_e CreatePostProcCPU();
+    QCStatus_e CreatePostProcDSP();
 
-    RideHalError_e
-    ExtractBBoxRunCPU( const RideHal_SharedBuffer_t *pHeatmap, const RideHal_SharedBuffer_t *pXY,
-                       const RideHal_SharedBuffer_t *pZ, const RideHal_SharedBuffer_t *pSize,
-                       const RideHal_SharedBuffer_t *pTheta, const RideHal_SharedBuffer_t *pInPts,
-                       const RideHal_SharedBuffer_t *pBBoxList,
-                       const RideHal_SharedBuffer_t *pLabels, const RideHal_SharedBuffer_t *pScores,
-                       const RideHal_SharedBuffer_t *pMetadata, uint32_t *pNumDetOut );
-    RideHalError_e
-    ExtractBBoxRunDSP( const RideHal_SharedBuffer_t *pHeatmap, const RideHal_SharedBuffer_t *pXY,
-                       const RideHal_SharedBuffer_t *pZ, const RideHal_SharedBuffer_t *pSize,
-                       const RideHal_SharedBuffer_t *pTheta, const RideHal_SharedBuffer_t *pInPts,
-                       const RideHal_SharedBuffer_t *pBBoxList,
-                       const RideHal_SharedBuffer_t *pLabels, const RideHal_SharedBuffer_t *pScores,
-                       const RideHal_SharedBuffer_t *pMetadata, uint32_t *pNumDetOut );
+    QCStatus_e ExtractBBoxRunCPU( const QCSharedBuffer_t *pHeatmap, const QCSharedBuffer_t *pXY,
+                                  const QCSharedBuffer_t *pZ, const QCSharedBuffer_t *pSize,
+                                  const QCSharedBuffer_t *pTheta, const QCSharedBuffer_t *pInPts,
+                                  const QCSharedBuffer_t *pBBoxList,
+                                  const QCSharedBuffer_t *pLabels, const QCSharedBuffer_t *pScores,
+                                  const QCSharedBuffer_t *pMetadata, uint32_t *pNumDetOut );
+    QCStatus_e ExtractBBoxRunDSP( const QCSharedBuffer_t *pHeatmap, const QCSharedBuffer_t *pXY,
+                                  const QCSharedBuffer_t *pZ, const QCSharedBuffer_t *pSize,
+                                  const QCSharedBuffer_t *pTheta, const QCSharedBuffer_t *pInPts,
+                                  const QCSharedBuffer_t *pBBoxList,
+                                  const QCSharedBuffer_t *pLabels, const QCSharedBuffer_t *pScores,
+                                  const QCSharedBuffer_t *pMetadata, uint32_t *pNumDetOut );
 
-    RideHalError_e DestroyPostProcCPU();
-    RideHalError_e DestroyPostProcDSP();
+    QCStatus_e DestroyPostProcCPU();
+    QCStatus_e DestroyPostProcDSP();
 
 
 private:
@@ -181,6 +175,6 @@ private:
 
 }   // namespace FadasIface
 }   // namespace libs
-}   // namespace ridehal
+}   // namespace QC
 
-#endif   // RIDEHAL_FADAS_PLR_HPP
+#endif   // QC_FADAS_PLR_HPP

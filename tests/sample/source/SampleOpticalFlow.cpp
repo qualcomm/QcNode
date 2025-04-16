@@ -2,10 +2,10 @@
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
-#include "ridehal/sample/SampleOpticalFlow.hpp"
+#include "QC/sample/SampleOpticalFlow.hpp"
 
 
-namespace ridehal
+namespace QC
 {
 namespace sample
 {
@@ -15,9 +15,9 @@ namespace sample
 SampleOpticalFlow::SampleOpticalFlow() {}
 SampleOpticalFlow::~SampleOpticalFlow() {}
 
-RideHalError_e SampleOpticalFlow::ParseConfig( SampleConfig_t &config )
+QCStatus_e SampleOpticalFlow::ParseConfig( SampleConfig_t &config )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     std::string evaModeStr = Get( config, "eva_mode", "dsp" );
     if ( "dsp" == evaModeStr )
@@ -34,8 +34,8 @@ RideHalError_e SampleOpticalFlow::ParseConfig( SampleConfig_t &config )
     }
     else
     {
-        RIDEHAL_ERROR( "invalid eva_mode %s\n", evaModeStr.c_str() );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "invalid eva_mode %s\n", evaModeStr.c_str() );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     std::string dirStr = Get( config, "direction", "forward" );
@@ -49,46 +49,46 @@ RideHalError_e SampleOpticalFlow::ParseConfig( SampleConfig_t &config )
     }
     else
     {
-        RIDEHAL_ERROR( "invalid direction %s\n", dirStr.c_str() );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "invalid direction %s\n", dirStr.c_str() );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     m_config.width = Get( config, "width", 1920u );
     m_config.height = Get( config, "height", 1024u );
-    m_config.format = Get( config, "format", RIDEHAL_IMAGE_FORMAT_NV12 );
+    m_config.format = Get( config, "format", QC_IMAGE_FORMAT_NV12 );
     m_config.frameRate = Get( config, "fps", 30u );
     m_config.amFilter.nStepSize = Get( config, "step_size", 1 );
 
     m_poolSize = Get( config, "pool_size", 4 );
     if ( 0 == m_poolSize )
     {
-        RIDEHAL_ERROR( "invalid pool_size = %d\n", m_poolSize );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "invalid pool_size = %d\n", m_poolSize );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     m_inputTopicName = Get( config, "input_topic", "" );
     if ( "" == m_inputTopicName )
     {
-        RIDEHAL_ERROR( "no input topic\n" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "no input topic\n" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     m_outputTopicName = Get( config, "output_topic", "" );
     if ( "" == m_outputTopicName )
     {
-        RIDEHAL_ERROR( "no output topic\n" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "no output topic\n" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     return ret;
 }
 
-RideHalError_e SampleOpticalFlow::Init( std::string name, SampleConfig_t &config )
+QCStatus_e SampleOpticalFlow::Init( std::string name, SampleConfig_t &config )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     ret = SampleIF::Init( name );
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = ParseConfig( config );
     }
@@ -98,41 +98,39 @@ RideHalError_e SampleOpticalFlow::Init( std::string name, SampleConfig_t &config
     uint32_t height = ( m_config.height >> m_config.amFilter.nStepSize )
                       << m_config.amFilter.nUpScale;
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
-        RideHal_TensorProps_t mvMapTsProp = {
-                RIDEHAL_TENSOR_TYPE_UINT_16,
-                { 1, ALIGN_S( height, 8 ), ALIGN_S( width * 2, 128 ), 1 },
-                4 };
+        QCTensorProps_t mvMapTsProp = { QC_TENSOR_TYPE_UINT_16,
+                                        { 1, ALIGN_S( height, 8 ), ALIGN_S( width * 2, 128 ), 1 },
+                                        4 };
 
         ret = m_mvPool.Init( name + ".mv", LOGGER_LEVEL_INFO, m_poolSize, mvMapTsProp,
-                             RIDEHAL_BUFFER_USAGE_EVA );
+                             QC_BUFFER_USAGE_EVA );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
-        RideHal_TensorProps_t mvConfTsProp = {
-                RIDEHAL_TENSOR_TYPE_UINT_8,
-                { 1, ALIGN_S( height, 8 ), ALIGN_S( width, 128 ), 1 },
-                4 };
+        QCTensorProps_t mvConfTsProp = { QC_TENSOR_TYPE_UINT_8,
+                                         { 1, ALIGN_S( height, 8 ), ALIGN_S( width, 128 ), 1 },
+                                         4 };
 
         ret = m_mvConfPool.Init( name + ".mvConf", LOGGER_LEVEL_INFO, m_poolSize, mvConfTsProp,
-                                 RIDEHAL_BUFFER_USAGE_EVA );
+                                 QC_BUFFER_USAGE_EVA );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         TRACE_BEGIN( SYSTRACE_TASK_INIT );
         ret = m_ofl.Init( name.c_str(), &m_config );
         TRACE_END( SYSTRACE_TASK_INIT );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = m_sub.Init( name, m_inputTopicName );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = m_pub.Init( name, m_outputTopicName );
     }
@@ -142,14 +140,14 @@ RideHalError_e SampleOpticalFlow::Init( std::string name, SampleConfig_t &config
     return ret;
 }
 
-RideHalError_e SampleOpticalFlow::Start()
+QCStatus_e SampleOpticalFlow::Start()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     TRACE_BEGIN( SYSTRACE_TASK_START );
     ret = m_ofl.Start();
     TRACE_END( SYSTRACE_TASK_START );
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         m_stop = false;
         m_thread = std::thread( &SampleOpticalFlow::ThreadMain, this );
@@ -160,15 +158,15 @@ RideHalError_e SampleOpticalFlow::Start()
 
 void SampleOpticalFlow::ThreadMain()
 {
-    RideHalError_e ret;
+    QCStatus_e ret;
     while ( false == m_stop )
     {
         DataFrames_t frames;
         ret = m_sub.Receive( frames );
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
-            RIDEHAL_DEBUG( "receive frameId %" PRIu64 ", timestamp %" PRIu64 "\n",
-                           frames.FrameId( 0 ), frames.Timestamp( 0 ) );
+            QC_DEBUG( "receive frameId %" PRIu64 ", timestamp %" PRIu64 "\n", frames.FrameId( 0 ),
+                      frames.Timestamp( 0 ) );
             if ( 0 == m_LastFrames.frames.size() )
             {
                 m_LastFrames = frames;
@@ -178,13 +176,13 @@ void SampleOpticalFlow::ThreadMain()
             std::shared_ptr<SharedBuffer_t> mvConf = m_mvConfPool.Get();
             if ( ( nullptr != mv ) && ( nullptr != mvConf ) )
             {
-                RideHal_SharedBuffer_t &refImg = m_LastFrames.SharedBuffer( 0 );
-                RideHal_SharedBuffer_t &curImg = frames.SharedBuffer( 0 );
+                QCSharedBuffer_t &refImg = m_LastFrames.SharedBuffer( 0 );
+                QCSharedBuffer_t &curImg = frames.SharedBuffer( 0 );
 
                 PROFILER_BEGIN();
                 TRACE_BEGIN( frames.FrameId( 0 ) );
                 ret = m_ofl.Execute( &refImg, &curImg, &mv->sharedBuffer, &mvConf->sharedBuffer );
-                if ( RIDEHAL_ERROR_NONE == ret )
+                if ( QC_STATUS_OK == ret )
                 {
                     PROFILER_END();
                     TRACE_END( frames.FrameId( 0 ) );
@@ -200,8 +198,7 @@ void SampleOpticalFlow::ThreadMain()
                 }
                 else
                 {
-                    RIDEHAL_ERROR( "OpticalFlow failed for %" PRIu64 " : %d", frames.FrameId( 0 ),
-                                   ret );
+                    QC_ERROR( "OpticalFlow failed for %" PRIu64 " : %d", frames.FrameId( 0 ), ret );
                 }
             }
 
@@ -210,9 +207,9 @@ void SampleOpticalFlow::ThreadMain()
     }
 }
 
-RideHalError_e SampleOpticalFlow::Stop()
+QCStatus_e SampleOpticalFlow::Stop()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     m_stop = true;
     if ( m_thread.joinable() )
@@ -232,9 +229,9 @@ RideHalError_e SampleOpticalFlow::Stop()
     return ret;
 }
 
-RideHalError_e SampleOpticalFlow::Deinit()
+QCStatus_e SampleOpticalFlow::Deinit()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     TRACE_BEGIN( SYSTRACE_TASK_DEINIT );
     ret = m_ofl.Deinit();
@@ -246,4 +243,4 @@ RideHalError_e SampleOpticalFlow::Deinit()
 REGISTER_SAMPLE( OpticalFlow, SampleOpticalFlow );
 
 }   // namespace sample
-}   // namespace ridehal
+}   // namespace QC

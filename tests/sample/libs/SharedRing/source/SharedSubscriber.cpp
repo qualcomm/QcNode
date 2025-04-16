@@ -3,11 +3,11 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#include "ridehal/sample/shared_ring/SharedSubscriber.hpp"
+#include "QC/sample/shared_ring/SharedSubscriber.hpp"
 #include <chrono>
 using namespace std::chrono_literals;
 
-namespace ridehal
+namespace QC
 {
 namespace sample
 {
@@ -19,10 +19,9 @@ namespace shared_ring
 SharedSubscriber::SharedSubscriber() {}
 SharedSubscriber::~SharedSubscriber() {}
 
-RideHalError_e SharedSubscriber::Init( std::string name, std::string topicName,
-                                       uint32_t queueDepth )
+QCStatus_e SharedSubscriber::Init( std::string name, std::string topicName, uint32_t queueDepth )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     m_name = name;
     m_shName = topicName;
@@ -30,31 +29,31 @@ RideHalError_e SharedSubscriber::Init( std::string name, std::string topicName,
 
     std::replace( m_shName.begin(), m_shName.end(), '/', '_' );
 
-    ret = RIDEHAL_LOGGER_INIT( name.c_str(), LOGGER_LEVEL_INFO );
-    ret = RIDEHAL_ERROR_NONE; /* ignore logger init error */
+    ret = QC_LOGGER_INIT( name.c_str(), LOGGER_LEVEL_INFO );
+    ret = QC_STATUS_OK; /* ignore logger init error */
 
     return ret;
 }
 
-RideHalError_e SharedSubscriber::Start()
+QCStatus_e SharedSubscriber::Start()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     uint32_t timeout = WAIT_PUBLISHER_ONLINE_TIMEOUT_MS;
     bool bShmemOpened = false;
     bool bSemFreeOpened = false;
 
     if ( m_shName.empty() )
     {
-        RIDEHAL_ERROR( "Not initialized" );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_ERROR( "Not initialized" );
+        ret = QC_STATUS_BAD_STATE;
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         while ( timeout > 0 )
         {
             ret = m_shmem.Open( m_shName );
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
                 timeout--;
                 std::this_thread::sleep_for( 1ms );
@@ -67,7 +66,7 @@ RideHalError_e SharedSubscriber::Start()
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         m_pRingMem = (SharedRing_Memory_t *) m_shmem.Data();
         while ( SHARED_RING_MEMORY_INITIALIZED != m_pRingMem->status )
@@ -79,27 +78,27 @@ RideHalError_e SharedSubscriber::Start()
             }
             else
             {
-                RIDEHAL_ERROR( "shared memory %s not in initialized status", m_shName.c_str() );
-                ret = RIDEHAL_ERROR_TIMEOUT;
+                QC_ERROR( "shared memory %s not in initialized status", m_shName.c_str() );
+                ret = QC_STATUS_TIMEOUT;
             }
         }
     }
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         if ( m_shmem.Size() != sizeof( SharedRing_Memory_t ) )
         {
-            RIDEHAL_ERROR( "shared memory %s size is not correct: %" PRIu64 "!=%" PRIu64,
-                           m_shName.c_str(), m_shmem.Size(), sizeof( SharedRing_Memory_t ) );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "shared memory %s size is not correct: %" PRIu64 "!=%" PRIu64,
+                      m_shName.c_str(), m_shmem.Size(), sizeof( SharedRing_Memory_t ) );
+            ret = QC_STATUS_FAIL;
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = m_semFree.Open( m_shName + "_free" );
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
-            RIDEHAL_ERROR( "Failed to open semaphore %s_free", m_shName.c_str() );
+            QC_ERROR( "Failed to open semaphore %s_free", m_shName.c_str() );
         }
         else
         {
@@ -107,7 +106,7 @@ RideHalError_e SharedSubscriber::Start()
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         for ( int32_t i = 0; i < SHARED_RING_NUM_SUBSCRIBERS; i++ )
         {
@@ -121,19 +120,19 @@ RideHalError_e SharedSubscriber::Start()
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = m_semUsed.Open( m_shName + "_used" + std::to_string( m_slotId ) );
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
-            RIDEHAL_ERROR( "Failed to open semaphore %s_used%d", m_shName.c_str(), m_slotId );
+            QC_ERROR( "Failed to open semaphore %s_used%d", m_shName.c_str(), m_slotId );
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
-        RIDEHAL_INFO( "publisher %s online for %s, slot %d", m_pRingMem->name, m_shName.c_str(),
-                      m_slotId );
+        QC_INFO( "publisher %s online for %s, slot %d", m_pRingMem->name, m_shName.c_str(),
+                 m_slotId );
         m_pUsedRing->SetName( m_name );
         m_pUsedRing->queueDepth = m_queueDepth;
         __atomic_store_n( &m_pUsedRing->status, SHARED_RING_USED_INITIALIZED, __ATOMIC_RELAXED );
@@ -174,31 +173,31 @@ void SharedSubscriber::ThreadMain()
 
 void SharedSubscriber::ReleaseDesc( uint16_t idx )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     SharedRing_Desc_t *pDesc = &m_pRingMem->descs[idx];
 
-    RIDEHAL_DEBUG( "release idx %d", idx );
+    QC_DEBUG( "release idx %d", idx );
     int32_t ref = __atomic_sub_fetch( &pDesc->ref, 1, __ATOMIC_RELAXED );
     if ( 0 == ref )
     {
-        RIDEHAL_DEBUG( "free idx %d", idx );
+        QC_DEBUG( "free idx %d", idx );
         ret = m_pRingMem->free.Push( idx );
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             ret = m_semFree.Post();
             if ( false == m_bStarted )
             {
-                ret = RIDEHAL_ERROR_NONE; /* ignore semaphore post error after stop */
+                ret = QC_STATUS_OK; /* ignore semaphore post error after stop */
             }
         }
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
-            RIDEHAL_ERROR( "failed to release idx %d", idx );
+            QC_ERROR( "failed to release idx %d", idx );
         }
     }
     else if ( ref < 0 )
     {
-        RIDEHAL_ERROR( "desc %d ref underflow", idx );
+        QC_ERROR( "desc %d ref underflow", idx );
         /* Note: this is a diaster if reach here, this error now was not handled */
     }
     else
@@ -221,7 +220,7 @@ void SharedSubscriber::ReleaseSharedBuffer( SharedBuffer_t *pSharedBuffer )
         }
         else if ( ref < 0 )
         {
-            RIDEHAL_ERROR( "data frame %d ref underflow", idx );
+            QC_ERROR( "data frame %d ref underflow", idx );
             /* Note: this is a diaster if reach here, this error now was not handled */
         }
         else
@@ -231,40 +230,40 @@ void SharedSubscriber::ReleaseSharedBuffer( SharedBuffer_t *pSharedBuffer )
     }
     else
     {
-        RIDEHAL_ERROR( "idx %d not found", idx );
+        QC_ERROR( "idx %d not found", idx );
     }
 }
 
-RideHalError_e SharedSubscriber::Receive( DataFrames_t &dataFrames, uint32_t timeoutMs )
+QCStatus_e SharedSubscriber::Receive( DataFrames_t &dataFrames, uint32_t timeoutMs )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     uint16_t idx = 0;
 
     if ( false == m_bStarted )
     {
-        RIDEHAL_ERROR( "Not started" );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_ERROR( "Not started" );
+        ret = QC_STATUS_BAD_STATE;
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = m_semUsed.Wait( timeoutMs );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = m_pUsedRing->Pop( idx );
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             if ( ( idx >= SHARED_RING_NUM_DESC ) || ( idx < 0 ) )
             {
-                RIDEHAL_ERROR( "get an invalid idx: %d", idx );
-                ret = RIDEHAL_ERROR_FAIL;
+                QC_ERROR( "get an invalid idx: %d", idx );
+                ret = QC_STATUS_FAIL;
             }
         }
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
-            RIDEHAL_DEBUG( "idx = %d received for %s", idx, m_shName.c_str() );
+            QC_DEBUG( "idx = %d received for %s", idx, m_shName.c_str() );
             SharedRing_Desc_t *pDesc = &m_pRingMem->descs[idx];
             {
                 std::lock_guard<std::mutex> l( m_lock );
@@ -274,19 +273,19 @@ RideHalError_e SharedSubscriber::Receive( DataFrames_t &dataFrames, uint32_t tim
             for ( uint32_t i = 0; i < pDesc->numDataFrames; i++ )
             {
                 DataFrame_t frame;
-                RideHal_SharedBuffer_t sbuf;
+                QCSharedBuffer_t sbuf;
                 uint64_t dmaHandle = pDesc->dataFrames[i].buf.buffer.dmaHandle;
                 auto it = m_buffers.find( dmaHandle );
                 if ( m_buffers.end() == it )
                 {
                     ret = sbuf.Import( &pDesc->dataFrames[i].buf );
-                    if ( RIDEHAL_ERROR_NONE == ret )
+                    if ( QC_STATUS_OK == ret )
                     {
                         m_buffers[dmaHandle] = sbuf;
                     }
                     else
                     {
-                        RIDEHAL_ERROR( "Failed to mmap for %s: %d", m_shName.c_str(), ret );
+                        QC_ERROR( "Failed to mmap for %s: %d", m_shName.c_str(), ret );
                         /* Note: a disaster here if it failed, now this error was not handled. */
                         break;
                     }
@@ -296,7 +295,7 @@ RideHalError_e SharedSubscriber::Receive( DataFrames_t &dataFrames, uint32_t tim
                     sbuf = it->second;
                 }
 
-                if ( RIDEHAL_ERROR_NONE == ret )
+                if ( QC_STATUS_OK == ret )
                 {
                     SharedBuffer_t *pSharedBuffer;
                     {
@@ -324,15 +323,15 @@ RideHalError_e SharedSubscriber::Receive( DataFrames_t &dataFrames, uint32_t tim
     return ret;
 }
 
-RideHalError_e SharedSubscriber::Stop()
+QCStatus_e SharedSubscriber::Stop()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
-    RideHalError_e ret2;
+    QCStatus_e ret = QC_STATUS_OK;
+    QCStatus_e ret2;
 
     if ( false == m_bStarted )
     {
-        RIDEHAL_ERROR( "Not started" );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_ERROR( "Not started" );
+        ret = QC_STATUS_BAD_STATE;
     }
     else
     {
@@ -346,26 +345,26 @@ RideHalError_e SharedSubscriber::Stop()
         {
             uint16_t idx = 0;
             ret2 = m_pUsedRing->Pop( idx );
-            if ( RIDEHAL_ERROR_NONE == ret2 )
+            if ( QC_STATUS_OK == ret2 )
             {
                 ReleaseDesc( idx );
             }
-        } while ( RIDEHAL_ERROR_NONE == ret2 );
+        } while ( QC_STATUS_OK == ret2 );
     }
 
     return ret;
 }
 
 
-RideHalError_e SharedSubscriber::Deinit()
+QCStatus_e SharedSubscriber::Deinit()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
-    RideHalError_e ret2;
+    QCStatus_e ret = QC_STATUS_OK;
+    QCStatus_e ret2;
 
     if ( m_bStarted )
     {
-        RIDEHAL_ERROR( "Not stopped" );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_ERROR( "Not stopped" );
+        ret = QC_STATUS_BAD_STATE;
     }
     else
     {
@@ -374,30 +373,30 @@ RideHalError_e SharedSubscriber::Deinit()
         __atomic_store_n( &m_pUsedRing->status, SHARED_RING_USED_DESTROYED, __ATOMIC_RELAXED );
 
         ret2 = m_semUsed.Close();
-        if ( RIDEHAL_ERROR_NONE != ret2 )
+        if ( QC_STATUS_OK != ret2 )
         {
-            RIDEHAL_ERROR( "Failed to close semaphore %s_used%d", m_shName.c_str(), m_slotId );
+            QC_ERROR( "Failed to close semaphore %s_used%d", m_shName.c_str(), m_slotId );
             ret = ret2;
         }
 
         ret2 = m_semFree.Close();
-        if ( RIDEHAL_ERROR_NONE != ret2 )
+        if ( QC_STATUS_OK != ret2 )
         {
-            RIDEHAL_ERROR( "Failed to close semaphore %s_free", m_shName.c_str() );
+            QC_ERROR( "Failed to close semaphore %s_free", m_shName.c_str() );
             ret = ret2;
         }
 
         ret2 = m_shmem.Close();
-        if ( RIDEHAL_ERROR_NONE != ret2 )
+        if ( QC_STATUS_OK != ret2 )
         {
-            RIDEHAL_ERROR( "Failed to close shared memory %s", m_shName.c_str() );
+            QC_ERROR( "Failed to close shared memory %s", m_shName.c_str() );
             ret = ret2;
         }
 
         m_pRingMem = nullptr;
         m_pUsedRing = nullptr;
         m_slotId = -1;
-        (void) RIDEHAL_LOGGER_DEINIT();
+        (void) QC_LOGGER_DEINIT();
         m_name = "";
         m_shName = "";
     }
@@ -407,4 +406,4 @@ RideHalError_e SharedSubscriber::Deinit()
 
 }   // namespace shared_ring
 }   // namespace sample
-}   // namespace ridehal
+}   // namespace QC

@@ -6,68 +6,68 @@
 #include "gtest/gtest.h"
 #include <stdio.h>
 
-#include "ridehal/component/GL2DFlex.hpp"
+#include "QC/component/GL2DFlex.hpp"
 
-using namespace ridehal::common;
-using namespace ridehal::component;
+using namespace QC::common;
+using namespace QC::component;
 
-void GL2DFlexTestNormal( GL2DFlex_Config_t *pConfig, RideHal_ImageFormat_e outputFormat,
+void GL2DFlexTestNormal( GL2DFlex_Config_t *pConfig, QCImageFormat_e outputFormat,
                          uint32_t outputWidth, uint32_t outputHeight )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     GL2DFlex GL2DFlexObj;
     char pName[12] = "GL2DFlex";
     uint32_t numInputs = pConfig->numOfInputs;
-    RideHal_SharedBuffer_t inputs[numInputs];
-    RideHal_SharedBuffer_t output;
+    QCSharedBuffer_t inputs[numInputs];
+    QCSharedBuffer_t output;
 
     for ( size_t i = 0; i < numInputs; i++ )
     {
         ret = inputs[i].Allocate( pConfig->inputConfigs[i].inputResolution.width,
                                   pConfig->inputConfigs[i].inputResolution.height,
                                   pConfig->inputConfigs[i].inputFormat );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
     }
     pConfig->outputFormat = outputFormat;
     pConfig->outputResolution.width = outputWidth;
     pConfig->outputResolution.height = outputHeight;
 
     ret = output.Allocate( outputWidth, outputHeight, pConfig->outputFormat );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = GL2DFlexObj.Init( pName, pConfig );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     for ( size_t i = 0; i < numInputs; i++ )
     {
         ret = GL2DFlexObj.RegisterInputBuffers( &inputs[i], 1 );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
     }
 
     ret = GL2DFlexObj.RegisterOutputBuffers( &output, 1 );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = GL2DFlexObj.Start();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = GL2DFlexObj.Execute( inputs, numInputs, &output );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = GL2DFlexObj.Stop();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     for ( size_t i = 0; i < numInputs; i++ )
     {
         ret = GL2DFlexObj.DeregisterInputBuffers( &inputs[i], 1 );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
     }
 
     ret = GL2DFlexObj.DeregisterOutputBuffers( &output, 1 );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = GL2DFlexObj.Deinit();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 }
 
 TEST( GL2DFlex, SANITY_ConvertNV12toRGB )
@@ -78,7 +78,7 @@ TEST( GL2DFlex, SANITY_ConvertNV12toRGB )
     GL2DFlexConfig.numOfInputs = 1;
     for ( size_t i = 0; i < GL2DFlexConfig.numOfInputs; i++ )
     {
-        GL2DFlexConfig.inputConfigs[i].inputFormat = RIDEHAL_IMAGE_FORMAT_NV12;
+        GL2DFlexConfig.inputConfigs[i].inputFormat = QC_IMAGE_FORMAT_NV12;
         GL2DFlexConfig.inputConfigs[i].inputResolution.width = 1920;
         GL2DFlexConfig.inputConfigs[i].inputResolution.height = 1080;
         GL2DFlexConfig.inputConfigs[i].ROI.topX = 100;
@@ -87,7 +87,7 @@ TEST( GL2DFlex, SANITY_ConvertNV12toRGB )
         GL2DFlexConfig.inputConfigs[i].ROI.height = 720;
     }
 
-    RideHal_ImageFormat_e outputFormat = RIDEHAL_IMAGE_FORMAT_RGB888;
+    QCImageFormat_e outputFormat = QC_IMAGE_FORMAT_RGB888;
     uint32_t outputWidth = 600;
     uint32_t outputHeight = 600;
 
@@ -102,7 +102,7 @@ TEST( GL2DFlex, SANITY_ConvertRGBtoNV12 )
     GL2DFlexConfig.numOfInputs = 1;
     for ( size_t i = 0; i < GL2DFlexConfig.numOfInputs; i++ )
     {
-        GL2DFlexConfig.inputConfigs[i].inputFormat = RIDEHAL_IMAGE_FORMAT_RGB888;
+        GL2DFlexConfig.inputConfigs[i].inputFormat = QC_IMAGE_FORMAT_RGB888;
         GL2DFlexConfig.inputConfigs[i].inputResolution.width = 1920;
         GL2DFlexConfig.inputConfigs[i].inputResolution.height = 1080;
         GL2DFlexConfig.inputConfigs[i].ROI.topX = 100;
@@ -111,7 +111,7 @@ TEST( GL2DFlex, SANITY_ConvertRGBtoNV12 )
         GL2DFlexConfig.inputConfigs[i].ROI.height = 720;
     }
 
-    RideHal_ImageFormat_e outputFormat = RIDEHAL_IMAGE_FORMAT_NV12;
+    QCImageFormat_e outputFormat = QC_IMAGE_FORMAT_NV12;
     uint32_t outputWidth = 600;
     uint32_t outputHeight = 600;
 
@@ -126,7 +126,7 @@ TEST( GL2DFlex, SANITY_ConvertUYVYtoNV12 )
     GL2DFlexConfig.numOfInputs = 1;
     for ( size_t i = 0; i < GL2DFlexConfig.numOfInputs; i++ )
     {
-        GL2DFlexConfig.inputConfigs[i].inputFormat = RIDEHAL_IMAGE_FORMAT_UYVY;
+        GL2DFlexConfig.inputConfigs[i].inputFormat = QC_IMAGE_FORMAT_UYVY;
         GL2DFlexConfig.inputConfigs[i].inputResolution.width = 1920;
         GL2DFlexConfig.inputConfigs[i].inputResolution.height = 1080;
         GL2DFlexConfig.inputConfigs[i].ROI.topX = 100;
@@ -135,7 +135,7 @@ TEST( GL2DFlex, SANITY_ConvertUYVYtoNV12 )
         GL2DFlexConfig.inputConfigs[i].ROI.height = 720;
     }
 
-    RideHal_ImageFormat_e outputFormat = RIDEHAL_IMAGE_FORMAT_NV12;
+    QCImageFormat_e outputFormat = QC_IMAGE_FORMAT_NV12;
     uint32_t outputWidth = 1080;
     uint32_t outputHeight = 720;
 
@@ -150,7 +150,7 @@ TEST( GL2DFlex, SANITY_ConvertUYVYtoRGB )
     GL2DFlexConfig.numOfInputs = 1;
     for ( size_t i = 0; i < GL2DFlexConfig.numOfInputs; i++ )
     {
-        GL2DFlexConfig.inputConfigs[i].inputFormat = RIDEHAL_IMAGE_FORMAT_UYVY;
+        GL2DFlexConfig.inputConfigs[i].inputFormat = QC_IMAGE_FORMAT_UYVY;
         GL2DFlexConfig.inputConfigs[i].inputResolution.width = 1920;
         GL2DFlexConfig.inputConfigs[i].inputResolution.height = 1080;
         GL2DFlexConfig.inputConfigs[i].ROI.topX = 200;
@@ -159,7 +159,7 @@ TEST( GL2DFlex, SANITY_ConvertUYVYtoRGB )
         GL2DFlexConfig.inputConfigs[i].ROI.height = 720;
     }
 
-    RideHal_ImageFormat_e outputFormat = RIDEHAL_IMAGE_FORMAT_RGB888;
+    QCImageFormat_e outputFormat = QC_IMAGE_FORMAT_RGB888;
     uint32_t outputWidth = 1080;
     uint32_t outputHeight = 720;
 
@@ -174,7 +174,7 @@ TEST( GL2DFlex, SANITY_ROI_BOUND )
     GL2DFlexConfig.numOfInputs = 1;
     for ( size_t i = 0; i < GL2DFlexConfig.numOfInputs; i++ )
     {
-        GL2DFlexConfig.inputConfigs[i].inputFormat = RIDEHAL_IMAGE_FORMAT_UYVY;
+        GL2DFlexConfig.inputConfigs[i].inputFormat = QC_IMAGE_FORMAT_UYVY;
         GL2DFlexConfig.inputConfigs[i].inputResolution.width = 1920;
         GL2DFlexConfig.inputConfigs[i].inputResolution.height = 1080;
         GL2DFlexConfig.inputConfigs[i].ROI.topX = 0;
@@ -183,7 +183,7 @@ TEST( GL2DFlex, SANITY_ROI_BOUND )
         GL2DFlexConfig.inputConfigs[i].ROI.height = 0;
     }
 
-    RideHal_ImageFormat_e outputFormat = RIDEHAL_IMAGE_FORMAT_NV12;
+    QCImageFormat_e outputFormat = QC_IMAGE_FORMAT_NV12;
     uint32_t outputWidth = 1080;
     uint32_t outputHeight = 720;
 
@@ -192,7 +192,7 @@ TEST( GL2DFlex, SANITY_ROI_BOUND )
 
 TEST( GL2DFlex, SANITY_RegDeregMultiBuffer )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     GL2DFlex GL2DFlexObj;
     GL2DFlex_Config_t GL2DFlexConfig;
@@ -200,17 +200,17 @@ TEST( GL2DFlex, SANITY_RegDeregMultiBuffer )
     char pName[12] = "GL2DFlex";
 
     pConfig->numOfInputs = 2;
-    RideHal_ImageFormat_e outputFormat = RIDEHAL_IMAGE_FORMAT_NV12;
+    QCImageFormat_e outputFormat = QC_IMAGE_FORMAT_NV12;
     uint32_t outputWidth = 1080;
     uint32_t outputHeight = 720;
     uint32_t bufferNum = 4;
 
-    RideHal_SharedBuffer_t inputBuffers[pConfig->numOfInputs][bufferNum];
-    RideHal_SharedBuffer_t outputBuffers[bufferNum];
+    QCSharedBuffer_t inputBuffers[pConfig->numOfInputs][bufferNum];
+    QCSharedBuffer_t outputBuffers[bufferNum];
 
     for ( size_t i = 0; i < pConfig->numOfInputs; i++ )
     {
-        pConfig->inputConfigs[i].inputFormat = RIDEHAL_IMAGE_FORMAT_UYVY;
+        pConfig->inputConfigs[i].inputFormat = QC_IMAGE_FORMAT_UYVY;
         pConfig->inputConfigs[i].inputResolution.width = 1920;
         pConfig->inputConfigs[i].inputResolution.height = 1080;
         pConfig->inputConfigs[i].ROI.topX = 100;
@@ -222,7 +222,7 @@ TEST( GL2DFlex, SANITY_RegDeregMultiBuffer )
             ret = inputBuffers[i][k].Allocate( pConfig->inputConfigs[i].inputResolution.width,
                                                pConfig->inputConfigs[i].inputResolution.height,
                                                pConfig->inputConfigs[i].inputFormat );
-            ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+            ASSERT_EQ( QC_STATUS_OK, ret );
         }
     }
 
@@ -233,29 +233,29 @@ TEST( GL2DFlex, SANITY_RegDeregMultiBuffer )
     {
         ret = outputBuffers[k].Allocate( pConfig->numOfInputs, outputWidth, outputHeight,
                                          outputFormat );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
     }
 
-    RideHal_SharedBuffer_t *inputs[pConfig->numOfInputs];
-    RideHal_SharedBuffer_t *output;
+    QCSharedBuffer_t *inputs[pConfig->numOfInputs];
+    QCSharedBuffer_t *output;
 
     ret = GL2DFlexObj.Init( pName, pConfig );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = GL2DFlexObj.Start();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     for ( size_t i = 0; i < pConfig->numOfInputs; i++ )
     {
         for ( size_t k = 0; k < bufferNum; k++ )
         {
             ret = GL2DFlexObj.RegisterInputBuffers( &inputBuffers[i][k], 1 );
-            ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+            ASSERT_EQ( QC_STATUS_OK, ret );
         }
     }
 
     ret = GL2DFlexObj.RegisterOutputBuffers( outputBuffers, bufferNum );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     for ( size_t k = 0; k < bufferNum; k++ )
     {
@@ -266,7 +266,7 @@ TEST( GL2DFlex, SANITY_RegDeregMultiBuffer )
         output = &outputBuffers[k];
 
         ret = GL2DFlexObj.Execute( *inputs, pConfig->numOfInputs, output );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
     }
 
     for ( size_t i = 0; i < pConfig->numOfInputs; i++ )
@@ -274,19 +274,19 @@ TEST( GL2DFlex, SANITY_RegDeregMultiBuffer )
         for ( size_t k = 0; k < bufferNum; k++ )
         {
             ret = GL2DFlexObj.DeregisterInputBuffers( &inputBuffers[i][k], 1 );
-            ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+            ASSERT_EQ( QC_STATUS_OK, ret );
         }
     }
 
     ret = GL2DFlexObj.Stop();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = GL2DFlexObj.Deinit();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 }
 
 
-#ifndef GTEST_RIDEHAL
+#ifndef GTEST_QCNODE
 int main( int argc, char **argv )
 {
     ::testing::InitGoogleTest( &argc, argv );
@@ -294,4 +294,3 @@ int main( int argc, char **argv )
     return nVal;
 }
 #endif
-

@@ -2,19 +2,19 @@
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
-#include "ridehal/component/OpticalFlow.hpp"
+#include "QC/component/OpticalFlow.hpp"
 
-namespace ridehal
+namespace QC
 {
 namespace component
 {
 
-#define RIDEHAL_EVA_OF_NUM_ICONFIG 11
-#define RIDEHAL_EVA_OF_NUM_FCONFIG 14
+#define QC_EVA_OF_NUM_ICONFIG 11
+#define QC_EVA_OF_NUM_FCONFIG 14
 
-#define ALIGN_S( size, align ) ( ( ( ( size ) + ( align ) - 1 ) / ( align ) ) * ( align ) )
+#define ALIGN_S( size, align ) ( ( ( ( size ) + (align) -1 ) / ( align ) ) * ( align ) )
 
-static const char *evaOFIConfigStrings[RIDEHAL_EVA_OF_NUM_ICONFIG] = {
+static const char *evaOFIConfigStrings[QC_EVA_OF_NUM_ICONFIG] = {
         EVA_OF_ICONFIG_ACTUAL_FPS,
         EVA_OF_ICONFIG_OPERATIONAL_FPS,
         EVA_OF_ICONFIG_REF_IMAGE_INFO,
@@ -28,7 +28,7 @@ static const char *evaOFIConfigStrings[RIDEHAL_EVA_OF_NUM_ICONFIG] = {
         EVA_OF_ICONFIG_PROCESS_FILTER_OPERATION_MODE,
 };
 
-static const char *evaOFFrameConfigStrings[RIDEHAL_EVA_OF_NUM_FCONFIG] = {
+static const char *evaOFFrameConfigStrings[QC_EVA_OF_NUM_FCONFIG] = {
         EVA_OF_FCONFIG_AM_FILTER_ENABLE,  EVA_OF_FCONFIG_HOLE_FILL_ENABLE,
         EVA_OF_FCONFIG_HOLE_FILL_CONFIG,  EVA_OF_FCONFIG_P1_CONFIG,
         EVA_OF_FCONFIG_P2_CONFIG,         EVA_OF_FCONFIG_CENSUS_CONFIG,
@@ -40,7 +40,7 @@ static const char *evaOFFrameConfigStrings[RIDEHAL_EVA_OF_NUM_FCONFIG] = {
 
 OpticalFlow_Config::OpticalFlow_Config()
 {
-    this->format = RIDEHAL_IMAGE_FORMAT_NV12;
+    this->format = QC_IMAGE_FORMAT_NV12;
     this->width = 0;
     this->height = 0;
     this->frameRate = 30;
@@ -114,22 +114,22 @@ void OpticalFlow::EvaSessionCallbackHandler( const EvaSession_t hSession, EvaEve
 
 void OpticalFlow::EvaSessionCallbackHandler( const EvaSession_t hSession, EvaEvent_e eEvent )
 {
-    RIDEHAL_DEBUG( "Received Session callback for session: %p, eEvent: %d", hSession, eEvent );
+    QC_DEBUG( "Received Session callback for session: %p, eEvent: %d", hSession, eEvent );
     if ( EVA_EVFATAL == eEvent )
     {
-        RIDEHAL_ERROR( "set state to ERROR" );
-        m_state = RIDEHAL_COMPONENT_STATE_ERROR;
+        QC_ERROR( "set state to ERROR" );
+        m_state = QC_OBJECT_STATE_ERROR;
     }
 }
 
-RideHalError_e OpticalFlow::UpdateIconfigOF( EvaConfigList_t *pConfigList )
+QCStatus_e OpticalFlow::UpdateIconfigOF( EvaConfigList_t *pConfigList )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     EvaStatus_e rc = EvaOFQueryConfigIndices( &evaOFIConfigStrings[0], pConfigList );
     if ( rc != EVA_SUCCESS )
     {
-        RIDEHAL_ERROR( "Failed to Query I config Indices: %d", rc );
-        ret = RIDEHAL_ERROR_FAIL;
+        QC_ERROR( "Failed to Query I config Indices: %d", rc );
+        ret = QC_STATUS_FAIL;
     }
     else
     {
@@ -189,26 +189,26 @@ RideHalError_e OpticalFlow::UpdateIconfigOF( EvaConfigList_t *pConfigList )
     return ret;
 }
 
-RideHalError_e OpticalFlow::ValidateConfig( const OpticalFlow_Config_t *pConfig )
+QCStatus_e OpticalFlow::ValidateConfig( const OpticalFlow_Config_t *pConfig )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     if ( nullptr == pConfig )
     {
-        RIDEHAL_ERROR( "pConfig is nullptr!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "pConfig is nullptr!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
-    else if ( ( pConfig->format != RIDEHAL_IMAGE_FORMAT_UYVY ) &&
-              ( pConfig->format != RIDEHAL_IMAGE_FORMAT_NV12 ) &&
-              ( pConfig->format != RIDEHAL_IMAGE_FORMAT_P010 ) )
+    else if ( ( pConfig->format != QC_IMAGE_FORMAT_UYVY ) &&
+              ( pConfig->format != QC_IMAGE_FORMAT_NV12 ) &&
+              ( pConfig->format != QC_IMAGE_FORMAT_P010 ) )
     {
-        RIDEHAL_ERROR( "invalid format!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "invalid format!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else if ( ( EVA_OF_FORWARD_DIRECTION != pConfig->direction ) &&
               ( EVA_OF_BACKWARD_DIRECTION != pConfig->direction ) )
     {
-        RIDEHAL_ERROR( "invalid direction!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "invalid direction!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
@@ -217,30 +217,30 @@ RideHalError_e OpticalFlow::ValidateConfig( const OpticalFlow_Config_t *pConfig 
     return ret;
 }
 
-EvaColorFormat_e OpticalFlow::GetEvaColorFormat( RideHal_ImageFormat_e colorFormat )
+EvaColorFormat_e OpticalFlow::GetEvaColorFormat( QCImageFormat_e colorFormat )
 {
     EvaColorFormat_e evaFormat = EVA_COLORFORMAT_MAX;
 
     switch ( colorFormat )
     {
-        case RIDEHAL_IMAGE_FORMAT_UYVY:
+        case QC_IMAGE_FORMAT_UYVY:
         {
             evaFormat = EVA_COLORFORMAT_UYVY;
             break;
         }
-        case RIDEHAL_IMAGE_FORMAT_NV12:
+        case QC_IMAGE_FORMAT_NV12:
         {
             evaFormat = EVA_COLORFORMAT_NV12;
             break;
         }
-        case RIDEHAL_IMAGE_FORMAT_P010:
+        case QC_IMAGE_FORMAT_P010:
         {
             evaFormat = EVA_COLORFORMAT_P010_MSB;
             break;
         }
         default:
         {
-            RIDEHAL_ERROR( "Unsupport corlor sormat: %d", colorFormat );
+            QC_ERROR( "Unsupport corlor sormat: %d", colorFormat );
             break;
         }
     }
@@ -248,22 +248,22 @@ EvaColorFormat_e OpticalFlow::GetEvaColorFormat( RideHal_ImageFormat_e colorForm
     return evaFormat;
 }
 
-RideHalError_e OpticalFlow::Init( const char *pName, const OpticalFlow_Config_t *pConfig,
-                                  Logger_Level_e level )
+QCStatus_e OpticalFlow::Init( const char *pName, const OpticalFlow_Config_t *pConfig,
+                              Logger_Level_e level )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     bool bIFInitOK = false;
     EvaStatus_e rc;
 
     EvaConfigList_t configList;
-    EvaConfig_t configs[RIDEHAL_EVA_OF_NUM_ICONFIG];
+    EvaConfig_t configs[QC_EVA_OF_NUM_ICONFIG];
 
     ret = ComponentIF::Init( pName, level );
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         bIFInitOK = true;
         ret = ValidateConfig( pConfig );
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         { /* parameters are OK */
             m_config = *pConfig;
             m_outputWidth = ( m_config.width >> m_config.amFilter.nStepSize )
@@ -273,65 +273,64 @@ RideHalError_e OpticalFlow::Init( const char *pName, const OpticalFlow_Config_t 
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         m_hOFSession = EvaCreateSession( EvaSessionCallbackHandler, this, NULL );
         if ( nullptr == m_hOFSession )
         {
-            RIDEHAL_ERROR( "EVAOpticalFlow : Failed to Create Session" );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "EVAOpticalFlow : Failed to Create Session" );
+            ret = QC_STATUS_FAIL;
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         EvaColorFormat_e evaFormat = GetEvaColorFormat( m_config.format );
         rc = EvaQueryImageInfo( evaFormat, m_config.width, m_config.height, &m_imageInfo );
         if ( rc != EVA_SUCCESS )
         {
-            RIDEHAL_ERROR( "EVAOpticalFlow: Failed to get image info: %d", rc );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "EVAOpticalFlow: Failed to get image info: %d", rc );
+            ret = QC_STATUS_FAIL;
         }
         else
         {
-            RIDEHAL_DEBUG(
-                    "ImageInfo: WxH=%ux%u format=%d planes=%u total size=%u, width stride=[%u "
-                    "%u %u %u], aligned size=[%u %u %u %u]",
-                    m_imageInfo.nWidth, m_imageInfo.nHeight, m_imageInfo.eFormat,
-                    m_imageInfo.nPlanes, m_imageInfo.nTotalSize, m_imageInfo.nWidthStride[0],
-                    m_imageInfo.nWidthStride[1], m_imageInfo.nWidthStride[2],
-                    m_imageInfo.nWidthStride[3], m_imageInfo.nAlignedSize[0],
-                    m_imageInfo.nAlignedSize[1], m_imageInfo.nAlignedSize[2],
-                    m_imageInfo.nAlignedSize[3] );
+            QC_DEBUG( "ImageInfo: WxH=%ux%u format=%d planes=%u total size=%u, width stride=[%u "
+                      "%u %u %u], aligned size=[%u %u %u %u]",
+                      m_imageInfo.nWidth, m_imageInfo.nHeight, m_imageInfo.eFormat,
+                      m_imageInfo.nPlanes, m_imageInfo.nTotalSize, m_imageInfo.nWidthStride[0],
+                      m_imageInfo.nWidthStride[1], m_imageInfo.nWidthStride[2],
+                      m_imageInfo.nWidthStride[3], m_imageInfo.nAlignedSize[0],
+                      m_imageInfo.nAlignedSize[1], m_imageInfo.nAlignedSize[2],
+                      m_imageInfo.nAlignedSize[3] );
         }
     }
 
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
-        configList.nConfigs = RIDEHAL_EVA_OF_NUM_ICONFIG;
+        configList.nConfigs = QC_EVA_OF_NUM_ICONFIG;
         configList.pConfigs = configs;
         ret = UpdateIconfigOF( &configList );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         m_hEvaOF = EvaInitOF( m_hOFSession, &configList, &m_outBufInfo, NULL, this );
         if ( nullptr == m_hEvaOF )
         {
-            RIDEHAL_ERROR( "Failed to Init OF" );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Failed to Init OF" );
+            ret = QC_STATUS_FAIL;
         }
         else
         {
-            RIDEHAL_DEBUG( "output mv buffer size %u, conf map buf size %u",
-                           m_outBufInfo.nMvFwdMapBytes, m_outBufInfo.nConfMapBytes );
+            QC_DEBUG( "output mv buffer size %u, conf map buf size %u", m_outBufInfo.nMvFwdMapBytes,
+                      m_outBufInfo.nConfMapBytes );
         }
     }
 
-    if ( ret != RIDEHAL_ERROR_NONE )
+    if ( ret != QC_STATUS_OK )
     { /* do error clean up */
-        RIDEHAL_ERROR( "OpticalFlow Init failed: %d!", ret );
+        QC_ERROR( "OpticalFlow Init failed: %d!", ret );
 
         if ( nullptr != m_hOFSession )
         {
@@ -346,31 +345,29 @@ RideHalError_e OpticalFlow::Init( const char *pName, const OpticalFlow_Config_t 
     }
     else
     {
-        m_state = RIDEHAL_COMPONENT_STATE_READY;
+        m_state = QC_OBJECT_STATE_READY;
     }
 
     return ret;
 }
 
-RideHalError_e OpticalFlow::RegisterBuffers( const RideHal_SharedBuffer_t *pBuffers,
-                                             uint32_t numBuffers )
+QCStatus_e OpticalFlow::RegisterBuffers( const QCSharedBuffer_t *pBuffers, uint32_t numBuffers )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
-    if ( ( RIDEHAL_COMPONENT_STATE_READY != m_state ) &&
-         ( RIDEHAL_COMPONENT_STATE_RUNNING != m_state ) )
+    QCStatus_e ret = QC_STATUS_OK;
+    if ( ( QC_OBJECT_STATE_READY != m_state ) && ( QC_OBJECT_STATE_RUNNING != m_state ) )
     {
-        RIDEHAL_ERROR( "Register Buffers is not allowed when in state %d!", m_state );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_ERROR( "Register Buffers is not allowed when in state %d!", m_state );
+        ret = QC_STATUS_BAD_STATE;
     }
     else if ( nullptr == pBuffers )
     {
-        RIDEHAL_ERROR( "pBuffers is nullptr!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "pBuffers is nullptr!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else if ( 0 == numBuffers )
     {
-        RIDEHAL_ERROR( "numBuffers is 0!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "numBuffers is 0!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
@@ -378,7 +375,7 @@ RideHalError_e OpticalFlow::RegisterBuffers( const RideHal_SharedBuffer_t *pBuff
         {
             EvaMem_t *pEvaMem;
             ret = RegisterEvaMem( &pBuffers[i], &pEvaMem );
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
                 break;
             }
@@ -387,17 +384,17 @@ RideHalError_e OpticalFlow::RegisterBuffers( const RideHal_SharedBuffer_t *pBuff
     return ret;
 }
 
-RideHalError_e OpticalFlow::SetInitialFrameConfig()
+QCStatus_e OpticalFlow::SetInitialFrameConfig()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     EvaStatus_e rc;
 
 
     EvaConfigList_t configList;
-    EvaConfig_t configs[RIDEHAL_EVA_OF_NUM_FCONFIG];
-    (void) memset( configs, 0, sizeof( EvaConfig_t ) * RIDEHAL_EVA_OF_NUM_FCONFIG );
+    EvaConfig_t configs[QC_EVA_OF_NUM_FCONFIG];
+    (void) memset( configs, 0, sizeof( EvaConfig_t ) * QC_EVA_OF_NUM_FCONFIG );
 
-    configList.nConfigs = RIDEHAL_EVA_OF_NUM_FCONFIG;
+    configList.nConfigs = QC_EVA_OF_NUM_FCONFIG;
     configList.pConfigs = configs;
 
     rc = EvaOFQueryConfigIndices( &evaOFFrameConfigStrings[0], &configList );
@@ -470,14 +467,14 @@ RideHalError_e OpticalFlow::SetInitialFrameConfig()
         rc = EvaOFSetFrameConfig( m_hEvaOF, &configList );
         if ( EVA_SUCCESS != rc )
         {
-            RIDEHAL_ERROR( "Failed to Set F config: %d", rc );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Failed to Set F config: %d", rc );
+            ret = QC_STATUS_FAIL;
         }
     }
     else
     {
-        RIDEHAL_ERROR( "Failed to Query F config Indices: %d", rc );
-        ret = RIDEHAL_ERROR_FAIL;
+        QC_ERROR( "Failed to Query F config Indices: %d", rc );
+        ret = QC_STATUS_FAIL;
     }
 
 
@@ -485,34 +482,34 @@ RideHalError_e OpticalFlow::SetInitialFrameConfig()
 }
 
 
-RideHalError_e OpticalFlow::Start()
+QCStatus_e OpticalFlow::Start()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     EvaStatus_e rc;
 
-    if ( RIDEHAL_COMPONENT_STATE_READY != m_state )
+    if ( QC_OBJECT_STATE_READY != m_state )
     {
-        RIDEHAL_ERROR( "Start is not allowed when in state %d!", m_state );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_ERROR( "Start is not allowed when in state %d!", m_state );
+        ret = QC_STATUS_BAD_STATE;
     }
     else
     {
         rc = EvaStartSession( m_hOFSession );
         if ( EVA_SUCCESS != rc )
         {
-            RIDEHAL_ERROR( "Failed to Start Session: %d", rc );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Failed to Start Session: %d", rc );
+            ret = QC_STATUS_FAIL;
         }
         else
         {
             ret = SetInitialFrameConfig();
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
-                RIDEHAL_ERROR( "Failed to set Session config" );
+                QC_ERROR( "Failed to set Session config" );
             }
             else
             {
-                m_state = RIDEHAL_COMPONENT_STATE_RUNNING;
+                m_state = QC_OBJECT_STATE_RUNNING;
             }
         }
     }
@@ -520,10 +517,9 @@ RideHalError_e OpticalFlow::Start()
     return ret;
 }
 
-RideHalError_e OpticalFlow::RegisterEvaMem( const RideHal_SharedBuffer_t *pBuffer,
-                                            EvaMem_t **pEvaMem )
+QCStatus_e OpticalFlow::RegisterEvaMem( const QCSharedBuffer_t *pBuffer, EvaMem_t **pEvaMem )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     EvaStatus_e rc;
     EvaMem_t mem;
 
@@ -534,15 +530,15 @@ RideHalError_e OpticalFlow::RegisterEvaMem( const RideHal_SharedBuffer_t *pBuffe
         mem.nOffset = pBuffer->offset;
         mem.pAddress = pBuffer->data();
         mem.hMemHandle = (void *) pBuffer->buffer.dmaHandle;
-        if ( 0 != ( pBuffer->buffer.flags & RIDEHAL_BUFFER_FLAGS_CACHE_WB_WA ) )
+        if ( 0 != ( pBuffer->buffer.flags & QC_BUFFER_FLAGS_CACHE_WB_WA ) )
         {
             mem.bCached = true;
         }
         rc = EvaMemRegister( m_hOFSession, &mem );
         if ( EVA_SUCCESS != rc )
         {
-            RIDEHAL_ERROR( "EvaMemRegister(%p) failed: %d", pBuffer->data(), rc );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "EvaMemRegister(%p) failed: %d", pBuffer->data(), rc );
+            ret = QC_STATUS_FAIL;
         }
         else
         {
@@ -557,24 +553,23 @@ RideHalError_e OpticalFlow::RegisterEvaMem( const RideHal_SharedBuffer_t *pBuffe
     return ret;
 }
 
-RideHalError_e OpticalFlow::ValidateImageBuffer( const RideHal_SharedBuffer_t *pImage )
+QCStatus_e OpticalFlow::ValidateImageBuffer( const QCSharedBuffer_t *pImage )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     if ( nullptr == pImage )
     {
-        RIDEHAL_ERROR( "pImage is nullptr!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "pImage is nullptr!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
-    else if ( ( RIDEHAL_BUFFER_TYPE_IMAGE != pImage->type ) ||
-              ( nullptr == pImage->buffer.pData ) ||
+    else if ( ( QC_BUFFER_TYPE_IMAGE != pImage->type ) || ( nullptr == pImage->buffer.pData ) ||
               ( m_config.format != pImage->imgProps.format ) ||
               ( m_config.width != pImage->imgProps.width ) ||
               ( m_config.height != pImage->imgProps.height ) ||
               ( m_imageInfo.nPlanes != pImage->imgProps.numPlanes ) )
     {
-        RIDEHAL_ERROR( "pImage is invalid!" );
-        ret = RIDEHAL_ERROR_INVALID_BUF;
+        QC_ERROR( "pImage is invalid!" );
+        ret = QC_STATUS_INVALID_BUF;
     }
     else
     {
@@ -582,15 +577,15 @@ RideHalError_e OpticalFlow::ValidateImageBuffer( const RideHal_SharedBuffer_t *p
         {
             if ( m_imageInfo.nWidthStride[i] != pImage->imgProps.stride[i] )
             {
-                RIDEHAL_ERROR( "pImage with invalid stride in plane %u: %u != %u", i,
-                               m_imageInfo.nWidthStride[i], pImage->imgProps.stride[i] );
-                ret = RIDEHAL_ERROR_INVALID_BUF;
+                QC_ERROR( "pImage with invalid stride in plane %u: %u != %u", i,
+                          m_imageInfo.nWidthStride[i], pImage->imgProps.stride[i] );
+                ret = QC_STATUS_INVALID_BUF;
             }
             else if ( m_imageInfo.nAlignedSize[i] != pImage->imgProps.planeBufSize[i] )
             {
-                RIDEHAL_ERROR( "pImage with invalid plane buf size in plane %u: %u != %u", i,
-                               m_imageInfo.nAlignedSize[i], pImage->imgProps.planeBufSize[i] );
-                ret = RIDEHAL_ERROR_INVALID_BUF;
+                QC_ERROR( "pImage with invalid plane buf size in plane %u: %u != %u", i,
+                          m_imageInfo.nAlignedSize[i], pImage->imgProps.planeBufSize[i] );
+                ret = QC_STATUS_INVALID_BUF;
             }
             else
             {
@@ -602,12 +597,12 @@ RideHalError_e OpticalFlow::ValidateImageBuffer( const RideHal_SharedBuffer_t *p
 }
 
 
-RideHalError_e OpticalFlow::Execute( const RideHal_SharedBuffer_t *pRefImage,
-                                     const RideHal_SharedBuffer_t *pCurImage,
-                                     const RideHal_SharedBuffer_t *pOutMvBuf,
-                                     const RideHal_SharedBuffer_t *pConfBuf )
+QCStatus_e OpticalFlow::Execute( const QCSharedBuffer_t *pRefImage,
+                                 const QCSharedBuffer_t *pCurImage,
+                                 const QCSharedBuffer_t *pOutMvBuf,
+                                 const QCSharedBuffer_t *pConfBuf )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     EvaStatus_e rc;
     EvaMem_t *pRefMem = nullptr;
     EvaMem_t *pCurMem = nullptr;
@@ -617,79 +612,79 @@ RideHalError_e OpticalFlow::Execute( const RideHal_SharedBuffer_t *pRefImage,
     EvaImage_t curImage;
     EvaOFOutput_t ofOutput;
 
-    if ( RIDEHAL_COMPONENT_STATE_RUNNING != m_state )
+    if ( QC_OBJECT_STATE_RUNNING != m_state )
     {
-        RIDEHAL_ERROR( "Execute is not allowed when in state %d!", m_state );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_ERROR( "Execute is not allowed when in state %d!", m_state );
+        ret = QC_STATUS_BAD_STATE;
     }
     else if ( nullptr == pOutMvBuf )
     {
-        RIDEHAL_ERROR( "pOutMvBuf is nullptr!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "pOutMvBuf is nullptr!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
-    else if ( ( RIDEHAL_BUFFER_TYPE_TENSOR != pOutMvBuf->type ) ||
+    else if ( ( QC_BUFFER_TYPE_TENSOR != pOutMvBuf->type ) ||
               ( nullptr == pOutMvBuf->buffer.pData ) || ( 4 != pOutMvBuf->tensorProps.numDims ) ||
-              ( RIDEHAL_TENSOR_TYPE_UINT_16 != pOutMvBuf->tensorProps.type ) ||
+              ( QC_TENSOR_TYPE_UINT_16 != pOutMvBuf->tensorProps.type ) ||
               ( 1 != pOutMvBuf->tensorProps.dims[0] ) ||
               ( ALIGN_S( m_outputHeight, 8 ) != pOutMvBuf->tensorProps.dims[1] ) ||
               ( ALIGN_S( m_outputWidth * 2, 128 ) != pOutMvBuf->tensorProps.dims[2] ) ||
               ( 1 != pOutMvBuf->tensorProps.dims[3] ) )
     {
-        RIDEHAL_ERROR( "pOutMvBuf is invalid!" );
-        ret = RIDEHAL_ERROR_INVALID_BUF;
+        QC_ERROR( "pOutMvBuf is invalid!" );
+        ret = QC_STATUS_INVALID_BUF;
     }
     else if ( nullptr == pConfBuf )
     {
-        RIDEHAL_ERROR( "pConfBuf is nullptr!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "pConfBuf is nullptr!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
-    else if ( ( RIDEHAL_BUFFER_TYPE_TENSOR != pConfBuf->type ) ||
+    else if ( ( QC_BUFFER_TYPE_TENSOR != pConfBuf->type ) ||
               ( nullptr == pConfBuf->buffer.pData ) || ( 4 != pConfBuf->tensorProps.numDims ) ||
-              ( RIDEHAL_TENSOR_TYPE_UINT_8 != pConfBuf->tensorProps.type ) ||
+              ( QC_TENSOR_TYPE_UINT_8 != pConfBuf->tensorProps.type ) ||
               ( 1 != pConfBuf->tensorProps.dims[0] ) ||
               ( ALIGN_S( m_outputHeight, 8 ) != pConfBuf->tensorProps.dims[1] ) ||
               ( ALIGN_S( m_outputWidth, 128 ) != pConfBuf->tensorProps.dims[2] ) ||
               ( 1 != pConfBuf->tensorProps.dims[3] ) )
     {
-        RIDEHAL_ERROR( "pConfBuf is invalid!" );
-        ret = RIDEHAL_ERROR_INVALID_BUF;
+        QC_ERROR( "pConfBuf is invalid!" );
+        ret = QC_STATUS_INVALID_BUF;
     }
     else
     {
         /* OK */
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = ValidateImageBuffer( pRefImage );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = ValidateImageBuffer( pCurImage );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = RegisterEvaMem( pRefImage, &pRefMem );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = RegisterEvaMem( pCurImage, &pCurMem );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = RegisterEvaMem( pOutMvBuf, &pOutMvMem );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = RegisterEvaMem( pConfBuf, &pConfMem );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         refImage.pBuffer = pRefMem;
         refImage.sImageInfo = m_imageInfo;
@@ -711,62 +706,60 @@ RideHalError_e OpticalFlow::Execute( const RideHal_SharedBuffer_t *pRefImage,
         rc = EvaOF_Sync( m_hEvaOF, &refImage, &curImage, EVA_OF_CONTINUOUS, &ofOutput, nullptr );
         if ( EVA_SUCCESS != rc )
         {
-            RIDEHAL_ERROR( "EvaOF_Sync failed: %d", rc );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "EvaOF_Sync failed: %d", rc );
+            ret = QC_STATUS_FAIL;
         }
     }
 
     return ret;
 }
 
-RideHalError_e OpticalFlow::Stop()
+QCStatus_e OpticalFlow::Stop()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     EvaStatus_e rc;
 
-    if ( RIDEHAL_COMPONENT_STATE_RUNNING != m_state )
+    if ( QC_OBJECT_STATE_RUNNING != m_state )
     {
-        RIDEHAL_ERROR( "Stop is not allowed when in state %d!", m_state );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_ERROR( "Stop is not allowed when in state %d!", m_state );
+        ret = QC_STATUS_BAD_STATE;
     }
     else
     {
         rc = EvaStopSession( m_hOFSession );
         if ( EVA_SUCCESS != rc )
         {
-            RIDEHAL_ERROR( "Failed to stop Session: %d", rc );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Failed to stop Session: %d", rc );
+            ret = QC_STATUS_FAIL;
         }
         else
         {
-            m_state = RIDEHAL_COMPONENT_STATE_READY;
+            m_state = QC_OBJECT_STATE_READY;
         }
     }
 
     return ret;
 }
 
-RideHalError_e OpticalFlow::DeRegisterBuffers( const RideHal_SharedBuffer_t *pBuffers,
-                                               uint32_t numBuffers )
+QCStatus_e OpticalFlow::DeRegisterBuffers( const QCSharedBuffer_t *pBuffers, uint32_t numBuffers )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     EvaStatus_e rc;
 
-    if ( ( RIDEHAL_COMPONENT_STATE_READY != m_state ) &&
-         ( RIDEHAL_COMPONENT_STATE_RUNNING != m_state ) )
+    if ( ( QC_OBJECT_STATE_READY != m_state ) && ( QC_OBJECT_STATE_RUNNING != m_state ) )
     {
-        RIDEHAL_ERROR( "DeRegisterBuffers is not allowed when in state %d!", m_state );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_ERROR( "DeRegisterBuffers is not allowed when in state %d!", m_state );
+        ret = QC_STATUS_BAD_STATE;
     }
     else if ( nullptr == pBuffers )
     {
-        RIDEHAL_ERROR( "Empty buffers pointer!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "Empty buffers pointer!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else if ( 0 == numBuffers )
     {
-        RIDEHAL_ERROR( "numBuffers is 0!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "numBuffers is 0!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
@@ -779,8 +772,8 @@ RideHalError_e OpticalFlow::DeRegisterBuffers( const RideHal_SharedBuffer_t *pBu
                 rc = EvaMemDeregister( m_hOFSession, &mem );
                 if ( EVA_SUCCESS != rc )
                 {
-                    RIDEHAL_ERROR( "EvaMemDeregister(%p) failed: %d", mem.pAddress, rc );
-                    ret = RIDEHAL_ERROR_FAIL;
+                    QC_ERROR( "EvaMemDeregister(%p) failed: %d", mem.pAddress, rc );
+                    ret = QC_STATUS_FAIL;
                     break;
                 }
                 else
@@ -794,15 +787,15 @@ RideHalError_e OpticalFlow::DeRegisterBuffers( const RideHal_SharedBuffer_t *pBu
     return ret;
 }
 
-RideHalError_e OpticalFlow::Deinit()
+QCStatus_e OpticalFlow::Deinit()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     EvaStatus_e rc;
 
-    if ( RIDEHAL_COMPONENT_STATE_READY != m_state )
+    if ( QC_OBJECT_STATE_READY != m_state )
     {
-        RIDEHAL_ERROR( "Deinit is not allowed when in state %d!", m_state );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_ERROR( "Deinit is not allowed when in state %d!", m_state );
+        ret = QC_STATUS_BAD_STATE;
     }
     else
     {
@@ -812,8 +805,8 @@ RideHalError_e OpticalFlow::Deinit()
             rc = EvaMemDeregister( m_hOFSession, &mem );
             if ( EVA_SUCCESS != rc )
             {
-                RIDEHAL_ERROR( "EvaMemDeregister(%p) failed: %d", mem.pAddress, rc );
-                ret = RIDEHAL_ERROR_FAIL;
+                QC_ERROR( "EvaMemDeregister(%p) failed: %d", mem.pAddress, rc );
+                ret = QC_STATUS_FAIL;
             }
         }
         m_evaMemMap.clear();
@@ -821,23 +814,23 @@ RideHalError_e OpticalFlow::Deinit()
         rc = EvaDeInitOF( m_hEvaOF );
         if ( EVA_SUCCESS != rc )
         {
-            RIDEHAL_ERROR( "Failed to deinit OF: %d", rc );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Failed to deinit OF: %d", rc );
+            ret = QC_STATUS_FAIL;
         }
         m_hEvaOF = nullptr;
 
         rc = EvaDeleteSession( m_hOFSession );
         if ( EVA_SUCCESS != rc )
         {
-            RIDEHAL_ERROR( "Failed to delete Session: %d", rc );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Failed to delete Session: %d", rc );
+            ret = QC_STATUS_FAIL;
         }
         m_hOFSession = nullptr;
 
-        RideHalError_e ret2 = ComponentIF::Deinit();
-        if ( RIDEHAL_ERROR_NONE != ret2 )
+        QCStatus_e ret2 = ComponentIF::Deinit();
+        if ( QC_STATUS_OK != ret2 )
         {
-            RIDEHAL_ERROR( "Deinit ComponentIF failed!" );
+            QC_ERROR( "Deinit ComponentIF failed!" );
             ret = ret2;
         }
     }
@@ -846,4 +839,4 @@ RideHalError_e OpticalFlow::Deinit()
 }
 
 }   // namespace component
-}   // namespace ridehal
+}   // namespace QC

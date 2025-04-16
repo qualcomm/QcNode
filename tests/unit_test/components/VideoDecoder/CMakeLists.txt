@@ -5,14 +5,14 @@ add_executable( gtest_VideoDecoder gtest_VideoDecoder.cpp )
 target_link_libraries( 
      gtest_VideoDecoder
      gtest
-     RideHalVideoDecoder
+     QCNodeVideoDecoder
      VidcDemuxer
-     RideHalTestUtils
+     QCNodeTestUtils
 )
 
 install(TARGETS gtest_VideoDecoder DESTINATION bin)
 
-set( GTEST_RIDEHAL_SOURCES ${GTEST_RIDEHAL_SOURCES}
+set( GTEST_QCNODE_SOURCES ${GTEST_QCNODE_SOURCES}
      ${CMAKE_CURRENT_SOURCE_DIR}/gtest_VideoDecoder.cpp
      PARENT_SCOPE )
 

@@ -11,74 +11,74 @@ import ctypes
 META_COMMAND_DATA = 0
 META_COMMAND_MODEL_INFO = 1
 
-RIDEHAL_BUFFER_TYPE_RAW = 0
-RIDEHAL_BUFFER_TYPE_IMAGE = 1
-RIDEHAL_BUFFER_TYPE_TENSOR = 2
+QC_BUFFER_TYPE_RAW = 0
+QC_BUFFER_TYPE_IMAGE = 1
+QC_BUFFER_TYPE_TENSOR = 2
 
-RIDEHAL_IMAGE_FORMAT_RGB888 = 0
-RIDEHAL_IMAGE_FORMAT_BGR888 = 1
-RIDEHAL_IMAGE_FORMAT_UYVY = 2
-RIDEHAL_IMAGE_FORMAT_NV12 = 3
-RIDEHAL_IMAGE_FORMAT_P010 = 4
+QC_IMAGE_FORMAT_RGB888 = 0
+QC_IMAGE_FORMAT_BGR888 = 1
+QC_IMAGE_FORMAT_UYVY = 2
+QC_IMAGE_FORMAT_NV12 = 3
+QC_IMAGE_FORMAT_P010 = 4
 
-RIDEHAL_IMAGE_FORMAT_COMPRESSED_H264 = 100
-RIDEHAL_IMAGE_FORMAT_COMPRESSED_H265 = 101
+QC_IMAGE_FORMAT_COMPRESSED_H264 = 100
+QC_IMAGE_FORMAT_COMPRESSED_H265 = 101
 
-RideHalFormatMap = {
+QCFormatMap = {
     #      format, numPlanes, bytes_per_pixel
-    "rgb": (RIDEHAL_IMAGE_FORMAT_RGB888, 1, 3),
-    "bgr": (RIDEHAL_IMAGE_FORMAT_BGR888, 1, 3),
-    "uyvy": (RIDEHAL_IMAGE_FORMAT_UYVY, 1, 2),
-    "nv12": (RIDEHAL_IMAGE_FORMAT_NV12, 2, 1),
-    "p010": (RIDEHAL_IMAGE_FORMAT_P010, 2, 2),
-    "h264": (RIDEHAL_IMAGE_FORMAT_COMPRESSED_H264, 1, 1),
-    "h265": (RIDEHAL_IMAGE_FORMAT_COMPRESSED_H265, 1, 1),
+    "rgb": (QC_IMAGE_FORMAT_RGB888, 1, 3),
+    "bgr": (QC_IMAGE_FORMAT_BGR888, 1, 3),
+    "uyvy": (QC_IMAGE_FORMAT_UYVY, 1, 2),
+    "nv12": (QC_IMAGE_FORMAT_NV12, 2, 1),
+    "p010": (QC_IMAGE_FORMAT_P010, 2, 2),
+    "h264": (QC_IMAGE_FORMAT_COMPRESSED_H264, 1, 1),
+    "h265": (QC_IMAGE_FORMAT_COMPRESSED_H265, 1, 1),
 }
 
-RIDEHAL_TENSOR_TYPE_INT_8 = 0
-RIDEHAL_TENSOR_TYPE_INT_16 = 1
-RIDEHAL_TENSOR_TYPE_INT_32 = 2
-RIDEHAL_TENSOR_TYPE_INT_64 = 3
+QC_TENSOR_TYPE_INT_8 = 0
+QC_TENSOR_TYPE_INT_16 = 1
+QC_TENSOR_TYPE_INT_32 = 2
+QC_TENSOR_TYPE_INT_64 = 3
 
-RIDEHAL_TENSOR_TYPE_UINT_8 = 4
-RIDEHAL_TENSOR_TYPE_UINT_16 = 5
-RIDEHAL_TENSOR_TYPE_UINT_32 = 6
-RIDEHAL_TENSOR_TYPE_UINT_64 = 7
+QC_TENSOR_TYPE_UINT_8 = 4
+QC_TENSOR_TYPE_UINT_16 = 5
+QC_TENSOR_TYPE_UINT_32 = 6
+QC_TENSOR_TYPE_UINT_64 = 7
 
-RIDEHAL_TENSOR_TYPE_FLOAT_16 = 8
-RIDEHAL_TENSOR_TYPE_FLOAT_32 = 9
-RIDEHAL_TENSOR_TYPE_FLOAT_64 = 10
+QC_TENSOR_TYPE_FLOAT_16 = 8
+QC_TENSOR_TYPE_FLOAT_32 = 9
+QC_TENSOR_TYPE_FLOAT_64 = 10
 
-RIDEHAL_TENSOR_TYPE_SFIXED_POINT_8 = 11
-RIDEHAL_TENSOR_TYPE_SFIXED_POINT_16 = 12
-RIDEHAL_TENSOR_TYPE_SFIXED_POINT_32 = 13
+QC_TENSOR_TYPE_SFIXED_POINT_8 = 11
+QC_TENSOR_TYPE_SFIXED_POINT_16 = 12
+QC_TENSOR_TYPE_SFIXED_POINT_32 = 13
 
-RIDEHAL_TENSOR_TYPE_UFIXED_POINT_8 = 14
-RIDEHAL_TENSOR_TYPE_UFIXED_POINT_16 = 15
-RIDEHAL_TENSOR_TYPE_UFIXED_POINT_32 = 16
+QC_TENSOR_TYPE_UFIXED_POINT_8 = 14
+QC_TENSOR_TYPE_UFIXED_POINT_16 = 15
+QC_TENSOR_TYPE_UFIXED_POINT_32 = 16
 
-RideHalTypeToNumpyType = {
-    RIDEHAL_TENSOR_TYPE_INT_8 : np.int8,
-    RIDEHAL_TENSOR_TYPE_INT_16 : np.int16,
-    RIDEHAL_TENSOR_TYPE_INT_32 : np.int32,
-    RIDEHAL_TENSOR_TYPE_INT_64 : np.int64,
+QCTypeToNumpyType = {
+    QC_TENSOR_TYPE_INT_8 : np.int8,
+    QC_TENSOR_TYPE_INT_16 : np.int16,
+    QC_TENSOR_TYPE_INT_32 : np.int32,
+    QC_TENSOR_TYPE_INT_64 : np.int64,
 
-    RIDEHAL_TENSOR_TYPE_UINT_8 : np.uint8,
-    RIDEHAL_TENSOR_TYPE_UINT_16 : np.uint16,
-    RIDEHAL_TENSOR_TYPE_UINT_32 : np.uint32,
-    RIDEHAL_TENSOR_TYPE_UINT_64 : np.uint64,
+    QC_TENSOR_TYPE_UINT_8 : np.uint8,
+    QC_TENSOR_TYPE_UINT_16 : np.uint16,
+    QC_TENSOR_TYPE_UINT_32 : np.uint32,
+    QC_TENSOR_TYPE_UINT_64 : np.uint64,
 
-    RIDEHAL_TENSOR_TYPE_FLOAT_16 : np.float16,
-    RIDEHAL_TENSOR_TYPE_FLOAT_32 : np.float32,
-    RIDEHAL_TENSOR_TYPE_FLOAT_64 : np.float64,
+    QC_TENSOR_TYPE_FLOAT_16 : np.float16,
+    QC_TENSOR_TYPE_FLOAT_32 : np.float32,
+    QC_TENSOR_TYPE_FLOAT_64 : np.float64,
 
-    RIDEHAL_TENSOR_TYPE_SFIXED_POINT_8 : np.int8,
-    RIDEHAL_TENSOR_TYPE_SFIXED_POINT_16 : np.int16,
-    RIDEHAL_TENSOR_TYPE_SFIXED_POINT_32 : np.int32,
+    QC_TENSOR_TYPE_SFIXED_POINT_8 : np.int8,
+    QC_TENSOR_TYPE_SFIXED_POINT_16 : np.int16,
+    QC_TENSOR_TYPE_SFIXED_POINT_32 : np.int32,
 
-    RIDEHAL_TENSOR_TYPE_UFIXED_POINT_8 : np.uint8,
-    RIDEHAL_TENSOR_TYPE_UFIXED_POINT_16 : np.uint16,
-    RIDEHAL_TENSOR_TYPE_UFIXED_POINT_32 : np.uint32,
+    QC_TENSOR_TYPE_UFIXED_POINT_8 : np.uint8,
+    QC_TENSOR_TYPE_UFIXED_POINT_16 : np.uint16,
+    QC_TENSOR_TYPE_UFIXED_POINT_32 : np.uint32,
 }
 
 class MyStructure(ctypes.Structure):
@@ -126,9 +126,9 @@ class DataImage():
         if 'meta' in kwargs:
             self.meta = kwargs['meta']
         if 'format' in kwargs:
-            format, numPlanes, bps  = RideHalFormatMap[kwargs['format']]
+            format, numPlanes, bps  = QCFormatMap[kwargs['format']]
             self.meta = DataImageMeta()
-            self.meta.dataType = RIDEHAL_BUFFER_TYPE_IMAGE
+            self.meta.dataType = QC_BUFFER_TYPE_IMAGE
             self.meta.size = len(self.raw)
             self.meta.format = format
             self.meta.batchSize = 1
@@ -138,7 +138,7 @@ class DataImage():
                 self.meta.stride[i] = self.meta.width * bps
             self.meta.actualHeight[0] = self.meta.height
             self.meta.planeBufSize[0] = self.meta.height * self.meta.stride[i]
-            if format in [RIDEHAL_IMAGE_FORMAT_NV12,  RIDEHAL_IMAGE_FORMAT_P010]:
+            if format in [QC_IMAGE_FORMAT_NV12,  QC_IMAGE_FORMAT_P010]:
                 self.meta.actualHeight[1] = self.meta.height//2
                 self.meta.planeBufSize[1] = self.meta.height * self.meta.stride[i] // 2
             self.meta.numPlanes = numPlanes
@@ -296,14 +296,14 @@ class DataOnline():
         names = kwargs.get('names', ['input:%s'%(i) for i in range(len(datas))])
         for index, data in enumerate(datas):
             name = names[index]
-            data_type = kwargs.get('%s.data_type'%(name), RIDEHAL_BUFFER_TYPE_TENSOR)
-            if RIDEHAL_BUFFER_TYPE_TENSOR == data_type:
+            data_type = kwargs.get('%s.data_type'%(name), QC_BUFFER_TYPE_TENSOR)
+            if QC_BUFFER_TYPE_TENSOR == data_type:
                 tsM = DataTensorMeta()
                 namebs = name.encode('utf-8')
                 ctypes.memmove(ctypes.pointer(tsM.name), namebs, len(namebs))
                 tsM.dataType = data_type
                 tsM.size = data.nbytes
-                tsM.type = kwargs.get('%s.tensor_type'%(name), RIDEHAL_TENSOR_TYPE_UFIXED_POINT_8)
+                tsM.type = kwargs.get('%s.tensor_type'%(name), QC_TENSOR_TYPE_UFIXED_POINT_8)
                 tsM.dims = data.shape
                 tsM.numDims = len(data.shape)
                 tsM.quantScale = kwargs.get('%s.scale'%(name), 1.0)
@@ -363,15 +363,15 @@ class DataOnline():
             raw = payload[i*128: (i+1)*128]
             daMeta = DataMeta()
             daMeta.from_buffer(raw)
-            if daMeta.dataType == RIDEHAL_BUFFER_TYPE_TENSOR:
+            if daMeta.dataType == QC_BUFFER_TYPE_TENSOR:
                 tsMeta = DataTensorMeta()
                 tsMeta.from_buffer(raw)
                 name = bytes(tsMeta.name).decode('utf-8').strip('\x00')
                 dims = [tsMeta.dims[i] for i in range(tsMeta.numDims)]
                 rawDa = payload[offset:offset+tsMeta.size]
-                dtype = RideHalTypeToNumpyType[tsMeta.type]
+                dtype = QCTypeToNumpyType[tsMeta.type]
                 data = np.frombuffer(rawDa, dtype)
-                if tsMeta.type >= RIDEHAL_TENSOR_TYPE_SFIXED_POINT_8 and tsMeta.type <= RIDEHAL_TENSOR_TYPE_UFIXED_POINT_32:
+                if tsMeta.type >= QC_TENSOR_TYPE_SFIXED_POINT_8 and tsMeta.type <= QC_TENSOR_TYPE_UFIXED_POINT_32:
                     data = tsMeta.quantScale*(data.astype(np.float32) + tsMeta.quantOffset)
                 dims = [tsMeta.dims[i] for i in range(tsMeta.numDims)]
                 datas[name] = data.reshape(dims)
@@ -389,7 +389,7 @@ if __name__ == '__main__':
     # NOTE: This is a demo about how to use DataOnline
     import argparse
     import glob
-    parser = argparse.ArgumentParser(description='RideHal online inference')
+    parser = argparse.ArgumentParser(description='QC online inference')
     parser.add_argument('--target', type=str, default='192.168.1.1:6666', help='the target device ip address')
     parser.add_argument('--data_path', type=str, default=None, required=False, help='the image data path')
     parser.add_argument('--format', type=str, default='nv12', required=False, help='the image format')
@@ -418,7 +418,7 @@ if __name__ == '__main__':
         for imgF in imgFiles:
             img = np.fromfile(imgF, np.uint8)
             drimg = DataImage(format=args.format, width=W, height=H, raw=img.tobytes())
-            kwargs = {'input:0.data_type': RIDEHAL_BUFFER_TYPE_IMAGE}
+            kwargs = {'input:0.data_type': QC_BUFFER_TYPE_IMAGE}
             dol.Write([drimg], **kwargs)
             count += 1
             elapsed = time.time() - start

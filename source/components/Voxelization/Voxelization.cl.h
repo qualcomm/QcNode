@@ -3,8 +3,8 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#ifndef RIDEHAL_VOXELIZATION_CLH
-#define RIDEHAL_VOXELIZATION_CLH
+#ifndef QC_VOXELIZATION_CLH
+#define QC_VOXELIZATION_CLH
 
 #define KernelCode( ... ) #__VA_ARGS__
 
@@ -231,4 +231,4 @@ static const char *s_pSourceVoxelization = KernelCode(
             }
         } );
 
-#endif   // RIDEHAL_VOXELIZATION_CLH
+#endif   // QC_VOXELIZATION_CLH

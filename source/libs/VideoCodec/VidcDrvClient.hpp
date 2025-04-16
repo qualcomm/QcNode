@@ -3,8 +3,8 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#ifndef RIDEHAL_VIDC_DRV_CLIENT_HPP
-#define RIDEHAL_VIDC_DRV_CLIENT_HPP
+#ifndef QC_VIDC_DRV_CLIENT_HPP
+#define QC_VIDC_DRV_CLIENT_HPP
 
 #include <vidc_ioctl.h>
 #include <vidc_types.h>
@@ -16,16 +16,16 @@
 #include <vidc_client.h>
 #endif
 
-#include "ridehal/component/ComponentIF.hpp"
+#include "QC/component/ComponentIF.hpp"
 #include <mutex>
 #include <queue>
 #include <sys/uio.h>
 #include <unordered_map>
 
-using namespace ridehal::common;
+using namespace QC::common;
 using std::string;
 
-namespace ridehal
+namespace QC
 {
 namespace component
 {
@@ -59,8 +59,8 @@ typedef enum
 /** @brief The VideoCodec Input Frame */
 typedef struct
 {
-    RideHal_SharedBuffer_t sharedBuffer; /**< contains input buffer */
-    uint64_t timestampUs;                /**< frame data's timestamp, us */
+    QCSharedBuffer_t sharedBuffer; /**< contains input buffer */
+    uint64_t timestampUs;          /**< frame data's timestamp, us */
     uint64_t appMarkData; /**< frame data's mark data, this data will be copied to corresponding
                                output buf. API won't touch this data, only copy it. */
 } VideoCodec_InputFrame_t;
@@ -68,11 +68,11 @@ typedef struct
 /** @brief The VideoCodec Output Frame */
 typedef struct
 {
-    RideHal_SharedBuffer_t sharedBuffer; /**< contains output buffer */
-    uint64_t timestampUs;                /**< frame data's timestamp. */
-    uint64_t appMarkData; /**< frame data's mark data, this data copied from corresponding
-                               input buf. API won't touch this data, only copy it. */
-    uint32_t frameFlag;   /**< indicate whether some error occurred during deccoding this frame. */
+    QCSharedBuffer_t sharedBuffer; /**< contains output buffer */
+    uint64_t timestampUs;          /**< frame data's timestamp. */
+    uint64_t appMarkData;          /**< frame data's mark data, this data copied from corresponding
+                                        input buf. API won't touch this data, only copy it. */
+    uint32_t frameFlag; /**< indicate whether some error occurred during deccoding this frame. */
     vidc_frame_type frameType; /**< indicate I/P/B/IDR frame, used by encoder. */
 } VideoCodec_OutputFrame_t;
 
@@ -130,41 +130,41 @@ public:
      * @param outputDoneCb output frame callback function
      * @param eventCb event callback function
      * @param pAppPriv app private data
-     * @return RIDEHAL_ERROR_NONE on success, others on failure
+     * @return QC_STATUS_OK on success, others on failure
      */
-    RideHalError_e OpenDriver( VideoCodec_InFrameCallback_t inputDoneCb,
-                               VideoCodec_OutFrameCallback_t outputDoneCb,
-                               VideoCodec_EventCallback_t eventCb, void *pAppPriv );
+    QCStatus_e OpenDriver( VideoCodec_InFrameCallback_t inputDoneCb,
+                           VideoCodec_OutFrameCallback_t outputDoneCb,
+                           VideoCodec_EventCallback_t eventCb, void *pAppPriv );
 
-    RideHalError_e InitDriver( const VidcCodecMeta_t &meta );
+    QCStatus_e InitDriver( const VidcCodecMeta_t &meta );
 
-    RideHalError_e GetDrvProperty( uint32_t id, uint32_t nPktSize, uint8_t *pPkt );
-    RideHalError_e SetDrvProperty( uint32_t id, uint32_t nPktSize, uint8_t *pPkt );
+    QCStatus_e GetDrvProperty( uint32_t id, uint32_t nPktSize, uint8_t *pPkt );
+    QCStatus_e SetDrvProperty( uint32_t id, uint32_t nPktSize, uint8_t *pPkt );
 
-    RideHalError_e LoadResources();
-    RideHalError_e ReleaseResources();
+    QCStatus_e LoadResources();
+    QCStatus_e ReleaseResources();
 
-    RideHalError_e StartDriver( VideoCodec_StartType_e type );
+    QCStatus_e StartDriver( VideoCodec_StartType_e type );
 
-    RideHalError_e SetBuffer( VideoCodec_BufType_e bufferType, RideHal_SharedBuffer_t *pBufList,
-                              int32_t bufCnt, int32_t bufSize );
+    QCStatus_e SetBuffer( VideoCodec_BufType_e bufferType, QCSharedBuffer_t *pBufList,
+                          int32_t bufCnt, int32_t bufSize );
 
-    RideHalError_e EmptyBuffer( const RideHal_SharedBuffer_t *pInputBuffer, uint64_t timestampUs,
-                                uint64_t appMarkData );
+    QCStatus_e EmptyBuffer( const QCSharedBuffer_t *pInputBuffer, uint64_t timestampUs,
+                            uint64_t appMarkData );
 
-    RideHalError_e FillBuffer( const RideHal_SharedBuffer_t *pOutputBuffer );
+    QCStatus_e FillBuffer( const QCSharedBuffer_t *pOutputBuffer );
 
-    RideHalError_e FreeBuffer( RideHal_SharedBuffer_t *pBufList, int32_t bufCnt,
-                               VideoCodec_BufType_e bufferType );
+    QCStatus_e FreeBuffer( QCSharedBuffer_t *pBufList, int32_t bufCnt,
+                           VideoCodec_BufType_e bufferType );
 
-    RideHalError_e StopDecoder();
-    RideHalError_e StopEncoder();
+    QCStatus_e StopDecoder();
+    QCStatus_e StopEncoder();
 
     void CloseDriver();
 
-    RideHalError_e SetDynamicMode( VideoCodec_BufType_e type, bool mode );
-    RideHalError_e NegotiateBufferReq( VideoCodec_BufType_e bufType, uint32_t &bufNum,
-                                       uint32_t &bufSize );
+    QCStatus_e SetDynamicMode( VideoCodec_BufType_e type, bool mode );
+    QCStatus_e NegotiateBufferReq( VideoCodec_BufType_e bufType, uint32_t &bufNum,
+                                   uint32_t &bufSize );
     void PrintCodecConfig();
 
 private:
@@ -207,7 +207,7 @@ private:
     VideoCodec_CommandType_e m_cmdCompleted = VIDEO_CODEC_COMMAND_NONE;
     bool m_bCmdDrainReceived = false;
 
-    RideHalError_e WaitForCmdCompleted( VideoCodec_CommandType_e expectedCmd, int32_t timeoutMs );
+    QCStatus_e WaitForCmdCompleted( VideoCodec_CommandType_e expectedCmd, int32_t timeoutMs );
     inline void InitCmdCompleted( void ) { m_cmdCompleted = VIDEO_CODEC_COMMAND_NONE; };
 
     static int DeviceCallback( uint8_t *pMsg, uint32_t length, void *pCdata );
@@ -221,7 +221,7 @@ private:
 
     typedef struct
     {
-        RideHal_SharedBuffer_t sharedBuffer;
+        QCSharedBuffer_t sharedBuffer;
         bool bUseFlag = false; /**< indicate whether sharedBuffer is using by driver or available */
     } VideoCodec_OutputInfo_t;
 
@@ -236,11 +236,10 @@ private:
     void *m_pAppPriv = nullptr;
 
 private:
-    RIDEHAL_DECLARE_LOGGER();
+    QC_DECLARE_LOGGER();
 };
 
 }   // namespace component
-}   // namespace ridehal
+}   // namespace QC
 
-#endif   // RIDEHAL_VIDC_DRV_CLIENT_HPP
-
+#endif   // QC_VIDC_DRV_CLIENT_HPP

@@ -3,8 +3,8 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#include "ridehal/sample/shared_ring/SharedMemory.hpp"
-#include "ridehal/sample/shared_ring/SharedRing.hpp"
+#include "QC/sample/shared_ring/SharedMemory.hpp"
+#include "QC/sample/shared_ring/SharedRing.hpp"
 
 #include <sstream>
 
@@ -14,10 +14,10 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-using namespace ridehal::common;
+using namespace QC::common;
 
-using namespace ridehal::sample;
-using namespace ridehal::sample::shared_ring;
+using namespace QC::sample;
+using namespace QC::sample::shared_ring;
 
 static int Usage( const char *program, int error )
 {
@@ -55,7 +55,7 @@ static void DumpRing( std::string name, SharedRing_Ring_t *pRing )
     printf( "%s name: '%s'\n", name.c_str(), pRing->name );
     uint8_t *pU8 = (uint8_t *) &pRing->spinlock;
     printf( "  spinlock raw: [" );
-    for ( int i = 0; i < sizeof( RideHal_SpinLock_t ); i++ )
+    for ( int i = 0; i < sizeof( QCSpinLock_t ); i++ )
     {
         printf( "0x%" PRIx8 ", ", pU8[i] );
     }
@@ -85,22 +85,22 @@ static void DumpRing( std::string name, SharedRing_Ring_t *pRing )
             bAllZero ? "true" : "false" );
 }
 
-static std::string GetBufferTextInfo( const RideHal_SharedBuffer_t *pSharedBuffer )
+static std::string GetBufferTextInfo( const QCSharedBuffer_t *pSharedBuffer )
 {
     std::string str = "";
     std::stringstream ss;
 
-    if ( RIDEHAL_BUFFER_TYPE_RAW == pSharedBuffer->type )
+    if ( QC_BUFFER_TYPE_RAW == pSharedBuffer->type )
     {
         str = "Raw";
     }
-    else if ( RIDEHAL_BUFFER_TYPE_IMAGE == pSharedBuffer->type )
+    else if ( QC_BUFFER_TYPE_IMAGE == pSharedBuffer->type )
     {
         ss << "Image format=" << pSharedBuffer->imgProps.format
            << " batch=" << pSharedBuffer->imgProps.batchSize
            << " resolution=" << pSharedBuffer->imgProps.width << "x"
            << pSharedBuffer->imgProps.height;
-        if ( pSharedBuffer->imgProps.format < RIDEHAL_IMAGE_FORMAT_MAX )
+        if ( pSharedBuffer->imgProps.format < QC_IMAGE_FORMAT_MAX )
         {
             ss << " stride=[";
             for ( uint32_t i = 0; i < pSharedBuffer->imgProps.numPlanes; i++ )
@@ -130,7 +130,7 @@ static std::string GetBufferTextInfo( const RideHal_SharedBuffer_t *pSharedBuffe
         }
         str = ss.str();
     }
-    else if ( RIDEHAL_BUFFER_TYPE_TENSOR == pSharedBuffer->type )
+    else if ( QC_BUFFER_TYPE_TENSOR == pSharedBuffer->type )
     {
         ss << "Tensor type=" << pSharedBuffer->tensorProps.type << " dims=[";
         for ( uint32_t i = 0; i < pSharedBuffer->tensorProps.numDims; i++ )
@@ -213,9 +213,9 @@ int main( int argc, char *argv[] )
 
     SharedMemory shmem;
     std::replace( topicName.begin(), topicName.end(), '/', '_' );
-    RideHalError_e ret = shmem.Open( topicName );
+    QCStatus_e ret = shmem.Open( topicName );
 
-    if ( RIDEHAL_ERROR_NONE != ret )
+    if ( QC_STATUS_OK != ret )
     {
         printf( "Failed to open shared memory: %s", topicName.c_str() );
         return EACCES;

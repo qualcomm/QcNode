@@ -1,20 +1,20 @@
 *Menu*:
 - [1. Introduction](#1-introduction)
-- [2. RideHal VideoDecoder Data Structures](#2-ridehal-videodecoder-data-structures)
+- [2. QC VideoDecoder Data Structures](#2-qc-videodecoder-data-structures)
   - [2.1 The details of VideoDecoder_Config_t](#21-the-details-of-videodecoder_config_t)
   - [2.2 The details of VideoDecoder_InputFrame_t](#22-the-details-of-videodecoder_inputframe_t)
   - [2.3 The details of VideoDecoder_OutputFrame_t](#23-the-details-of-videodecoder_outputframe_t)
-- [3. RideHal VideoDecoder APIs](#3-ridehal-videodecoder-apis)
+- [3. QC VideoDecoder APIs](#3-qc-videodecoder-apis)
 - [4. Typical Use Case](#4-typical-use-case)
   - [4.1 Typical use case of dynamic mode](#41-typical-use-case-of-dynamic-mode)
 
 # 1. Introduction
-The Ridehal VideoDecoder component provides APIs for video decoding. It calls vidc library to process video frames based on video hardware. This component supports QNX and HGY Linux/Ubuntu platforms.
+The QC VideoDecoder component provides APIs for video decoding. It calls vidc library to process video frames based on video hardware. This component supports QNX and HGY Linux/Ubuntu platforms.
 
-# 2. RideHal VideoDecoder Data Structures
-- [VideoDecoder_Config_t](../include/ridehal/component/VideoDecoder.hpp#L53)
-- [VideoDecoder_InputFrame_t](../include/ridehal/component/VideoDecoder.hpp#L62)
-- [VideoDecoder_OutputFrame_t](../include/ridehal/component/VideoDecoder.hpp#L72)
+# 2. QC VideoDecoder Data Structures
+- [VideoDecoder_Config_t](../include/QC/component/VideoDecoder.hpp#L53)
+- [VideoDecoder_InputFrame_t](../include/QC/component/VideoDecoder.hpp#L62)
+- [VideoDecoder_OutputFrame_t](../include/QC/component/VideoDecoder.hpp#L72)
 
 ## 2.1 The details of VideoDecoder_Config_t
 VideoDecoder_Config_t is the data structure that used to initialize VideoDecoder component. It contains video frame parameters, buffer number, buffer lists, working mode and image format. All the config parameters need to be set by the user:
@@ -43,14 +43,14 @@ VideoDecoder_OutputFrame_t contains all the parameters of decoded output image:
 - appMarkData: mark data of frame data
 - frameFlag: indicate whether some error occurred during deccoding this frame
 
-# 3. RideHal VideoDecoder APIs
-- [Initialize the VideoDecoder component](../include/ridehal/component/VideoDecoder.hpp#L103)
-- [Start the VideoDecoder pipeline](../include/ridehal/component/VideoDecoder.hpp#L110)
-- [Stop the VideoDecoder pipeline](../include/ridehal/component/VideoDecoder.hpp#L116)
-- [Deinitialize the VideoDecoder component](../include/ridehal/component/VideoDecoder.hpp#L122)
-- [Submit Input Frame to VideoDecoder](../include/ridehal/component/VideoDecoder.hpp#L129)
-- [Submit Input Frame from VideoDecoder](../include/ridehal/component/VideoDecoder.hpp#L136)
-- [Register callback for VideoDecoder](../include/ridehal/component/VideoDecoder.hpp#L145)
+# 3. QC VideoDecoder APIs
+- [Initialize the VideoDecoder component](../include/QC/component/VideoDecoder.hpp#L103)
+- [Start the VideoDecoder pipeline](../include/QC/component/VideoDecoder.hpp#L110)
+- [Stop the VideoDecoder pipeline](../include/QC/component/VideoDecoder.hpp#L116)
+- [Deinitialize the VideoDecoder component](../include/QC/component/VideoDecoder.hpp#L122)
+- [Submit Input Frame to VideoDecoder](../include/QC/component/VideoDecoder.hpp#L129)
+- [Submit Input Frame from VideoDecoder](../include/QC/component/VideoDecoder.hpp#L136)
+- [Register callback for VideoDecoder](../include/QC/component/VideoDecoder.hpp#L145)
 
 # 4. Typical Use Case
 
@@ -58,7 +58,7 @@ VideoDecoder_OutputFrame_t contains all the parameters of decoded output image:
 
 - Step 1: Configure parameters
 ```c++
-RideHalError_e ret;
+QCStatus_e ret;
 char pName[20] = "VidcDecoder";
 uint32_t bufferNum = 4;
 uint32_t frameNum = 10;
@@ -70,21 +70,21 @@ vidcDecoderConfig.bOutputDynamicMode = true;
 vidcDecoderConfig.numInputBuffer = bufferNum;
 vidcDecoderConfig.numOutputBuffer = bufferNum;
 
-RideHal_SharedBuffer_t inputBuffers[bufferNum];
-RideHal_SharedBuffer_t outputBuffers[bufferNum];
+QCSharedBuffer_t inputBuffers[bufferNum];
+QCSharedBuffer_t outputBuffers[bufferNum];
 
-RideHal_ImageProps_t inputImgProps;
+QCImageProps_t inputImgProps;
 inputImgProps.batchSize = 1;
 inputImgProps.width = 1920;
 inputImgProps.height = 1024;
 inputImgProps.numPlanes = 1;
 inputImgProps.planeBufSize[0] = 2961408;
-inputImgProps.format = RIDEHAL_IMAGE_FORMAT_COMPRESSED_H265;
+inputImgProps.format = QC_IMAGE_FORMAT_COMPRESSED_H265;
 
 vidcDecoderConfig.width = 1920;
 vidcDecoderConfig.height = 1024;
-vidcDecoderConfig.inFormat = RIDEHAL_IMAGE_FORMAT_COMPRESSED_H265;
-vidcDecoderConfig.outFormat = RIDEHAL_IMAGE_FORMAT_NV12;
+vidcDecoderConfig.inFormat = QC_IMAGE_FORMAT_COMPRESSED_H265;
+vidcDecoderConfig.outFormat = QC_IMAGE_FORMAT_NV12;
 vidcDecoderConfig.frameRate = 30;
 vidcDecoderConfig.pInputBufferList = nullptr;
 vidcDecoderConfig.pOutputBufferList = nullptr;
@@ -100,13 +100,13 @@ void VdEventCb( const VideoDecoder_EventType_e eventId, const void *pEvent, void
 for ( uint32_t i = 0; i < bufferNum; i++ )
 {
     ret = inputBuffers[i].Allocate( &inputImgProps );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 }
 
 for ( uint32_t i = 0; i < bufferNum; i++ )
 {
     ret = outputBuffers[i].Allocate( videoInfo.frameWidth, videoInfo.frameHeight, outFormat );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 }
 ```
 
@@ -123,13 +123,13 @@ for ( uint32_t i = 0; i < bufferNum; i++ )
 {
     inputFrame.sharedBuffer = inputBuffers[i];
     ret = vidcDemuxer.GetFrame( &inputBuffers[i], frameInfo );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     inputFrame.timestampNs = frameInfo.startTime;
     inputFrame.appMarkData = i;
 
     ret = vidcDecoder.SubmitInputFrame( &inputFrame );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 }
 
 for ( uint32_t i = 0; i < bufferNum; i++ )
@@ -138,7 +138,7 @@ for ( uint32_t i = 0; i < bufferNum; i++ )
 
     std::this_thread::sleep_for( std::chrono::milliseconds( 30 ) );
     ret = vidcDecoder.SubmitOutputFrame( &outputFrame );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 }
 ```
 

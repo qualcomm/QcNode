@@ -2,8 +2,8 @@
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
-#ifndef RIDEHAL_SAMPLE_VIDC_DEMUXER_HPP
-#define RIDEHAL_SAMPLE_VIDC_DEMUXER_HPP
+#ifndef QC_SAMPLE_VIDC_DEMUXER_HPP
+#define QC_SAMPLE_VIDC_DEMUXER_HPP
 
 #include <condition_variable>
 #include <filesource.h>
@@ -19,13 +19,13 @@
 #include <cstring>
 #include <vidc_client.h>
 #endif
-#include "ridehal/common/Logger.hpp"
-#include "ridehal/common/SharedBuffer.hpp"
-#include "ridehal/common/Types.hpp"
+#include "QC/common/Types.hpp"
+#include "QC/infras/logger/Logger.hpp"
+#include "QC/infras/memory/SharedBuffer.hpp"
 
-using namespace ridehal::common;
+using namespace QC::common;
 
-namespace ridehal
+namespace QC
 {
 namespace sample
 {
@@ -45,7 +45,7 @@ typedef struct
     uint32_t maxFrameSize;
     float frameRate;
     vidc_codec_type codecType;
-    RideHal_ImageFormat_e format;
+    QCImageFormat_e format;
 } VidcDemuxer_VideoInfo_t;
 
 typedef struct
@@ -63,23 +63,22 @@ public:
     VidcDemuxer();
     ~VidcDemuxer();
 
-    RideHalError_e Init( VidcDemuxer_Config_t *pConfig );
-    RideHalError_e DeInit();
-    RideHalError_e GetFrame( RideHal_SharedBuffer_t *pSharedBuffer,
-                             VidcDemuxer_FrameInfo_t &frameInfo );
-    RideHalError_e GetVideoInfo( VidcDemuxer_VideoInfo_t &videoInfo );
-    RideHalError_e SetPlayTime( int64_t time );
+    QCStatus_e Init( VidcDemuxer_Config_t *pConfig );
+    QCStatus_e DeInit();
+    QCStatus_e GetFrame( QCSharedBuffer_t *pSharedBuffer, VidcDemuxer_FrameInfo_t &frameInfo );
+    QCStatus_e GetVideoInfo( VidcDemuxer_VideoInfo_t &videoInfo );
+    QCStatus_e SetPlayTime( int64_t time );
 
 private:
-    RideHalError_e OpenFile( wchar_t *videoFile );
-    RideHalError_e GetVideoTrackInfo( VidcDemuxer_VideoInfo_t &videoInfo );
-    RideHalError_e SelectVideoTrackId( uint32 trackId );
-    RideHalError_e GetMaxFrameBufferSize( uint32 trackId, uint32_t &maxFrameSize );
+    QCStatus_e OpenFile( wchar_t *videoFile );
+    QCStatus_e GetVideoTrackInfo( VidcDemuxer_VideoInfo_t &videoInfo );
+    QCStatus_e SelectVideoTrackId( uint32 trackId );
+    QCStatus_e GetMaxFrameBufferSize( uint32 trackId, uint32_t &maxFrameSize );
 
-    RideHalError_e ProcessFormatBlock( uint32 trackId, vidc_frame_data_type *pFrame );
-    RideHalError_e GetNextMediaSample( uint32 id, vidc_frame_data_type *pFrame,
-                                       VidcDemuxer_FrameInfo_t &frameInfo );
-    RideHal_ImageFormat_e GetRideHalImageFormat( vidc_codec_type codecType );
+    QCStatus_e ProcessFormatBlock( uint32 trackId, vidc_frame_data_type *pFrame );
+    QCStatus_e GetNextMediaSample( uint32 id, vidc_frame_data_type *pFrame,
+                                   VidcDemuxer_FrameInfo_t &frameInfo );
+    QCImageFormat_e GetQCImageFormat( vidc_codec_type codecType );
 
     static void FileSourceCallback( FileSourceCallBackStatus eStatus, void *pClientData );
 
@@ -101,6 +100,5 @@ private:
 };
 
 }   // namespace sample
-}   // namespace ridehal
-#endif /* RIDEHAL_SAMPLE_VIDC_DEMUXER_HPP */
-
+}   // namespace QC
+#endif /* QC_SAMPLE_VIDC_DEMUXER_HPP */

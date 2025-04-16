@@ -13,7 +13,7 @@
 #include <openssl/evp.h>
 #endif
 
-namespace ridehal
+namespace QC
 {
 namespace test
 {
@@ -80,10 +80,10 @@ std::string MD5Sum( const void *data, uint32_t length )
 
 }   // namespace utils
 }   // namespace test
-}   // namespace ridehal
+}   // namespace QC
 
 #ifdef MD5_UTILS_TEST
-using namespace ridehal::test::utils;
+using namespace QC::test::utils;
 int main( int argc, char *argv[] )
 {
     if ( argc != 2 )

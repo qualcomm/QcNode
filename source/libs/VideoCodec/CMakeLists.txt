@@ -10,26 +10,26 @@ set( VIDEOCODEC_SOURCES
     VidcCompBase.cpp
 )
 
-set( TARGET_LIBRARIES RideHalComponentCommon )
+set( TARGET_LIBRARIES QCNodeComponentCommon )
 
 if( "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" )
     list( APPEND TARGET_LIBRARIES vidc vidc_client mmosal )
 endif()
 
-add_library( RideHalVideoCodec SHARED ${VIDEOCODEC_SOURCES} )
+add_library( QCNodeVideoCodec SHARED ${VIDEOCODEC_SOURCES} )
 
 if( "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" )
-target_include_directories( RideHalVideoCodec PUBLIC ${CMAKE_SYSROOT}/usr/include/mm-osal/include )
-target_compile_definitions( RideHalVideoCodec PUBLIC _VIDC_LRH_LINUX_ )
+target_include_directories( QCNodeVideoCodec PUBLIC ${CMAKE_SYSROOT}/usr/include/mm-osal/include )
+target_compile_definitions( QCNodeVideoCodec PUBLIC _VIDC_LRH_LINUX_ )
 endif()
 
-set_property( TARGET RideHalVideoCodec PROPERTY LINKER_LANGUAGE CXX )
-set_property( TARGET RideHalVideoCodec PROPERTY POSITION_INDEPENDENT_CODE ON )
+set_property( TARGET QCNodeVideoCodec PROPERTY LINKER_LANGUAGE CXX )
+set_property( TARGET QCNodeVideoCodec PROPERTY POSITION_INDEPENDENT_CODE ON )
 
-target_include_directories( RideHalVideoCodec PUBLIC ${HEADERS_DIR} )
+target_include_directories( QCNodeVideoCodec PUBLIC ${HEADERS_DIR} )
 
-target_link_libraries( RideHalVideoCodec PUBLIC ${TARGET_LIBRARIES} )
+target_link_libraries( QCNodeVideoCodec PUBLIC ${TARGET_LIBRARIES} )
 
-install(TARGETS RideHalVideoCodec DESTINATION lib)
+install(TARGETS QCNodeVideoCodec DESTINATION lib)
 
-install( FILES ${VIDEOCODEC_HEADERS} DESTINATION include/ridehal/libs/VideoCodec )
+install( FILES ${VIDEOCODEC_HEADERS} DESTINATION include/qcnode/libs/VideoCodec )

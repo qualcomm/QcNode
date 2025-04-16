@@ -3,14 +3,14 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#ifndef RIDEHAL_TEST_ACCURACY_UTILS
-#define RIDEHAL_TEST_ACCURACY_UTILS
+#ifndef QC_TEST_ACCURACY_UTILS
+#define QC_TEST_ACCURACY_UTILS
 
 #include <math.h>
 #include <stdint.h>
 #include <string>
 
-namespace ridehal
+namespace QC
 {
 namespace test
 {
@@ -36,5 +36,5 @@ double CosineSimilarity( const T *golden, const T *data, size_t size )
 
 }   // namespace utils
 }   // namespace test
-}   // namespace ridehal
-#endif /* RIDEHAL_TEST_ACCURACY_UTILS */
+}   // namespace QC
+#endif /* QC_TEST_ACCURACY_UTILS */

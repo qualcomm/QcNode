@@ -2,11 +2,11 @@
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
-#include "ridehal/sample/SamplePostProcCenternet.hpp"
+#include "QC/sample/SamplePostProcCenternet.hpp"
 #include <algorithm>
 #include <assert.h>
 
-namespace ridehal
+namespace QC
 {
 namespace sample
 {
@@ -112,9 +112,9 @@ static float sigmoid( float data )
 SamplePostProcCenternet::SamplePostProcCenternet() {}
 SamplePostProcCenternet::~SamplePostProcCenternet() {}
 
-RideHalError_e SamplePostProcCenternet::ParseConfig( SampleConfig_t &config )
+QCStatus_e SamplePostProcCenternet::ParseConfig( SampleConfig_t &config )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     m_roiX = Get( config, "roi_x", 0 );
     m_roiY = Get( config, "roi_y", 0 );
@@ -122,84 +122,84 @@ RideHalError_e SamplePostProcCenternet::ParseConfig( SampleConfig_t &config )
     m_camHeight = Get( config, "height", 1024 );
     m_scoreThreshold = Get( config, "score_threshold", 0.6f );
     m_NMSThreshold = Get( config, "nms_threshold", 0.6f );
-    m_processor = Get( config, "processor", RIDEHAL_PROCESSOR_CPU );
-    if ( ( RIDEHAL_PROCESSOR_CPU != m_processor ) && ( RIDEHAL_PROCESSOR_GPU != m_processor ) )
+    m_processor = Get( config, "processor", QC_PROCESSOR_CPU );
+    if ( ( QC_PROCESSOR_CPU != m_processor ) && ( QC_PROCESSOR_GPU != m_processor ) )
     {
-        RIDEHAL_ERROR( "invalid processor type" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "invalid processor type" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     m_inputTopicName = Get( config, "input_topic", "" );
     if ( "" == m_inputTopicName )
     {
-        RIDEHAL_ERROR( "no input topic\n" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "no input topic\n" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     m_outputTopicName = Get( config, "output_topic", "" );
     if ( "" == m_outputTopicName )
     {
-        RIDEHAL_ERROR( "no output topic\n" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "no output topic\n" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     return ret;
 }
 
-RideHalError_e SamplePostProcCenternet::Init( std::string name, SampleConfig_t &config )
+QCStatus_e SamplePostProcCenternet::Init( std::string name, SampleConfig_t &config )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     ret = SampleIF::Init( name );
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         TRACE_ON( CPU );
         ret = ParseConfig( config );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = m_sub.Init( name, m_inputTopicName );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = m_pub.Init( name, m_outputTopicName );
     }
 
     // OpenCL Init
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
-        if ( RIDEHAL_PROCESSOR_GPU == m_processor )
+        if ( QC_PROCESSOR_GPU == m_processor )
         {
             ret = m_OpenclSrvObj.Init( name.c_str(), LOGGER_LEVEL_ERROR );
             SetCLParams();
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
-                RIDEHAL_ERROR( "Failed to initialize openclSrvObj" );
+                QC_ERROR( "Failed to initialize openclSrvObj" );
             }
-            if ( RIDEHAL_ERROR_NONE == ret )
+            if ( QC_STATUS_OK == ret )
             {
                 ret = m_OpenclSrvObj.LoadFromSource( s_pSourceBboxDet );
-                if ( RIDEHAL_ERROR_NONE != ret )
+                if ( QC_STATUS_OK != ret )
                 {
-                    RIDEHAL_ERROR( "Failed to load kernel source code" );
+                    QC_ERROR( "Failed to load kernel source code" );
                 }
             }
-            if ( RIDEHAL_ERROR_NONE == ret )
+            if ( QC_STATUS_OK == ret )
             {
                 ret = m_OpenclSrvObj.CreateKernel( &m_kernel, "BboxDet" );
-                if ( RIDEHAL_ERROR_NONE != ret )
+                if ( QC_STATUS_OK != ret )
                 {
-                    RIDEHAL_ERROR( "Failed to create kernel" );
+                    QC_ERROR( "Failed to create kernel" );
                 }
             }
-            if ( RIDEHAL_ERROR_NONE == ret )
+            if ( QC_STATUS_OK == ret )
             {
                 ret = RegisterOutputBuffers();
-                if ( RIDEHAL_ERROR_NONE != ret )
+                if ( QC_STATUS_OK != ret )
                 {
-                    RIDEHAL_ERROR( "Failed to create output buffer" );
+                    QC_ERROR( "Failed to create output buffer" );
                 }
             }
         }
@@ -208,9 +208,9 @@ RideHalError_e SamplePostProcCenternet::Init( std::string name, SampleConfig_t &
     return ret;
 }
 
-RideHalError_e SamplePostProcCenternet::Start()
+QCStatus_e SamplePostProcCenternet::Start()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     m_stop = false;
     m_thread = std::thread( &SamplePostProcCenternet::ThreadMain, this );
@@ -220,15 +220,15 @@ RideHalError_e SamplePostProcCenternet::Start()
 
 void SamplePostProcCenternet::ThreadMain()
 {
-    RideHalError_e ret;
+    QCStatus_e ret;
 
     while ( false == m_stop )
     {
         DataFrames_t tensors;
         ret = m_sub.Receive( tensors );
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
-            if ( RIDEHAL_PROCESSOR_CPU == m_processor )
+            if ( QC_PROCESSOR_CPU == m_processor )
             {
                 PROFILER_BEGIN();
                 TRACE_BEGIN( tensors.FrameId( 0 ) );
@@ -236,14 +236,14 @@ void SamplePostProcCenternet::ThreadMain()
                 PROFILER_END();
                 TRACE_END( tensors.FrameId( 0 ) );
             }
-            else if ( RIDEHAL_PROCESSOR_GPU == m_processor )
+            else if ( QC_PROCESSOR_GPU == m_processor )
             {
                 PROFILER_BEGIN();
                 TRACE_BEGIN( tensors.FrameId( 0 ) );
                 ret = RegisterInputBuffers( tensors );
-                if ( RIDEHAL_ERROR_NONE != ret )
+                if ( QC_STATUS_OK != ret )
                 {
-                    RIDEHAL_ERROR( "Failed to create input buffer" );
+                    QC_ERROR( "Failed to create input buffer" );
                 }
                 ret = PostProcCL( tensors );
                 PROFILER_END();
@@ -251,20 +251,20 @@ void SamplePostProcCenternet::ThreadMain()
             }
             else
             {
-                RIDEHAL_ERROR( "invalid processor type" );
-                ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+                QC_ERROR( "invalid processor type" );
+                ret = QC_STATUS_BAD_ARGUMENTS;
             }
         }
     }
 }
 
-RideHalError_e SamplePostProcCenternet::RegisterInputBuffers( DataFrames_t &tensors )
+QCStatus_e SamplePostProcCenternet::RegisterInputBuffers( DataFrames_t &tensors )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
-    RideHal_SharedBuffer_t hm = tensors.SharedBuffer( 0 );
-    RideHal_SharedBuffer_t wh = tensors.SharedBuffer( 1 );
-    RideHal_SharedBuffer_t reg = tensors.SharedBuffer( 2 );
+    QCSharedBuffer_t hm = tensors.SharedBuffer( 0 );
+    QCSharedBuffer_t wh = tensors.SharedBuffer( 1 );
+    QCSharedBuffer_t reg = tensors.SharedBuffer( 2 );
 
     m_hmScale = tensors.QuantScale( 0 );
     m_whScale = tensors.QuantScale( 1 );
@@ -278,31 +278,31 @@ RideHalError_e SamplePostProcCenternet::RegisterInputBuffers( DataFrames_t &tens
 
     // Create hm data buffer
     ret = m_OpenclSrvObj.RegBuf( &( hm.buffer ), &m_clInputHMBuf );
-    if ( RIDEHAL_ERROR_NONE != ret )
+    if ( QC_STATUS_OK != ret )
     {
-        RIDEHAL_ERROR( "Failed to create hm data buffer" );
+        QC_ERROR( "Failed to create hm data buffer" );
     }
 
     // Create wh data buffer
     ret = m_OpenclSrvObj.RegBuf( &( wh.buffer ), &m_clInputWHBuf );
-    if ( RIDEHAL_ERROR_NONE != ret )
+    if ( QC_STATUS_OK != ret )
     {
-        RIDEHAL_ERROR( "Failed to create wh data buffer" );
+        QC_ERROR( "Failed to create wh data buffer" );
     }
 
     // Create reg data buffer
     ret = m_OpenclSrvObj.RegBuf( &( reg.buffer ), &m_clInputRegBuf );
-    if ( RIDEHAL_ERROR_NONE != ret )
+    if ( QC_STATUS_OK != ret )
     {
-        RIDEHAL_ERROR( "Failed to create reg data buffer" );
+        QC_ERROR( "Failed to create reg data buffer" );
     }
 
     return ret;
 }
 
-RideHalError_e SamplePostProcCenternet::RegisterOutputBuffers()
+QCStatus_e SamplePostProcCenternet::RegisterOutputBuffers()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     size_t outputClsIdBufSize =
             ( MAX_OBJ_NUM + 1 ) * sizeof( uint32_t );   // the last element is object num
@@ -314,27 +314,27 @@ RideHalError_e SamplePostProcCenternet::RegisterOutputBuffers()
     ret = m_outputClsIdBuf.Allocate( outputClsIdBufSize );
     bufHandle = m_outputClsIdBuf.buffer.dmaHandle;
     ret = m_OpenclSrvObj.RegBuf( &( m_outputClsIdBuf.buffer ), &m_clOutputClsIdBuf );
-    if ( RIDEHAL_ERROR_NONE != ret )
+    if ( QC_STATUS_OK != ret )
     {
-        RIDEHAL_ERROR( "Failed to create output classId data buffer" );
+        QC_ERROR( "Failed to create output classId data buffer" );
     }
 
     // create output classId prob buffer
     ret = m_outputProbBuf.Allocate( outputProbBufSize );
     bufHandle = m_outputProbBuf.buffer.dmaHandle;
     ret = m_OpenclSrvObj.RegBuf( &( m_outputProbBuf.buffer ), &m_clOutputProbBuf );
-    if ( RIDEHAL_ERROR_NONE != ret )
+    if ( QC_STATUS_OK != ret )
     {
-        RIDEHAL_ERROR( "Failed to create output prob data buffer" );
+        QC_ERROR( "Failed to create output prob data buffer" );
     }
 
     // create output coords data buffer
     ret = m_outputCoordsBuf.Allocate( outputCoordsBufSize );
     bufHandle = m_outputCoordsBuf.buffer.dmaHandle;
     ret = m_OpenclSrvObj.RegBuf( &( m_outputCoordsBuf.buffer ), &m_clOutputCoordsBuf );
-    if ( RIDEHAL_ERROR_NONE != ret )
+    if ( QC_STATUS_OK != ret )
     {
-        RIDEHAL_ERROR( "Failed to create output coords data buffer" );
+        QC_ERROR( "Failed to create output coords data buffer" );
     }
 
     return ret;
@@ -392,8 +392,8 @@ void SamplePostProcCenternet::SetCLParams()
 
 void SamplePostProcCenternet::PostProcCPU( DataFrames_t &tensors )
 {
-    RIDEHAL_DEBUG( "receive frameId %" PRIu64 ", timestamp %" PRIu64 "\n", tensors.FrameId( 0 ),
-                   tensors.Timestamp( 0 ) );
+    QC_DEBUG( "receive frameId %" PRIu64 ", timestamp %" PRIu64 "\n", tensors.FrameId( 0 ),
+              tensors.Timestamp( 0 ) );
 
     Road2DObjects_t objs;
 
@@ -486,10 +486,10 @@ void SamplePostProcCenternet::PostProcCPU( DataFrames_t &tensors )
                             det.points[2] = Point2D_t{ bottomX, bottomY };
                             det.points[3] = Point2D_t{ topX, bottomY };
                             objs.objs.push_back( det );
-                            RIDEHAL_DEBUG( "[frame %" PRIu64 "- %" PRIu64
-                                           "] class=%d score=%.3f points=[%.3f %.3f %.3f %.3f]",
-                                           tensors.FrameId( 0 ), objs.objs.size() - 1, det.classId,
-                                           det.prob, topX, topY, bottomX, bottomY );
+                            QC_DEBUG( "[frame %" PRIu64 "- %" PRIu64
+                                      "] class=%d score=%.3f points=[%.3f %.3f %.3f %.3f]",
+                                      tensors.FrameId( 0 ), objs.objs.size() - 1, det.classId,
+                                      det.prob, topX, topY, bottomX, bottomY );
                         }
                     }
                 }
@@ -502,13 +502,13 @@ void SamplePostProcCenternet::PostProcCPU( DataFrames_t &tensors )
     objs.frameId = tensors.FrameId( 0 );
     objs.timestamp = tensors.Timestamp( 0 );
     m_pub.Publish( objs );
-    RIDEHAL_DEBUG( "number of detections %" PRIu64 " for frame %" PRIu64, objs.objs.size(),
-                   tensors.FrameId( 0 ) );
+    QC_DEBUG( "number of detections %" PRIu64 " for frame %" PRIu64, objs.objs.size(),
+              tensors.FrameId( 0 ) );
 }
 
-RideHalError_e SamplePostProcCenternet::PostProcCL( DataFrames_t &tensors )
+QCStatus_e SamplePostProcCenternet::PostProcCL( DataFrames_t &tensors )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     size_t numArgs = 22;
     OpenclIface_WorkParams_t openclWorkParams;
@@ -523,10 +523,10 @@ RideHalError_e SamplePostProcCenternet::PostProcCL( DataFrames_t &tensors )
     *( pdetClsIds + MAX_OBJ_NUM ) = 0;
 
     ret = m_OpenclSrvObj.Execute( &m_kernel, m_openclArgs, numArgs, &openclWorkParams );
-    if ( RIDEHAL_ERROR_NONE != ret )
+    if ( QC_STATUS_OK != ret )
     {
-        RIDEHAL_ERROR( "Failed to execute BboxDet kernel" );
-        ret = RIDEHAL_ERROR_FAIL;
+        QC_ERROR( "Failed to execute BboxDet kernel" );
+        ret = QC_STATUS_FAIL;
     }
 
     // non-maximum suppression
@@ -551,8 +551,8 @@ RideHalError_e SamplePostProcCenternet::PostProcCL( DataFrames_t &tensors )
     objs.frameId = tensors.FrameId( 0 );
     objs.timestamp = tensors.Timestamp( 0 );
     m_pub.Publish( objs );
-    RIDEHAL_DEBUG( "number of detections %" PRIu64 " for frame %" PRIu64, objs.objs.size(),
-                   tensors.FrameId( 0 ) );
+    QC_DEBUG( "number of detections %" PRIu64 " for frame %" PRIu64, objs.objs.size(),
+              tensors.FrameId( 0 ) );
 
     return ret;
 }
@@ -604,9 +604,9 @@ float SamplePostProcCenternet::ComputeIou( const Road2DObject_t &box1, const Roa
     return iou;
 }
 
-RideHalError_e SamplePostProcCenternet::Stop()
+QCStatus_e SamplePostProcCenternet::Stop()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     m_stop = true;
     if ( m_thread.joinable() )
@@ -619,17 +619,17 @@ RideHalError_e SamplePostProcCenternet::Stop()
     return ret;
 }
 
-RideHalError_e SamplePostProcCenternet::Deinit()
+QCStatus_e SamplePostProcCenternet::Deinit()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
-    if ( RIDEHAL_PROCESSOR_GPU == m_processor )
+    if ( QC_PROCESSOR_GPU == m_processor )
     {
         ret = m_OpenclSrvObj.Deinit();
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
-            RIDEHAL_ERROR( "Release CL resources failed!" );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Release CL resources failed!" );
+            ret = QC_STATUS_FAIL;
         }
     }
     return ret;
@@ -638,4 +638,4 @@ RideHalError_e SamplePostProcCenternet::Deinit()
 REGISTER_SAMPLE( PostProcCenternet, SamplePostProcCenternet );
 
 }   // namespace sample
-}   // namespace ridehal
+}   // namespace QC

@@ -6,7 +6,7 @@
 #include "CamInfo.hpp"
 #include "Macros.hpp"
 
-namespace ridehal
+namespace QC
 {
 namespace sample
 {
@@ -109,9 +109,9 @@ uint32_t CamInfo::stride()
     return st;
 }
 
-RideHal_ImageFormat_e CamInfo::format()
+QCImageFormat_e CamInfo::format()
 {
-    RideHal_ImageFormat_e fmt = RIDEHAL_IMAGE_FORMAT_MAX;
+    QCImageFormat_e fmt = QC_IMAGE_FORMAT_MAX;
 
     if ( nullptr != camFrame.buffer )
     {
@@ -123,4 +123,4 @@ RideHal_ImageFormat_e CamInfo::format()
 
 
 }   // namespace sample
-}   // namespace ridehal
+}   // namespace QC

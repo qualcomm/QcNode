@@ -15,19 +15,19 @@ And this Component PostCenterPoint is based on [FastADAS FadasVM library](https:
 
 # 2. PostCenterPoint Data Structures
 
-- [PostCenterPoint_3DBBoxFilterParams_t](../include/ridehal/component/PostCenterPoint.hpp#L34)
-- [PostCenterPoint_Config_t](../include/ridehal/component/PostCenterPoint.hpp#L68)
-- [PostCenterPoint_Object3D_t](../include/ridehal/component/PostCenterPoint.hpp#L86)
+- [PostCenterPoint_3DBBoxFilterParams_t](../include/QC/component/PostCenterPoint.hpp#L34)
+- [PostCenterPoint_Config_t](../include/QC/component/PostCenterPoint.hpp#L68)
+- [PostCenterPoint_Object3D_t](../include/QC/component/PostCenterPoint.hpp#L86)
 
 # 3. PostCenterPoint APIs
 
-- [Init](../include/ridehal/component/PostCenterPoint.hpp#L108)
-- [RegisterBuffers](../include/ridehal/component/PostCenterPoint.hpp#L122)
-- [Start](../include/ridehal/component/PostCenterPoint.hpp#L129)
-- [Execute](../include/ridehal/component/PostCenterPoint.hpp#L157)
-- [Stop](../include/ridehal/component/PostCenterPoint.hpp#L168)
-- [DeRegisterBuffers](../include/ridehal/component/PostCenterPoint.hpp#L180)
-- [Deinit](../include/ridehal/component/PostCenterPoint.hpp#L186)
+- [Init](../include/QC/component/PostCenterPoint.hpp#L108)
+- [RegisterBuffers](../include/QC/component/PostCenterPoint.hpp#L122)
+- [Start](../include/QC/component/PostCenterPoint.hpp#L129)
+- [Execute](../include/QC/component/PostCenterPoint.hpp#L157)
+- [Stop](../include/QC/component/PostCenterPoint.hpp#L168)
+- [DeRegisterBuffers](../include/QC/component/PostCenterPoint.hpp#L180)
+- [Deinit](../include/QC/component/PostCenterPoint.hpp#L186)
 
 # 4. PostCenterPoint Examples
 
@@ -39,7 +39,7 @@ And the plrPostConfig0 is for the [OpenPCDet default pointpillar config](https:/
 
 ```c++
 static PostCenterPoint_Config_t plrPostConfig0 = {
-        RIDEHAL_PROCESSOR_HTP0,
+        QC_PROCESSOR_HTP0,
         0.16,
         0.16, /* pillar size: x, y */
         0.0,
@@ -59,7 +59,7 @@ static PostCenterPoint_Config_t plrPostConfig0 = {
 };
 
 PostCenterPoint plrPost;
-RideHalError_e ret;
+QCStatus_e ret;
 
 ret = plrPost.Init( "PLRPOST0", &config, LOGGER_LEVEL_INFO );
 ret = plrPost.Start();
@@ -67,7 +67,7 @@ ret = plrPost.Start();
 
 ### 4.1.1 How to configure the `filterParams`
 
-The [filterParams](../include/ridehal/component/PostCenterPoint.hpp#L58) are only valid and will be used if both [bMapPtsToBBox](../include/ridehal/component/PostCenterPoint.hpp#L61) and [bBBoxFilter](../include/ridehal/component/PostCenterPoint.hpp#L67) are true.
+The [filterParams](../include/QC/component/PostCenterPoint.hpp#L58) are only valid and will be used if both [bMapPtsToBBox](../include/QC/component/PostCenterPoint.hpp#L61) and [bBBoxFilter](../include/QC/component/PostCenterPoint.hpp#L67) are true.
 
 When `bMapPtsToBBox` was true, the PostCenterPoint checks the input point cloud for each detected 3D bounding box. It calculates the mean values of x/y/z coordinates and intensities for all points inside this bounding box. However, this process can be time-consuming. In real-world scenarios, ADAS applications may only require this mean calculation for specific classes and limit it to the first several bounding boxes with high scores.
 
@@ -76,7 +76,7 @@ As an example configuration, consider using filterParams to optimize performance
 ```c
 PostCenterPoint_Config_t config = plrPostConfig0;
 PostCenterPoint plrPost;
-RideHalError_e ret;
+QCStatus_e ret;
 bool labelSelect[3] = { true, false, false }; // only do the mean calcuation for the class: Car
 // do the mean calcuation for the first 10 bounding box with high scores.
 PostCenterPoint_3DBBoxFilterParams_t filterParams = { 10,

@@ -3,10 +3,10 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#include "ridehal/common/Logger.hpp"
+#include "QC/infras/logger/Logger.hpp"
 #include <syslog.h>
 
-namespace ridehal
+namespace QC
 {
 namespace common
 {
@@ -16,7 +16,7 @@ typedef struct
     std::string name;
 } Logger_HandleContext_t;
 
-static int s_rideHalLoggerLevelToJournalPriotity[] = {
+static int s_qcLoggerLevelToJournalPriotity[] = {
         LOG_DEBUG,   /* LOGGER_LEVEL_VERBOSE */
         LOG_INFO,    /* LOGGER_LEVEL_DEBUG */
         LOG_NOTICE,  /* LOGGER_LEVEL_INFO */
@@ -28,20 +28,20 @@ void Logger::DefaultLog( Logger_Handle_t hHandle, Logger_Level_e level, const ch
                          va_list args )
 {
     std::string strFmt;
-    int priority = s_rideHalLoggerLevelToJournalPriotity[level];
+    int priority = s_qcLoggerLevelToJournalPriotity[level];
     Logger_HandleContext_t *pContext = (Logger_HandleContext_t *) hHandle;
     strFmt = pContext->name + " : " + std::string( pFormat );
     vsyslog( priority, strFmt.c_str(), args );
 }
 
-RideHalError_e Logger::DefaultCreate( const char *pName, Logger_Level_e level,
-                                      Logger_Handle_t *pHandle )
+QCStatus_e Logger::DefaultCreate( const char *pName, Logger_Level_e level,
+                                  Logger_Handle_t *pHandle )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     if ( ( nullptr == pName ) || ( nullptr == pHandle ) )
     {
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
@@ -54,7 +54,7 @@ RideHalError_e Logger::DefaultCreate( const char *pName, Logger_Level_e level,
         }
         else
         {
-            ret = RIDEHAL_ERROR_NOMEM;
+            ret = QC_STATUS_NOMEM;
         }
     }
 
@@ -71,4 +71,4 @@ void Logger::DefaultDestory( Logger_Handle_t hHandle )
 }
 
 }   // namespace common
-}   // namespace ridehal
+}   // namespace QC

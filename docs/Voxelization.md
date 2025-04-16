@@ -14,17 +14,17 @@ And this Component Voxelization is based on [FastADAS FadasVM library](https://d
 
 # 2. Voxelization Data Structures
 
-- [Voxelization_Config_t](../include/ridehal/component/Voxelization.hpp#L43)
+- [Voxelization_Config_t](../include/QC/component/Voxelization.hpp#L43)
 
 # 3. Voxelization APIs
 
-- [Init](../include/ridehal/component/Voxelization.hpp#L65)
-- [RegisterBuffers](../include/ridehal/component/Voxelization.hpp#L79)
-- [Start](../include/ridehal/component/Voxelization.hpp#L86)
-- [Execute](../include/ridehal/component/Voxelization.hpp#L99)
-- [Stop](../include/ridehal/component/Voxelization.hpp#L107)
-- [DeRegisterBuffers](../include/ridehal/component/Voxelization.hpp#L119)
-- [Deinit](../include/ridehal/component/Voxelization.hpp#L125)
+- [Init](../include/QC/component/Voxelization.hpp#L65)
+- [RegisterBuffers](../include/QC/component/Voxelization.hpp#L79)
+- [Start](../include/QC/component/Voxelization.hpp#L86)
+- [Execute](../include/QC/component/Voxelization.hpp#L99)
+- [Stop](../include/QC/component/Voxelization.hpp#L107)
+- [DeRegisterBuffers](../include/QC/component/Voxelization.hpp#L119)
+- [Deinit](../include/QC/component/Voxelization.hpp#L125)
 
 # 4. Voxelization Examples
 
@@ -58,7 +58,7 @@ DATA_CONFIG:
 
 ```c++
 static Voxelization_Config_t plrPreConfig0 = {
-        RIDEHAL_PROCESSOR_HTP0,
+        QC_PROCESSOR_HTP0,
         0.16,
         0.16,
         4.0, /* pillar size: x, y, z */
@@ -76,7 +76,7 @@ static Voxelization_Config_t plrPreConfig0 = {
 };
 
 Voxelization plrPre;
-RideHalError_e ret;
+QCStatus_e ret;
 
 ret = plrPre.Init( "PLRPRE0", &plrPreConfig0, LOGGER_LEVEL_INFO );
 
@@ -90,25 +90,25 @@ The [SANITY_Voxelization](../tests/unit_test/components/PointPillar/gtest_PointP
 After initializing the component voxelization, allocate memory for the input and output tensor buffers.
 
 ```c++
-    RideHal_TensorProps_t inPtsTsProp = {
-            RIDEHAL_TENSOR_TYPE_FLOAT_32,
+    QCTensorProps_t inPtsTsProp = {
+            QC_TENSOR_TYPE_FLOAT_32,
             { plrPreConfig0.maxNumInPts, plrPreConfig0.numInFeatureDim, 0 },
             2,
     };
-    RideHal_TensorProps_t outPlrsTsProp = {
-            RIDEHAL_TENSOR_TYPE_FLOAT_32,
+    QCTensorProps_t outPlrsTsProp = {
+            QC_TENSOR_TYPE_FLOAT_32,
             { plrPreConfig0.maxNumPlrs, VOXELIZATION_PILLAR_COORDS_DIM, 0 },
             2,
     };
-    RideHal_TensorProps_t outFeatureTsProp = {
-            RIDEHAL_TENSOR_TYPE_FLOAT_32,
+    QCTensorProps_t outFeatureTsProp = {
+            QC_TENSOR_TYPE_FLOAT_32,
             { plrPreConfig0.maxNumPlrs, plrPreConfig0.maxNumPtsPerPlr, plrPreConfig0.numOutFeatureDim, 0 },
             3,
     };
 
-    RideHal_SharedBuffer_t inPts;
-    RideHal_SharedBuffer_t outPlrs;
-    RideHal_SharedBuffer_t outFeature;
+    QCSharedBuffer_t inPts;
+    QCSharedBuffer_t outPlrs;
+    QCSharedBuffer_t outFeature;
 
     /* Allocate input and output tensors */
     ret = inPts.Allocate( &inPtsTsProp );

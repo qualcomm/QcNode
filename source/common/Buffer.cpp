@@ -3,17 +3,17 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#include "ridehal/common/BufferManager.hpp"
-#include "ridehal/common/SharedBuffer.hpp"
+#include "QC/infras/memory/BufferManager.hpp"
+#include "QC/infras/memory/SharedBuffer.hpp"
 #include <string.h>
 #include <unistd.h>
 
-namespace ridehal
+namespace QC
 {
 namespace common
 {
 
-void RideHal_SharedBuffer::Init()
+void QCSharedBuffer::Init()
 {
     (void) memset( this, 0, sizeof( *this ) );
     this->buffer.pData = nullptr;
@@ -21,19 +21,19 @@ void RideHal_SharedBuffer::Init()
     this->buffer.size = 0;
     this->buffer.id = 0;
     this->buffer.pid = static_cast<uint64_t>( getpid() );
-    this->buffer.usage = RIDEHAL_BUFFER_USAGE_DEFAULT;
+    this->buffer.usage = QC_BUFFER_USAGE_DEFAULT;
     this->buffer.flags = 0;
     this->size = 0;
     this->offset = 0;
-    this->type = RIDEHAL_BUFFER_TYPE_RAW;
+    this->type = QC_BUFFER_TYPE_RAW;
 }
 
-RideHal_SharedBuffer::RideHal_SharedBuffer()
+QCSharedBuffer::QCSharedBuffer()
 {
     Init();
 }
 
-RideHal_SharedBuffer::RideHal_SharedBuffer( const RideHal_SharedBuffer &rhs )
+QCSharedBuffer::QCSharedBuffer( const QCSharedBuffer &rhs )
 {
     this->buffer = rhs.buffer;
     this->size = rhs.size;
@@ -41,10 +41,10 @@ RideHal_SharedBuffer::RideHal_SharedBuffer( const RideHal_SharedBuffer &rhs )
     this->type = rhs.type;
     switch ( type )
     {
-        case RIDEHAL_BUFFER_TYPE_IMAGE:
+        case QC_BUFFER_TYPE_IMAGE:
             this->imgProps = rhs.imgProps;
             break;
-        case RIDEHAL_BUFFER_TYPE_TENSOR:
+        case QC_BUFFER_TYPE_TENSOR:
             this->tensorProps = rhs.tensorProps;
             break;
         default: /* do nothing for RAW type */
@@ -52,7 +52,7 @@ RideHal_SharedBuffer::RideHal_SharedBuffer( const RideHal_SharedBuffer &rhs )
     }
 }
 
-RideHal_SharedBuffer &RideHal_SharedBuffer::operator=( const RideHal_SharedBuffer &rhs )
+QCSharedBuffer &QCSharedBuffer::operator=( const QCSharedBuffer &rhs )
 {
     this->buffer = rhs.buffer;
     this->size = rhs.size;
@@ -60,10 +60,10 @@ RideHal_SharedBuffer &RideHal_SharedBuffer::operator=( const RideHal_SharedBuffe
     this->type = rhs.type;
     switch ( type )
     {
-        case RIDEHAL_BUFFER_TYPE_IMAGE:
+        case QC_BUFFER_TYPE_IMAGE:
             this->imgProps = rhs.imgProps;
             break;
-        case RIDEHAL_BUFFER_TYPE_TENSOR:
+        case QC_BUFFER_TYPE_TENSOR:
             this->tensorProps = rhs.tensorProps;
             break;
         default: /* do nothing for RAW type */
@@ -72,31 +72,30 @@ RideHal_SharedBuffer &RideHal_SharedBuffer::operator=( const RideHal_SharedBuffe
     return *this;
 }
 
-RideHal_SharedBuffer::~RideHal_SharedBuffer() {}
+QCSharedBuffer::~QCSharedBuffer() {}
 
-RideHalError_e RideHal_SharedBuffer::Allocate( size_t size, RideHal_BufferUsage_e usage,
-                                               RideHal_BufferFlags_t flags )
+QCStatus_e QCSharedBuffer::Allocate( size_t size, QCBufferUsage_e usage, QCBufferFlags_t flags )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     void *pData = nullptr;
     uint64_t dmaHandle = 0;
     BufferManager *pBufferManager = BufferManager::GetDefaultBufferManager();
 
     if ( nullptr == pBufferManager )
     {
-        RIDEHAL_LOG_ERROR( "Failed to get buffer manager" );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_LOG_ERROR( "Failed to get buffer manager" );
+        ret = QC_STATUS_BAD_STATE;
     }
     else if ( nullptr != this->buffer.pData )
     {
-        RIDEHAL_LOG_ERROR( "buffer is already allocated" );
-        ret = RIDEHAL_ERROR_ALREADY;
+        QC_LOG_ERROR( "buffer is already allocated" );
+        ret = QC_STATUS_ALREADY;
     }
     else
     {
-        ret = RideHal_DmaAllocate( &pData, &dmaHandle, size, flags, usage );
+        ret = QCDmaAllocate( &pData, &dmaHandle, size, flags, usage );
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             this->buffer.pData = pData;
             this->buffer.dmaHandle = dmaHandle;
@@ -107,16 +106,16 @@ RideHalError_e RideHal_SharedBuffer::Allocate( size_t size, RideHal_BufferUsage_
             this->size = size;
         }
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             ret = pBufferManager->Register( this );
         }
 
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
             if ( nullptr != pData )
             {
-                (void) RideHal_DmaFree( pData, dmaHandle, size );
+                (void) QCDmaFree( pData, dmaHandle, size );
             }
             Init();
         }
@@ -125,42 +124,42 @@ RideHalError_e RideHal_SharedBuffer::Allocate( size_t size, RideHal_BufferUsage_
     return ret;
 }
 
-RideHalError_e RideHal_SharedBuffer::Free()
+QCStatus_e QCSharedBuffer::Free()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     BufferManager *pBufferManager = BufferManager::GetDefaultBufferManager();
     int pid = getpid();
 
     if ( nullptr == pBufferManager )
     {
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        ret = QC_STATUS_BAD_STATE;
     }
     else if ( nullptr == this->buffer.pData )
     {
-        RIDEHAL_LOG_ERROR( "buffer not allocated" );
-        ret = RIDEHAL_ERROR_INVALID_BUF;
+        QC_LOG_ERROR( "buffer not allocated" );
+        ret = QC_STATUS_INVALID_BUF;
     }
     else if ( pid != this->buffer.pid )
     {
-        RIDEHAL_LOG_ERROR( "buffer not allocated by self, can't do free" );
-        ret = RIDEHAL_ERROR_OUT_OF_BOUND;
+        QC_LOG_ERROR( "buffer not allocated by self, can't do free" );
+        ret = QC_STATUS_OUT_OF_BOUND;
     }
     else
     {
         /* OK */
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = pBufferManager->Deregister( this->buffer.id );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
-        ret = RideHal_DmaFree( this->buffer.pData, this->buffer.dmaHandle, this->buffer.size );
+        ret = QCDmaFree( this->buffer.pData, this->buffer.dmaHandle, this->buffer.size );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         Init();
     }
@@ -168,9 +167,9 @@ RideHalError_e RideHal_SharedBuffer::Free()
     return ret;
 }
 
-RideHalError_e RideHal_SharedBuffer::Import( const RideHal_SharedBuffer *pSharedBuffer )
+QCStatus_e QCSharedBuffer::Import( const QCSharedBuffer *pSharedBuffer )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     void *pData = nullptr;
     uint64_t dmaHandle = 0;
     BufferManager *pBufferManager = BufferManager::GetDefaultBufferManager();
@@ -178,50 +177,50 @@ RideHalError_e RideHal_SharedBuffer::Import( const RideHal_SharedBuffer *pShared
 
     if ( nullptr == pBufferManager )
     {
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        ret = QC_STATUS_BAD_STATE;
     }
     else if ( nullptr == pSharedBuffer )
     {
-        RIDEHAL_LOG_ERROR( "pSharedBuffer is nullptr" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_LOG_ERROR( "pSharedBuffer is nullptr" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else if ( 0 == pSharedBuffer->buffer.dmaHandle )
     {
-        RIDEHAL_LOG_ERROR( "invalid dma buffer handle" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_LOG_ERROR( "invalid dma buffer handle" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else if ( 0 == pSharedBuffer->buffer.size )
     {
-        RIDEHAL_LOG_ERROR( "invalid dma buffer size" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_LOG_ERROR( "invalid dma buffer size" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else if ( pid == pSharedBuffer->buffer.pid )
     {
-        RIDEHAL_LOG_ERROR( "buffer allocated by self, no need to do memory map" );
-        ret = RIDEHAL_ERROR_OUT_OF_BOUND;
+        QC_LOG_ERROR( "buffer allocated by self, no need to do memory map" );
+        ret = QC_STATUS_OUT_OF_BOUND;
     }
     else
     {
-        ret = RideHal_DmaImport( &pData, &dmaHandle, pSharedBuffer->buffer.pid,
-                                 pSharedBuffer->buffer.dmaHandle, pSharedBuffer->buffer.size,
-                                 pSharedBuffer->buffer.flags, pSharedBuffer->buffer.usage );
-        if ( RIDEHAL_ERROR_NONE == ret )
+        ret = QCDmaImport( &pData, &dmaHandle, pSharedBuffer->buffer.pid,
+                           pSharedBuffer->buffer.dmaHandle, pSharedBuffer->buffer.size,
+                           pSharedBuffer->buffer.flags, pSharedBuffer->buffer.usage );
+        if ( QC_STATUS_OK == ret )
         {
             *this = *pSharedBuffer;
             this->buffer.pData = pData;
             this->buffer.dmaHandle = dmaHandle;
         }
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             ret = pBufferManager->Register( this );
         }
 
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
             if ( nullptr != pData )
             {
-                (void) RideHal_DmaUnImport( pData, dmaHandle, pSharedBuffer->buffer.size );
+                (void) QCDmaUnImport( pData, dmaHandle, pSharedBuffer->buffer.size );
             }
             Init();
         }
@@ -231,42 +230,42 @@ RideHalError_e RideHal_SharedBuffer::Import( const RideHal_SharedBuffer *pShared
 }
 
 
-RideHalError_e RideHal_SharedBuffer::UnImport()
+QCStatus_e QCSharedBuffer::UnImport()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     BufferManager *pBufferManager = BufferManager::GetDefaultBufferManager();
     int pid = getpid();
 
     if ( nullptr == pBufferManager )
     {
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        ret = QC_STATUS_BAD_STATE;
     }
     else if ( nullptr == this->buffer.pData )
     {
-        RIDEHAL_LOG_ERROR( "buffer not mapped" );
-        ret = RIDEHAL_ERROR_INVALID_BUF;
+        QC_LOG_ERROR( "buffer not mapped" );
+        ret = QC_STATUS_INVALID_BUF;
     }
     else if ( pid == this->buffer.pid )
     {
-        RIDEHAL_LOG_ERROR( "buffer allocated by self, no need to do memory unmap" );
-        ret = RIDEHAL_ERROR_OUT_OF_BOUND;
+        QC_LOG_ERROR( "buffer allocated by self, no need to do memory unmap" );
+        ret = QC_STATUS_OUT_OF_BOUND;
     }
     else
     {
         /* OK */
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = pBufferManager->Deregister( this->buffer.id );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
-        ret = RideHal_DmaUnImport( this->buffer.pData, this->buffer.dmaHandle, this->buffer.size );
+        ret = QCDmaUnImport( this->buffer.pData, this->buffer.dmaHandle, this->buffer.size );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         Init();
     }
@@ -275,4 +274,4 @@ RideHalError_e RideHal_SharedBuffer::UnImport()
 }
 
 }   // namespace common
-}   // namespace ridehal
+}   // namespace QC

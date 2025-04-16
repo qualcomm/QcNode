@@ -4,15 +4,15 @@
   - [1.2 Remote PC gateway online inference mode](#12-remote-pc-gateway-online-inference-mode)
   - [1.3 Cluster online inference mode](#13-cluster-online-inference-mode)
 - [2. How to use this tool](#2-how-to-use-this-tool)
-  - [2.1 Launch the related RideHalSampleApp Data Online pileine.](#21-launch-the-related-ridehalsampleapp-data-online-pileine)
+  - [2.1 Launch the related QCNodeSampleApp Data Online pileine.](#21-launch-the-related-qcnodesampleapp-data-online-pileine)
   - [2.2 Launch a gateway if needed](#22-launch-a-gateway-if-needed)
   - [2.3 Run the accuracy tool on the PC with datasets](#23-run-the-accuracy-tool-on-the-pc-with-datasets)
 
-# RideHal Data Online Framework
+# QC Data Online Framework
 
 ## 1. Overview
 
-This is a python data online framework that through the python module [DataOnline](./data_online.py#L169) to setup TCP socket connections with RideHalSampleApp through the [SampleDataOnline](../../../tests/sample/include/ridehal/sample/SampleDataOnline.hpp#L18).
+This is a python data online framework that through the python module [DataOnline](./data_online.py#L169) to setup TCP socket connections with QCNodeSampleApp through the [SampleDataOnline](../../../tests/sample/include/QC/sample/SampleDataOnline.hpp#L18).
 
 And the most common use case is the QNN model accuracy test, and this is supported through the bellowing 3 python module.
 
@@ -130,11 +130,11 @@ As below diagram shows, 3 batched inputs to the online inference cluster will be
 
 ## 2. How to use this tool
 
-### 2.1 Launch the related RideHalSampleApp Data Online pileine.
+### 2.1 Launch the related QCNodeSampleApp Data Online pileine.
 
-For how to use RideHalSampleApp, refer RideHalSampleApp [`user guide`](../../../tests/sample/README.md#212-ridehal-dataonline-sample).
+For how to use QCNodeSampleApp, refer QCNodeSampleApp [`user guide`](../../../tests/sample/README.md#212-qc-dataonline-sample).
 
-For how to configure a typical data online inference pipeline, refer RideHalSampleApp [`1 QNN model data online inference pipeline`](../../../tests/sample/README.md#34-1-qnn-model-data-online-inference-pipeline).
+For how to configure a typical data online inference pipeline, refer QCNodeSampleApp [`1 QNN model data online inference pipeline`](../../../tests/sample/README.md#34-1-qnn-model-data-online-inference-pipeline).
 
 ### 2.2 Launch a gateway if needed
 

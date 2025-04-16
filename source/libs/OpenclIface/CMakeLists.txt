@@ -19,4 +19,4 @@ target_link_libraries(OpenclIface PUBLIC ${TARGET_LIBRARIES})
 add_library(Ride::Hal::Libs::OpenclIface ALIAS OpenclIface)
 install(TARGETS OpenclIface DESTINATION lib)
 
-install( FILES ${OPENCLIFACE_HEADERS} DESTINATION include/ridehal/libs/OpenclIface )
+install( FILES ${OPENCLIFACE_HEADERS} DESTINATION include/qcnode/libs/OpenclIface )

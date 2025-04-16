@@ -2,9 +2,9 @@
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
-#include "ridehal/sample/SampleSharedRing.hpp"
+#include "QC/sample/SampleSharedRing.hpp"
 
-namespace ridehal
+namespace QC
 {
 namespace sample
 {
@@ -12,9 +12,9 @@ namespace sample
 SampleSharedRing::SampleSharedRing() {}
 SampleSharedRing::~SampleSharedRing() {}
 
-RideHalError_e SampleSharedRing::ParseConfig( SampleConfig_t &config )
+QCStatus_e SampleSharedRing::ParseConfig( SampleConfig_t &config )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     auto typeStr = Get( config, "type", "pub" );
     if ( "pub" == typeStr )
@@ -27,15 +27,15 @@ RideHalError_e SampleSharedRing::ParseConfig( SampleConfig_t &config )
     }
     else
     {
-        RIDEHAL_ERROR( "invalid type <%s>\n", typeStr.c_str() );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "invalid type <%s>\n", typeStr.c_str() );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     m_topicName = Get( config, "topic", "" );
     if ( "" == m_topicName )
     {
-        RIDEHAL_ERROR( "no topic\n" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "no topic\n" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     m_queueDepth = Get( config, "queue_depth", 2 );
@@ -43,22 +43,22 @@ RideHalError_e SampleSharedRing::ParseConfig( SampleConfig_t &config )
     return ret;
 }
 
-RideHalError_e SampleSharedRing::Init( std::string name, SampleConfig_t &config )
+QCStatus_e SampleSharedRing::Init( std::string name, SampleConfig_t &config )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     ret = SampleIF::Init( name );
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = ParseConfig( config );
     }
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         TRACE_BEGIN( SYSTRACE_TASK_INIT );
         if ( m_bIsPub )
         {
             ret = m_sub.Init( name, m_topicName, m_queueDepth );
-            if ( RIDEHAL_ERROR_NONE == ret )
+            if ( QC_STATUS_OK == ret )
             {
                 ret = m_sharedPub.Init( name, m_topicName );
             }
@@ -66,7 +66,7 @@ RideHalError_e SampleSharedRing::Init( std::string name, SampleConfig_t &config 
         else
         {
             ret = m_pub.Init( name, m_topicName );
-            if ( RIDEHAL_ERROR_NONE == ret )
+            if ( QC_STATUS_OK == ret )
             {
                 ret = m_sharedSub.Init( name, m_topicName, m_queueDepth );
             }
@@ -77,15 +77,15 @@ RideHalError_e SampleSharedRing::Init( std::string name, SampleConfig_t &config 
     return ret;
 }
 
-RideHalError_e SampleSharedRing::Start()
+QCStatus_e SampleSharedRing::Start()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     TRACE_BEGIN( SYSTRACE_TASK_START );
     if ( m_bIsPub )
     {
         ret = m_sharedPub.Start();
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             m_stop = false;
             m_thread = std::thread( &SampleSharedRing::ThreadPubMain, this );
@@ -94,7 +94,7 @@ RideHalError_e SampleSharedRing::Start()
     else
     {
         ret = m_sharedSub.Start();
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             m_stop = false;
             m_thread = std::thread( &SampleSharedRing::ThreadSubMain, this );
@@ -105,9 +105,9 @@ RideHalError_e SampleSharedRing::Start()
     return ret;
 }
 
-RideHalError_e SampleSharedRing::Stop()
+QCStatus_e SampleSharedRing::Stop()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     m_stop = true;
     if ( m_thread.joinable() )
@@ -130,9 +130,9 @@ RideHalError_e SampleSharedRing::Stop()
     return ret;
 }
 
-RideHalError_e SampleSharedRing::Deinit()
+QCStatus_e SampleSharedRing::Deinit()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     TRACE_BEGIN( SYSTRACE_TASK_DEINIT );
     if ( m_bIsPub )
@@ -151,26 +151,26 @@ RideHalError_e SampleSharedRing::Deinit()
 
 void SampleSharedRing::ThreadPubMain()
 {
-    RideHalError_e ret;
+    QCStatus_e ret;
     while ( false == m_stop )
     {
         DataFrames_t frames;
         ret = m_sub.Receive( frames );
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
-            RIDEHAL_DEBUG( "receive frameId %" PRIu64 ", timestamp %" PRIu64 "\n",
-                           frames.FrameId( 0 ), frames.Timestamp( 0 ) );
+            QC_DEBUG( "receive frameId %" PRIu64 ", timestamp %" PRIu64 "\n", frames.FrameId( 0 ),
+                      frames.Timestamp( 0 ) );
             PROFILER_BEGIN();
             TRACE_BEGIN( frames.FrameId( 0 ) );
             ret = m_sharedPub.Publish( frames );
-            if ( RIDEHAL_ERROR_NONE == ret )
+            if ( QC_STATUS_OK == ret )
             {
                 PROFILER_END();
                 TRACE_END( frames.FrameId( 0 ) );
             }
             else
             {
-                RIDEHAL_ERROR( "Failed to publish for %" PRIu64 " : %d", frames.FrameId( 0 ), ret );
+                QC_ERROR( "Failed to publish for %" PRIu64 " : %d", frames.FrameId( 0 ), ret );
             }
         }
     }
@@ -178,26 +178,26 @@ void SampleSharedRing::ThreadPubMain()
 
 void SampleSharedRing::ThreadSubMain()
 {
-    RideHalError_e ret;
+    QCStatus_e ret;
     while ( false == m_stop )
     {
         DataFrames_t frames;
         ret = m_sharedSub.Receive( frames );
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
-            RIDEHAL_DEBUG( "receive frameId %" PRIu64 ", timestamp %" PRIu64 "\n",
-                           frames.FrameId( 0 ), frames.Timestamp( 0 ) );
+            QC_DEBUG( "receive frameId %" PRIu64 ", timestamp %" PRIu64 "\n", frames.FrameId( 0 ),
+                      frames.Timestamp( 0 ) );
             PROFILER_BEGIN();
             TRACE_BEGIN( frames.FrameId( 0 ) );
             ret = m_pub.Publish( frames );
-            if ( RIDEHAL_ERROR_NONE == ret )
+            if ( QC_STATUS_OK == ret )
             {
                 PROFILER_END();
                 TRACE_END( frames.FrameId( 0 ) );
             }
             else
             {
-                RIDEHAL_ERROR( "Failed to publish for %" PRIu64 " : %d", frames.FrameId( 0 ), ret );
+                QC_ERROR( "Failed to publish for %" PRIu64 " : %d", frames.FrameId( 0 ), ret );
             }
         }
     }
@@ -206,4 +206,4 @@ void SampleSharedRing::ThreadSubMain()
 REGISTER_SAMPLE( SharedRing, SampleSharedRing );
 
 }   // namespace sample
-}   // namespace ridehal
+}   // namespace QC

@@ -3,8 +3,8 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#ifndef RIDEHAL_CL2D_PIPELINE_REMAP_CLH
-#define RIDEHAL_CL2D_PIPELINE_REMAP_CLH
+#ifndef QC_CL2D_PIPELINE_REMAP_CLH
+#define QC_CL2D_PIPELINE_REMAP_CLH
 
 KernelCode(
 
@@ -74,4 +74,4 @@ KernelCode(
 
 )
 
-#endif   // RIDEHAL_CL2D_PIPELINE_REMAP_CLH
+#endif   // QC_CL2D_PIPELINE_REMAP_CLH

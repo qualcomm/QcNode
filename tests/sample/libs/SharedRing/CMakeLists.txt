@@ -18,15 +18,15 @@ target_include_directories(SharedRing PUBLIC
     ${CMAKE_PREFIX_PATH}/include
 )
 
-if( NOT TARGET RideHal )
-  find_package(RideHal)
-  if( NOT TARGET RideHal )
-    message(FATAL_ERROR "RideHal SDK not found")
+if( NOT TARGET QCNode )
+  find_package(QCNode)
+  if( NOT TARGET QCNode )
+    message(FATAL_ERROR "QCNode SDK not found")
   endif()
 endif()
 
 target_link_libraries(SharedRing 
-    RideHal
+    QCNode
 )
 
 target_link_directories(SharedRing PUBLIC ${CMAKE_PREFIX_PATH}/lib)
@@ -36,10 +36,10 @@ target_include_directories(SharedRing PUBLIC ${HEADERS_DIR})
 set_property( TARGET SharedRing PROPERTY LINKER_LANGUAGE CXX )
 set_property( TARGET SharedRing PROPERTY POSITION_INDEPENDENT_CODE ON )
 
-add_executable( RideHalSharedRingInspect utils/SharedRingInspect.cpp )
-target_link_libraries( RideHalSharedRingInspect SharedRing )
+add_executable( QCNodeSharedRingInspect utils/SharedRingInspect.cpp )
+target_link_libraries( QCNodeSharedRingInspect SharedRing )
 if( "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" )
-  target_link_libraries( RideHalSharedRingInspect rt )
-  target_link_options( RideHalSharedRingInspect PUBLIC -pthread )
+  target_link_libraries( QCNodeSharedRingInspect rt )
+  target_link_options( QCNodeSharedRingInspect PUBLIC -pthread )
 endif()
-install(TARGETS RideHalSharedRingInspect DESTINATION bin)
+install(TARGETS QCNodeSharedRingInspect DESTINATION bin)

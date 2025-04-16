@@ -6,10 +6,10 @@
 #include "gtest/gtest.h"
 #include <stdio.h>
 
-#include "ridehal/component/ComponentIF.hpp"
+#include "QC/component/ComponentIF.hpp"
 
-using namespace ridehal::common;
-using namespace ridehal::component;
+using namespace QC::common;
+using namespace QC::component;
 
 typedef struct
 {
@@ -21,85 +21,85 @@ class ComponentIFTest : public ComponentIF
 public:
     ComponentIFTest() {}
     ~ComponentIFTest() {}
-    RideHalError_e Init( const char *pName, const ComponentIFTest_Config_t *pConfig,
-                         Logger_Level_e level = LOGGER_LEVEL_ERROR )
+    QCStatus_e Init( const char *pName, const ComponentIFTest_Config_t *pConfig,
+                     Logger_Level_e level = LOGGER_LEVEL_ERROR )
     {
-        RideHalError_e ret = RIDEHAL_ERROR_NONE;
+        QCStatus_e ret = QC_STATUS_OK;
 
         ret = ComponentIF::Init( pName, level );
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             // DO real initialize using pConfig.
         }
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
-            m_state = RIDEHAL_COMPONENT_STATE_READY;
+            m_state = QC_OBJECT_STATE_READY;
         }
 
         return ret;
     }
 
-    RideHalError_e Start()
+    QCStatus_e Start()
     {
-        RideHalError_e ret = RIDEHAL_ERROR_NONE;
+        QCStatus_e ret = QC_STATUS_OK;
 
-        if ( RIDEHAL_COMPONENT_STATE_READY != m_state )
+        if ( QC_OBJECT_STATE_READY != m_state )
         {
-            ret = RIDEHAL_ERROR_BAD_STATE;
+            ret = QC_STATUS_BAD_STATE;
         }
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             // DO start
         }
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
-            m_state = RIDEHAL_COMPONENT_STATE_RUNNING;
+            m_state = QC_OBJECT_STATE_RUNNING;
         }
 
         return ret;
     }
 
 
-    RideHalError_e Stop()
+    QCStatus_e Stop()
     {
-        RideHalError_e ret = RIDEHAL_ERROR_NONE;
+        QCStatus_e ret = QC_STATUS_OK;
 
-        if ( RIDEHAL_COMPONENT_STATE_RUNNING != m_state )
+        if ( QC_OBJECT_STATE_RUNNING != m_state )
         {
-            ret = RIDEHAL_ERROR_BAD_STATE;
+            ret = QC_STATUS_BAD_STATE;
         }
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             // DO stop
         }
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
-            m_state = RIDEHAL_COMPONENT_STATE_READY;
+            m_state = QC_OBJECT_STATE_READY;
         }
 
         return ret;
     }
 
-    RideHalError_e Deinit()
+    QCStatus_e Deinit()
     {
-        RideHalError_e ret = RIDEHAL_ERROR_NONE;
+        QCStatus_e ret = QC_STATUS_OK;
 
-        if ( RIDEHAL_COMPONENT_STATE_READY != m_state )
+        if ( QC_OBJECT_STATE_READY != m_state )
         {
-            ret = RIDEHAL_ERROR_BAD_STATE;
+            ret = QC_STATUS_BAD_STATE;
         }
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             // DO deinit
         }
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             ret = ComponentIF::Deinit();
         }
@@ -107,35 +107,35 @@ public:
         return ret;
     }
 
-    RideHalError_e DeinitIF() { return ComponentIF::Deinit(); }
+    QCStatus_e DeinitIF() { return ComponentIF::Deinit(); }
 };
 
 TEST( ComponentIF, SANITY_ComponentIF )
 {
     ComponentIFTest cifTest;
     ComponentIFTest_Config_t config = { 10 };
-    RideHalError_e ret;
+    QCStatus_e ret;
 
     for ( int i = 0; i < 3; i++ )
     {
-        ASSERT_EQ( RIDEHAL_COMPONENT_STATE_INITIAL, cifTest.GetState() );
+        ASSERT_EQ( QC_OBJECT_STATE_INITIAL, cifTest.GetState() );
 
         ret = cifTest.Init( "TEST", &config );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
-        ASSERT_EQ( RIDEHAL_COMPONENT_STATE_READY, cifTest.GetState() );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+        ASSERT_EQ( QC_OBJECT_STATE_READY, cifTest.GetState() );
         ASSERT_EQ( std::string( "TEST" ), std::string( cifTest.GetName() ) );
 
         ret = cifTest.Start();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
-        ASSERT_EQ( RIDEHAL_COMPONENT_STATE_RUNNING, cifTest.GetState() );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+        ASSERT_EQ( QC_OBJECT_STATE_RUNNING, cifTest.GetState() );
 
         ret = cifTest.Stop();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
-        ASSERT_EQ( RIDEHAL_COMPONENT_STATE_READY, cifTest.GetState() );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+        ASSERT_EQ( QC_OBJECT_STATE_READY, cifTest.GetState() );
 
         ret = cifTest.Deinit();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
-        ASSERT_EQ( RIDEHAL_COMPONENT_STATE_INITIAL, cifTest.GetState() );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+        ASSERT_EQ( QC_OBJECT_STATE_INITIAL, cifTest.GetState() );
     }
 }
 
@@ -144,58 +144,58 @@ TEST( ComponentIF, L2_ComponentIF )
     {
         ComponentIFTest cifTest;
         ComponentIFTest_Config_t config = { 10 };
-        RideHalError_e ret;
+        QCStatus_e ret;
 
         ret = cifTest.Init( "TEST", &config );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = cifTest.Init( "TEST", &config );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
         ret = cifTest.Deinit();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = cifTest.DeinitIF();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
     }
 
     {
         ComponentIFTest cifTest;
         ComponentIFTest_Config_t config = { 10 };
-        RideHalError_e ret;
+        QCStatus_e ret;
 
         ret = cifTest.Init( nullptr, &config );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
     }
 
     {
         ComponentIFTest cifTest;
         ComponentIFTest_Config_t config = { 10 };
-        RideHalError_e ret;
+        QCStatus_e ret;
 
         ret = cifTest.Init( "TEST_ERROR", &config, LOGGER_LEVEL_MAX );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = cifTest.DeinitIF();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
     }
 
     {
         ComponentIFTest cifTest;
         ComponentIFTest cifTest1;
         ComponentIFTest_Config_t config = { 10 };
-        RideHalError_e ret;
+        QCStatus_e ret;
 
         /* generally OK that 2 component has the same name but it was not suggested */
         ret = cifTest.Init( "TEST", &config );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = cifTest1.Init( "TEST", &config );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
     }
 }
 
-#ifndef GTEST_RIDEHAL
+#ifndef GTEST_QCNODE
 int main( int argc, char **argv )
 {
     ::testing::InitGoogleTest( &argc, argv );

@@ -2,20 +2,20 @@
 set( HEADERS_DIR ${PROJECT_SOURCE_DIR}/include )
 
 set( DFS_HEADERS
-    ${HEADERS_DIR}/ridehal/component/DepthFromStereo.hpp
+    ${HEADERS_DIR}/QC/component/DepthFromStereo.hpp
 )
 
 set( DFS_SOURCES DepthFromStereo.cpp )
 
-list( APPEND TARGET_LIBRARIES RideHalComponentCommon evaEpl evaPlatform devioClient )
+list( APPEND TARGET_LIBRARIES QCNodeComponentCommon evaEpl evaPlatform devioClient )
 
-add_library( RideHalDepthFromStereo OBJECT ${DFS_SOURCES} )
+add_library( QCNodeDepthFromStereo OBJECT ${DFS_SOURCES} )
 
-set_property( TARGET RideHalDepthFromStereo PROPERTY LINKER_LANGUAGE CXX )
-set_property( TARGET RideHalDepthFromStereo PROPERTY POSITION_INDEPENDENT_CODE ON )
+set_property( TARGET QCNodeDepthFromStereo PROPERTY LINKER_LANGUAGE CXX )
+set_property( TARGET QCNodeDepthFromStereo PROPERTY POSITION_INDEPENDENT_CODE ON )
 
-target_include_directories( RideHalDepthFromStereo PUBLIC ${HEADERS_DIR} )
+target_include_directories( QCNodeDepthFromStereo PUBLIC ${HEADERS_DIR} )
 
-target_link_libraries( RideHalDepthFromStereo PUBLIC ${TARGET_LIBRARIES} )
+target_link_libraries( QCNodeDepthFromStereo PUBLIC ${TARGET_LIBRARIES} )
 
-install( FILES ${DFS_HEADERS} DESTINATION include/ridehal/component )
+install( FILES ${DFS_HEADERS} DESTINATION include/QC/component )

@@ -3,14 +3,14 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#ifndef RIDEHAL_SAMPLE_TINYVIZ_HELP_WINDOW_HPP
-#define RIDEHAL_SAMPLE_TINYVIZ_HELP_WINDOW_HPP
+#ifndef QC_SAMPLE_TINYVIZ_HELP_WINDOW_HPP
+#define QC_SAMPLE_TINYVIZ_HELP_WINDOW_HPP
 
 #include <vector>
 
 #include "TextRenderer.hpp"
 
-namespace ridehal
+namespace QC
 {
 namespace sample
 {
@@ -32,6 +32,6 @@ public:
 };
 
 }   // namespace sample
-}   // namespace ridehal
+}   // namespace QC
 
-#endif   // #ifndef RIDEHAL_SAMPLE_TINYVIZ_HELP_WINDOW_HPP
+#endif   // #ifndef QC_SAMPLE_TINYVIZ_HELP_WINDOW_HPP

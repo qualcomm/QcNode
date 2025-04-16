@@ -18,7 +18,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-namespace ridehal
+namespace QC
 {
 namespace sample
 {
@@ -29,25 +29,25 @@ using namespace std::chrono_literals;
 constexpr std::chrono::nanoseconds NSEC = 1s;
 constexpr uint64_t NSEC_PER_SEC = NSEC.count();
 
-uint32_t TinyViz::GetSDLFormat( RideHal_ImageFormat_e format )
+uint32_t TinyViz::GetSDLFormat( QCImageFormat_e format )
 {
     uint32_t pixelFormat = 0;
     switch ( format )
     {
-        case RIDEHAL_IMAGE_FORMAT_RGB888:
+        case QC_IMAGE_FORMAT_RGB888:
             pixelFormat = SDL_PIXELFORMAT_RGB24;
             break;
-        case RIDEHAL_IMAGE_FORMAT_BGR888:
+        case QC_IMAGE_FORMAT_BGR888:
             pixelFormat = SDL_PIXELFORMAT_BGR24;
             break;
-        case RIDEHAL_IMAGE_FORMAT_UYVY:
+        case QC_IMAGE_FORMAT_UYVY:
             pixelFormat = SDL_PIXELFORMAT_UYVY;
             break;
-        case RIDEHAL_IMAGE_FORMAT_NV12:
+        case QC_IMAGE_FORMAT_NV12:
             pixelFormat = SDL_PIXELFORMAT_NV12;
             break;
         default:
-            RIDEHAL_ERROR( "Found unsupported pixel format %d", static_cast<int>( format ) );
+            QC_ERROR( "Found unsupported pixel format %d", static_cast<int>( format ) );
             break;
     }
 
@@ -56,14 +56,14 @@ uint32_t TinyViz::GetSDLFormat( RideHal_ImageFormat_e format )
 
 bool TinyViz::init( uint32_t winW, uint32_t winH )
 {
-    RIDEHAL_LOGGER_INIT( "TINYVIZ", LOGGER_LEVEL_INFO );
+    QC_LOGGER_INIT( "TINYVIZ", LOGGER_LEVEL_INFO );
 
     m_WindowW = winW;
     m_WindowH = winH;
 
     if ( SDL_Init( SDL_INIT_VIDEO ) != 0 )
     {
-        RIDEHAL_ERROR( "SDL_Init Error: %s", SDL_GetError() );
+        QC_ERROR( "SDL_Init Error: %s", SDL_GetError() );
         return false;
     }
 
@@ -82,7 +82,7 @@ bool TinyViz::start()
                               SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED );
     if ( !m_Win )
     {
-        RIDEHAL_ERROR( "SDL_CreateWindow Error: %s", SDL_GetError() );
+        QC_ERROR( "SDL_CreateWindow Error: %s", SDL_GetError() );
         return false;
     }
 
@@ -102,8 +102,8 @@ bool TinyViz::stop()
     TTF_Quit();
     SDL_Quit();
 
-    RIDEHAL_INFO( "TinyViz stopped" );
-    RIDEHAL_LOGGER_DEINIT();
+    QC_INFO( "TinyViz stopped" );
+    QC_LOGGER_DEINIT();
 
     return true;
 }
@@ -116,7 +116,7 @@ bool TinyViz::addCamera( const std::string camName )
     // Give it an initial black background frame
     auto &camInfo = m_CamInfoMap[camName];
 
-    RIDEHAL_INFO( "Added camera %s.", camName.c_str() );
+    QC_INFO( "Added camera %s.", camName.c_str() );
 
     if ( 1 == m_CamNameList.size() )
     {
@@ -144,8 +144,8 @@ bool TinyViz::addCamera( const std::string camName )
 
 bool TinyViz::addData( const std::string camName, DataFrame_t &data )
 {
-    RIDEHAL_DEBUG( "Adding frame for %s %" PRIu64 ", timestamp %" PRIu64, camName.c_str(),
-                   data.frameId, data.timestamp );
+    QC_DEBUG( "Adding frame for %s %" PRIu64 ", timestamp %" PRIu64, camName.c_str(), data.frameId,
+              data.timestamp );
 
     auto &camInfo = m_CamInfoMap[camName];
     std::lock_guard<std::mutex> camInfoGuard( *camInfo.mutex );
@@ -159,8 +159,8 @@ bool TinyViz::addData( const std::string camName, DataFrame_t &data )
 
 bool TinyViz::addData( const std::string camName, Road2DObjects_t &data )
 {
-    RIDEHAL_DEBUG( "Adding road objects for %s frame %" PRIu64 ".timestamp %" PRIu64,
-                   camName.c_str(), data.frameId, data.timestamp );
+    QC_DEBUG( "Adding road objects for %s frame %" PRIu64 ".timestamp %" PRIu64, camName.c_str(),
+              data.frameId, data.timestamp );
 
     auto &camInfo = m_CamInfoMap[camName];
     std::lock_guard<std::mutex> guard( *camInfo.mutex );
@@ -190,7 +190,7 @@ void TinyViz::rendererThread()
             SDL_CreateRenderer( m_Win, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC );
     if ( !ren )
     {
-        RIDEHAL_ERROR( "SDL_CreateRenderer Error %s", SDL_GetError() );
+        QC_ERROR( "SDL_CreateRenderer Error %s", SDL_GetError() );
         return;
     }
 
@@ -204,7 +204,7 @@ void TinyViz::rendererThread()
                                           TexWidth, TexHeight );
     if ( !tex )
     {
-        RIDEHAL_ERROR( "SDL_CreateTextureFromSurface Error: %s", SDL_GetError() );
+        QC_ERROR( "SDL_CreateTextureFromSurface Error: %s", SDL_GetError() );
         return;
     }
 
@@ -225,7 +225,7 @@ void TinyViz::rendererThread()
     m_NumTextures.init( 400, *ren, *font );
 
     SDL_Surface *screenSurface = nullptr;
-    const char *envStr = getenv( "RIDEHAL_TINYVIZ_CAPTURE" );
+    const char *envStr = getenv( "QC_TINYVIZ_CAPTURE" );
     int numScreenShot = 0;
     if ( nullptr != envStr )
     {
@@ -238,7 +238,7 @@ void TinyViz::rendererThread()
                                               0x000000ff, 0xff000000 );
         if ( nullptr == screenSurface )
         {
-            RIDEHAL_WARN( "Can't create RGB surface to capture screenshot %s", SDL_GetError() );
+            QC_WARN( "Can't create RGB surface to capture screenshot %s", SDL_GetError() );
             numScreenShot = 0;
         }
     }
@@ -293,7 +293,7 @@ void TinyViz::rendererThread()
         float cost = (float) std::chrono::duration_cast<std::chrono::microseconds>( end - start )
                              .count() /
                      1000.0;
-        RIDEHAL_DEBUG( "render cost %.2f ms", cost );
+        QC_DEBUG( "render cost %.2f ms", cost );
         m_LastRenderFPS = m_LastRenderFPS * 7 / 8 + 1000 / ( cost + 33 ) / 8;
         // TODO: mutex unlock
 
@@ -331,7 +331,7 @@ void TinyViz::rendererThread()
     SDL_DestroyTexture( tex );
     SDL_DestroyRenderer( ren );
 
-    RIDEHAL_DEBUG( "TinyViz thread exited" );
+    QC_DEBUG( "TinyViz thread exited" );
 }
 
 void TinyViz::setAllCamActive()
@@ -344,42 +344,42 @@ void TinyViz::printRendererInfo( SDL_Renderer *ren )
     SDL_RendererInfo rendererInfo;
     if ( SDL_GetRendererInfo( ren, &rendererInfo ) )
     {
-        RIDEHAL_ERROR( "SDL_GetRenererInfo Error %s", SDL_GetError() );
+        QC_ERROR( "SDL_GetRenererInfo Error %s", SDL_GetError() );
         return;
     }
 
     bool printRendererInfo = false;
     if ( printRendererInfo )
     {
-        RIDEHAL_INFO( "SDK_RendererInfo: name: %s, "
-                      "renderer driver: %s"
-                      "software: %d"
-                      "accelerated: %d"
-                      "presentvsync: %d",
-                      rendererInfo.name, SDL_GetCurrentVideoDriver(),
-                      ( rendererInfo.flags & SDL_RENDERER_SOFTWARE ),
-                      ( rendererInfo.flags & SDL_RENDERER_ACCELERATED ),
-                      ( rendererInfo.flags & SDL_RENDERER_PRESENTVSYNC ) );
+        QC_INFO( "SDK_RendererInfo: name: %s, "
+                 "renderer driver: %s"
+                 "software: %d"
+                 "accelerated: %d"
+                 "presentvsync: %d",
+                 rendererInfo.name, SDL_GetCurrentVideoDriver(),
+                 ( rendererInfo.flags & SDL_RENDERER_SOFTWARE ),
+                 ( rendererInfo.flags & SDL_RENDERER_ACCELERATED ),
+                 ( rendererInfo.flags & SDL_RENDERER_PRESENTVSYNC ) );
     }
 
-    RIDEHAL_INFO( "Available video driver: " );
+    QC_INFO( "Available video driver: " );
     for ( int idx = 0; idx < SDL_GetNumVideoDrivers(); idx++ )
     {
         std::string isSelected =
                 std::string( SDL_GetVideoDriver( idx ) ) == SDL_GetCurrentVideoDriver()
                         ? " (selected)"
                         : "";
-        RIDEHAL_INFO( "%d%s: %s", idx, isSelected.c_str(), SDL_GetVideoDriver( idx ) );
+        QC_INFO( "%d%s: %s", idx, isSelected.c_str(), SDL_GetVideoDriver( idx ) );
     }
 
-    RIDEHAL_INFO( "Available renderer driver: " );
+    QC_INFO( "Available renderer driver: " );
     for ( int idx = 0; idx < SDL_GetNumRenderDrivers(); idx++ )
     {
         SDL_RendererInfo rendererInfoByIdx;
         SDL_GetRenderDriverInfo( idx, &rendererInfoByIdx );
         std::string isSelected =
                 std::string( rendererInfoByIdx.name ) == rendererInfo.name ? " (selected)" : "";
-        RIDEHAL_INFO( "%d%s: %s", idx, isSelected.c_str(), rendererInfoByIdx.name );
+        QC_INFO( "%d%s: %s", idx, isSelected.c_str(), rendererInfoByIdx.name );
     }
 }
 
@@ -408,7 +408,7 @@ bool TinyViz::renderCam( CamInfo &camInfo, SDL_Renderer *ren, size_t idx )
         std::lock_guard<std::mutex> guard( *camInfo.mutex );
         if ( nullptr == camInfo.data() )
         {
-            RIDEHAL_DEBUG( "display buffer is not yet available. Skipped one frame." );
+            QC_DEBUG( "display buffer is not yet available. Skipped one frame." );
             return false;
         }
 
@@ -419,7 +419,7 @@ bool TinyViz::renderCam( CamInfo &camInfo, SDL_Renderer *ren, size_t idx )
                                      SDL_TEXTUREACCESS_TARGET, camInfo.width(), camInfo.height() );
             if ( !tex )
             {
-                RIDEHAL_ERROR( "SDL_CreateTextureFromSurface Error: %s", SDL_GetError() );
+                QC_ERROR( "SDL_CreateTextureFromSurface Error: %s", SDL_GetError() );
                 return false;
             }
             camInfo.tex = tex;
@@ -559,8 +559,8 @@ void TinyViz::updateFPS( const std::string &camName, std::deque<uint64_t> &queue
     if ( queue.empty() || queue[queue.size() - 1] != timestamp ) queue.push_back( timestamp );
     if ( queue.size() > 100 ) queue.pop_front();
 
-    RIDEHAL_DEBUG( "Updated %s FPS info. queue size now %zu. timestamp:[%" PRIu64 ", %" PRIu64 "]",
-                   camName.c_str(), queue.size(), queue[queue.size() - 1], queue[0] );
+    QC_DEBUG( "Updated %s FPS info. queue size now %zu. timestamp:[%" PRIu64 ", %" PRIu64 "]",
+              camName.c_str(), queue.size(), queue[queue.size() - 1], queue[0] );
 }
 
 void TinyViz::updateFPS( CamInfo &camInfo )
@@ -578,9 +578,9 @@ void TinyViz::updateFPS( CamInfo &camInfo )
                                    : queue.size() / ( ( queue[queue.size() - 1] - queue[0] ) /
                                                       static_cast<double>( NSEC_PER_SEC ) );
 
-        RIDEHAL_DEBUG( "%s: queue size:%zu, timestamp (%" PRIu64 ", %" PRIu64 "), ",
-                       camInfo.camName.c_str(), queue.size(),
-                       queue.empty() ? 0 : queue[queue.size() - 1], queue.empty() ? 0 : queue[0] );
+        QC_DEBUG( "%s: queue size:%zu, timestamp (%" PRIu64 ", %" PRIu64 "), ",
+                  camInfo.camName.c_str(), queue.size(),
+                  queue.empty() ? 0 : queue[queue.size() - 1], queue.empty() ? 0 : queue[0] );
     }
 }
 
@@ -661,4 +661,4 @@ void TinyViz::renderBB( const uint64_t targetPTS, const uint64_t historyWindow,
 }
 
 }   // namespace sample
-}   // namespace ridehal
+}   // namespace QC

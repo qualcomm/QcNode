@@ -26,17 +26,17 @@ target_include_directories(TinyViz PUBLIC
     ${CMAKE_PREFIX_PATH}/include
 )
 
-if( NOT TARGET RideHal )
-  find_package(RideHal)
-  if( NOT TARGET RideHal )
-    message(FATAL_ERROR "RideHal SDK not found")
+if( NOT TARGET QCNode )
+  find_package(QCNode)
+  if( NOT TARGET QCNode )
+    message(FATAL_ERROR "QCNode SDK not found")
   endif()
 endif()
 
 target_link_libraries(TinyViz 
     ${SDL2_LIBRARIES}
     freetype
-    RideHal
+    QCNode
 )
 
 target_link_directories(TinyViz PUBLIC ${CMAKE_PREFIX_PATH}/lib)

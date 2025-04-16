@@ -4,19 +4,19 @@
 
 #define CAMERA_UNIT_TEST
 
-#include "ridehal/common/Types.hpp"
-#include "ridehal/component/Camera.hpp"
-#include "ridehal/sample/SampleIF.hpp"
+#include "QC/common/Types.hpp"
+#include "QC/component/Camera.hpp"
+#include "QC/sample/SampleIF.hpp"
 #include "gtest/gtest.h"
 #include <stdio.h>
 #include <string>
 #include <unistd.h>
 
 
-using namespace ridehal;
-using namespace ridehal::common;
-using namespace ridehal::component;
-using namespace ridehal::sample;
+using namespace QC;
+using namespace QC::common;
+using namespace QC::component;
+using namespace QC::sample;
 
 #define RUNTIME_SECOND ( 3 )
 #define BUFFFER_COUNT ( 5 )
@@ -35,17 +35,17 @@ static std::vector<PipelineConfig_t> s_pieplineConfigs;
 class CameraConfigParser : public SampleIF
 {
 public:
-    CameraConfigParser() { RIDEHAL_LOGGER_INIT( "CAM_CFG_PARSER", LOGGER_LEVEL_INFO ); }
+    CameraConfigParser() { QC_LOGGER_INIT( "CAM_CFG_PARSER", LOGGER_LEVEL_INFO ); }
 
-    RideHalError_e ParseConfig( SampleConfig_t &config, Camera_Config_t &camConfig )
+    QCStatus_e ParseConfig( SampleConfig_t &config, Camera_Config_t &camConfig )
     {
-        RideHalError_e ret = RIDEHAL_ERROR_NONE;
+        QCStatus_e ret = QC_STATUS_OK;
         camConfig.numStream = Get( config, "number", 1 );
         camConfig.inputId = Get( config, "input_id", -1 );
         if ( -1 == camConfig.inputId )
         {
-            RIDEHAL_ERROR( "invalid input id = %d", camConfig.inputId );
-            ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+            QC_ERROR( "invalid input id = %d", camConfig.inputId );
+            ret = QC_STATUS_BAD_ARGUMENTS;
         }
 
         camConfig.srcId = Get( config, "src_id", 0 );
@@ -68,38 +68,38 @@ public:
             camConfig.streamConfig[i].width = Get( config, "width" + suffix, 0 );
             if ( 0 == camConfig.streamConfig[i].width )
             {
-                RIDEHAL_ERROR( "invalid width for stream %u", i );
-                ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+                QC_ERROR( "invalid width for stream %u", i );
+                ret = QC_STATUS_BAD_ARGUMENTS;
             }
 
             camConfig.streamConfig[i].height = Get( config, "height" + suffix, 0 );
             if ( 0 == camConfig.streamConfig[i].height )
             {
-                RIDEHAL_ERROR( "invalid height for stream %u", i );
-                ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+                QC_ERROR( "invalid height for stream %u", i );
+                ret = QC_STATUS_BAD_ARGUMENTS;
             }
 
             camConfig.streamConfig[i].format =
-                    Get( config, "format" + suffix, RIDEHAL_IMAGE_FORMAT_NV12 );
-            if ( RIDEHAL_IMAGE_FORMAT_MAX == camConfig.streamConfig[i].format )
+                    Get( config, "format" + suffix, QC_IMAGE_FORMAT_NV12 );
+            if ( QC_IMAGE_FORMAT_MAX == camConfig.streamConfig[i].format )
             {
-                RIDEHAL_ERROR( "invalid format for stream %u", i );
-                ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+                QC_ERROR( "invalid format for stream %u", i );
+                ret = QC_STATUS_BAD_ARGUMENTS;
             }
 
             camConfig.streamConfig[i].bufCnt = Get( config, "pool_size" + suffix, 4 );
             if ( 0 == camConfig.streamConfig[i].bufCnt )
             {
-                RIDEHAL_ERROR( "invalid pool_size for stream %u", i );
-                ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+                QC_ERROR( "invalid pool_size for stream %u", i );
+                ret = QC_STATUS_BAD_ARGUMENTS;
             }
 
             camConfig.streamConfig[i].submitRequestPattern =
                     Get( config, "submit_request_pattern" + suffix, 0 );
             if ( camConfig.streamConfig[i].submitRequestPattern > 10 )
             {
-                RIDEHAL_ERROR( "invalid submit_request_pattern for stream %u", i );
-                ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+                QC_ERROR( "invalid submit_request_pattern for stream %u", i );
+                ret = QC_STATUS_BAD_ARGUMENTS;
             }
 
             camConfig.streamConfig[i].streamId = Get( config, "stream_id" + suffix, i );
@@ -113,13 +113,10 @@ public:
         return ret;
     }
 
-    RideHalError_e Init( std::string name, SampleConfig_t &config )
-    {
-        return RIDEHAL_ERROR_UNSUPPORTED;
-    }
-    RideHalError_e Start() { return RIDEHAL_ERROR_UNSUPPORTED; }
-    RideHalError_e Stop() { return RIDEHAL_ERROR_UNSUPPORTED; }
-    RideHalError_e Deinit() { return RIDEHAL_ERROR_UNSUPPORTED; }
+    QCStatus_e Init( std::string name, SampleConfig_t &config ) { return QC_STATUS_UNSUPPORTED; }
+    QCStatus_e Start() { return QC_STATUS_UNSUPPORTED; }
+    QCStatus_e Stop() { return QC_STATUS_UNSUPPORTED; }
+    QCStatus_e Deinit() { return QC_STATUS_UNSUPPORTED; }
 };
 
 static const char *pDumpPath = "/tmp/camera_frame.bin";
@@ -150,17 +147,17 @@ static uint32_t s_FrameCount = 0;
 
 static void FrameCallBack( CameraFrame_t *pFrame, void *pPrivData )
 {
-    RideHalError_e ret;
+    QCStatus_e ret;
 
     Camera *pCamera = (Camera *) pPrivData;
 
 #ifdef DUMPFRAME
     uint32_t writeBytes = DumpFrame( pFrame, pDumpPath );
 #endif
-    if ( RIDEHAL_COMPONENT_STATE_RUNNING == pCamera->GetState() )
+    if ( QC_OBJECT_STATE_RUNNING == pCamera->GetState() )
     {
         ret = pCamera->ReleaseFrame( pFrame );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
     }
 
     s_FrameCount++;
@@ -168,7 +165,7 @@ static void FrameCallBack( CameraFrame_t *pFrame, void *pPrivData )
 
 static void FrameCallBack_RequestMode( CameraFrame_t *pFrame, void *pPrivData )
 {
-    RideHalError_e ret;
+    QCStatus_e ret;
 
     Camera *pCamera = (Camera *) pPrivData;
 
@@ -176,10 +173,10 @@ static void FrameCallBack_RequestMode( CameraFrame_t *pFrame, void *pPrivData )
     uint32_t writeBytes = DumpFrame( pFrame, pDumpPath );
 #endif
 
-    if ( RIDEHAL_COMPONENT_STATE_RUNNING == pCamera->GetState() )
+    if ( QC_OBJECT_STATE_RUNNING == pCamera->GetState() )
     {
         ret = pCamera->RequestFrame( pFrame );
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         { /* TODO: research why request mode for multi-stream the submit request may failed once
              after restart */
             printf( "  WARN: submit request failed bufferlistId: %u, bufferIdx: %u ",
@@ -192,17 +189,17 @@ static void FrameCallBack_RequestMode( CameraFrame_t *pFrame, void *pPrivData )
 
 static void EventCallBack( const uint32_t eventId, const void *pPayload, void *pPrivData )
 {
-    RIDEHAL_LOG_ERROR( "Received event: %d, pPrivData:%p\n", eventId, pPrivData );
+    QC_LOG_ERROR( "Received event: %d, pPrivData:%p\n", eventId, pPrivData );
 }
 
 TEST( Camera, Query_QcarCam )
 {
-    RideHalError_e ret;
+    QCStatus_e ret;
     Camera *pCamera = new Camera;
     CameraInputs_t camInputs;
 
     ret = pCamera->GetInputsInfo( &camInputs );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
     printf( "Number of camera connected: %d\n", camInputs.numInputs );
     for ( uint32_t i = 0; i < camInputs.numInputs; i++ )
     {
@@ -217,7 +214,7 @@ TEST( Camera, Query_QcarCam )
 
 TEST( Camera, SANITY_QcarCam )
 {
-    RideHalError_e ret;
+    QCStatus_e ret;
     Camera *pCamera = new Camera;
 
     for ( auto &pipeline : s_pieplineConfigs )
@@ -233,33 +230,33 @@ TEST( Camera, SANITY_QcarCam )
         camConfig.bRequestMode = false;
         camConfig.numStream = 1;
         ret = pCamera->Init( name.c_str(), &camConfig, LOGGER_LEVEL_VERBOSE );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = pCamera->RegisterCallback( FrameCallBack, EventCallBack, (void *) pCamera );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         s_FrameCount = 0;
         ret = pCamera->Start();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         // sanity test to run few seconds and then stop
         sleep( RUNTIME_SECOND );
 
         ret = pCamera->Stop();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         printf( "  Get %u frames\n", s_FrameCount );
         ASSERT_GT( s_FrameCount, 0 );
 
         s_FrameCount = 0;
         ret = pCamera->Start();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         // sanity test to run few seconds and then stop
         sleep( RUNTIME_SECOND );
 
         ret = pCamera->Stop();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         printf( "  Get %u frames after restart\n", s_FrameCount );
         ASSERT_GT( s_FrameCount, 0 );
@@ -270,7 +267,7 @@ TEST( Camera, SANITY_QcarCam )
         ASSERT_EQ( s_FrameCount, 0 );
 
         ret = pCamera->Deinit();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
     }
 
     delete pCamera;
@@ -279,7 +276,7 @@ TEST( Camera, SANITY_QcarCam )
 
 TEST( Camera, SetBuffer_QcarCam )
 {
-    RideHalError_e ret;
+    QCStatus_e ret;
     Camera *pCamera = new Camera;
 
     for ( auto &pipeline : s_pieplineConfigs )
@@ -295,46 +292,46 @@ TEST( Camera, SetBuffer_QcarCam )
         camConfig.bAllocator = false;
         camConfig.numStream = 1;
         camConfig.streamConfig[0].bufCnt = BUFFFER_COUNT;
-        RideHal_SharedBuffer_t *pSharedBuffer = new RideHal_SharedBuffer_t[BUFFFER_COUNT];
+        QCSharedBuffer_t *pSharedBuffer = new QCSharedBuffer_t[BUFFFER_COUNT];
 
         for ( int i = 0; i < BUFFFER_COUNT; i++ )
         {
             ret = pSharedBuffer[i].Allocate( camConfig.streamConfig[0].width,
                                              camConfig.streamConfig[0].height,
                                              camConfig.streamConfig[0].format );
-            ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+            ASSERT_EQ( QC_STATUS_OK, ret );
         }
 
         ret = pCamera->Init( name.c_str(), &camConfig, LOGGER_LEVEL_VERBOSE );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = pCamera->SetBuffers( pSharedBuffer, BUFFFER_COUNT, 0 );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = pCamera->SetBuffers( pSharedBuffer, BUFFFER_COUNT, 0 );
-        ASSERT_EQ( RIDEHAL_ERROR_ALREADY, ret );
+        ASSERT_EQ( QC_STATUS_ALREADY, ret );
 
         if ( false == camConfig.bRequestMode )
         {
             ret = pCamera->RegisterCallback( FrameCallBack, EventCallBack, (void *) pCamera );
-            ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+            ASSERT_EQ( QC_STATUS_OK, ret );
         }
         else
         {
             ret = pCamera->RegisterCallback( FrameCallBack_RequestMode, EventCallBack,
                                              (void *) pCamera );
-            ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+            ASSERT_EQ( QC_STATUS_OK, ret );
         }
 
         s_FrameCount = 0;
         ret = pCamera->Start();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         // sanity test to run few seconds and then stop
         sleep( RUNTIME_SECOND );
 
         ret = pCamera->Stop();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         printf( "  Get %u frames\n", s_FrameCount );
         ASSERT_GT( s_FrameCount, 0 );
@@ -345,12 +342,12 @@ TEST( Camera, SetBuffer_QcarCam )
         ASSERT_EQ( s_FrameCount, 0 );
 
         ret = pCamera->Deinit();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         for ( int i = 0; i < BUFFFER_COUNT; i++ )
         {
             ret = pSharedBuffer[i].Free();
-            ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+            ASSERT_EQ( QC_STATUS_OK, ret );
         }
 
         delete[] pSharedBuffer;
@@ -361,7 +358,7 @@ TEST( Camera, SetBuffer_QcarCam )
 
 TEST( Camera, GetBuffer_QcarCam )
 {
-    RideHalError_e ret;
+    QCStatus_e ret;
     Camera *pCamera = new Camera;
 
     std::string name = s_pieplineConfigs[0].name;
@@ -374,70 +371,70 @@ TEST( Camera, GetBuffer_QcarCam )
     camConfig.bAllocator = false;
     camConfig.numStream = 1;
     camConfig.streamConfig[0].bufCnt = BUFFFER_COUNT;
-    RideHal_SharedBuffer_t *pSharedBuffer = new RideHal_SharedBuffer_t[BUFFFER_COUNT];
-    RideHal_SharedBuffer_t *pSharedBufferGet = new RideHal_SharedBuffer_t[BUFFFER_COUNT];
+    QCSharedBuffer_t *pSharedBuffer = new QCSharedBuffer_t[BUFFFER_COUNT];
+    QCSharedBuffer_t *pSharedBufferGet = new QCSharedBuffer_t[BUFFFER_COUNT];
 
     for ( int i = 0; i < BUFFFER_COUNT; i++ )
     {
         ret = pSharedBuffer[i].Allocate( camConfig.streamConfig[0].width,
                                          camConfig.streamConfig[0].height,
                                          camConfig.streamConfig[0].format );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
     }
 
     ret = pCamera->GetBuffers( pSharedBufferGet, BUFFFER_COUNT, 0 );
-    ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+    ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
     ret = pCamera->Init( name.c_str(), &camConfig, LOGGER_LEVEL_VERBOSE );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = pCamera->GetBuffers( pSharedBufferGet, BUFFFER_COUNT, 0 );
-    ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+    ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
     ret = pCamera->SetBuffers( pSharedBuffer, BUFFFER_COUNT, 100 );
-    ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+    ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
     ret = pCamera->SetBuffers( pSharedBuffer, BUFFFER_COUNT, 0 );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = pCamera->SetBuffers( pSharedBuffer, BUFFFER_COUNT, 0 );
-    ASSERT_EQ( RIDEHAL_ERROR_ALREADY, ret );
+    ASSERT_EQ( QC_STATUS_ALREADY, ret );
 
     ret = pCamera->GetBuffers( pSharedBufferGet, BUFFFER_COUNT, 100 );
-    ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+    ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
     ret = pCamera->GetBuffers( pSharedBufferGet, BUFFFER_COUNT * 2, 0 );
-    ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+    ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
     ret = pCamera->GetBuffers( nullptr, BUFFFER_COUNT, 0 );
-    ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+    ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
     ret = pCamera->GetBuffers( pSharedBufferGet, BUFFFER_COUNT, 0 );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     if ( false == camConfig.bRequestMode )
     {
         ret = pCamera->RegisterCallback( FrameCallBack, EventCallBack, (void *) pCamera );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
     }
     else
     {
         ret = pCamera->RegisterCallback( FrameCallBack_RequestMode, EventCallBack,
                                          (void *) pCamera );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
     }
 
     s_FrameCount = 0;
     ret = pCamera->Start();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = pCamera->GetBuffers( pSharedBufferGet, BUFFFER_COUNT, 0 );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
     // sanity test to run few seconds and then stop
     sleep( RUNTIME_SECOND );
 
     ret = pCamera->Stop();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     printf( "  Get %u frames\n", s_FrameCount );
     ASSERT_GT( s_FrameCount, 0 );
@@ -448,12 +445,12 @@ TEST( Camera, GetBuffer_QcarCam )
     ASSERT_EQ( s_FrameCount, 0 );
 
     ret = pCamera->Deinit();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     for ( int i = 0; i < BUFFFER_COUNT; i++ )
     {
         ret = pSharedBuffer[i].Free();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
     }
 
     delete[] pSharedBuffer;
@@ -464,7 +461,7 @@ TEST( Camera, GetBuffer_QcarCam )
 
 TEST( Camera, NegtiveUnImportBuffers )
 {
-    RideHalError_e ret;
+    QCStatus_e ret;
     Camera *pCamera = new Camera;
 
     std::string name = s_pieplineConfigs[0].name;
@@ -479,31 +476,31 @@ TEST( Camera, NegtiveUnImportBuffers )
     camConfig.streamConfig[0].bufCnt = BUFFFER_COUNT;
 
     ret = pCamera->Init( name.c_str(), &camConfig, LOGGER_LEVEL_VERBOSE );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     if ( false == camConfig.bRequestMode )
     {
         ret = pCamera->RegisterCallback( FrameCallBack, EventCallBack, (void *) pCamera );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
     }
     else
     {
         ret = pCamera->RegisterCallback( FrameCallBack_RequestMode, EventCallBack,
                                          (void *) pCamera );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
     }
 
     ret = pCamera->Start();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = pCamera->Stop();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = pCamera->UnImportBuffers();
-    ASSERT_EQ( RIDEHAL_ERROR_OUT_OF_BOUND, ret );
+    ASSERT_EQ( QC_STATUS_OUT_OF_BOUND, ret );
 
     ret = pCamera->Deinit();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     delete pCamera;
 }
@@ -511,7 +508,7 @@ TEST( Camera, NegtiveUnImportBuffers )
 
 TEST( Camera, PauseResume_QcarCam )
 {
-    RideHalError_e ret;
+    QCStatus_e ret;
     Camera *pCamera = new Camera;
 
     for ( auto &pipeline : s_pieplineConfigs )
@@ -537,29 +534,29 @@ TEST( Camera, PauseResume_QcarCam )
                     camConfig.streamConfig[0].height );
 
             ret = pCamera->Init( name.c_str(), &camConfig, LOGGER_LEVEL_VERBOSE );
-            ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+            ASSERT_EQ( QC_STATUS_OK, ret );
 
             if ( false == camConfig.bRequestMode )
             {
                 ret = pCamera->RegisterCallback( FrameCallBack, EventCallBack, (void *) pCamera );
-                ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+                ASSERT_EQ( QC_STATUS_OK, ret );
             }
             else
             {
                 ret = pCamera->RegisterCallback( FrameCallBack_RequestMode, EventCallBack,
                                                  (void *) pCamera );
-                ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+                ASSERT_EQ( QC_STATUS_OK, ret );
             }
 
             s_FrameCount = 0;
             ret = pCamera->Start();
-            ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+            ASSERT_EQ( QC_STATUS_OK, ret );
 
             // sanity test to run few seconds and then stop
             sleep( RUNTIME_SECOND );
 
             ret = pCamera->Pause();
-            ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+            ASSERT_EQ( QC_STATUS_OK, ret );
 
             printf( "  Get %u frames\n", s_FrameCount );
             ASSERT_GT( s_FrameCount, 0 );
@@ -571,12 +568,12 @@ TEST( Camera, PauseResume_QcarCam )
 
             s_FrameCount = 0;
             ret = pCamera->Resume();
-            ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+            ASSERT_EQ( QC_STATUS_OK, ret );
 
             sleep( RUNTIME_SECOND );
 
             ret = pCamera->Pause();
-            ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+            ASSERT_EQ( QC_STATUS_OK, ret );
 
             printf( "  Get %u frames after resume\n", s_FrameCount );
             ASSERT_GT( s_FrameCount, 0 );
@@ -584,15 +581,15 @@ TEST( Camera, PauseResume_QcarCam )
             sleep( 1 );
 
             ret = pCamera->Resume();
-            ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+            ASSERT_EQ( QC_STATUS_OK, ret );
 
             sleep( 1 );
 
             ret = pCamera->Stop();
-            ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+            ASSERT_EQ( QC_STATUS_OK, ret );
 
             ret = pCamera->Deinit();
-            ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+            ASSERT_EQ( QC_STATUS_OK, ret );
         }
     }
 
@@ -602,7 +599,7 @@ TEST( Camera, PauseResume_QcarCam )
 
 TEST( Camera, RequestMode_QcarCam )
 {
-    RideHalError_e ret;
+    QCStatus_e ret;
     Camera *pCamera = new Camera;
 
     for ( auto &pipeline : s_pieplineConfigs )
@@ -618,21 +615,21 @@ TEST( Camera, RequestMode_QcarCam )
         camConfig.bRequestMode = true;
 
         ret = pCamera->Init( name.c_str(), &camConfig, LOGGER_LEVEL_VERBOSE );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = pCamera->RegisterCallback( FrameCallBack_RequestMode, EventCallBack,
                                          (void *) pCamera );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         s_FrameCount = 0;
         ret = pCamera->Start();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         // sanity test to run few seconds and then stop
         sleep( RUNTIME_SECOND );
 
         ret = pCamera->Stop();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         printf( "  Get %u frames\n", s_FrameCount );
         ASSERT_GT( s_FrameCount, 0 );
@@ -644,19 +641,19 @@ TEST( Camera, RequestMode_QcarCam )
 
         s_FrameCount = 0;
         ret = pCamera->Start();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         // sanity test to run few seconds and then stop
         sleep( RUNTIME_SECOND );
 
         ret = pCamera->Stop();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         printf( "  Get %u frames\n", s_FrameCount );
         ASSERT_GT( s_FrameCount, 0 );
 
         ret = pCamera->Deinit();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
     }
 
     delete pCamera;
@@ -664,7 +661,7 @@ TEST( Camera, RequestMode_QcarCam )
 
 TEST( Camera, Coverage_QcarCam )
 {
-    RideHalError_e ret;
+    QCStatus_e ret;
     char componentName[20] = "Camera";
 
     /* Negative - config is nullptr */
@@ -673,10 +670,10 @@ TEST( Camera, Coverage_QcarCam )
         CameraInputs_t camInputs;
 
         ret = pCamera->GetInputsInfo( &camInputs );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = pCamera->Init( componentName, nullptr, LOGGER_LEVEL_VERBOSE );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
         delete pCamera;
     }
 
@@ -687,7 +684,7 @@ TEST( Camera, Coverage_QcarCam )
         CameraInputs_t camInputs;
 
         ret = pCamera->GetInputsInfo( &camInputs );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
         QCarCamInputModes_t *pCamInputModes = &camInputs.pCamInputModes[0];
 
         char componentName[20] = "Camera";
@@ -695,7 +692,7 @@ TEST( Camera, Coverage_QcarCam )
         camConfig.streamConfig[0].bufCnt = 0;
 
         ret = pCamera->Init( componentName, &camConfig, LOGGER_LEVEL_VERBOSE );
-        ASSERT_EQ( RIDEHAL_ERROR_FAIL, ret );
+        ASSERT_EQ( QC_STATUS_FAIL, ret );
 
         (void) pCamera->Deinit();
         delete pCamera;
@@ -707,10 +704,10 @@ TEST( Camera, Coverage_QcarCam )
         CameraInputs_t camInputs;
 
         ret = pCamera->GetInputsInfo( &camInputs );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = pCamera->Start();
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
         delete pCamera;
     }
 
@@ -720,10 +717,10 @@ TEST( Camera, Coverage_QcarCam )
         CameraInputs_t camInputs;
 
         ret = pCamera->GetInputsInfo( &camInputs );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = pCamera->Stop();
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
         delete pCamera;
     }
 
@@ -733,10 +730,10 @@ TEST( Camera, Coverage_QcarCam )
         CameraInputs_t camInputs;
 
         ret = pCamera->GetInputsInfo( &camInputs );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = pCamera->Deinit();
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
         delete pCamera;
     }
 
@@ -746,10 +743,10 @@ TEST( Camera, Coverage_QcarCam )
         CameraInputs_t camInputs;
 
         ret = pCamera->GetInputsInfo( &camInputs );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = pCamera->Pause();
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
         delete pCamera;
     }
 
@@ -759,10 +756,10 @@ TEST( Camera, Coverage_QcarCam )
         CameraInputs_t camInputs;
 
         ret = pCamera->GetInputsInfo( &camInputs );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = pCamera->Resume();
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
         delete pCamera;
     }
 
@@ -772,7 +769,7 @@ TEST( Camera, Coverage_QcarCam )
         CameraInputs_t camInputs;
 
         ret = pCamera->GetInputsInfo( nullptr );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         delete pCamera;
     }
@@ -785,49 +782,49 @@ TEST( Camera, Coverage_QcarCam )
         std::string type = pipeline.type;
         Camera_Config_t camConfig = pipeline.camConfig;
         printf( "testing camera %s with invalid format \n", name.c_str() );
-        if ( ( camConfig.streamConfig[0].format >= RIDEHAL_IMAGE_FORMAT_UYVY ) &&
-             ( camConfig.streamConfig[0].format <= RIDEHAL_IMAGE_FORMAT_NV12_UBWC ) )
+        if ( ( camConfig.streamConfig[0].format >= QC_IMAGE_FORMAT_UYVY ) &&
+             ( camConfig.streamConfig[0].format <= QC_IMAGE_FORMAT_NV12_UBWC ) )
         {
-            camConfig.streamConfig[0].format = RIDEHAL_IMAGE_FORMAT_RGB888;
+            camConfig.streamConfig[0].format = QC_IMAGE_FORMAT_RGB888;
         }
         else
         {
-            camConfig.streamConfig[0].format = RIDEHAL_IMAGE_FORMAT_UYVY;
+            camConfig.streamConfig[0].format = QC_IMAGE_FORMAT_UYVY;
         }
         ret = pCamera->Init( name.c_str(), &camConfig, LOGGER_LEVEL_VERBOSE );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         if ( false == camConfig.bRequestMode )
         {
             ret = pCamera->RegisterCallback( FrameCallBack, EventCallBack, (void *) pCamera );
-            ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+            ASSERT_EQ( QC_STATUS_OK, ret );
         }
         else
         {
             ret = pCamera->RegisterCallback( FrameCallBack_RequestMode, EventCallBack,
                                              (void *) pCamera );
-            ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+            ASSERT_EQ( QC_STATUS_OK, ret );
         }
 
         ret = pCamera->Start();
-        ASSERT_EQ( RIDEHAL_ERROR_FAIL, ret );
+        ASSERT_EQ( QC_STATUS_FAIL, ret );
 
         (void) pCamera->Deinit();
         delete pCamera;
     }
 
     /* Positive - All valid camera format */
-    for ( int i = 0; i < (int) RIDEHAL_IMAGE_FORMAT_MAX; i++ )
+    for ( int i = 0; i < (int) QC_IMAGE_FORMAT_MAX; i++ )
     {
         Camera *pCamera = new Camera;
         std::string name = s_pieplineConfigs[0].name;
         std::string type = s_pieplineConfigs[0].type;
         Camera_Config_t camConfig = s_pieplineConfigs[0].camConfig;
 
-        camConfig.streamConfig[0].format = (RideHal_ImageFormat_e) i;
+        camConfig.streamConfig[0].format = (QCImageFormat_e) i;
 
         ret = pCamera->Init( name.c_str(), &camConfig, LOGGER_LEVEL_VERBOSE );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         (void) pCamera->Deinit();
         delete pCamera;
@@ -835,30 +832,30 @@ TEST( Camera, Coverage_QcarCam )
 
     /* Negative - SetBuffer with nullptr */
     {
-        RideHalError_e ret;
+        QCStatus_e ret;
         Camera *pCamera = new Camera;
 
         Camera_Config_t camConfig = s_pieplineConfigs[0].camConfig;
         camConfig.bAllocator = false;
-        RideHal_SharedBuffer_t *pSharedBuffer = nullptr;
+        QCSharedBuffer_t *pSharedBuffer = nullptr;
 
         ret = pCamera->Init( componentName, &camConfig, LOGGER_LEVEL_VERBOSE );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = pCamera->SetBuffers( pSharedBuffer, BUFFFER_COUNT, 0 );
-        ASSERT_EQ( RIDEHAL_ERROR_FAIL, ret );
+        ASSERT_EQ( QC_STATUS_FAIL, ret );
 
         delete pCamera;
     }
 
     /* Negative - SetBuffer in invalid state */
     {
-        RideHalError_e ret;
+        QCStatus_e ret;
         Camera *pCamera = new Camera;
 
-        RideHal_SharedBuffer_t *pSharedBuffer = new RideHal_SharedBuffer_t[BUFFFER_COUNT];
+        QCSharedBuffer_t *pSharedBuffer = new QCSharedBuffer_t[BUFFFER_COUNT];
         ret = pCamera->SetBuffers( pSharedBuffer, BUFFFER_COUNT, 0 );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
         delete[] pSharedBuffer;
         delete pCamera;
@@ -866,24 +863,24 @@ TEST( Camera, Coverage_QcarCam )
 
     /* Negative - RequestFrame with nullptr input */
     {
-        RideHalError_e ret;
+        QCStatus_e ret;
         Camera *pCamera = new Camera;
 
         Camera_Config_t camConfig = s_pieplineConfigs[0].camConfig;
         camConfig.bRequestMode = true;
 
         ret = pCamera->Init( componentName, &camConfig, LOGGER_LEVEL_VERBOSE );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = pCamera->RegisterCallback( FrameCallBack_RequestMode, EventCallBack,
                                          (void *) pCamera );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = pCamera->Start();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = pCamera->RequestFrame( nullptr );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         (void) pCamera->Stop();
         (void) pCamera->Deinit();
@@ -892,7 +889,7 @@ TEST( Camera, Coverage_QcarCam )
 
     /* Negative - RequestFrame in invalid state */
     {
-        RideHalError_e ret;
+        QCStatus_e ret;
         Camera *pCamera = new Camera;
 
         Camera_Config_t camConfig = s_pieplineConfigs[0].camConfig;
@@ -900,15 +897,15 @@ TEST( Camera, Coverage_QcarCam )
         camConfig.bRequestMode = true;
 
         ret = pCamera->Init( componentName, &camConfig, LOGGER_LEVEL_VERBOSE );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = pCamera->RegisterCallback( FrameCallBack_RequestMode, EventCallBack,
                                          (void *) pCamera );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         CameraFrame_t Frame;
         ret = pCamera->RequestFrame( &Frame );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
         (void) pCamera->Stop();
         (void) pCamera->Deinit();
@@ -917,24 +914,24 @@ TEST( Camera, Coverage_QcarCam )
 
     /* Negative - RequestFrame in non request mode */
     {
-        RideHalError_e ret;
+        QCStatus_e ret;
         Camera *pCamera = new Camera;
 
         Camera_Config_t camConfig = s_pieplineConfigs[0].camConfig;
         camConfig.bRequestMode = false;
 
         ret = pCamera->Init( componentName, &camConfig, LOGGER_LEVEL_VERBOSE );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = pCamera->RegisterCallback( FrameCallBack, EventCallBack, (void *) pCamera );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = pCamera->Start();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         CameraFrame_t Frame;
         ret = pCamera->RequestFrame( &Frame );
-        ASSERT_EQ( RIDEHAL_ERROR_OUT_OF_BOUND, ret );
+        ASSERT_EQ( QC_STATUS_OUT_OF_BOUND, ret );
 
         (void) pCamera->Stop();
         (void) pCamera->Deinit();
@@ -945,10 +942,10 @@ TEST( Camera, Coverage_QcarCam )
     {
         Camera *pCamera = new Camera;
         Camera_Config_t camConfig = s_pieplineConfigs[0].camConfig;
-        camConfig.streamConfig[0].format = RIDEHAL_IMAGE_FORMAT_MAX;
+        camConfig.streamConfig[0].format = QC_IMAGE_FORMAT_MAX;
 
         ret = pCamera->Init( componentName, &camConfig, LOGGER_LEVEL_VERBOSE );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         (void) pCamera->Deinit();
         delete pCamera;
@@ -956,16 +953,16 @@ TEST( Camera, Coverage_QcarCam )
 
     /* Negative - Init twice */
     {
-        RideHalError_e ret;
+        QCStatus_e ret;
         Camera *pCamera = new Camera;
 
         Camera_Config_t camConfig = s_pieplineConfigs[0].camConfig;
 
         ret = pCamera->Init( componentName, &camConfig, LOGGER_LEVEL_VERBOSE );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = pCamera->Init( componentName, &camConfig, LOGGER_LEVEL_VERBOSE );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
         (void) pCamera->Stop();
         (void) pCamera->Deinit();
@@ -974,23 +971,23 @@ TEST( Camera, Coverage_QcarCam )
 
     /* Negative - ReleaseFrame with nullptr input */
     {
-        RideHalError_e ret;
+        QCStatus_e ret;
         Camera *pCamera = new Camera;
 
         Camera_Config_t camConfig = s_pieplineConfigs[0].camConfig;
         camConfig.bRequestMode = false;
 
         ret = pCamera->Init( componentName, &camConfig, LOGGER_LEVEL_VERBOSE );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = pCamera->RegisterCallback( FrameCallBack, EventCallBack, (void *) pCamera );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = pCamera->Start();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = pCamera->ReleaseFrame( nullptr );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         (void) pCamera->Stop();
         (void) pCamera->Deinit();
@@ -999,29 +996,29 @@ TEST( Camera, Coverage_QcarCam )
 
     /* Negative - ReleaseFrame in invalid state */
     {
-        RideHalError_e ret;
+        QCStatus_e ret;
         Camera *pCamera = new Camera;
 
         Camera_Config_t camConfig = s_pieplineConfigs[0].camConfig;
         camConfig.bRequestMode = false;
 
         ret = pCamera->Init( componentName, &camConfig, LOGGER_LEVEL_VERBOSE );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = pCamera->RegisterCallback( FrameCallBack, EventCallBack, (void *) pCamera );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         CameraFrame_t Frame;
         ret = pCamera->ReleaseFrame( &Frame );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
         ret = pCamera->Start();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         Frame.streamId = 100;
         Frame.frameIndex = 30;
         ret = pCamera->ReleaseFrame( &Frame );
-        ASSERT_EQ( RIDEHAL_ERROR_FAIL, ret );
+        ASSERT_EQ( QC_STATUS_FAIL, ret );
 
         (void) pCamera->Stop();
         (void) pCamera->Deinit();
@@ -1030,25 +1027,25 @@ TEST( Camera, Coverage_QcarCam )
 
     /* Negative - ReleaseFrame in request mode */
     {
-        RideHalError_e ret;
+        QCStatus_e ret;
         Camera *pCamera = new Camera;
 
         Camera_Config_t camConfig = s_pieplineConfigs[0].camConfig;
         camConfig.bRequestMode = true;
 
         ret = pCamera->Init( componentName, &camConfig, LOGGER_LEVEL_VERBOSE );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = pCamera->RegisterCallback( FrameCallBack_RequestMode, EventCallBack,
                                          (void *) pCamera );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = pCamera->Start();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         CameraFrame_t Frame;
         ret = pCamera->ReleaseFrame( &Frame );
-        ASSERT_EQ( RIDEHAL_ERROR_OUT_OF_BOUND, ret );
+        ASSERT_EQ( QC_STATUS_OUT_OF_BOUND, ret );
 
         (void) pCamera->Stop();
         (void) pCamera->Deinit();
@@ -1065,25 +1062,25 @@ TEST( Camera, Coverage_QcarCam )
 
     /* Negative - invalid number of streams */
     {
-        RideHalError_e ret;
+        QCStatus_e ret;
         Camera *pCamera = new Camera;
 
         Camera_Config_t camConfig = s_pieplineConfigs[0].camConfig;
         camConfig.numStream = 0;
 
         ret = pCamera->Init( componentName, &camConfig, LOGGER_LEVEL_VERBOSE );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         camConfig.numStream = 128;
         ret = pCamera->Init( componentName, &camConfig, LOGGER_LEVEL_VERBOSE );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         delete pCamera;
     }
 
     /* Negative - multi-client, invalid client id */
     {
-        RideHalError_e ret;
+        QCStatus_e ret;
         Camera *pCamera = new Camera;
 
         Camera_Config_t camConfig = s_pieplineConfigs[0].camConfig;
@@ -1092,14 +1089,14 @@ TEST( Camera, Coverage_QcarCam )
         camConfig.clientId = 0;
 
         ret = pCamera->Init( componentName, &camConfig, LOGGER_LEVEL_VERBOSE );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         delete pCamera;
     }
 
     /* Negative - multi-stream, not valid reference stream */
     {
-        RideHalError_e ret;
+        QCStatus_e ret;
         Camera *pCamera = new Camera;
 
         Camera_Config_t camConfig = s_pieplineConfigs[0].camConfig;
@@ -1109,14 +1106,14 @@ TEST( Camera, Coverage_QcarCam )
         camConfig.streamConfig[1] = camConfig.streamConfig[0];
 
         ret = pCamera->Init( componentName, &camConfig, LOGGER_LEVEL_VERBOSE );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         delete pCamera;
     }
 
     /* multi-client: invalid client id */
     {
-        RideHalError_e ret;
+        QCStatus_e ret;
         Camera *pCamera = new Camera;
 
         Camera_Config_t camConfig = s_pieplineConfigs[0].camConfig;
@@ -1126,14 +1123,14 @@ TEST( Camera, Coverage_QcarCam )
         camConfig.bRequestMode = true;
 
         ret = pCamera->Init( componentName, &camConfig, LOGGER_LEVEL_VERBOSE );
-        ASSERT_EQ( RIDEHAL_ERROR_FAIL, ret );
+        ASSERT_EQ( QC_STATUS_FAIL, ret );
 
         delete pCamera;
     }
 
     /* invalid isp use case */
     {
-        RideHalError_e ret;
+        QCStatus_e ret;
         Camera *pCamera = new Camera;
 
         Camera_Config_t camConfig = s_pieplineConfigs[0].camConfig;
@@ -1141,13 +1138,13 @@ TEST( Camera, Coverage_QcarCam )
         camConfig.bRequestMode = false;
 
         ret = pCamera->Init( componentName, &camConfig, LOGGER_LEVEL_VERBOSE );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = pCamera->RegisterCallback( FrameCallBack, EventCallBack, (void *) pCamera );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = pCamera->Start();
-        ASSERT_EQ( RIDEHAL_ERROR_FAIL, ret );
+        ASSERT_EQ( QC_STATUS_FAIL, ret );
 
         (void) pCamera->Deinit();
 
@@ -1156,7 +1153,7 @@ TEST( Camera, Coverage_QcarCam )
 
     // Negative, invalid input id
     {
-        RideHalError_e ret;
+        QCStatus_e ret;
         Camera *pCamera = new Camera;
 
         Camera_Config_t camConfig = s_pieplineConfigs[0].camConfig;
@@ -1164,14 +1161,14 @@ TEST( Camera, Coverage_QcarCam )
         camConfig.bAllocator = false;
 
         ret = pCamera->Init( componentName, &camConfig, LOGGER_LEVEL_VERBOSE );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         delete pCamera;
     }
 
     // Negative, subscriber but without primary started
     {
-        RideHalError_e ret;
+        QCStatus_e ret;
         Camera *pCamera = new Camera;
 
         Camera_Config_t camConfig = s_pieplineConfigs[0].camConfig;
@@ -1179,45 +1176,45 @@ TEST( Camera, Coverage_QcarCam )
         camConfig.bPrimary = false;
 
         ret = pCamera->Init( componentName, &camConfig, LOGGER_LEVEL_VERBOSE );
-        ASSERT_NE( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_NE( QC_STATUS_OK, ret );
 
         delete pCamera;
     }
 
     /* Negative - invalid callback or not regiter and start */
     {
-        RideHalError_e ret;
+        QCStatus_e ret;
         Camera *pCamera = new Camera;
 
         Camera_Config_t camConfig = s_pieplineConfigs[0].camConfig;
         camConfig.bRequestMode = true;
 
         ret = pCamera->Init( componentName, &camConfig, LOGGER_LEVEL_VERBOSE );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = pCamera->Start();
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
         ret = pCamera->RegisterCallback( nullptr, EventCallBack, (void *) pCamera );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
         ret = pCamera->RegisterCallback( FrameCallBack_RequestMode, nullptr, (void *) pCamera );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
         ret = pCamera->RegisterCallback( FrameCallBack_RequestMode, EventCallBack, nullptr );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         ret = pCamera->RegisterCallback( FrameCallBack_RequestMode, EventCallBack,
                                          (void *) pCamera );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = pCamera->Start();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = pCamera->RegisterCallback( FrameCallBack_RequestMode, EventCallBack,
                                          (void *) pCamera );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
         ret = pCamera->RequestFrame( nullptr );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         (void) pCamera->Stop();
         (void) pCamera->Deinit();
@@ -1227,7 +1224,7 @@ TEST( Camera, Coverage_QcarCam )
 
 TEST( Camera, MultiStreamSameId_QcarCam )
 {
-    RideHalError_e ret;
+    QCStatus_e ret;
     Camera *pCamera = new Camera;
 
     for ( auto &pipeline : s_pieplineConfigs )
@@ -1247,29 +1244,29 @@ TEST( Camera, MultiStreamSameId_QcarCam )
                 camConfig.streamConfig[0].height );
 
         ret = pCamera->Init( name.c_str(), &camConfig, LOGGER_LEVEL_VERBOSE );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         if ( false == camConfig.bRequestMode )
         {
             ret = pCamera->RegisterCallback( FrameCallBack, EventCallBack, (void *) pCamera );
-            ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+            ASSERT_EQ( QC_STATUS_OK, ret );
         }
         else
         {
             ret = pCamera->RegisterCallback( FrameCallBack_RequestMode, EventCallBack,
                                              (void *) pCamera );
-            ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+            ASSERT_EQ( QC_STATUS_OK, ret );
         }
 
         s_FrameCount = 0;
         ret = pCamera->Start();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         // sanity test to run few seconds and then stop
         sleep( RUNTIME_SECOND );
 
         ret = pCamera->Stop();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         printf( "  Get %u frames\n", s_FrameCount );
         ASSERT_GT( s_FrameCount, 0 );
@@ -1281,19 +1278,19 @@ TEST( Camera, MultiStreamSameId_QcarCam )
 
         s_FrameCount = 0;
         ret = pCamera->Start();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         // sanity test to run few seconds and then stop
         sleep( RUNTIME_SECOND );
 
         ret = pCamera->Stop();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         printf( "  Get %u frames\n", s_FrameCount );
         ASSERT_GT( s_FrameCount, 0 );
 
         ret = pCamera->Deinit();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
     }
 
     delete pCamera;
@@ -1301,7 +1298,7 @@ TEST( Camera, MultiStreamSameId_QcarCam )
 
 TEST( Camera, DropPattern_QcarCam )
 {
-    RideHalError_e ret;
+    QCStatus_e ret;
     Camera *pCamera = new Camera;
 
     for ( auto &pipeline : s_pieplineConfigs )
@@ -1315,41 +1312,41 @@ TEST( Camera, DropPattern_QcarCam )
         }
 
         ret = pCamera->Init( name.c_str(), &camConfig, LOGGER_LEVEL_VERBOSE );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         if ( false == camConfig.bRequestMode )
         {
             ret = pCamera->RegisterCallback( FrameCallBack, EventCallBack, (void *) pCamera );
-            ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+            ASSERT_EQ( QC_STATUS_OK, ret );
         }
         else
         {
             ret = pCamera->RegisterCallback( FrameCallBack_RequestMode, EventCallBack,
                                              (void *) pCamera );
-            ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+            ASSERT_EQ( QC_STATUS_OK, ret );
         }
 
         s_FrameCount = 0;
         ret = pCamera->Start();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         // sanity test to run few seconds and then stop
         sleep( RUNTIME_SECOND );
 
         ret = pCamera->Stop();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         printf( "  Get %u frames after resume\n", s_FrameCount );
         ASSERT_GT( s_FrameCount, 0 );
 
         ret = pCamera->Deinit();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
     }
 
     delete pCamera;
 }
 
-#ifndef GTEST_RIDEHAL
+#ifndef GTEST_QCNODE
 int main( int argc, char **argv )
 {
     std::string key;
@@ -1389,8 +1386,8 @@ int main( int argc, char **argv )
     CameraConfigParser parser;
     for ( auto &pieplie : s_pieplineConfigs )
     {
-        RideHalError_e ret = parser.ParseConfig( pieplie.config, pieplie.camConfig );
-        if ( RIDEHAL_ERROR_NONE != ret )
+        QCStatus_e ret = parser.ParseConfig( pieplie.config, pieplie.camConfig );
+        if ( QC_STATUS_OK != ret )
         {
             printf( "Invalid config for camera %s\n", pieplie.name.c_str() );
             return -1;

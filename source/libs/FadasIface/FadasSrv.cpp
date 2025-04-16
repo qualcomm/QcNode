@@ -6,19 +6,19 @@
 
 #include <rpcmem.h>
 
-namespace ridehal
+namespace QC
 {
 namespace libs
 {
 namespace FadasIface
 {
 
-std::mutex FadasSrv::s_coreLock[RIDEHAL_PROCESSOR_MAX];
+std::mutex FadasSrv::s_coreLock[QC_PROCESSOR_MAX];
 std::mutex FadasSrv::s_FadasLock;
-remote_handle64 FadasSrv::s_handle64[RIDEHAL_PROCESSOR_MAX] = { 0, 0, 0, 0 };
-bool FadasSrv::s_initialized[RIDEHAL_PROCESSOR_MAX] = { false, false, false, false };
-uint64_t FadasSrv::s_useRef[RIDEHAL_PROCESSOR_MAX] = { 0, 0, 0, 0 };
-std::map<void *, FadasSrv::MemInfo> FadasSrv::s_memMaps[RIDEHAL_PROCESSOR_MAX];
+remote_handle64 FadasSrv::s_handle64[QC_PROCESSOR_MAX] = { 0, 0, 0, 0 };
+bool FadasSrv::s_initialized[QC_PROCESSOR_MAX] = { false, false, false, false };
+uint64_t FadasSrv::s_useRef[QC_PROCESSOR_MAX] = { 0, 0, 0, 0 };
+std::map<void *, FadasSrv::MemInfo> FadasSrv::s_memMaps[QC_PROCESSOR_MAX];
 long int FadasSrv::s_client = 1;
 void *FadasSrv::s_libGPUHandle = nullptr;
 FuncFadasInitGPU_t FadasSrv::s_FadasInitGPU = nullptr;
@@ -38,96 +38,96 @@ extern "C"
     void remote_register_buf_attr_v2( int ext_domain_id, void *buf, int size, int fd, int attr );
 }
 
-RideHalError_e FadasSrv::InitCPU()
+QCStatus_e FadasSrv::InitCPU()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     if ( FADAS_ERROR_NONE != FadasInit( nullptr ) )
     {
-        RIDEHAL_ERROR( "FadasInit failed!" );
-        ret = RIDEHAL_ERROR_FAIL;
+        QC_ERROR( "FadasInit failed!" );
+        ret = QC_STATUS_FAIL;
     }
 
     return ret;
 }
 
-RideHalError_e FadasSrv::InitGPU()
+QCStatus_e FadasSrv::InitGPU()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     s_libGPUHandle = dlopen( "libfadasGpu.so", RTLD_LAZY );
 
     if ( nullptr == s_libGPUHandle )
     {
-        RIDEHAL_ERROR( "Failed to load libfadasGpu.so library!" );
-        ret = RIDEHAL_ERROR_FAIL;
+        QC_ERROR( "Failed to load libfadasGpu.so library!" );
+        ret = QC_STATUS_FAIL;
     }
     else
     {
         s_FadasInitGPU = (FuncFadasInitGPU_t) dlsym( s_libGPUHandle, "FadasInit" );
         if ( nullptr == s_FadasInitGPU )
         {
-            RIDEHAL_ERROR( "Failed to load FadasInit functions!" );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Failed to load FadasInit functions!" );
+            ret = QC_STATUS_FAIL;
         }
         s_FadasDeInitGPU = (FuncFadasDeInitGPU_t) dlsym( s_libGPUHandle, "FadasDeInit" );
         if ( nullptr == s_FadasDeInitGPU )
         {
-            RIDEHAL_ERROR( "Failed to load FadasDeInit functions!" );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Failed to load FadasDeInit functions!" );
+            ret = QC_STATUS_FAIL;
         }
         s_FadasRegBufGPU = (FuncFadasRegBufGPU_t) dlsym( s_libGPUHandle, "FadasRegBuf" );
         if ( nullptr == s_FadasRegBufGPU )
         {
-            RIDEHAL_ERROR( "Failed to load FadasRegBuf functions!" );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Failed to load FadasRegBuf functions!" );
+            ret = QC_STATUS_FAIL;
         }
         s_FadasDeregBufGPU = (FuncFadasDeregBufGPU_t) dlsym( s_libGPUHandle, "FadasDeregBuf" );
         if ( nullptr == s_FadasDeregBufGPU )
         {
-            RIDEHAL_ERROR( "Failed to load FadasDeregBuf functions!" );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Failed to load FadasDeregBuf functions!" );
+            ret = QC_STATUS_FAIL;
         }
         s_FadasRemap_CreateMapFromMapGPU = (FuncFadasRemap_CreateMapFromMapGPU_t) dlsym(
                 s_libGPUHandle, "FadasRemap_CreateMapFromMap" );
         if ( nullptr == s_FadasRemap_CreateMapFromMapGPU )
         {
-            RIDEHAL_ERROR( "Failed to load FadasRemap_CreateMapFromMap functions!" );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Failed to load FadasRemap_CreateMapFromMap functions!" );
+            ret = QC_STATUS_FAIL;
         }
         s_FadasRemap_CreateMapNoUndistortionGPU =
                 (FuncFadasRemap_CreateMapNoUndistortionGPU_t) dlsym(
                         s_libGPUHandle, "FadasRemap_CreateMapNoUndistortion" );
         if ( nullptr == s_FadasRemap_CreateMapNoUndistortionGPU )
         {
-            RIDEHAL_ERROR( "Failed to load FadasRemap_CreateMapNoUndistortion functions!" );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Failed to load FadasRemap_CreateMapNoUndistortion functions!" );
+            ret = QC_STATUS_FAIL;
         }
         s_FadasRemap_RunGPU = (FuncFadasRemap_RunGPU_t) dlsym( s_libGPUHandle, "FadasRemap_Run" );
         if ( nullptr == s_FadasRemap_RunGPU )
         {
-            RIDEHAL_ERROR( "Failed to load FadasRemap_Run functions!" );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Failed to load FadasRemap_Run functions!" );
+            ret = QC_STATUS_FAIL;
         }
         s_FadasRemap_DestroyMapGPU =
                 (FuncFadasRemap_DestroyMapGPU_t) dlsym( s_libGPUHandle, "FadasRemap_DestroyMap" );
         if ( nullptr == s_FadasRemap_DestroyMapGPU )
         {
-            RIDEHAL_ERROR( "Failed to load FadasRemap_DestroyMap functions!" );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Failed to load FadasRemap_DestroyMap functions!" );
+            ret = QC_STATUS_FAIL;
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         if ( FADAS_ERROR_NONE != s_FadasInitGPU( nullptr ) )
         {
-            RIDEHAL_ERROR( "FadasInitGPU failed!" );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "FadasInitGPU failed!" );
+            ret = QC_STATUS_FAIL;
         }
     }
 
-    if ( ( RIDEHAL_ERROR_NONE != ret ) && ( nullptr != s_libGPUHandle ) )
+    if ( ( QC_STATUS_OK != ret ) && ( nullptr != s_libGPUHandle ) )
     {
         (void) dlclose( s_libGPUHandle );
     }
@@ -135,11 +135,11 @@ RideHalError_e FadasSrv::InitGPU()
     return ret;
 }
 
-RideHalError_e FadasSrv::InitDSP( RideHal_ProcessorType_e coreId )
+QCStatus_e FadasSrv::InitDSP( QCProcessorType_e coreId )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
-    std::string envName = "RIDEHAL_FADAS_CLIENT_ID";
+    std::string envName = "QC_FADAS_CLIENT_ID";
     const char *envValue = getenv( envName.c_str() );
     if ( nullptr != envValue )
     {
@@ -148,30 +148,30 @@ RideHalError_e FadasSrv::InitDSP( RideHal_ProcessorType_e coreId )
         s_client = strtol( envValue, &endptr, 10 );
         if ( 0 != errno )
         {
-            RIDEHAL_INFO( "Invalid client reset to 1!" );
+            QC_INFO( "Invalid client reset to 1!" );
             s_client = 1;
         }
     }
     if ( ( 0 > s_client ) || ( 12 < s_client ) )
     {
-        RIDEHAL_INFO( "Invalid client id = %d, reset to 1!", s_client );
+        QC_INFO( "Invalid client id = %d, reset to 1!", s_client );
         s_client = 1;
     }
 
     std::string uriFadas = FadasIface_URI;
     std::string uriDomain = CDSP_DOMAIN;
-    if ( RIDEHAL_PROCESSOR_HTP1 == coreId )
+    if ( QC_PROCESSOR_HTP1 == coreId )
     {
         uriDomain = CDSP1_DOMAIN;
     }
     std::string uriClient = FADAS_CLIENT_URI + std::to_string( s_client );
     std::string uriFull = uriFadas + uriDomain + uriClient;
     const char *uri = const_cast<char *>( uriFull.c_str() );
-    RIDEHAL_INFO( "uri = %s", uri );
+    QC_INFO( "uri = %s", uri );
 
     remote_handle64 handle64 = 0;
     int domain = CDSP_DOMAIN_ID;
-    if ( RIDEHAL_PROCESSOR_HTP1 == coreId )
+    if ( QC_PROCESSOR_HTP1 == coreId )
     {
         domain = CDSP1_DOMAIN_ID;
     }
@@ -187,8 +187,8 @@ RideHalError_e FadasSrv::InitDSP( RideHal_ProcessorType_e coreId )
         auto retVal = FadasIface_open( uri, &handle64 );
         if ( AEE_SUCCESS != retVal )
         {
-            RIDEHAL_ERROR( "Failed to open fadas: %d", retVal );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Failed to open fadas: %d", retVal );
+            ret = QC_STATUS_FAIL;
         }
 
         s_handle64[coreId] = handle64;
@@ -198,14 +198,14 @@ RideHalError_e FadasSrv::InitDSP( RideHal_ProcessorType_e coreId )
         handle64 = s_handle64[coreId];
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         int32_t ans = FADAS_ERROR_MAX;
         (void) FadasIface_FadasInit( handle64, &ans );
         if ( FADAS_ERROR_NONE != ans )
         {
-            RIDEHAL_ERROR( "FAILED:  FadasIface_FadasInit - 0x%x", ans );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "FAILED:  FadasIface_FadasInit - 0x%x", ans );
+            ret = QC_STATUS_FAIL;
         }
         else
         {
@@ -215,12 +215,12 @@ RideHalError_e FadasSrv::InitDSP( RideHal_ProcessorType_e coreId )
                                                    FADAS_VERSION_LEN );
             if ( retVal != AEE_SUCCESS )
             {
-                RIDEHAL_ERROR( "FAILED: FadasIface_FadasVersion - 0x%x", retVal );
-                ret = RIDEHAL_ERROR_FAIL;
+                QC_ERROR( "FAILED: FadasIface_FadasVersion - 0x%x", retVal );
+                ret = QC_STATUS_FAIL;
             }
             else
             {
-                RIDEHAL_INFO( "Initialized FastADAS(DSP, %s) successfully", version );
+                QC_INFO( "Initialized FastADAS(DSP, %s) successfully", version );
             }
         }
     }
@@ -228,38 +228,37 @@ RideHalError_e FadasSrv::InitDSP( RideHal_ProcessorType_e coreId )
     return ret;
 }
 
-RideHalError_e FadasSrv::Init( RideHal_ProcessorType_e coreId, const char *pName,
-                               Logger_Level_e level )
+QCStatus_e FadasSrv::Init( QCProcessorType_e coreId, const char *pName, Logger_Level_e level )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
-    ret = RIDEHAL_LOGGER_INIT( pName, level );
-    if ( RIDEHAL_ERROR_NONE != ret )
+    ret = QC_LOGGER_INIT( pName, level );
+    if ( QC_STATUS_OK != ret )
     {
         (void) fprintf( stderr, "WARINING: failed to create logger for FadasSrv %s: ret = %d\n",
                         pName, ret );
-        ret = RIDEHAL_ERROR_NONE; /* ignore logger init error */
+        ret = QC_STATUS_OK; /* ignore logger init error */
     }
 
     std::lock_guard<std::mutex> l( s_FadasLock );
-    if ( ( RIDEHAL_PROCESSOR_HTP0 == coreId ) || ( RIDEHAL_PROCESSOR_HTP1 == coreId ) ||
-         ( RIDEHAL_PROCESSOR_CPU == coreId ) || ( RIDEHAL_PROCESSOR_GPU == coreId ) )
+    if ( ( QC_PROCESSOR_HTP0 == coreId ) || ( QC_PROCESSOR_HTP1 == coreId ) ||
+         ( QC_PROCESSOR_CPU == coreId ) || ( QC_PROCESSOR_GPU == coreId ) )
     {
         m_processor = coreId;
     }
     else
     {
-        RIDEHAL_ERROR( "Invalid processor type!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "Invalid processor type!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
-    if ( ( false == s_initialized[coreId] ) && ( RIDEHAL_ERROR_NONE == ret ) )
+    if ( ( false == s_initialized[coreId] ) && ( QC_STATUS_OK == ret ) )
     {
-        if ( ( RIDEHAL_PROCESSOR_HTP0 == coreId ) || ( RIDEHAL_PROCESSOR_HTP1 == coreId ) )
+        if ( ( QC_PROCESSOR_HTP0 == coreId ) || ( QC_PROCESSOR_HTP1 == coreId ) )
         {
             ret = InitDSP( coreId );
         }
-        else if ( RIDEHAL_PROCESSOR_GPU == coreId )
+        else if ( QC_PROCESSOR_GPU == coreId )
         {
             ret = InitGPU();
         }
@@ -268,27 +267,27 @@ RideHalError_e FadasSrv::Init( RideHal_ProcessorType_e coreId, const char *pName
             ret = InitCPU();
         }
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             s_initialized[coreId] = true;
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         s_useRef[coreId]++;
     }
     else
     {
-        (void) RIDEHAL_LOGGER_DEINIT();
+        (void) QC_LOGGER_DEINIT();
     }
 
     return ret;
 }
 
-RideHalError_e FadasSrv::Deinit()
+QCStatus_e FadasSrv::Deinit()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     std::lock_guard<std::mutex> l( s_FadasLock );
     if ( ( 0 != s_initialized[m_processor] ) && ( 0 < s_useRef[m_processor] ) )
@@ -306,21 +305,20 @@ RideHalError_e FadasSrv::Deinit()
             {
                 DeregBuf( ptr );
             }
-            if ( ( RIDEHAL_PROCESSOR_HTP0 == m_processor ) ||
-                 ( RIDEHAL_PROCESSOR_HTP1 == m_processor ) )
+            if ( ( QC_PROCESSOR_HTP0 == m_processor ) || ( QC_PROCESSOR_HTP1 == m_processor ) )
             {
                 if ( AEE_SUCCESS != FadasIface_FadasDeInit( s_handle64[m_processor] ) )
                 {
-                    RIDEHAL_ERROR( "FadasIface_FadasDeInit failed!" );
-                    ret = RIDEHAL_ERROR_FAIL;
+                    QC_ERROR( "FadasIface_FadasDeInit failed!" );
+                    ret = QC_STATUS_FAIL;
                 }
             }
-            else if ( RIDEHAL_PROCESSOR_GPU == m_processor )
+            else if ( QC_PROCESSOR_GPU == m_processor )
             {
                 if ( FADAS_ERROR_NONE != s_FadasDeInitGPU() )
                 {
-                    RIDEHAL_ERROR( "FadasDeInitGPU failed!" );
-                    ret = RIDEHAL_ERROR_FAIL;
+                    QC_ERROR( "FadasDeInitGPU failed!" );
+                    ret = QC_STATUS_FAIL;
                 }
                 (void) dlclose( s_libGPUHandle );
             }
@@ -328,8 +326,8 @@ RideHalError_e FadasSrv::Deinit()
             {
                 if ( FADAS_ERROR_NONE != FadasDeInit() )
                 {
-                    RIDEHAL_ERROR( "FadasDeInit failed!" );
-                    ret = RIDEHAL_ERROR_FAIL;
+                    QC_ERROR( "FadasDeInit failed!" );
+                    ret = QC_STATUS_FAIL;
                 }
             }
             memMap.clear();
@@ -337,11 +335,11 @@ RideHalError_e FadasSrv::Deinit()
         }
     }
 
-    ret = RIDEHAL_LOGGER_DEINIT();
-    if ( RIDEHAL_ERROR_NONE != ret )
+    ret = QC_LOGGER_DEINIT();
+    if ( QC_STATUS_OK != ret )
     {
         (void) fprintf( stderr, "WARINING: failed to deinit logger for FadasSrv: ret = %d\n", ret );
-        ret = RIDEHAL_ERROR_NONE; /* ignore logger deinit error */
+        ret = QC_STATUS_OK; /* ignore logger deinit error */
     }
 
     return ret;
@@ -352,13 +350,13 @@ remote_handle64 FadasSrv::GetRemoteHandle64()
     return s_handle64[m_processor];
 }
 
-int32_t FadasSrv::FadasMemMapDSP( const RideHal_SharedBuffer_t *pBuffer )
+int32_t FadasSrv::FadasMemMapDSP( const QCSharedBuffer_t *pBuffer )
 {
     int ret = AEE_SUCCESS;
     int32_t fd = -1;
     int extDomainId = 0;
     int domain = CDSP_DOMAIN_ID;
-    if ( RIDEHAL_PROCESSOR_HTP1 == m_processor )
+    if ( QC_PROCESSOR_HTP1 == m_processor )
     {
         domain = CDSP1_DOMAIN_ID;
     }
@@ -381,7 +379,7 @@ int32_t FadasSrv::FadasMemMapDSP( const RideHal_SharedBuffer_t *pBuffer )
         fd = rpcmem_to_fd( (void *) ptr );
         if ( fd < 0 )
         {
-            RIDEHAL_ERROR( "rpcmem_to_fd failed, fd = %d", fd );
+            QC_ERROR( "rpcmem_to_fd failed, fd = %d", fd );
             ret = AEE_EFAILED;
         }
     }
@@ -391,8 +389,7 @@ int32_t FadasSrv::FadasMemMapDSP( const RideHal_SharedBuffer_t *pBuffer )
         ret = fastrpc_mmap( extDomainId, fd, ptr, 0, size, FASTRPC_MAP_FD_DELAYED );
         if ( ( AEE_EALREADY != ret ) && ( AEE_SUCCESS != ret ) )
         {
-            RIDEHAL_ERROR( "Failed to fastrpc_mmap ptr %p(%d, %llu): ret = %x\n", ptr, fd, size,
-                           ret );
+            QC_ERROR( "Failed to fastrpc_mmap ptr %p(%d, %llu): ret = %x\n", ptr, fd, size, ret );
             fd = -1;
         }
         else
@@ -406,30 +403,30 @@ int32_t FadasSrv::FadasMemMapDSP( const RideHal_SharedBuffer_t *pBuffer )
         ret = FadasIface_mmap( handle64, fd, (uint32_t) size );
         if ( AEE_SUCCESS != ret )
         {
-            RIDEHAL_ERROR( "Failed to map ptr %p(%d, %llu): ret = %x\n", ptr, fd, size, ret );
+            QC_ERROR( "Failed to map ptr %p(%d, %llu): ret = %x\n", ptr, fd, size, ret );
             fd = -1;
         }
         else
         {
-            RIDEHAL_INFO( "map ptr %p(%d, %llu) OK\n", ptr, fd, size );
+            QC_INFO( "map ptr %p(%d, %llu) OK\n", ptr, fd, size );
         }
     }
 
     return fd;
 }
 
-int32_t FadasSrv::FadasMemMapCPU( const RideHal_SharedBuffer_t *pBuffer )
+int32_t FadasSrv::FadasMemMapCPU( const QCSharedBuffer_t *pBuffer )
 {
     (void) pBuffer;
     return 1; /* virtual fd for CPU&GPU pipeline, indicates that the register is
                * successful, would not be really used. */
 }
 
-int32_t FadasSrv::FadasMemMap( const RideHal_SharedBuffer_t *pBuffer )
+int32_t FadasSrv::FadasMemMap( const QCSharedBuffer_t *pBuffer )
 {
     int32_t fd = -1;
 
-    if ( ( RIDEHAL_PROCESSOR_HTP0 == m_processor ) || ( RIDEHAL_PROCESSOR_HTP1 == m_processor ) )
+    if ( ( QC_PROCESSOR_HTP0 == m_processor ) || ( QC_PROCESSOR_HTP1 == m_processor ) )
     {
         fd = FadasMemMapDSP( pBuffer );
     }
@@ -441,11 +438,11 @@ int32_t FadasSrv::FadasMemMap( const RideHal_SharedBuffer_t *pBuffer )
     return fd;
 }
 
-RideHalError_e FadasSrv::FadasRegisterBufDSP( FadasBufType_e bufType, const uint8_t *bufPtr,
-                                              int32_t bufFd, uint32_t bufSize, uint32_t bufOffset,
-                                              uint32_t batch )
+QCStatus_e FadasSrv::FadasRegisterBufDSP( FadasBufType_e bufType, const uint8_t *bufPtr,
+                                          int32_t bufFd, uint32_t bufSize, uint32_t bufOffset,
+                                          uint32_t batch )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     auto handle64 = s_handle64[m_processor];
 
     FadasIface_FadasBufType_e bufTypeDsp;
@@ -466,18 +463,17 @@ RideHalError_e FadasSrv::FadasRegisterBufDSP( FadasBufType_e bufType, const uint
     int nErr = FadasIface_FadasRegBuf( handle64, bufTypeDsp, bufFd, bufSize, bufOffset, batch );
     if ( AEE_SUCCESS != nErr )
     {
-        RIDEHAL_ERROR( "FadasIface_FadasRegBuf fail: %d!", nErr );
-        ret = RIDEHAL_ERROR_FAIL;
+        QC_ERROR( "FadasIface_FadasRegBuf fail: %d!", nErr );
+        ret = QC_STATUS_FAIL;
     }
 
     return ret;
 }
 
-RideHalError_e FadasSrv::FadasRegisterBufCPU( FadasBufType_e bufType, uint8_t *bufPtr,
-                                              int32_t bufFd, uint32_t bufSize, uint32_t bufOffset,
-                                              uint32_t batch )
+QCStatus_e FadasSrv::FadasRegisterBufCPU( FadasBufType_e bufType, uint8_t *bufPtr, int32_t bufFd,
+                                          uint32_t bufSize, uint32_t bufOffset, uint32_t batch )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     FadasError_e nErr = FADAS_ERROR_NONE;
     uint8_t *ptr = bufPtr;
 
@@ -488,8 +484,8 @@ RideHalError_e FadasSrv::FadasRegisterBufCPU( FadasBufType_e bufType, uint8_t *b
         nErr = FadasRegBuf( bufType, ptr, bufSize );
         if ( FADAS_ERROR_NONE != nErr )
         {
-            RIDEHAL_ERROR( "FadasRegBuf fail: %d!", nErr );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "FadasRegBuf fail: %d!", nErr );
+            ret = QC_STATUS_FAIL;
             break;
         }
         ptr += bufSize;
@@ -498,11 +494,10 @@ RideHalError_e FadasSrv::FadasRegisterBufCPU( FadasBufType_e bufType, uint8_t *b
     return ret;
 }
 
-RideHalError_e FadasSrv::FadasRegisterBufGPU( FadasBufType_e bufType, uint8_t *bufPtr,
-                                              int32_t bufFd, uint32_t bufSize, uint32_t bufOffset,
-                                              uint32_t batch )
+QCStatus_e FadasSrv::FadasRegisterBufGPU( FadasBufType_e bufType, uint8_t *bufPtr, int32_t bufFd,
+                                          uint32_t bufSize, uint32_t bufOffset, uint32_t batch )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     FadasError_e nErr = FADAS_ERROR_NONE;
     uint8_t *ptr = bufPtr;
 
@@ -513,8 +508,8 @@ RideHalError_e FadasSrv::FadasRegisterBufGPU( FadasBufType_e bufType, uint8_t *b
         nErr = s_FadasRegBufGPU( bufType, ptr, bufSize );
         if ( FADAS_ERROR_NONE != nErr )
         {
-            RIDEHAL_ERROR( "FadasRegBufGPU fail: %d!", nErr );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "FadasRegBufGPU fail: %d!", nErr );
+            ret = QC_STATUS_FAIL;
             break;
         }
         ptr += bufSize;
@@ -523,16 +518,16 @@ RideHalError_e FadasSrv::FadasRegisterBufGPU( FadasBufType_e bufType, uint8_t *b
     return ret;
 }
 
-RideHalError_e FadasSrv::FadasRegisterBuf( FadasBufType_e bufType, uint8_t *bufPtr, int32_t bufFd,
-                                           uint32_t bufSize, uint32_t bufOffset, uint32_t batch )
+QCStatus_e FadasSrv::FadasRegisterBuf( FadasBufType_e bufType, uint8_t *bufPtr, int32_t bufFd,
+                                       uint32_t bufSize, uint32_t bufOffset, uint32_t batch )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
-    if ( ( RIDEHAL_PROCESSOR_HTP0 == m_processor ) || ( RIDEHAL_PROCESSOR_HTP1 == m_processor ) )
+    if ( ( QC_PROCESSOR_HTP0 == m_processor ) || ( QC_PROCESSOR_HTP1 == m_processor ) )
     {
         ret = FadasRegisterBufDSP( bufType, bufPtr, bufFd, bufSize, bufOffset, batch );
     }
-    else if ( RIDEHAL_PROCESSOR_GPU == m_processor )
+    else if ( QC_PROCESSOR_GPU == m_processor )
     {
         ret = FadasRegisterBufGPU( bufType, bufPtr, bufFd, bufSize, bufOffset, batch );
     }
@@ -544,9 +539,9 @@ RideHalError_e FadasSrv::FadasRegisterBuf( FadasBufType_e bufType, uint8_t *bufP
     return ret;
 }
 
-int32_t FadasSrv::RegisterImage( const RideHal_SharedBuffer_t *pBuffer, FadasBufType_e bufferType )
+int32_t FadasSrv::RegisterImage( const QCSharedBuffer_t *pBuffer, FadasBufType_e bufferType )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     int32_t fd = -1;
 
     auto &memMap = s_memMaps[m_processor];
@@ -555,7 +550,7 @@ int32_t FadasSrv::RegisterImage( const RideHal_SharedBuffer_t *pBuffer, FadasBuf
     size_t offset = pBuffer->offset;
     uint32_t batch = pBuffer->imgProps.batchSize;
     size_t sizeOne = ( size_t )( pBuffer->size / batch );
-    RideHal_ImageFormat_e format = pBuffer->imgProps.format;
+    QCImageFormat_e format = pBuffer->imgProps.format;
     uint32_t sizePlane0 = pBuffer->imgProps.planeBufSize[0];
     uint32_t sizePlane1 = pBuffer->imgProps.planeBufSize[1];
 
@@ -568,7 +563,7 @@ int32_t FadasSrv::RegisterImage( const RideHal_SharedBuffer_t *pBuffer, FadasBuf
             if ( FADAS_BUF_TYPE_IN == bufferType )
             {
                 /*for input buffer the batch must be 1*/
-                if ( RIDEHAL_IMAGE_FORMAT_NV12_UBWC == pBuffer->imgProps.format )
+                if ( QC_IMAGE_FORMAT_NV12_UBWC == pBuffer->imgProps.format )
                 /*for UBWC input, register all the 4 planes together once*/
                 {
                     uint32_t sizeTotal =
@@ -580,7 +575,7 @@ int32_t FadasSrv::RegisterImage( const RideHal_SharedBuffer_t *pBuffer, FadasBuf
                 else
                 {
                     ret = FadasRegisterBuf( bufferType, ptr, fd, sizePlane0, offset, 1 );
-                    if ( RIDEHAL_IMAGE_FORMAT_NV12 == format )
+                    if ( QC_IMAGE_FORMAT_NV12 == format )
                     { /* register both of plane0 and plane1 for NV12 format */
                         ret = FadasRegisterBuf( bufferType, ptr, fd, sizePlane1,
                                                 sizePlane0 + offset, 1 );
@@ -592,13 +587,13 @@ int32_t FadasSrv::RegisterImage( const RideHal_SharedBuffer_t *pBuffer, FadasBuf
                 ret = FadasRegisterBuf( bufferType, ptr, fd, sizeOne, offset, batch );
             }
 
-            if ( RIDEHAL_ERROR_NONE == ret )
+            if ( QC_STATUS_OK == ret )
             {
                 memMap[pBuffer->data()] = { fd, size, offset, batch, ptr, sizeOne };
             }
             else
             {
-                RIDEHAL_ERROR( "Register Buffer(%p, %d, %d) failed!", ptr, fd, bufferType );
+                QC_ERROR( "Register Buffer(%p, %d, %d) failed!", ptr, fd, bufferType );
                 fd = -1;
             }
         }
@@ -607,30 +602,30 @@ int32_t FadasSrv::RegisterImage( const RideHal_SharedBuffer_t *pBuffer, FadasBuf
     {
         if ( pBuffer->buffer.pData != it->second.ptr )
         {
-            RIDEHAL_ERROR( "Shared buffer already registered, but stored ptr not match, stored %d "
-                           "and given %d",
-                           it->second.ptr, pBuffer->buffer.pData );
+            QC_ERROR( "Shared buffer already registered, but stored ptr not match, stored %d "
+                      "and given %d",
+                      it->second.ptr, pBuffer->buffer.pData );
         }
         else if ( pBuffer->buffer.size != it->second.size )
         {
-            RIDEHAL_ERROR( "Shared buffer already registered, but stored size not match, "
-                           "stored %d "
-                           "and given %d",
-                           it->second.size, pBuffer->buffer.size );
+            QC_ERROR( "Shared buffer already registered, but stored size not match, "
+                      "stored %d "
+                      "and given %d",
+                      it->second.size, pBuffer->buffer.size );
         }
         else if ( pBuffer->offset != it->second.offset )
         {
-            RIDEHAL_ERROR( "Shared buffer already registered, but stored offset not match, "
-                           "stored %d "
-                           "and given %d",
-                           it->second.offset, pBuffer->offset );
+            QC_ERROR( "Shared buffer already registered, but stored offset not match, "
+                      "stored %d "
+                      "and given %d",
+                      it->second.offset, pBuffer->offset );
         }
         else if ( pBuffer->imgProps.batchSize != it->second.batch )
         {
-            RIDEHAL_ERROR( "Shared buffer already registered, but stored batch not match, "
-                           "stored %d "
-                           "and given %d",
-                           it->second.batch, pBuffer->imgProps.batchSize );
+            QC_ERROR( "Shared buffer already registered, but stored batch not match, "
+                      "stored %d "
+                      "and given %d",
+                      it->second.batch, pBuffer->imgProps.batchSize );
         }
         else
         {
@@ -641,9 +636,9 @@ int32_t FadasSrv::RegisterImage( const RideHal_SharedBuffer_t *pBuffer, FadasBuf
     return fd;
 }
 
-int32_t FadasSrv::RegisterTensor( const RideHal_SharedBuffer_t *pBuffer, FadasBufType_e bufferType )
+int32_t FadasSrv::RegisterTensor( const QCSharedBuffer_t *pBuffer, FadasBufType_e bufferType )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     int32_t fd = -1;
     uint8_t *ptr = (uint8_t *) pBuffer->buffer.pData;
     size_t size = pBuffer->buffer.size;
@@ -659,13 +654,13 @@ int32_t FadasSrv::RegisterTensor( const RideHal_SharedBuffer_t *pBuffer, FadasBu
         if ( 0 <= fd )
         {
             ret = FadasRegisterBuf( bufferType, ptr, fd, sizeOne, offset, batch );
-            if ( RIDEHAL_ERROR_NONE == ret )
+            if ( QC_STATUS_OK == ret )
             {
                 memMap[pBuffer->data()] = { fd, size, offset, batch, ptr, sizeOne };
             }
             else
             {
-                RIDEHAL_ERROR( "Register Buffer(%p, %d, %d) failed!", ptr, fd, bufferType );
+                QC_ERROR( "Register Buffer(%p, %d, %d) failed!", ptr, fd, bufferType );
                 fd = -1;
             }
         }
@@ -678,30 +673,30 @@ int32_t FadasSrv::RegisterTensor( const RideHal_SharedBuffer_t *pBuffer, FadasBu
     return fd;
 }
 
-int32_t FadasSrv::RegBuf( const RideHal_SharedBuffer_t *pBuffer, FadasBufType_e bufferType )
+int32_t FadasSrv::RegBuf( const QCSharedBuffer_t *pBuffer, FadasBufType_e bufferType )
 {
     std::lock_guard<std::mutex> l( s_coreLock[m_processor] );
     int32_t fd = -1;
 
     if ( nullptr == pBuffer )
     {
-        RIDEHAL_ERROR( "null buffer!" );
+        QC_ERROR( "null buffer!" );
     }
     else if ( ( bufferType <= FADAS_BUF_TYPE_NONE ) || ( bufferType >= FADAS_BUF_TYPE_END ) )
     {
-        RIDEHAL_ERROR( "invalid buffer type!" );
+        QC_ERROR( "invalid buffer type!" );
     }
-    else if ( RIDEHAL_BUFFER_TYPE_IMAGE == pBuffer->type )
+    else if ( QC_BUFFER_TYPE_IMAGE == pBuffer->type )
     {
         fd = RegisterImage( pBuffer, bufferType );
     }
-    else if ( RIDEHAL_BUFFER_TYPE_TENSOR == pBuffer->type )
+    else if ( QC_BUFFER_TYPE_TENSOR == pBuffer->type )
     {
         fd = RegisterTensor( pBuffer, bufferType );
     }
     else
     {
-        RIDEHAL_ERROR( "Shared buffer type is %d!", pBuffer->type );
+        QC_ERROR( "Shared buffer type is %d!", pBuffer->type );
     }
 
     return fd;
@@ -711,7 +706,7 @@ void FadasSrv::DeregBuf( void *pBuffer )
 {
     if ( nullptr == pBuffer )
     {
-        RIDEHAL_ERROR( "null buffer!" );
+        QC_ERROR( "null buffer!" );
     }
     else
     {
@@ -729,12 +724,11 @@ void FadasSrv::DeregBuf( void *pBuffer )
             size_t sizeOne = it->second.sizeOne;
             (void) memMap.erase( it );
 
-            if ( ( RIDEHAL_PROCESSOR_HTP0 == m_processor ) ||
-                 ( RIDEHAL_PROCESSOR_HTP1 == m_processor ) )
+            if ( ( QC_PROCESSOR_HTP0 == m_processor ) || ( QC_PROCESSOR_HTP1 == m_processor ) )
             {
                 int extDomainId = 0;
                 int domain = CDSP_DOMAIN_ID;
-                if ( RIDEHAL_PROCESSOR_HTP1 == m_processor )
+                if ( QC_PROCESSOR_HTP1 == m_processor )
                 {
                     domain = CDSP1_DOMAIN_ID;
                 }
@@ -744,31 +738,31 @@ void FadasSrv::DeregBuf( void *pBuffer )
                 retVal = FadasIface_FadasDeregBuf( handle64, fd, sizeOne, offset, batch );
                 if ( AEE_SUCCESS != retVal )
                 {
-                    RIDEHAL_ERROR( "Failed to FadasIface_FadasDeregBuf %p(%d, %llu): ret = %x\n",
-                                   ptr, fd, size, retVal );
+                    QC_ERROR( "Failed to FadasIface_FadasDeregBuf %p(%d, %llu): ret = %x\n", ptr,
+                              fd, size, retVal );
                 }
                 retVal = FadasIface_munmap( handle64, fd, (uint32_t) size );
                 if ( AEE_SUCCESS != retVal )
                 {
-                    RIDEHAL_ERROR( "Failed to FadasIface_munmap %p(%d, %llu): ret = %x\n", ptr, fd,
-                                   size, retVal );
+                    QC_ERROR( "Failed to FadasIface_munmap %p(%d, %llu): ret = %x\n", ptr, fd, size,
+                              retVal );
                     retVal = fastrpc_munmap( extDomainId, fd, ptr, size );
                     if ( AEE_SUCCESS != retVal )
                     {
-                        RIDEHAL_ERROR( "Failed to fastrpc_munmap %p(%d, %llu): ret = %x\n", ptr, fd,
-                                       size, retVal );
+                        QC_ERROR( "Failed to fastrpc_munmap %p(%d, %llu): ret = %x\n", ptr, fd,
+                                  size, retVal );
                     }
                 }
                 remote_register_buf_v2( extDomainId, ptr, size, -1 );
             }
-            else if ( RIDEHAL_PROCESSOR_GPU == m_processor )
+            else if ( QC_PROCESSOR_GPU == m_processor )
             {
                 for ( int i = 0; i < batch; i++ )
                 {
                     FadasError_e retVal = s_FadasDeregBufGPU( (uint8_t *) pBuffer + sizeOne * i );
                     if ( FADAS_ERROR_NONE != retVal )
                     {
-                        RIDEHAL_ERROR( "FadasDeregBufGPU %p(%llu) failed: %d!", ptr, size, retVal );
+                        QC_ERROR( "FadasDeregBufGPU %p(%llu) failed: %d!", ptr, size, retVal );
                     }
                 }
             }
@@ -779,7 +773,7 @@ void FadasSrv::DeregBuf( void *pBuffer )
                     FadasError_e retVal = FadasDeregBuf( (uint8_t *) pBuffer + sizeOne * i );
                     if ( FADAS_ERROR_NONE != retVal )
                     {
-                        RIDEHAL_ERROR( "FadasDeregBuf %p(%llu) failed: %d!", ptr, size, retVal );
+                        QC_ERROR( "FadasDeregBuf %p(%llu) failed: %d!", ptr, size, retVal );
                     }
                 }
             }
@@ -791,4 +785,4 @@ void FadasSrv::DeregBuf( void *pBuffer )
 
 }   // namespace FadasIface
 }   // namespace libs
-}   // namespace ridehal
+}   // namespace QC

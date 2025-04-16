@@ -1,19 +1,19 @@
 *Menu*:
-- [1. RideHal VideoEncoder Data Structures](#1-ridehal-videoencoder-data-structures)
+- [1. QC VideoEncoder Data Structures](#1-qc-videoencoder-data-structures)
   - [1.1 The details of image properties.](#11-the-details-of-videoencoder_config_t)
-- [2. RideHal buffer APIs](#2-ridehal-videoencoder-apis)
+- [2. QC buffer APIs](#2-qc-videoencoder-apis)
 - [3. Typical VideoEncoder Use Case](#3-typical-videoencoder-use-cases)
   - [3.1 Dynamic input/output buffer](#31-dynamic-inputoutput-buffer)
   - [3.2 Non-Dynamic input/output buffer](#32-non-dynamic-inputoutput-buffer)
     - [3.2.1 not set input/output buffer by config](#321-not-set-inputoutput-buffer-by-config)
     - [3.2.2 set input/output buffer by config](#322-set-inputoutput-buffer-by-config)
 
-# 1. RideHal VideoEncoder Data Structures
+# 1. QC VideoEncoder Data Structures
 
-- [VideoEncoder_Config_t](../include/ridehal/component/VideoEncoder.hpp#L80)
-- [VideoEncoder_OnTheFlyCmd_t](../include/ridehal/component/VideoEncoder.hpp#L101)
-- [VideoEncoder_InputFrame_t](../include/ridehal/component/VideoEncoder.hpp#L108)
-- [VideoEncoder_OutputFrame_t](../include/ridehal/component/VideoEncoder.hpp#L122)
+- [VideoEncoder_Config_t](../include/QC/component/VideoEncoder.hpp#L80)
+- [VideoEncoder_OnTheFlyCmd_t](../include/QC/component/VideoEncoder.hpp#L101)
+- [VideoEncoder_InputFrame_t](../include/QC/component/VideoEncoder.hpp#L108)
+- [VideoEncoder_OutputFrame_t](../include/QC/component/VideoEncoder.hpp#L122)
 
 ## 1.1 The details of VideoEncoder_Config_t.
 
@@ -28,26 +28,26 @@ bInputDynamicMode
 bOutputDynamicMode
 rateControlMode [choose from VideoEncoder_RateControlMode_e]
 profile [choose from VideoEncoder_Profile_e]
-inFormat [choose from RideHal_ImageFormat_e that without compression]
-outFormat [choose from RideHal_ImageFormat_e that with compression]
+inFormat [choose from QCImageFormat_e that without compression]
+outFormat [choose from QCImageFormat_e that with compression]
 
 The configs that have default values (default):
 bitRate (64000)
 gop (30)
 frameRate (30)
 
-# 2. RideHal VideoEncoder APIs
+# 2. QC VideoEncoder APIs
 
-- [Init the video encoder](../include/ridehal/component/VideoEncoder.hpp#L182)
-- [Start the video encoder](../include/ridehal/component/VideoEncoder.hpp#L189)
-- [Stop the video encoder](../include/ridehal/component/VideoEncoder.hpp#L195)
-- [Deinit the video encoder (release all resources)](../include/ridehal/component/VideoEncoder.hpp#L201)
-- [SubmitInputFrame](../include/ridehal/component/VideoEncoder.hpp#L208)
-- [SubmitOutputFrame](../include/ridehal/component/VideoEncoder.hpp#L215)
-- [GetInputBuffers that allocated by video encoder](../include/ridehal/component/VideoEncoder.hpp#L223)
-- [GetOutputBuffers that allocated by video encoder](../include/ridehal/component/VideoEncoder.hpp#L231)
-- [Configure](../include/ridehal/component/VideoEncoder.hpp#L238)
-- [RegisterCallback](../include/ridehal/component/VideoEncoder.hpp#L248)
+- [Init the video encoder](../include/QC/component/VideoEncoder.hpp#L182)
+- [Start the video encoder](../include/QC/component/VideoEncoder.hpp#L189)
+- [Stop the video encoder](../include/QC/component/VideoEncoder.hpp#L195)
+- [Deinit the video encoder (release all resources)](../include/QC/component/VideoEncoder.hpp#L201)
+- [SubmitInputFrame](../include/QC/component/VideoEncoder.hpp#L208)
+- [SubmitOutputFrame](../include/QC/component/VideoEncoder.hpp#L215)
+- [GetInputBuffers that allocated by video encoder](../include/QC/component/VideoEncoder.hpp#L223)
+- [GetOutputBuffers that allocated by video encoder](../include/QC/component/VideoEncoder.hpp#L231)
+- [Configure](../include/QC/component/VideoEncoder.hpp#L238)
+- [RegisterCallback](../include/QC/component/VideoEncoder.hpp#L248)
 
 # 3. Typical VideoEncoder Use Cases
 
@@ -66,8 +66,8 @@ frameRate (30)
     config.frameRate = 30;
     config.profile = VIDEO_ENCODER_PROFILE_H264_MAIN;
     config.rateControlMode = VIDEO_ENCODER_RCM_CBR_CFR;
-    config.inFormat = RIDEHAL_IMAGE_FORMAT_NV12;
-    config.outFormat = RIDEHAL_IMAGE_FORMAT_COMPRESSED_H264;
+    config.inFormat = QC_IMAGE_FORMAT_NV12;
+    config.outFormat = QC_IMAGE_FORMAT_COMPRESSED_H264;
     config.bInputDynamicMode = true;
     config.bOutputDynamicMode = true;
     config.pInputBufferList = nullptr;
@@ -94,14 +94,14 @@ frameRate (30)
     config.frameRate = 60;
     config.profile = VIDEO_ENCODER_PROFILE_H264_MAIN;
     config.rateControlMode = VIDEO_ENCODER_RCM_CBR_CFR;
-    config.inFormat = RIDEHAL_IMAGE_FORMAT_NV12;
-    config.outFormat = RIDEHAL_IMAGE_FORMAT_COMPRESSED_H264;
+    config.inFormat = QC_IMAGE_FORMAT_NV12;
+    config.outFormat = QC_IMAGE_FORMAT_COMPRESSED_H264;
     config.bInputDynamicMode = false;
     config.bOutputDynamicMode = false;
     config.pInputBufferList = nullptr; // buffer will allocated inside video encoder
     config.pOutputBufferList = nullptr; // buffer will allocated inside video encoder
 //... Init and Start
-    RideHal_SharedBuffer_t *inputList = new RideHal_SharedBuffer_t[config.numInputBufferReq];
+    QCSharedBuffer_t *inputList = new QCSharedBuffer_t[config.numInputBufferReq];
     ret = xxx.GetInputBuffers( inputList, config.numInputBufferReq );
 
     for ( i = 0; i < config.numInputBufferReq; i++ )
@@ -125,8 +125,8 @@ frameRate (30)
     config.frameRate = 30;
     config.profile = VIDEO_ENCODER_PROFILE_HEVC_MAIN;
     config.rateControlMode = VIDEO_ENCODER_RCM_CBR_CFR;
-    config.inFormat = RIDEHAL_IMAGE_FORMAT_NV12;
-    config.outFormat = RIDEHAL_IMAGE_FORMAT_COMPRESSED_H265;
+    config.inFormat = QC_IMAGE_FORMAT_NV12;
+    config.outFormat = QC_IMAGE_FORMAT_COMPRESSED_H265;
     config.bInputDynamicMode = false;
     config.bOutputDynamicMode = false;
 //... allocate input and output buffer

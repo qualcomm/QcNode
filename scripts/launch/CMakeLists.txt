@@ -1,3 +1,3 @@
 
-add_executable(rhrun IMPORTED [GLOBAL])
-install(PROGRAMS rhrun DESTINATION bin)
+add_executable(qcrun IMPORTED [GLOBAL])
+install(PROGRAMS qcrun DESTINATION bin)

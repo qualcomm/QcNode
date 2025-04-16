@@ -3,12 +3,12 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#ifndef RIDEHAL_CL2D_PIPELINE_REMAP_HPP
-#define RIDEHAL_CL2D_PIPELINE_REMAP_HPP
+#ifndef QC_CL2D_PIPELINE_REMAP_HPP
+#define QC_CL2D_PIPELINE_REMAP_HPP
 
 #include "include/CL2DPipelineBase.hpp"
 
-namespace ridehal
+namespace QC
 {
 namespace component
 {
@@ -20,25 +20,23 @@ public:
 
     ~CL2DPipelineRemap();
 
-    RideHalError_e Init( uint32_t inputId, cl_kernel *pKernel, CL2DFlex_Config_t *pConfig,
-                         OpenclSrv *pOpenclSrvObj );
+    QCStatus_e Init( uint32_t inputId, cl_kernel *pKernel, CL2DFlex_Config_t *pConfig,
+                     OpenclSrv *pOpenclSrvObj );
 
-    RideHalError_e Deinit();
+    QCStatus_e Deinit();
 
-    RideHalError_e Execute( const RideHal_SharedBuffer_t *pInput,
-                            const RideHal_SharedBuffer_t *pOutput );
+    QCStatus_e Execute( const QCSharedBuffer_t *pInput, const QCSharedBuffer_t *pOutput );
 
-    RideHalError_e ExecuteWithROI( const RideHal_SharedBuffer_t *pInput,
-                                   const RideHal_SharedBuffer_t *pOutput,
-                                   const CL2DFlex_ROIConfig_t *pROIs, const uint32_t numROIs );
+    QCStatus_e ExecuteWithROI( const QCSharedBuffer_t *pInput, const QCSharedBuffer_t *pOutput,
+                               const CL2DFlex_ROIConfig_t *pROIs, const uint32_t numROIs );
 
 private:
-    RideHalError_e RemapFromNV12ToRGB( cl_mem bufferSrc, uint32_t srcOffset, cl_mem bufferDst,
-                                       uint32_t dstOffset, const RideHal_SharedBuffer_t *pInput,
-                                       const RideHal_SharedBuffer_t *pOutput );
-    RideHalError_e RemapFromNV12ToBGR( cl_mem bufferSrc, uint32_t srcOffset, cl_mem bufferDst,
-                                       uint32_t dstOffset, const RideHal_SharedBuffer_t *pInput,
-                                       const RideHal_SharedBuffer_t *pOutput );
+    QCStatus_e RemapFromNV12ToRGB( cl_mem bufferSrc, uint32_t srcOffset, cl_mem bufferDst,
+                                   uint32_t dstOffset, const QCSharedBuffer_t *pInput,
+                                   const QCSharedBuffer_t *pOutput );
+    QCStatus_e RemapFromNV12ToBGR( cl_mem bufferSrc, uint32_t srcOffset, cl_mem bufferDst,
+                                   uint32_t dstOffset, const QCSharedBuffer_t *pInput,
+                                   const QCSharedBuffer_t *pOutput );
 
 private:
     cl_mem m_bufferMapX;
@@ -47,6 +45,6 @@ private:
 };   // class PipelineRemap
 
 }   // namespace component
-}   // namespace ridehal
+}   // namespace QC
 
-#endif   // RIDEHAL_CL2D_PIPELINE_REMAP_HPP
+#endif   // QC_CL2D_PIPELINE_REMAP_HPP

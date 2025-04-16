@@ -3,9 +3,9 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#include "ridehal/sample/SampleTinyViz.hpp"
+#include "QC/sample/SampleTinyViz.hpp"
 
-namespace ridehal
+namespace QC
 {
 namespace sample
 {
@@ -13,29 +13,29 @@ namespace sample
 SampleTinyViz::SampleTinyViz() {}
 SampleTinyViz::~SampleTinyViz() {}
 
-RideHalError_e SampleTinyViz::ParseConfig( SampleConfig_t &config )
+QCStatus_e SampleTinyViz::ParseConfig( SampleConfig_t &config )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     m_winW = Get( config, "winW", 1920 );
     if ( 0 == m_winW )
     {
-        RIDEHAL_ERROR( "invalid winW = %d\n", m_winW );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "invalid winW = %d\n", m_winW );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     m_winH = Get( config, "winH", 1080 );
     if ( 0 == m_winH )
     {
-        RIDEHAL_ERROR( "invalid winH = %d\n", m_winH );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "invalid winH = %d\n", m_winH );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     m_camNames = Get( config, "cameras", m_camNames );
     if ( 0 == m_camNames.size() )
     {
-        RIDEHAL_ERROR( "invalid cameras\n" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "invalid cameras\n" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     uint32_t idx = 0;
@@ -45,8 +45,8 @@ RideHalError_e SampleTinyViz::ParseConfig( SampleConfig_t &config )
                                     "/sensor/camera/" + camName + "/raw" );
         if ( "" == camTopic )
         {
-            RIDEHAL_ERROR( "no cam_topic for camera %s\n", camName.c_str() );
-            ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+            QC_ERROR( "no cam_topic for camera %s\n", camName.c_str() );
+            ret = QC_STATUS_BAD_ARGUMENTS;
         }
         m_camTopicNames.push_back( camTopic );
 
@@ -63,23 +63,23 @@ RideHalError_e SampleTinyViz::ParseConfig( SampleConfig_t &config )
     return ret;
 }
 
-RideHalError_e SampleTinyViz::Init( std::string name, SampleConfig_t &config )
+QCStatus_e SampleTinyViz::Init( std::string name, SampleConfig_t &config )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     ret = SampleIF::Init( name );
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = ParseConfig( config );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         bool bOK = m_tinyViz.init( m_winW, m_winH );
         if ( false == bOK )
         {
-            RIDEHAL_ERROR( "init tinyviz failed\n" );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "init tinyviz failed\n" );
+            ret = QC_STATUS_FAIL;
         }
         else
         {
@@ -90,21 +90,19 @@ RideHalError_e SampleTinyViz::Init( std::string name, SampleConfig_t &config )
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         m_camSubs.resize( m_camNames.size() );
-        for ( uint32_t idx = 0; ( idx < m_camNames.size() ) && ( RIDEHAL_ERROR_NONE == ret );
-              idx++ )
+        for ( uint32_t idx = 0; ( idx < m_camNames.size() ) && ( QC_STATUS_OK == ret ); idx++ )
         {
             ret = m_camSubs[idx].Init( name + "_" + m_camNames[idx], m_camTopicNames[idx], 1 );
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         m_objSubs.resize( m_camNames.size() );
-        for ( uint32_t idx = 0; ( idx < m_camNames.size() ) && ( RIDEHAL_ERROR_NONE == ret );
-              idx++ )
+        for ( uint32_t idx = 0; ( idx < m_camNames.size() ) && ( QC_STATUS_OK == ret ); idx++ )
         {
             if ( "" != m_objTopicNames[idx] )
             {
@@ -116,17 +114,17 @@ RideHalError_e SampleTinyViz::Init( std::string name, SampleConfig_t &config )
     return ret;
 }
 
-RideHalError_e SampleTinyViz::Start()
+QCStatus_e SampleTinyViz::Start()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     if ( !m_tinyViz.start() )
     {
-        RIDEHAL_ERROR( "start tinyviz failed\n" );
-        ret = RIDEHAL_ERROR_FAIL;
+        QC_ERROR( "start tinyviz failed\n" );
+        ret = QC_STATUS_FAIL;
     }
 
     m_stop = false;
-    for ( uint32_t idx = 0; ( idx < m_camNames.size() ) && ( RIDEHAL_ERROR_NONE == ret ); idx++ )
+    for ( uint32_t idx = 0; ( idx < m_camNames.size() ) && ( QC_STATUS_OK == ret ); idx++ )
     {
         std::thread *thread = new std::thread( &SampleTinyViz::CamThreadMain, this, idx );
         if ( nullptr != thread )
@@ -135,9 +133,9 @@ RideHalError_e SampleTinyViz::Start()
         }
         else
         {
-            ret = RIDEHAL_ERROR_NOMEM;
+            ret = QC_STATUS_NOMEM;
         }
-        if ( ( RIDEHAL_ERROR_NONE == ret ) && ( "" != m_objTopicNames[idx] ) )
+        if ( ( QC_STATUS_OK == ret ) && ( "" != m_objTopicNames[idx] ) )
         {
             std::thread *thread = new std::thread( &SampleTinyViz::ObjThreadMain, this, idx );
             if ( nullptr != thread )
@@ -146,7 +144,7 @@ RideHalError_e SampleTinyViz::Start()
             }
             else
             {
-                ret = RIDEHAL_ERROR_NOMEM;
+                ret = QC_STATUS_NOMEM;
             }
         }
     }
@@ -173,8 +171,8 @@ void SampleTinyViz::CamThreadMain( uint32_t idx )
                 batchIndex = 0;
             }
             frame = frames.frames[batchIndex];
-            RIDEHAL_DEBUG( "%s receive frameId %" PRIu64 ", timestamp %" PRIu64 "\n ",
-                           camName.c_str(), frame.frameId, frame.timestamp );
+            QC_DEBUG( "%s receive frameId %" PRIu64 ", timestamp %" PRIu64 "\n ", camName.c_str(),
+                      frame.frameId, frame.timestamp );
             m_tinyViz.addData( camName, frame );
         }
     }
@@ -192,17 +190,17 @@ void SampleTinyViz::ObjThreadMain( uint32_t idx )
         ret = objSub.Receive( objs );
         if ( 0 == ret )
         {
-            RIDEHAL_DEBUG( "%s receive objects for frameId %" PRIu64 ", timestamp %" PRIu64 "\n ",
-                           camName.c_str(), objs.frameId, objs.timestamp );
+            QC_DEBUG( "%s receive objects for frameId %" PRIu64 ", timestamp %" PRIu64 "\n ",
+                      camName.c_str(), objs.frameId, objs.timestamp );
             m_tinyViz.addData( camName, objs );
         }
     }
 }
 
 
-RideHalError_e SampleTinyViz::Stop()
+QCStatus_e SampleTinyViz::Stop()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     m_stop = true;
     for ( auto &th : m_threads )
@@ -220,13 +218,13 @@ RideHalError_e SampleTinyViz::Stop()
     return ret;
 }
 
-RideHalError_e SampleTinyViz::Deinit()
+QCStatus_e SampleTinyViz::Deinit()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     return ret;
 }
 
 REGISTER_SAMPLE( TinyViz, SampleTinyViz );
 
 }   // namespace sample
-}   // namespace ridehal
+}   // namespace QC

@@ -2,8 +2,8 @@
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
-#ifndef RIDEHAL_SAMPLE_TINYVIZ_HPP
-#define RIDEHAL_SAMPLE_TINYVIZ_HPP
+#ifndef QC_SAMPLE_TINYVIZ_HPP
+#define QC_SAMPLE_TINYVIZ_HPP
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 
@@ -11,11 +11,11 @@
 #include "HelpWindow.hpp"
 #include "TinyVizIF.hpp"
 
-#include "ridehal/common/Logger.hpp"
+#include "QC/infras/logger/Logger.hpp"
 
-using namespace ridehal::common;
+using namespace QC::common;
 
-namespace ridehal
+namespace QC
 {
 namespace sample
 {
@@ -37,7 +37,7 @@ public:
     bool addData( const std::string camName, Road2DObjects_t & ) override;
 
 private:
-    uint32_t GetSDLFormat( RideHal_ImageFormat_e format );
+    uint32_t GetSDLFormat( QCImageFormat_e format );
     bool isCamSelected( size_t id );
     void rendererThread();
     void setAllCamActive();
@@ -77,10 +77,10 @@ private:
 
     std::unique_ptr<std::thread> m_RendererThread;
 
-    RIDEHAL_DECLARE_LOGGER();
+    QC_DECLARE_LOGGER();
 };
 
 }   // namespace sample
-}   // namespace ridehal
+}   // namespace QC
 
-#endif   // #ifndef RIDEHAL_SAMPLE_TINYVIZ_HPP
+#endif   // #ifndef QC_SAMPLE_TINYVIZ_HPP

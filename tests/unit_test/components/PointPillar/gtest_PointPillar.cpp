@@ -3,19 +3,19 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#include "ridehal/component/PostCenterPoint.hpp"
-#include "ridehal/component/Voxelization.hpp"
+#include "QC/component/PostCenterPoint.hpp"
+#include "QC/component/Voxelization.hpp"
 #include "gtest/gtest.h"
 #include <chrono>
 #include <cstdlib>
 #include <stdio.h>
 #include <unistd.h>
 
-using namespace ridehal::common;
-using namespace ridehal::component;
+using namespace QC::common;
+using namespace QC::component;
 
 static Voxelization_Config_t plrPreConfig0 = {
-        RIDEHAL_PROCESSOR_HTP0,
+        QC_PROCESSOR_HTP0,
         0.16,
         0.16,
         4.0, /* pillar size: x, y, z */
@@ -33,7 +33,7 @@ static Voxelization_Config_t plrPreConfig0 = {
 };
 
 static Voxelization_Config_t plrPreConfig1 = {
-        RIDEHAL_PROCESSOR_HTP0,
+        QC_PROCESSOR_HTP0,
         0.2,
         0.2,
         5.0, /* pillar size: x, y, z */
@@ -51,7 +51,7 @@ static Voxelization_Config_t plrPreConfig1 = {
 };
 
 static Voxelization_Config_t plrPreConfig2 = {
-        RIDEHAL_PROCESSOR_GPU,
+        QC_PROCESSOR_GPU,
         0.2,
         0.2,
         8.0, /* pillar size: x, y, z */
@@ -70,7 +70,7 @@ static Voxelization_Config_t plrPreConfig2 = {
 };
 
 static PostCenterPoint_Config_t plrPostConfig0 = {
-        RIDEHAL_PROCESSOR_HTP0,
+        QC_PROCESSOR_HTP0,
         0.16,
         0.16, /* pillar size: x, y */
         0.0,
@@ -90,7 +90,7 @@ static PostCenterPoint_Config_t plrPostConfig0 = {
 };
 
 static PostCenterPoint_Config_t plrPostConfig1 = {
-        RIDEHAL_PROCESSOR_HTP0,
+        QC_PROCESSOR_HTP0,
         0.2,
         0.2, /* pillar size: x, y */
         -2.0,
@@ -165,25 +165,25 @@ static void SaveRaw( std::string path, void *pData, size_t size )
 }
 
 
-static void SANITY_Voxelization( RideHal_ProcessorType_e processor, Voxelization_Config_t &cfg,
+static void SANITY_Voxelization( QCProcessorType_e processor, Voxelization_Config_t &cfg,
                                  const char *pcdFile = nullptr, bool bDumpOutput = false,
                                  bool bPerformanceTest = false, int times = 100 )
 {
     Voxelization_Config_t config = cfg;
     config.processor = processor;
     Voxelization plrPre;
-    RideHalError_e ret;
+    QCStatus_e ret;
 
-    RideHal_TensorProps_t inPtsTsProp = {
-            RIDEHAL_TENSOR_TYPE_FLOAT_32,
+    QCTensorProps_t inPtsTsProp = {
+            QC_TENSOR_TYPE_FLOAT_32,
             { config.maxNumInPts, config.numInFeatureDim, 0 },
             2,
     };
-    RideHal_TensorProps_t outPlrsTsProp;
+    QCTensorProps_t outPlrsTsProp;
     if ( ( VOXELIZATION_INPUT_XYZRT == config.inputMode ) )
     {
         outPlrsTsProp = {
-                RIDEHAL_TENSOR_TYPE_INT_32,
+                QC_TENSOR_TYPE_INT_32,
                 { config.maxNumPlrs, 2, 0 },
                 2,
         };
@@ -191,23 +191,23 @@ static void SANITY_Voxelization( RideHal_ProcessorType_e processor, Voxelization
     else
     {
         outPlrsTsProp = {
-                RIDEHAL_TENSOR_TYPE_FLOAT_32,
+                QC_TENSOR_TYPE_FLOAT_32,
                 { config.maxNumPlrs, VOXELIZATION_PILLAR_COORDS_DIM, 0 },
                 2,
         };
     }
-    RideHal_TensorProps_t outFeatureTsProp = {
-            RIDEHAL_TENSOR_TYPE_FLOAT_32,
+    QCTensorProps_t outFeatureTsProp = {
+            QC_TENSOR_TYPE_FLOAT_32,
             { config.maxNumPlrs, config.maxNumPtsPerPlr, config.numOutFeatureDim, 0 },
             3,
     };
 
-    RideHal_SharedBuffer_t inPts;
-    RideHal_SharedBuffer_t outPlrs;
-    RideHal_SharedBuffer_t outFeature;
+    QCSharedBuffer_t inPts;
+    QCSharedBuffer_t outPlrs;
+    QCSharedBuffer_t outFeature;
 
     ret = inPts.Allocate( &inPtsTsProp );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     uint32_t numPts = 0;
     if ( nullptr == pcdFile )
@@ -222,16 +222,16 @@ static void SANITY_Voxelization( RideHal_ProcessorType_e processor, Voxelization
     inPts.tensorProps.dims[0] = numPts;
 
     ret = outPlrs.Allocate( &outPlrsTsProp );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = outFeature.Allocate( &outFeatureTsProp );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = plrPre.Init( "PLRPRE0", &config, LOGGER_LEVEL_INFO );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = plrPre.Start();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     if ( bPerformanceTest )
     {
@@ -248,7 +248,7 @@ static void SANITY_Voxelization( RideHal_ProcessorType_e processor, Voxelization
     {
         ret = plrPre.Execute( &inPts, &outPlrs, &outFeature );
     }
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     if ( bDumpOutput )
     {
@@ -257,54 +257,54 @@ static void SANITY_Voxelization( RideHal_ProcessorType_e processor, Voxelization
     }
 
     ret = plrPre.Stop();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = plrPre.Deinit();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = outPlrs.Free();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = outFeature.Free();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 }
 
 TEST( FadasPlr, SANITY_VoxelizationGPU )
 {
-    SANITY_Voxelization( RIDEHAL_PROCESSOR_GPU, plrPreConfig0 );
-    SANITY_Voxelization( RIDEHAL_PROCESSOR_GPU, plrPreConfig1 );
+    SANITY_Voxelization( QC_PROCESSOR_GPU, plrPreConfig0 );
+    SANITY_Voxelization( QC_PROCESSOR_GPU, plrPreConfig1 );
 
-    SANITY_Voxelization( RIDEHAL_PROCESSOR_GPU, plrPreConfig0, "data/test/plr/pointcloud.bin",
-                         false, true, 100 );
-    SANITY_Voxelization( RIDEHAL_PROCESSOR_GPU, plrPreConfig1, "data/test/plr/pointcloud.bin",
-                         false, true, 100 );
-    SANITY_Voxelization( RIDEHAL_PROCESSOR_GPU, plrPreConfig2, "data/test/plr/pointcloud_XYZRT.bin",
+    SANITY_Voxelization( QC_PROCESSOR_GPU, plrPreConfig0, "data/test/plr/pointcloud.bin", false,
+                         true, 100 );
+    SANITY_Voxelization( QC_PROCESSOR_GPU, plrPreConfig1, "data/test/plr/pointcloud.bin", false,
+                         true, 100 );
+    SANITY_Voxelization( QC_PROCESSOR_GPU, plrPreConfig2, "data/test/plr/pointcloud_XYZRT.bin",
                          false, true, 100 );
 }
 
 TEST( FadasPlr, SANITY_VoxelizationCPU )
 {
-    SANITY_Voxelization( RIDEHAL_PROCESSOR_CPU, plrPreConfig0 );
-    SANITY_Voxelization( RIDEHAL_PROCESSOR_CPU, plrPreConfig1 );
+    SANITY_Voxelization( QC_PROCESSOR_CPU, plrPreConfig0 );
+    SANITY_Voxelization( QC_PROCESSOR_CPU, plrPreConfig1 );
 
-    SANITY_Voxelization( RIDEHAL_PROCESSOR_CPU, plrPreConfig0, "data/test/plr/pointcloud.bin" );
-    SANITY_Voxelization( RIDEHAL_PROCESSOR_CPU, plrPreConfig1, "data/test/plr/pointcloud.bin" );
+    SANITY_Voxelization( QC_PROCESSOR_CPU, plrPreConfig0, "data/test/plr/pointcloud.bin" );
+    SANITY_Voxelization( QC_PROCESSOR_CPU, plrPreConfig1, "data/test/plr/pointcloud.bin" );
 }
 
 TEST( FadasPlr, SANITY_VoxelizationDSP )
 {
-    SANITY_Voxelization( RIDEHAL_PROCESSOR_HTP0, plrPreConfig0 );
-    SANITY_Voxelization( RIDEHAL_PROCESSOR_HTP0, plrPreConfig1 );
+    SANITY_Voxelization( QC_PROCESSOR_HTP0, plrPreConfig0 );
+    SANITY_Voxelization( QC_PROCESSOR_HTP0, plrPreConfig1 );
 
 
-    SANITY_Voxelization( RIDEHAL_PROCESSOR_HTP0, plrPreConfig0, "data/test/plr/pointcloud.bin",
-                         false, true, 100 );
-    SANITY_Voxelization( RIDEHAL_PROCESSOR_HTP0, plrPreConfig1, "data/test/plr/pointcloud.bin",
-                         false, true, 100 );
+    SANITY_Voxelization( QC_PROCESSOR_HTP0, plrPreConfig0, "data/test/plr/pointcloud.bin", false,
+                         true, 100 );
+    SANITY_Voxelization( QC_PROCESSOR_HTP0, plrPreConfig1, "data/test/plr/pointcloud.bin", false,
+                         true, 100 );
 }
 
 
-void SANITY_PostCenterPoint( RideHal_ProcessorType_e processor, PostCenterPoint_Config_t &cfg,
+void SANITY_PostCenterPoint( QCProcessorType_e processor, PostCenterPoint_Config_t &cfg,
                              const char *pcdFile, const char *hmFile, const char *xyFile,
                              const char *zFile, const char *sizeFile, const char *thetaFile,
                              bool bDumpOutput = false )
@@ -312,7 +312,7 @@ void SANITY_PostCenterPoint( RideHal_ProcessorType_e processor, PostCenterPoint_
     PostCenterPoint_Config_t config = cfg;
     PostCenterPoint plrPost;
     config.processor = processor;
-    RideHalError_e ret;
+    QCStatus_e ret;
 
     uint32_t numCellsX =
             ( uint32_t )( ( config.maxXRange - config.minXRange ) / config.pillarXSize );
@@ -321,89 +321,89 @@ void SANITY_PostCenterPoint( RideHal_ProcessorType_e processor, PostCenterPoint_
 
     uint32_t width = numCellsX / config.stride;
     uint32_t height = numCellsY / config.stride;
-    RideHal_TensorProps_t inPtsTsProp = {
-            RIDEHAL_TENSOR_TYPE_FLOAT_32,
+    QCTensorProps_t inPtsTsProp = {
+            QC_TENSOR_TYPE_FLOAT_32,
             { config.maxNumInPts, config.numInFeatureDim, 0 },
             2,
     };
-    RideHal_TensorProps_t hmTsProp = {
-            RIDEHAL_TENSOR_TYPE_FLOAT_32,
+    QCTensorProps_t hmTsProp = {
+            QC_TENSOR_TYPE_FLOAT_32,
             { 1, height, width, config.numClass },
             4,
     };
-    RideHal_TensorProps_t xyTsProp = {
-            RIDEHAL_TENSOR_TYPE_FLOAT_32,
+    QCTensorProps_t xyTsProp = {
+            QC_TENSOR_TYPE_FLOAT_32,
             { 1, height, width, 2 },
             4,
     };
-    RideHal_TensorProps_t zTsProp = {
-            RIDEHAL_TENSOR_TYPE_FLOAT_32,
+    QCTensorProps_t zTsProp = {
+            QC_TENSOR_TYPE_FLOAT_32,
             { 1, height, width, 1 },
             4,
     };
-    RideHal_TensorProps_t sizeTsProp = {
-            RIDEHAL_TENSOR_TYPE_FLOAT_32,
+    QCTensorProps_t sizeTsProp = {
+            QC_TENSOR_TYPE_FLOAT_32,
             { 1, height, width, 3 },
             4,
     };
-    RideHal_TensorProps_t thetaTsProp = {
-            RIDEHAL_TENSOR_TYPE_FLOAT_32,
+    QCTensorProps_t thetaTsProp = {
+            QC_TENSOR_TYPE_FLOAT_32,
             { 1, height, width, 2 },
             4,
     };
-    RideHal_TensorProps_t detTsProp = {
-            RIDEHAL_TENSOR_TYPE_FLOAT_32,
+    QCTensorProps_t detTsProp = {
+            QC_TENSOR_TYPE_FLOAT_32,
             { config.maxNumDetOut, POSTCENTERPOINT_OBJECT_3D_DIM },
             2,
     };
 
-    RideHal_SharedBuffer_t inPts;
-    RideHal_SharedBuffer_t hm;
-    RideHal_SharedBuffer_t xy;
-    RideHal_SharedBuffer_t z;
-    RideHal_SharedBuffer_t size;
-    RideHal_SharedBuffer_t theta;
-    RideHal_SharedBuffer_t det;
+    QCSharedBuffer_t inPts;
+    QCSharedBuffer_t hm;
+    QCSharedBuffer_t xy;
+    QCSharedBuffer_t z;
+    QCSharedBuffer_t size;
+    QCSharedBuffer_t theta;
+    QCSharedBuffer_t det;
 
     ret = inPts.Allocate( &inPtsTsProp );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     uint32_t numPts = 0;
     LoadPoints( inPts.data(), inPts.size, numPts, pcdFile );
     inPts.tensorProps.dims[0] = numPts;
 
     ret = hm.Allocate( &hmTsProp );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
     LoadRaw( hm.data(), hm.size, hmFile );
 
     ret = xy.Allocate( &xyTsProp );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
     LoadRaw( xy.data(), xy.size, xyFile );
 
     ret = z.Allocate( &zTsProp );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
     LoadRaw( z.data(), z.size, zFile );
 
     ret = size.Allocate( &sizeTsProp );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
     LoadRaw( size.data(), size.size, sizeFile );
 
     ret = theta.Allocate( &thetaTsProp );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
     LoadRaw( theta.data(), theta.size, thetaFile );
 
     ret = det.Allocate( &detTsProp );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = plrPost.Init( "PLRPOST0", &config, LOGGER_LEVEL_INFO );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = plrPost.Start();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     det.tensorProps.dims[0] = config.maxNumDetOut;
     ret = plrPost.Execute( &hm, &xy, &z, &size, &theta, &inPts, &det );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     PostCenterPoint_Object3D_t *pObj = (PostCenterPoint_Object3D_t *) det.data();
     for ( uint32_t i = 0; i < det.tensorProps.dims[0]; i++ )
@@ -430,36 +430,36 @@ void SANITY_PostCenterPoint( RideHal_ProcessorType_e processor, PostCenterPoint_
     }
 
     ret = plrPost.Stop();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = plrPost.Deinit();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = inPts.Free();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
     ret = hm.Free();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
     ret = xy.Free();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
     ret = z.Free();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
     ret = size.Free();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
     ret = theta.Free();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
     ret = det.Free();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 }
 
 TEST( FadasPlr, SANITY_PostCenterPointCPU )
 {
-    SANITY_PostCenterPoint( RIDEHAL_PROCESSOR_CPU, plrPostConfig0, "data/test/plr/CFG0/000008.bin",
+    SANITY_PostCenterPoint( QC_PROCESSOR_CPU, plrPostConfig0, "data/test/plr/CFG0/000008.bin",
                             "data/test/plr/CFG0/hm-activation-0-inf-1.bin",
                             "data/test/plr/CFG0/center-activation-0-inf-1.bin",
                             "data/test/plr/CFG0/center_z-activation-0-inf-1.bin",
                             "data/test/plr/CFG0/dim_exp-activation-0-inf-1.bin",
                             "data/test/plr/CFG0/rot-activation-0-inf-1.bin" );
-    SANITY_PostCenterPoint( RIDEHAL_PROCESSOR_CPU, plrPostConfig1, "data/test/plr/pointcloud.bin",
+    SANITY_PostCenterPoint( QC_PROCESSOR_CPU, plrPostConfig1, "data/test/plr/pointcloud.bin",
                             "data/test/plr/hm-activation-0-inf-1.bin",
                             "data/test/plr/reg-activation-0-inf-1.bin",
                             "data/test/plr/height-activation-0-inf-1.bin",
@@ -469,13 +469,13 @@ TEST( FadasPlr, SANITY_PostCenterPointCPU )
 
 TEST( FadasPlr, SANITY_PostCenterPointDSP )
 {
-    SANITY_PostCenterPoint( RIDEHAL_PROCESSOR_HTP0, plrPostConfig0, "data/test/plr/CFG0/000008.bin",
+    SANITY_PostCenterPoint( QC_PROCESSOR_HTP0, plrPostConfig0, "data/test/plr/CFG0/000008.bin",
                             "data/test/plr/CFG0/hm-activation-0-inf-1.bin",
                             "data/test/plr/CFG0/center-activation-0-inf-1.bin",
                             "data/test/plr/CFG0/center_z-activation-0-inf-1.bin",
                             "data/test/plr/CFG0/dim_exp-activation-0-inf-1.bin",
                             "data/test/plr/CFG0/rot-activation-0-inf-1.bin" );
-    SANITY_PostCenterPoint( RIDEHAL_PROCESSOR_HTP0, plrPostConfig1, "data/test/plr/pointcloud.bin",
+    SANITY_PostCenterPoint( QC_PROCESSOR_HTP0, plrPostConfig1, "data/test/plr/pointcloud.bin",
                             "data/test/plr/hm-activation-0-inf-1.bin",
                             "data/test/plr/reg-activation-0-inf-1.bin",
                             "data/test/plr/height-activation-0-inf-1.bin",
@@ -484,7 +484,7 @@ TEST( FadasPlr, SANITY_PostCenterPointDSP )
 }
 
 
-static void FadasPlr_E2E_PreProc( RideHal_ProcessorType_e processor, Voxelization_Config_t &cfg )
+static void FadasPlr_E2E_PreProc( QCProcessorType_e processor, Voxelization_Config_t &cfg )
 {
     int exist = access( "/tmp/pointcloud.bin", F_OK );
     if ( 0 == exist )
@@ -497,8 +497,7 @@ static void FadasPlr_E2E_PreProc( RideHal_ProcessorType_e processor, Voxelizatio
     }
 }
 
-static void FadasPlr_E2E_PostProc( RideHal_ProcessorType_e processor,
-                                   PostCenterPoint_Config_t &cfg )
+static void FadasPlr_E2E_PostProc( QCProcessorType_e processor, PostCenterPoint_Config_t &cfg )
 {
     int exist = access( "/tmp/pointcloud.bin", F_OK );
     exist |= access( "/tmp/hm.raw", F_OK );
@@ -516,332 +515,332 @@ static void FadasPlr_E2E_PostProc( RideHal_ProcessorType_e processor,
 
 TEST( FadasPlr, E2E_CFG0_PreProcCPU )
 {
-    FadasPlr_E2E_PreProc( RIDEHAL_PROCESSOR_CPU, plrPreConfig0 );
+    FadasPlr_E2E_PreProc( QC_PROCESSOR_CPU, plrPreConfig0 );
 }
 
 TEST( FadasPlr, E2E_CFG0_PostProcCPU )
 {
-    FadasPlr_E2E_PostProc( RIDEHAL_PROCESSOR_CPU, plrPostConfig0 );
+    FadasPlr_E2E_PostProc( QC_PROCESSOR_CPU, plrPostConfig0 );
 }
 
 TEST( FadasPlr, E2E_CFG0_PreProcDSP )
 {
-    FadasPlr_E2E_PreProc( RIDEHAL_PROCESSOR_HTP0, plrPreConfig0 );
+    FadasPlr_E2E_PreProc( QC_PROCESSOR_HTP0, plrPreConfig0 );
 }
 
 TEST( FadasPlr, E2E_CFG0_PostProcDSP )
 {
-    FadasPlr_E2E_PostProc( RIDEHAL_PROCESSOR_HTP0, plrPostConfig0 );
+    FadasPlr_E2E_PostProc( QC_PROCESSOR_HTP0, plrPostConfig0 );
 }
 
 TEST( FadasPlr, E2E_CFG1_PreProcCPU )
 {
-    FadasPlr_E2E_PreProc( RIDEHAL_PROCESSOR_CPU, plrPreConfig1 );
+    FadasPlr_E2E_PreProc( QC_PROCESSOR_CPU, plrPreConfig1 );
 }
 
 TEST( FadasPlr, E2E_CFG1_PostProcCPU )
 {
-    FadasPlr_E2E_PostProc( RIDEHAL_PROCESSOR_CPU, plrPostConfig1 );
+    FadasPlr_E2E_PostProc( QC_PROCESSOR_CPU, plrPostConfig1 );
 }
 
 TEST( FadasPlr, E2E_CFG1_PreProcDSP )
 {
-    FadasPlr_E2E_PreProc( RIDEHAL_PROCESSOR_HTP0, plrPreConfig1 );
+    FadasPlr_E2E_PreProc( QC_PROCESSOR_HTP0, plrPreConfig1 );
 }
 
 TEST( FadasPlr, E2E_CFG1_PostProcDSP )
 {
-    FadasPlr_E2E_PostProc( RIDEHAL_PROCESSOR_HTP0, plrPostConfig1 );
+    FadasPlr_E2E_PostProc( QC_PROCESSOR_HTP0, plrPostConfig1 );
 }
 
 TEST( FadasPlr, L2_Voxelization )
 {
     {
         Voxelization plrPre;
-        RideHalError_e ret;
+        QCStatus_e ret;
 
         ret = plrPre.Init( "PLR0PRE", nullptr, LOGGER_LEVEL_ERROR );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         Voxelization_Config_t config = plrPreConfig0;
-        config.processor = RIDEHAL_PROCESSOR_MAX;
+        config.processor = QC_PROCESSOR_MAX;
         ret = plrPre.Init( "PLR0PRE", &config, LOGGER_LEVEL_ERROR );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
-        config.processor = RIDEHAL_PROCESSOR_CPU;
+        config.processor = QC_PROCESSOR_CPU;
         config.numOutFeatureDim = 0;
         ret = plrPre.Init( "PLR0PRE", &config, LOGGER_LEVEL_ERROR );
-        ASSERT_EQ( RIDEHAL_ERROR_FAIL, ret );
+        ASSERT_EQ( QC_STATUS_FAIL, ret );
 
-        config.processor = RIDEHAL_PROCESSOR_HTP0;
+        config.processor = QC_PROCESSOR_HTP0;
         config.numOutFeatureDim = 0;
         ret = plrPre.Init( "PLR0PRE", &config, LOGGER_LEVEL_ERROR );
-        ASSERT_EQ( RIDEHAL_ERROR_FAIL, ret );
+        ASSERT_EQ( QC_STATUS_FAIL, ret );
 
         ret = plrPre.Start();
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
         ret = plrPre.Stop();
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
         ret = plrPre.Deinit();
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
     }
 
-    RideHal_ProcessorType_e processors[2] = { RIDEHAL_PROCESSOR_HTP0, RIDEHAL_PROCESSOR_CPU };
+    QCProcessorType_e processors[2] = { QC_PROCESSOR_HTP0, QC_PROCESSOR_CPU };
     for ( int i = 0; i < 2; i++ )
     {
         Voxelization plrPre;
-        RideHalError_e ret;
+        QCStatus_e ret;
         Voxelization_Config_t config = plrPreConfig0;
         config.processor = processors[i];
 
-        RideHal_TensorProps_t inPtsTsProp = {
-                RIDEHAL_TENSOR_TYPE_FLOAT_32,
+        QCTensorProps_t inPtsTsProp = {
+                QC_TENSOR_TYPE_FLOAT_32,
                 { config.maxNumInPts, config.numInFeatureDim, 0 },
                 2,
         };
-        RideHal_TensorProps_t outPlrsTsProp = {
-                RIDEHAL_TENSOR_TYPE_FLOAT_32,
+        QCTensorProps_t outPlrsTsProp = {
+                QC_TENSOR_TYPE_FLOAT_32,
                 { config.maxNumPlrs, VOXELIZATION_PILLAR_COORDS_DIM, 0 },
                 2,
         };
-        RideHal_TensorProps_t outFeatureTsProp = {
-                RIDEHAL_TENSOR_TYPE_FLOAT_32,
+        QCTensorProps_t outFeatureTsProp = {
+                QC_TENSOR_TYPE_FLOAT_32,
                 { config.maxNumPlrs, config.maxNumPtsPerPlr, config.numOutFeatureDim, 0 },
                 3,
         };
 
-        RideHal_SharedBuffer_t inPts;
-        RideHal_SharedBuffer_t outPlrs;
-        RideHal_SharedBuffer_t outFeature;
+        QCSharedBuffer_t inPts;
+        QCSharedBuffer_t outPlrs;
+        QCSharedBuffer_t outFeature;
 
         ret = inPts.Allocate( &inPtsTsProp );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = outPlrs.Allocate( &outPlrsTsProp );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = outFeature.Allocate( &outFeatureTsProp );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = plrPre.RegisterBuffers( &inPts, 1, FADAS_BUF_TYPE_IN );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
         ret = plrPre.RegisterBuffers( &outPlrs, 1, FADAS_BUF_TYPE_OUT );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
         ret = plrPre.DeRegisterBuffers( &inPts, 1 );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
         ret = plrPre.Execute( &inPts, &outPlrs, &outFeature );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
         ret = plrPre.Init( "PLR0PRE", &config, LOGGER_LEVEL_ERROR );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = plrPre.Init( "PLR0PRE", &config, LOGGER_LEVEL_ERROR );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
         ret = plrPre.RegisterBuffers( &inPts, 1, FADAS_BUF_TYPE_IN );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
         ret = plrPre.RegisterBuffers( &outPlrs, 1, FADAS_BUF_TYPE_OUT );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
         ret = plrPre.RegisterBuffers( &outFeature, 1, FADAS_BUF_TYPE_OUT );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = plrPre.RegisterBuffers( nullptr, 1, FADAS_BUF_TYPE_OUT );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         std::vector<uint8_t> inPtsNonDmaMem;
         inPtsNonDmaMem.resize( inPts.size );
-        RideHal_SharedBuffer_t inPtsNonDma = inPts;
+        QCSharedBuffer_t inPtsNonDma = inPts;
         inPtsNonDma.buffer.pData = inPtsNonDmaMem.data();
         ret = plrPre.RegisterBuffers( &inPtsNonDma, 1, FADAS_BUF_TYPE_IN );
-        if ( RIDEHAL_PROCESSOR_CPU == config.processor )
+        if ( QC_PROCESSOR_CPU == config.processor )
         {
-            ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+            ASSERT_EQ( QC_STATUS_OK, ret );
         }
         else
         {
-            ASSERT_EQ( RIDEHAL_ERROR_FAIL, ret );
+            ASSERT_EQ( QC_STATUS_FAIL, ret );
         }
 
-        RideHal_SharedBuffer_t inPtsNonTensor = inPts;
-        inPtsNonTensor.type = RIDEHAL_BUFFER_TYPE_RAW;
+        QCSharedBuffer_t inPtsNonTensor = inPts;
+        inPtsNonTensor.type = QC_BUFFER_TYPE_RAW;
         ret = plrPre.RegisterBuffers( &inPtsNonTensor, 1, FADAS_BUF_TYPE_IN );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         ret = plrPre.DeRegisterBuffers( &inPtsNonTensor, 1 );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         ret = plrPre.DeRegisterBuffers( &inPts, 1 );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
         ret = plrPre.DeRegisterBuffers( &outPlrs, 1 );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
         ret = plrPre.DeRegisterBuffers( &outFeature, 1 );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = plrPre.DeRegisterBuffers( nullptr, 1 );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         ret = plrPre.Start();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = plrPre.RegisterBuffers( &inPts, 1, FADAS_BUF_TYPE_IN );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
         ret = plrPre.DeRegisterBuffers( &inPts, 1 );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = plrPre.Execute( nullptr, &outPlrs, &outFeature );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
         ret = plrPre.Execute( &inPts, nullptr, &outFeature );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
         ret = plrPre.Execute( &inPts, &outPlrs, nullptr );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
-        RideHal_SharedBuffer_t inPtsWrong = inPts;
-        inPtsWrong.type = RIDEHAL_BUFFER_TYPE_RAW;
+        QCSharedBuffer_t inPtsWrong = inPts;
+        inPtsWrong.type = QC_BUFFER_TYPE_RAW;
         ret = plrPre.Execute( &inPtsWrong, &outPlrs, &outFeature );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         inPtsWrong = inPts;
         inPtsWrong.buffer.pData = nullptr;
         ret = plrPre.Execute( &inPtsWrong, &outPlrs, &outFeature );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         inPtsWrong = inPts;
         inPtsWrong.tensorProps.numDims = 3;
         ret = plrPre.Execute( &inPtsWrong, &outPlrs, &outFeature );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         inPtsWrong = inPts;
-        inPtsWrong.tensorProps.type = RIDEHAL_TENSOR_TYPE_FLOAT_16;
+        inPtsWrong.tensorProps.type = QC_TENSOR_TYPE_FLOAT_16;
         ret = plrPre.Execute( &inPtsWrong, &outPlrs, &outFeature );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         inPtsWrong = inPts;
         inPtsWrong.tensorProps.dims[1] = 35;
         ret = plrPre.Execute( &inPtsWrong, &outPlrs, &outFeature );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
-        RideHal_SharedBuffer_t outPlrsWrong = outPlrs;
-        outPlrsWrong.type = RIDEHAL_BUFFER_TYPE_RAW;
+        QCSharedBuffer_t outPlrsWrong = outPlrs;
+        outPlrsWrong.type = QC_BUFFER_TYPE_RAW;
         ret = plrPre.Execute( &inPts, &outPlrsWrong, &outFeature );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         outPlrsWrong = outPlrs;
         outPlrsWrong.buffer.pData = nullptr;
         ret = plrPre.Execute( &inPts, &outPlrsWrong, &outFeature );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         outPlrsWrong = outPlrs;
         outPlrsWrong.tensorProps.numDims = 3;
         ret = plrPre.Execute( &inPts, &outPlrsWrong, &outFeature );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         outPlrsWrong = outPlrs;
-        outPlrsWrong.tensorProps.type = RIDEHAL_TENSOR_TYPE_FLOAT_16;
+        outPlrsWrong.tensorProps.type = QC_TENSOR_TYPE_FLOAT_16;
         ret = plrPre.Execute( &inPts, &outPlrsWrong, &outFeature );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         outPlrsWrong = outPlrs;
         outPlrsWrong.tensorProps.dims[0] = 16;
         ret = plrPre.Execute( &inPts, &outPlrsWrong, &outFeature );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         outPlrsWrong = outPlrs;
         outPlrsWrong.tensorProps.dims[1] = 35;
         ret = plrPre.Execute( &inPts, &outPlrsWrong, &outFeature );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
-        RideHal_SharedBuffer_t outFeatureWrong = outFeature;
-        outFeatureWrong.type = RIDEHAL_BUFFER_TYPE_RAW;
+        QCSharedBuffer_t outFeatureWrong = outFeature;
+        outFeatureWrong.type = QC_BUFFER_TYPE_RAW;
         ret = plrPre.Execute( &inPts, &outPlrs, &outFeatureWrong );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         outFeatureWrong = outFeature;
         outFeatureWrong.buffer.pData = nullptr;
         ret = plrPre.Execute( &inPts, &outPlrs, &outFeatureWrong );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         outFeatureWrong = outFeature;
         outFeatureWrong.tensorProps.numDims = 2;
         ret = plrPre.Execute( &inPts, &outPlrs, &outFeatureWrong );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         outFeatureWrong = outFeature;
-        outFeatureWrong.tensorProps.type = RIDEHAL_TENSOR_TYPE_FLOAT_16;
+        outFeatureWrong.tensorProps.type = QC_TENSOR_TYPE_FLOAT_16;
         ret = plrPre.Execute( &inPts, &outPlrs, &outFeatureWrong );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         outFeatureWrong = outFeature;
         outFeatureWrong.tensorProps.dims[0] = 16;
         ret = plrPre.Execute( &inPts, &outPlrs, &outFeatureWrong );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         outFeatureWrong = outFeature;
         outFeatureWrong.tensorProps.dims[1] = 35;
         ret = plrPre.Execute( &inPts, &outPlrs, &outFeatureWrong );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         outFeatureWrong = outFeature;
         outFeatureWrong.tensorProps.dims[2] = 18;
         ret = plrPre.Execute( &inPts, &outPlrs, &outFeatureWrong );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         ret = plrPre.Stop();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = plrPre.Deinit();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
     }
 }
 
 TEST( FadasPlr, L2_FadasPlrPreProc )
 {
-    RideHal_ProcessorType_e processors[2] = { RIDEHAL_PROCESSOR_HTP0, RIDEHAL_PROCESSOR_CPU };
+    QCProcessorType_e processors[2] = { QC_PROCESSOR_HTP0, QC_PROCESSOR_CPU };
     for ( int i = 0; i < 2; i++ )
     {
         FadasPlrPreProc plrPre;
-        RideHalError_e ret;
+        QCStatus_e ret;
         Voxelization_Config_t config = plrPreConfig0;
 
-        RideHal_TensorProps_t inPtsTsProp = {
-                RIDEHAL_TENSOR_TYPE_FLOAT_32,
+        QCTensorProps_t inPtsTsProp = {
+                QC_TENSOR_TYPE_FLOAT_32,
                 { config.maxNumInPts, config.numInFeatureDim, 0 },
                 2,
         };
-        RideHal_TensorProps_t outPlrsTsProp = {
-                RIDEHAL_TENSOR_TYPE_FLOAT_32,
+        QCTensorProps_t outPlrsTsProp = {
+                QC_TENSOR_TYPE_FLOAT_32,
                 { config.maxNumPlrs, VOXELIZATION_PILLAR_COORDS_DIM, 0 },
                 2,
         };
-        RideHal_TensorProps_t outFeatureTsProp = {
-                RIDEHAL_TENSOR_TYPE_FLOAT_32,
+        QCTensorProps_t outFeatureTsProp = {
+                QC_TENSOR_TYPE_FLOAT_32,
                 { config.maxNumPlrs, config.maxNumPtsPerPlr, config.numOutFeatureDim, 0 },
                 3,
         };
 
-        RideHal_SharedBuffer_t inPts;
-        RideHal_SharedBuffer_t outPlrs;
-        RideHal_SharedBuffer_t outFeature;
+        QCSharedBuffer_t inPts;
+        QCSharedBuffer_t outPlrs;
+        QCSharedBuffer_t outFeature;
 
         ret = inPts.Allocate( &inPtsTsProp );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = outPlrs.Allocate( &outPlrsTsProp );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = outFeature.Allocate( &outFeatureTsProp );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = plrPre.Init( processors[i], "PLRPRE0", LOGGER_LEVEL_ERROR );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = plrPre.PointPillarRun( &inPts, &outPlrs, &outFeature );
-        ASSERT_EQ( RIDEHAL_ERROR_FAIL, ret );
+        ASSERT_EQ( QC_STATUS_FAIL, ret );
 
         ret = plrPre.CreatePreProc();
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
         config.numOutFeatureDim = 0;
         ret = plrPre.SetParams( config.pillarXSize, config.pillarYSize, config.pillarZSize,
@@ -849,13 +848,13 @@ TEST( FadasPlr, L2_FadasPlrPreProc )
                                 config.maxXRange, config.maxYRange, config.maxZRange,
                                 config.maxNumInPts, config.numInFeatureDim, config.maxNumPlrs,
                                 config.maxNumPtsPerPlr, config.numOutFeatureDim );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = plrPre.CreatePreProc();
-        ASSERT_EQ( RIDEHAL_ERROR_FAIL, ret );
+        ASSERT_EQ( QC_STATUS_FAIL, ret );
 
         ret = plrPre.DestroyPreProc();
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
         config = plrPreConfig0;
         ret = plrPre.SetParams( config.pillarXSize, config.pillarYSize, config.pillarZSize,
@@ -863,28 +862,28 @@ TEST( FadasPlr, L2_FadasPlrPreProc )
                                 config.maxXRange, config.maxYRange, config.maxZRange,
                                 config.maxNumInPts, config.numInFeatureDim, config.maxNumPlrs,
                                 config.maxNumPtsPerPlr, config.numOutFeatureDim );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = plrPre.CreatePreProc();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = plrPre.PointPillarRun( &inPts, &outPlrs, &outFeature );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = plrPre.PointPillarRun( nullptr, &outPlrs, &outFeature );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         ret = plrPre.PointPillarRun( &inPts, nullptr, &outFeature );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         ret = plrPre.PointPillarRun( &inPts, &outPlrs, nullptr );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         ret = plrPre.DestroyPreProc();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = plrPre.Deinit();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
     }
 }
 
@@ -893,56 +892,56 @@ TEST( FadasPlr, L2_PostCenterPoint )
     {
         PostCenterPoint_Config_t config = plrPostConfig0;
         PostCenterPoint plrPost;
-        RideHalError_e ret;
+        QCStatus_e ret;
 
         ret = plrPost.Init( "PLRPOST0", nullptr, LOGGER_LEVEL_ERROR );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         config.stride = 0;
         ret = plrPost.Init( "PLRPOST0", &config, LOGGER_LEVEL_ERROR );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         config.stride = 3;
         ret = plrPost.Init( "PLRPOST0", &config, LOGGER_LEVEL_ERROR );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         config.stride = 4;
         ret = plrPost.Init( "PLRPOST0", &config, LOGGER_LEVEL_ERROR );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = plrPost.Init( "PLRPOST0", &config, LOGGER_LEVEL_ERROR );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
         ret = plrPost.Deinit();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         config = plrPostConfig0;
-        config.processor = RIDEHAL_PROCESSOR_MAX;
+        config.processor = QC_PROCESSOR_MAX;
         ret = plrPost.Init( "PLRPOST0", &config, LOGGER_LEVEL_ERROR );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         config = plrPostConfig0;
         config.bMapPtsToBBox = false;
         config.bBBoxFilter = true;
         ret = plrPost.Init( "PLRPOST0", &config, LOGGER_LEVEL_ERROR );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         config = plrPostConfig1;
         config.pillarXSize = 0;
         ret = plrPost.Init( "PLRPOST0", &config, LOGGER_LEVEL_ERROR );
-        ASSERT_EQ( RIDEHAL_ERROR_FAIL, ret );
+        ASSERT_EQ( QC_STATUS_FAIL, ret );
 
-        config.processor = RIDEHAL_PROCESSOR_CPU;
+        config.processor = QC_PROCESSOR_CPU;
         ret = plrPost.Init( "PLRPOST0", &config, LOGGER_LEVEL_ERROR );
-        ASSERT_EQ( RIDEHAL_ERROR_FAIL, ret );
+        ASSERT_EQ( QC_STATUS_FAIL, ret );
     }
 
-    RideHal_ProcessorType_e processors[2] = { RIDEHAL_PROCESSOR_HTP0, RIDEHAL_PROCESSOR_CPU };
+    QCProcessorType_e processors[2] = { QC_PROCESSOR_HTP0, QC_PROCESSOR_CPU };
     for ( int i = 0; i < 2; i++ )
     {
         PostCenterPoint_Config_t config = plrPostConfig0;
         PostCenterPoint plrPost;
-        RideHalError_e ret;
+        QCStatus_e ret;
         bool labelSelect[config.numClass] = { true };
         for ( int i = 1; i < config.numClass; i++ )
         {
@@ -979,7 +978,7 @@ TEST( FadasPlr, L2_PostCenterPoint )
         PostCenterPoint_Config_t config = plrPostConfig0;
         config.processor = processors[i];
         PostCenterPoint plrPost;
-        RideHalError_e ret;
+        QCStatus_e ret;
 
         uint32_t numCellsX =
                 ( uint32_t )( ( config.maxXRange - config.minXRange ) / config.pillarXSize );
@@ -988,360 +987,360 @@ TEST( FadasPlr, L2_PostCenterPoint )
 
         uint32_t width = numCellsX / config.stride;
         uint32_t height = numCellsY / config.stride;
-        RideHal_TensorProps_t inPtsTsProp = {
-                RIDEHAL_TENSOR_TYPE_FLOAT_32,
+        QCTensorProps_t inPtsTsProp = {
+                QC_TENSOR_TYPE_FLOAT_32,
                 { config.maxNumInPts, config.numInFeatureDim, 0 },
                 2,
         };
-        RideHal_TensorProps_t hmTsProp = {
-                RIDEHAL_TENSOR_TYPE_FLOAT_32,
+        QCTensorProps_t hmTsProp = {
+                QC_TENSOR_TYPE_FLOAT_32,
                 { 1, height, width, config.numClass },
                 4,
         };
-        RideHal_TensorProps_t xyTsProp = {
-                RIDEHAL_TENSOR_TYPE_FLOAT_32,
+        QCTensorProps_t xyTsProp = {
+                QC_TENSOR_TYPE_FLOAT_32,
                 { 1, height, width, 2 },
                 4,
         };
-        RideHal_TensorProps_t zTsProp = {
-                RIDEHAL_TENSOR_TYPE_FLOAT_32,
+        QCTensorProps_t zTsProp = {
+                QC_TENSOR_TYPE_FLOAT_32,
                 { 1, height, width, 1 },
                 4,
         };
-        RideHal_TensorProps_t sizeTsProp = {
-                RIDEHAL_TENSOR_TYPE_FLOAT_32,
+        QCTensorProps_t sizeTsProp = {
+                QC_TENSOR_TYPE_FLOAT_32,
                 { 1, height, width, 3 },
                 4,
         };
-        RideHal_TensorProps_t thetaTsProp = {
-                RIDEHAL_TENSOR_TYPE_FLOAT_32,
+        QCTensorProps_t thetaTsProp = {
+                QC_TENSOR_TYPE_FLOAT_32,
                 { 1, height, width, 2 },
                 4,
         };
-        RideHal_TensorProps_t detTsProp = {
-                RIDEHAL_TENSOR_TYPE_FLOAT_32,
+        QCTensorProps_t detTsProp = {
+                QC_TENSOR_TYPE_FLOAT_32,
                 { config.maxNumDetOut, POSTCENTERPOINT_OBJECT_3D_DIM },
                 2,
         };
 
-        RideHal_SharedBuffer_t inPts;
-        RideHal_SharedBuffer_t hm;
-        RideHal_SharedBuffer_t xy;
-        RideHal_SharedBuffer_t z;
-        RideHal_SharedBuffer_t size;
-        RideHal_SharedBuffer_t theta;
-        RideHal_SharedBuffer_t det;
+        QCSharedBuffer_t inPts;
+        QCSharedBuffer_t hm;
+        QCSharedBuffer_t xy;
+        QCSharedBuffer_t z;
+        QCSharedBuffer_t size;
+        QCSharedBuffer_t theta;
+        QCSharedBuffer_t det;
 
         ret = inPts.Allocate( &inPtsTsProp );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
         ret = hm.Allocate( &hmTsProp );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
         ret = xy.Allocate( &xyTsProp );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
         ret = z.Allocate( &zTsProp );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
         ret = size.Allocate( &sizeTsProp );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
         ret = theta.Allocate( &thetaTsProp );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
         ret = det.Allocate( &detTsProp );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = plrPost.RegisterBuffers( &inPts, 1, FADAS_BUF_TYPE_IN );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
         ret = plrPost.DeRegisterBuffers( &inPts, 1 );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
         ret = plrPost.Start();
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
         ret = plrPost.Stop();
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
         ret = plrPost.Deinit();
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
         ret = plrPost.Execute( &hm, &xy, &z, &size, &theta, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
         config = plrPostConfig0;
         config.pillarXSize = 0;
         ret = plrPost.Init( "PLRPOST0", &config, LOGGER_LEVEL_ERROR );
-        ASSERT_EQ( RIDEHAL_ERROR_FAIL, ret );
+        ASSERT_EQ( QC_STATUS_FAIL, ret );
 
         config = plrPostConfig0;
         ret = plrPost.Init( "PLRPOST0", &config, LOGGER_LEVEL_ERROR );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = plrPost.Start();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = plrPost.RegisterBuffers( nullptr, 1, FADAS_BUF_TYPE_IN );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         ret = plrPost.DeRegisterBuffers( nullptr, 1 );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         ret = plrPost.RegisterBuffers( &inPts, 1, FADAS_BUF_TYPE_IN );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = plrPost.DeRegisterBuffers( &inPts, 1 );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         std::vector<uint8_t> inPtsNonDmaMem;
         inPtsNonDmaMem.resize( inPts.size );
-        RideHal_SharedBuffer_t inPtsNonDma = inPts;
+        QCSharedBuffer_t inPtsNonDma = inPts;
         inPtsNonDma.buffer.pData = inPtsNonDmaMem.data();
         ret = plrPost.RegisterBuffers( &inPtsNonDma, 1, FADAS_BUF_TYPE_IN );
-        if ( RIDEHAL_PROCESSOR_CPU == config.processor )
+        if ( QC_PROCESSOR_CPU == config.processor )
         {
-            ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+            ASSERT_EQ( QC_STATUS_OK, ret );
         }
         else
         {
-            ASSERT_EQ( RIDEHAL_ERROR_FAIL, ret );
+            ASSERT_EQ( QC_STATUS_FAIL, ret );
         }
 
-        RideHal_SharedBuffer_t inPtsNonTensor = inPts;
-        inPtsNonTensor.type = RIDEHAL_BUFFER_TYPE_RAW;
+        QCSharedBuffer_t inPtsNonTensor = inPts;
+        inPtsNonTensor.type = QC_BUFFER_TYPE_RAW;
         ret = plrPost.RegisterBuffers( &inPtsNonTensor, 1, FADAS_BUF_TYPE_IN );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         ret = plrPost.DeRegisterBuffers( &inPtsNonTensor, 1 );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         ret = plrPost.Execute( nullptr, &xy, &z, &size, &theta, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
         ret = plrPost.Execute( &hm, nullptr, &z, &size, &theta, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
         ret = plrPost.Execute( &hm, &xy, nullptr, &size, &theta, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
         ret = plrPost.Execute( &hm, &xy, &z, nullptr, &theta, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
         ret = plrPost.Execute( &hm, &xy, &z, &size, nullptr, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
         ret = plrPost.Execute( &hm, &xy, &z, &size, &theta, nullptr, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
         ret = plrPost.Execute( &hm, &xy, &z, &size, &theta, &inPts, nullptr );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
-        RideHal_SharedBuffer_t hmWrong = hm;
-        hmWrong.type = RIDEHAL_BUFFER_TYPE_RAW;
+        QCSharedBuffer_t hmWrong = hm;
+        hmWrong.type = QC_BUFFER_TYPE_RAW;
         ret = plrPost.Execute( &hmWrong, &xy, &z, &size, &theta, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         hmWrong = hm;
         hmWrong.buffer.pData = nullptr;
         ret = plrPost.Execute( &hmWrong, &xy, &z, &size, &theta, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         hmWrong = hm;
         hmWrong.tensorProps.numDims = 5;
         ret = plrPost.Execute( &hmWrong, &xy, &z, &size, &theta, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         hmWrong = hm;
-        hmWrong.tensorProps.type = RIDEHAL_TENSOR_TYPE_FLOAT_16;
+        hmWrong.tensorProps.type = QC_TENSOR_TYPE_FLOAT_16;
         ret = plrPost.Execute( &hmWrong, &xy, &z, &size, &theta, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         hmWrong = hm;
         hmWrong.tensorProps.dims[0] = 2;
         ret = plrPost.Execute( &hmWrong, &xy, &z, &size, &theta, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         hmWrong = hm;
         hmWrong.tensorProps.dims[1] /= 2;
         ret = plrPost.Execute( &hmWrong, &xy, &z, &size, &theta, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         hmWrong = hm;
         hmWrong.tensorProps.dims[2] /= 2;
         ret = plrPost.Execute( &hmWrong, &xy, &z, &size, &theta, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         hmWrong = hm;
         hmWrong.tensorProps.dims[3] /= 2;
         ret = plrPost.Execute( &hmWrong, &xy, &z, &size, &theta, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
-        RideHal_SharedBuffer_t xyWrong = xy;
-        xyWrong.type = RIDEHAL_BUFFER_TYPE_RAW;
+        QCSharedBuffer_t xyWrong = xy;
+        xyWrong.type = QC_BUFFER_TYPE_RAW;
         ret = plrPost.Execute( &hm, &xyWrong, &z, &size, &theta, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         xyWrong = xy;
         xyWrong.buffer.pData = nullptr;
         ret = plrPost.Execute( &hm, &xyWrong, &z, &size, &theta, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         xyWrong = xy;
         xyWrong.tensorProps.numDims = 5;
         ret = plrPost.Execute( &hm, &xyWrong, &z, &size, &theta, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         xyWrong = xy;
-        xyWrong.tensorProps.type = RIDEHAL_TENSOR_TYPE_FLOAT_16;
+        xyWrong.tensorProps.type = QC_TENSOR_TYPE_FLOAT_16;
         ret = plrPost.Execute( &hm, &xyWrong, &z, &size, &theta, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         xyWrong = xy;
         xyWrong.tensorProps.dims[0] = 2;
         ret = plrPost.Execute( &hm, &xyWrong, &z, &size, &theta, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         xyWrong = xy;
         xyWrong.tensorProps.dims[1] /= 2;
         ret = plrPost.Execute( &hm, &xyWrong, &z, &size, &theta, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         xyWrong = xy;
         xyWrong.tensorProps.dims[2] /= 2;
         ret = plrPost.Execute( &hm, &xyWrong, &z, &size, &theta, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         xyWrong = xy;
         xyWrong.tensorProps.dims[3] /= 2;
         ret = plrPost.Execute( &hm, &xyWrong, &z, &size, &theta, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
-        RideHal_SharedBuffer_t zWrong = z;
-        zWrong.type = RIDEHAL_BUFFER_TYPE_RAW;
+        QCSharedBuffer_t zWrong = z;
+        zWrong.type = QC_BUFFER_TYPE_RAW;
         ret = plrPost.Execute( &hm, &xy, &zWrong, &size, &theta, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         zWrong = z;
         zWrong.buffer.pData = nullptr;
         ret = plrPost.Execute( &hm, &xy, &zWrong, &size, &theta, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         zWrong = z;
         zWrong.tensorProps.numDims = 5;
         ret = plrPost.Execute( &hm, &xy, &zWrong, &size, &theta, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         zWrong = z;
-        zWrong.tensorProps.type = RIDEHAL_TENSOR_TYPE_FLOAT_16;
+        zWrong.tensorProps.type = QC_TENSOR_TYPE_FLOAT_16;
         ret = plrPost.Execute( &hm, &xy, &zWrong, &size, &theta, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         zWrong = z;
         zWrong.tensorProps.dims[0] = 2;
         ret = plrPost.Execute( &hm, &xy, &zWrong, &size, &theta, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         zWrong = z;
         zWrong.tensorProps.dims[1] /= 2;
         ret = plrPost.Execute( &hm, &xy, &zWrong, &size, &theta, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         zWrong = z;
         zWrong.tensorProps.dims[2] /= 2;
         ret = plrPost.Execute( &hm, &xy, &zWrong, &size, &theta, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         zWrong = z;
         zWrong.tensorProps.dims[3] /= 2;
         ret = plrPost.Execute( &hm, &xy, &zWrong, &size, &theta, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
-        RideHal_SharedBuffer_t sizeWrong = size;
-        sizeWrong.type = RIDEHAL_BUFFER_TYPE_RAW;
+        QCSharedBuffer_t sizeWrong = size;
+        sizeWrong.type = QC_BUFFER_TYPE_RAW;
         ret = plrPost.Execute( &hm, &xy, &z, &sizeWrong, &theta, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         sizeWrong = size;
         sizeWrong.buffer.pData = nullptr;
         ret = plrPost.Execute( &hm, &xy, &z, &sizeWrong, &theta, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         sizeWrong = size;
         sizeWrong.tensorProps.numDims = 5;
         ret = plrPost.Execute( &hm, &xy, &z, &sizeWrong, &theta, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         sizeWrong = size;
-        sizeWrong.tensorProps.type = RIDEHAL_TENSOR_TYPE_FLOAT_16;
+        sizeWrong.tensorProps.type = QC_TENSOR_TYPE_FLOAT_16;
         ret = plrPost.Execute( &hm, &xy, &z, &sizeWrong, &theta, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         sizeWrong = size;
         sizeWrong.tensorProps.dims[0] = 2;
         ret = plrPost.Execute( &hm, &xy, &z, &sizeWrong, &theta, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         sizeWrong = size;
         sizeWrong.tensorProps.dims[1] /= 2;
         ret = plrPost.Execute( &hm, &xy, &z, &sizeWrong, &theta, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         sizeWrong = size;
         sizeWrong.tensorProps.dims[2] /= 2;
         ret = plrPost.Execute( &hm, &xy, &z, &sizeWrong, &theta, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         sizeWrong = size;
         sizeWrong.tensorProps.dims[3] /= 2;
         ret = plrPost.Execute( &hm, &xy, &z, &sizeWrong, &theta, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
-        RideHal_SharedBuffer_t thetaWrong = theta;
-        thetaWrong.type = RIDEHAL_BUFFER_TYPE_RAW;
+        QCSharedBuffer_t thetaWrong = theta;
+        thetaWrong.type = QC_BUFFER_TYPE_RAW;
         ret = plrPost.Execute( &hm, &xy, &z, &size, &thetaWrong, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         thetaWrong = theta;
         thetaWrong.buffer.pData = nullptr;
         ret = plrPost.Execute( &hm, &xy, &z, &size, &thetaWrong, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         thetaWrong = theta;
         thetaWrong.tensorProps.numDims = 5;
         ret = plrPost.Execute( &hm, &xy, &z, &size, &thetaWrong, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         thetaWrong = theta;
-        thetaWrong.tensorProps.type = RIDEHAL_TENSOR_TYPE_FLOAT_16;
+        thetaWrong.tensorProps.type = QC_TENSOR_TYPE_FLOAT_16;
         ret = plrPost.Execute( &hm, &xy, &z, &size, &thetaWrong, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         thetaWrong = theta;
         thetaWrong.tensorProps.dims[0] = 2;
         ret = plrPost.Execute( &hm, &xy, &z, &size, &thetaWrong, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         thetaWrong = theta;
         thetaWrong.tensorProps.dims[1] /= 2;
         ret = plrPost.Execute( &hm, &xy, &z, &size, &thetaWrong, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         thetaWrong = theta;
         thetaWrong.tensorProps.dims[2] /= 2;
         ret = plrPost.Execute( &hm, &xy, &z, &size, &thetaWrong, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         thetaWrong = theta;
         thetaWrong.tensorProps.dims[3] /= 2;
         ret = plrPost.Execute( &hm, &xy, &z, &size, &thetaWrong, &inPts, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
-        RideHal_SharedBuffer_t inPtsWrong = inPts;
-        inPtsWrong.type = RIDEHAL_BUFFER_TYPE_RAW;
+        QCSharedBuffer_t inPtsWrong = inPts;
+        inPtsWrong.type = QC_BUFFER_TYPE_RAW;
         ret = plrPost.Execute( &hm, &xy, &z, &size, &theta, &inPtsWrong, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         inPtsWrong = inPts;
         inPtsWrong.buffer.pData = nullptr;
         ret = plrPost.Execute( &hm, &xy, &z, &size, &theta, &inPtsWrong, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         inPtsWrong = inPts;
         inPtsWrong.tensorProps.numDims = 5;
         ret = plrPost.Execute( &hm, &xy, &z, &size, &theta, &inPtsWrong, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         inPtsWrong = inPts;
-        inPtsWrong.tensorProps.type = RIDEHAL_TENSOR_TYPE_FLOAT_16;
+        inPtsWrong.tensorProps.type = QC_TENSOR_TYPE_FLOAT_16;
         ret = plrPost.Execute( &hm, &xy, &z, &size, &theta, &inPtsWrong, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         inPtsWrong = inPts;
         inPtsWrong.tensorProps.dims[1] /= 2;
         ret = plrPost.Execute( &hm, &xy, &z, &size, &theta, &inPtsWrong, &det );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
-        RideHal_SharedBuffer_t detWrong = det;
-        detWrong.type = RIDEHAL_BUFFER_TYPE_RAW;
+        QCSharedBuffer_t detWrong = det;
+        detWrong.type = QC_BUFFER_TYPE_RAW;
         ret = plrPost.Execute( &hm, &xy, &z, &size, &theta, &inPts, &detWrong );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         detWrong = det;
         detWrong.buffer.pData = nullptr;
         ret = plrPost.Execute( &hm, &xy, &z, &size, &theta, &inPts, &detWrong );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         detWrong = det;
         detWrong.tensorProps.numDims = 5;
         ret = plrPost.Execute( &hm, &xy, &z, &size, &theta, &inPts, &detWrong );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         detWrong = det;
-        detWrong.tensorProps.type = RIDEHAL_TENSOR_TYPE_FLOAT_16;
+        detWrong.tensorProps.type = QC_TENSOR_TYPE_FLOAT_16;
         ret = plrPost.Execute( &hm, &xy, &z, &size, &theta, &inPts, &detWrong );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         detWrong = det;
         detWrong.tensorProps.dims[1] /= 2;
         ret = plrPost.Execute( &hm, &xy, &z, &size, &theta, &inPts, &detWrong );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
     }
 }
 
 TEST( FadasPlr, L2_FadasPlrPostProc )
 {
-    RideHal_ProcessorType_e processors[2] = { RIDEHAL_PROCESSOR_HTP0, RIDEHAL_PROCESSOR_CPU };
+    QCProcessorType_e processors[2] = { QC_PROCESSOR_HTP0, QC_PROCESSOR_CPU };
     for ( int i = 0; i < 2; i++ )
     {
         FadasPlrPostProc plrPost;
-        RideHalError_e ret;
+        QCStatus_e ret;
         PostCenterPoint_Config_t config = plrPostConfig1;
         config.processor = processors[i];
 
@@ -1352,102 +1351,102 @@ TEST( FadasPlr, L2_FadasPlrPostProc )
 
         uint32_t width = numCellsX / config.stride;
         uint32_t height = numCellsY / config.stride;
-        RideHal_TensorProps_t inPtsTsProp = {
-                RIDEHAL_TENSOR_TYPE_FLOAT_32,
+        QCTensorProps_t inPtsTsProp = {
+                QC_TENSOR_TYPE_FLOAT_32,
                 { config.maxNumInPts, config.numInFeatureDim, 0 },
                 2,
         };
-        RideHal_TensorProps_t hmTsProp = {
-                RIDEHAL_TENSOR_TYPE_FLOAT_32,
+        QCTensorProps_t hmTsProp = {
+                QC_TENSOR_TYPE_FLOAT_32,
                 { 1, height, width, config.numClass },
                 4,
         };
-        RideHal_TensorProps_t xyTsProp = {
-                RIDEHAL_TENSOR_TYPE_FLOAT_32,
+        QCTensorProps_t xyTsProp = {
+                QC_TENSOR_TYPE_FLOAT_32,
                 { 1, height, width, 2 },
                 4,
         };
-        RideHal_TensorProps_t zTsProp = {
-                RIDEHAL_TENSOR_TYPE_FLOAT_32,
+        QCTensorProps_t zTsProp = {
+                QC_TENSOR_TYPE_FLOAT_32,
                 { 1, height, width, 1 },
                 4,
         };
-        RideHal_TensorProps_t sizeTsProp = {
-                RIDEHAL_TENSOR_TYPE_FLOAT_32,
+        QCTensorProps_t sizeTsProp = {
+                QC_TENSOR_TYPE_FLOAT_32,
                 { 1, height, width, 3 },
                 4,
         };
-        RideHal_TensorProps_t thetaTsProp = {
-                RIDEHAL_TENSOR_TYPE_FLOAT_32,
+        QCTensorProps_t thetaTsProp = {
+                QC_TENSOR_TYPE_FLOAT_32,
                 { 1, height, width, 2 },
                 4,
         };
-        RideHal_TensorProps_t detTsProp = {
-                RIDEHAL_TENSOR_TYPE_FLOAT_32,
+        QCTensorProps_t detTsProp = {
+                QC_TENSOR_TYPE_FLOAT_32,
                 { config.maxNumDetOut, POSTCENTERPOINT_OBJECT_3D_DIM },
                 2,
         };
 
-        RideHal_SharedBuffer_t inPts;
-        RideHal_SharedBuffer_t hm;
-        RideHal_SharedBuffer_t xy;
-        RideHal_SharedBuffer_t z;
-        RideHal_SharedBuffer_t size;
-        RideHal_SharedBuffer_t theta;
-        RideHal_SharedBuffer_t BBoxList;
-        RideHal_SharedBuffer_t labels;
-        RideHal_SharedBuffer_t scores;
-        RideHal_SharedBuffer_t metadata;
+        QCSharedBuffer_t inPts;
+        QCSharedBuffer_t hm;
+        QCSharedBuffer_t xy;
+        QCSharedBuffer_t z;
+        QCSharedBuffer_t size;
+        QCSharedBuffer_t theta;
+        QCSharedBuffer_t BBoxList;
+        QCSharedBuffer_t labels;
+        QCSharedBuffer_t scores;
+        QCSharedBuffer_t metadata;
 
         ret = inPts.Allocate( &inPtsTsProp );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
         ret = hm.Allocate( &hmTsProp );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
         ret = xy.Allocate( &xyTsProp );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
         ret = z.Allocate( &zTsProp );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
         ret = size.Allocate( &sizeTsProp );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
         ret = theta.Allocate( &thetaTsProp );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         {
-            RideHal_TensorProps_t tensorProps;
-            tensorProps.type = RIDEHAL_TENSOR_TYPE_FLOAT_32;
+            QCTensorProps_t tensorProps;
+            tensorProps.type = QC_TENSOR_TYPE_FLOAT_32;
             tensorProps.dims[0] = config.maxNumDetOut;
             tensorProps.dims[1] = sizeof( FadasCuboidf32_t ) / sizeof( float );
             tensorProps.numDims = 2;
             ret = BBoxList.Allocate( &tensorProps );
-            ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+            ASSERT_EQ( QC_STATUS_OK, ret );
         }
 
         {
-            RideHal_TensorProps_t tensorProps;
-            tensorProps.type = RIDEHAL_TENSOR_TYPE_UINT_32;
+            QCTensorProps_t tensorProps;
+            tensorProps.type = QC_TENSOR_TYPE_UINT_32;
             tensorProps.dims[0] = config.maxNumDetOut;
             tensorProps.numDims = 1;
             ret = labels.Allocate( &tensorProps );
-            ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+            ASSERT_EQ( QC_STATUS_OK, ret );
         }
 
         {
-            RideHal_TensorProps_t tensorProps;
-            tensorProps.type = RIDEHAL_TENSOR_TYPE_FLOAT_32;
+            QCTensorProps_t tensorProps;
+            tensorProps.type = QC_TENSOR_TYPE_FLOAT_32;
             tensorProps.dims[0] = config.maxNumDetOut;
             tensorProps.numDims = 1;
             ret = scores.Allocate( &tensorProps );
-            ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+            ASSERT_EQ( QC_STATUS_OK, ret );
         }
 
         {
-            RideHal_TensorProps_t tensorProps;
-            tensorProps.type = RIDEHAL_TENSOR_TYPE_UINT_8;
+            QCTensorProps_t tensorProps;
+            tensorProps.type = QC_TENSOR_TYPE_UINT_8;
             tensorProps.dims[0] = config.maxNumDetOut;
             tensorProps.dims[1] = sizeof( FadasPlr3DBBoxMetadata_t );
             tensorProps.numDims = 2;
             ret = metadata.Allocate( &tensorProps );
-            ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+            ASSERT_EQ( QC_STATUS_OK, ret );
         }
 
         ret = plrPost.SetFilterParams(
@@ -1455,71 +1454,71 @@ TEST( FadasPlr, L2_FadasPlrPostProc )
                 config.filterParams.minCentreZ, config.filterParams.maxCentreX,
                 config.filterParams.maxCentreY, config.filterParams.maxCentreZ,
                 config.filterParams.labelSelect, config.filterParams.maxNumFilter );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
         ret = plrPost.CreatePostProc();
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
         ret = plrPost.Init( config.processor, "PLRPOST0", LOGGER_LEVEL_ERROR );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = plrPost.SetParams( config.pillarXSize, config.pillarYSize, config.minXRange,
                                  config.minYRange, config.maxXRange, config.maxYRange,
                                  config.numClass, config.maxNumInPts, config.numInFeatureDim,
                                  config.maxNumDetOut, config.threshScore, config.threshIOU,
                                  config.bMapPtsToBBox );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = plrPost.DestroyPostProc();
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
         ret = plrPost.CreatePostProc();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         uint32_t numDetOut;
         ret = plrPost.ExtractBBoxRun( nullptr, &xy, &z, &size, &theta, &inPts, &BBoxList, &labels,
                                       &scores, &metadata, &numDetOut );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         ret = plrPost.ExtractBBoxRun( &hm, nullptr, &z, &size, &theta, &inPts, &BBoxList, &labels,
                                       &scores, &metadata, &numDetOut );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         ret = plrPost.ExtractBBoxRun( &hm, &xy, nullptr, &size, &theta, &inPts, &BBoxList, &labels,
                                       &scores, &metadata, &numDetOut );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         ret = plrPost.ExtractBBoxRun( &hm, &xy, &z, nullptr, &theta, &inPts, &BBoxList, &labels,
                                       &scores, &metadata, &numDetOut );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         ret = plrPost.ExtractBBoxRun( &hm, &xy, &z, &size, nullptr, &inPts, &BBoxList, &labels,
                                       &scores, &metadata, &numDetOut );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         ret = plrPost.ExtractBBoxRun( &hm, &xy, &z, &size, &theta, nullptr, &BBoxList, &labels,
                                       &scores, &metadata, &numDetOut );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         ret = plrPost.ExtractBBoxRun( &hm, &xy, &z, &size, &theta, &inPts, nullptr, &labels,
                                       &scores, &metadata, &numDetOut );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         ret = plrPost.ExtractBBoxRun( &hm, &xy, &z, &size, &theta, &inPts, &BBoxList, nullptr,
                                       &scores, &metadata, &numDetOut );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         ret = plrPost.ExtractBBoxRun( &hm, &xy, &z, &size, &theta, &inPts, &BBoxList, &labels,
                                       nullptr, &metadata, &numDetOut );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         ret = plrPost.ExtractBBoxRun( &hm, &xy, &z, &size, &theta, &inPts, &BBoxList, &labels,
                                       &scores, nullptr, &numDetOut );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
         ret = plrPost.ExtractBBoxRun( &hm, &xy, &z, &size, &theta, &inPts, &BBoxList, &labels,
                                       &scores, &metadata, nullptr );
-        ASSERT_EQ( RIDEHAL_ERROR_FAIL, ret );
+        ASSERT_EQ( QC_STATUS_FAIL, ret );
 
         ret = plrPost.DestroyPostProc();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = plrPost.Deinit();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
     }
 }
 
-#ifndef GTEST_RIDEHAL
+#ifndef GTEST_QCNODE
 int main( int argc, char **argv )
 {
     ::testing::InitGoogleTest( &argc, argv );

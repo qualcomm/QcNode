@@ -2,8 +2,8 @@
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
-#ifndef RIDEHAL_FADAS_SRV_HPP
-#define RIDEHAL_FADAS_SRV_HPP
+#ifndef QC_FADAS_SRV_HPP
+#define QC_FADAS_SRV_HPP
 
 #include <fadas.h>
 #include <map>
@@ -19,12 +19,12 @@ extern "C"
 }
 #include <dlfcn.h>
 
-#include "ridehal/common/Logger.hpp"
-#include "ridehal/common/SharedBuffer.hpp"
-#include "ridehal/common/Types.hpp"
-using namespace ridehal::common;
+#include "QC/common/Types.hpp"
+#include "QC/infras/logger/Logger.hpp"
+#include "QC/infras/memory/SharedBuffer.hpp"
+using namespace QC::common;
 
-namespace ridehal
+namespace QC
 {
 namespace libs
 {
@@ -64,9 +64,9 @@ typedef FadasError_e ( *FuncFadasRemap_DestroyMapGPU_t )( FadasRemapMap_t *map )
 class FadasSrv
 {
 public:
-    RideHalError_e Init( RideHal_ProcessorType_e coreId, const char *pName, Logger_Level_e level );
-    RideHalError_e Deinit();
-    int32_t RegBuf( const RideHal_SharedBuffer_t *pBuffer, FadasBufType_e bufferType );
+    QCStatus_e Init( QCProcessorType_e coreId, const char *pName, Logger_Level_e level );
+    QCStatus_e Deinit();
+    int32_t RegBuf( const QCSharedBuffer_t *pBuffer, FadasBufType_e bufferType );
     void DeregBuf( void *pBuffer );
     remote_handle64 GetRemoteHandle64();
 
@@ -80,34 +80,33 @@ protected:
         void *ptr;
         size_t sizeOne;
     };
-    RideHal_ProcessorType_e m_processor;
+    QCProcessorType_e m_processor;
 
 private:
-    RideHalError_e InitCPU();
-    RideHalError_e InitGPU();
-    RideHalError_e InitDSP( RideHal_ProcessorType_e coreId );
-    int32_t FadasMemMapDSP( const RideHal_SharedBuffer_t *pBuffer );
-    int32_t FadasMemMapCPU( const RideHal_SharedBuffer_t *pBuffer );
-    int32_t FadasMemMap( const RideHal_SharedBuffer_t *pBuffer );
-    RideHalError_e FadasRegisterBufDSP( FadasBufType_e bufType, const uint8_t *bufPtr,
-                                        int32_t bufFd, uint32_t bufSize, uint32_t bufOffset,
-                                        uint32_t batch );
-    RideHalError_e FadasRegisterBufCPU( FadasBufType_e bufType, uint8_t *bufPtr, int32_t bufFd,
-                                        uint32_t bufSize, uint32_t bufOffset, uint32_t batch );
-    RideHalError_e FadasRegisterBufGPU( FadasBufType_e bufType, uint8_t *bufPtr, int32_t bufFd,
-                                        uint32_t bufSize, uint32_t bufOffset, uint32_t batch );
-    RideHalError_e FadasRegisterBuf( FadasBufType_e bufType, uint8_t *bufPtr, int32_t bufFd,
-                                     uint32_t bufSize, uint32_t bufOffset, uint32_t batch );
-    int32_t RegisterImage( const RideHal_SharedBuffer_t *pBuffer, FadasBufType_e bufferType );
-    int32_t RegisterTensor( const RideHal_SharedBuffer_t *pBuffer, FadasBufType_e bufferType );
+    QCStatus_e InitCPU();
+    QCStatus_e InitGPU();
+    QCStatus_e InitDSP( QCProcessorType_e coreId );
+    int32_t FadasMemMapDSP( const QCSharedBuffer_t *pBuffer );
+    int32_t FadasMemMapCPU( const QCSharedBuffer_t *pBuffer );
+    int32_t FadasMemMap( const QCSharedBuffer_t *pBuffer );
+    QCStatus_e FadasRegisterBufDSP( FadasBufType_e bufType, const uint8_t *bufPtr, int32_t bufFd,
+                                    uint32_t bufSize, uint32_t bufOffset, uint32_t batch );
+    QCStatus_e FadasRegisterBufCPU( FadasBufType_e bufType, uint8_t *bufPtr, int32_t bufFd,
+                                    uint32_t bufSize, uint32_t bufOffset, uint32_t batch );
+    QCStatus_e FadasRegisterBufGPU( FadasBufType_e bufType, uint8_t *bufPtr, int32_t bufFd,
+                                    uint32_t bufSize, uint32_t bufOffset, uint32_t batch );
+    QCStatus_e FadasRegisterBuf( FadasBufType_e bufType, uint8_t *bufPtr, int32_t bufFd,
+                                 uint32_t bufSize, uint32_t bufOffset, uint32_t batch );
+    int32_t RegisterImage( const QCSharedBuffer_t *pBuffer, FadasBufType_e bufferType );
+    int32_t RegisterTensor( const QCSharedBuffer_t *pBuffer, FadasBufType_e bufferType );
 
 private:
-    static std::mutex s_coreLock[RIDEHAL_PROCESSOR_MAX];
+    static std::mutex s_coreLock[QC_PROCESSOR_MAX];
     static std::mutex s_FadasLock;
-    static remote_handle64 s_handle64[RIDEHAL_PROCESSOR_MAX];
-    static uint64_t s_useRef[RIDEHAL_PROCESSOR_MAX];
-    static bool s_initialized[RIDEHAL_PROCESSOR_MAX];
-    static std::map<void *, MemInfo> s_memMaps[RIDEHAL_PROCESSOR_MAX];
+    static remote_handle64 s_handle64[QC_PROCESSOR_MAX];
+    static uint64_t s_useRef[QC_PROCESSOR_MAX];
+    static bool s_initialized[QC_PROCESSOR_MAX];
+    static std::map<void *, MemInfo> s_memMaps[QC_PROCESSOR_MAX];
     static long int s_client;
     static FuncFadasInitGPU_t s_FadasInitGPU;
     static FuncFadasDeInitGPU_t s_FadasDeInitGPU;
@@ -123,12 +122,12 @@ protected:
 
 
 protected:
-    RIDEHAL_DECLARE_LOGGER();
+    QC_DECLARE_LOGGER();
 };
 
 
 }   // namespace FadasIface
 }   // namespace libs
-}   // namespace ridehal
+}   // namespace QC
 
-#endif   // RIDEHAL_FADAS_SRV_HPP
+#endif   // QC_FADAS_SRV_HPP

@@ -3,7 +3,7 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#include "ridehal/sample/shared_ring/SharedSemaphore.hpp"
+#include "QC/sample/shared_ring/SharedSemaphore.hpp"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -11,7 +11,7 @@
 #include <time.h>
 
 
-namespace ridehal
+namespace QC
 {
 namespace sample
 {
@@ -20,17 +20,17 @@ namespace shared_ring
 
 SharedSemaphore::SharedSemaphore()
 {
-    RIDEHAL_LOGGER_INIT( "SEM", LOGGER_LEVEL_ERROR );
+    QC_LOGGER_INIT( "SEM", LOGGER_LEVEL_ERROR );
 }
 
 SharedSemaphore::~SharedSemaphore()
 {
-    RIDEHAL_LOGGER_DEINIT();
+    QC_LOGGER_DEINIT();
 }
 
-RideHalError_e SharedSemaphore::Create( std::string name, int value )
+QCStatus_e SharedSemaphore::Create( std::string name, int value )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     sem_t *pSem;
 
     pSem = sem_open( name.c_str(), O_CREAT | O_EXCL, 0644, value );
@@ -41,16 +41,16 @@ RideHalError_e SharedSemaphore::Create( std::string name, int value )
     }
     else
     {
-        RIDEHAL_ERROR( "Failed to create sem <%s>: %d", name.c_str(), errno );
-        ret = RIDEHAL_ERROR_FAIL;
+        QC_ERROR( "Failed to create sem <%s>: %d", name.c_str(), errno );
+        ret = QC_STATUS_FAIL;
     }
 
     return ret;
 }
 
-RideHalError_e SharedSemaphore::Destroy()
+QCStatus_e SharedSemaphore::Destroy()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     int rv;
 
     if ( nullptr != m_pSem )
@@ -58,29 +58,29 @@ RideHalError_e SharedSemaphore::Destroy()
         rv = sem_close( m_pSem );
         if ( 0 != rv )
         {
-            RIDEHAL_ERROR( "Failed to destroy/close sem <%s>: %d %d", m_name.c_str(), rv, errno );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Failed to destroy/close sem <%s>: %d %d", m_name.c_str(), rv, errno );
+            ret = QC_STATUS_FAIL;
         }
 
         rv = sem_unlink( m_name.c_str() );
         if ( 0 != rv )
         {
-            RIDEHAL_ERROR( "Failed to destroy/unlink sem <%s>: %d %d", m_name.c_str(), rv, errno );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Failed to destroy/unlink sem <%s>: %d %d", m_name.c_str(), rv, errno );
+            ret = QC_STATUS_FAIL;
         }
     }
     else
     {
-        ret = RIDEHAL_ERROR_BAD_STATE;
-        RIDEHAL_ERROR( "sem not created" );
+        ret = QC_STATUS_BAD_STATE;
+        QC_ERROR( "sem not created" );
     }
 
     return ret;
 }
 
-RideHalError_e SharedSemaphore::Open( std::string name )
+QCStatus_e SharedSemaphore::Open( std::string name )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     sem_t *pSem;
 
     pSem = sem_open( name.c_str(), 0 );
@@ -91,16 +91,16 @@ RideHalError_e SharedSemaphore::Open( std::string name )
     }
     else
     {
-        RIDEHAL_ERROR( "Failed to open sem <%s>: %d", name.c_str(), errno );
-        ret = RIDEHAL_ERROR_FAIL;
+        QC_ERROR( "Failed to open sem <%s>: %d", name.c_str(), errno );
+        ret = QC_STATUS_FAIL;
     }
 
     return ret;
 }
 
-RideHalError_e SharedSemaphore::Close()
+QCStatus_e SharedSemaphore::Close()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     int rv;
 
     if ( nullptr != m_pSem )
@@ -108,29 +108,29 @@ RideHalError_e SharedSemaphore::Close()
         rv = sem_close( m_pSem );
         if ( 0 != rv )
         {
-            RIDEHAL_ERROR( "Failed to close sem <%s>: %d %d", m_name.c_str(), rv, errno );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Failed to close sem <%s>: %d %d", m_name.c_str(), rv, errno );
+            ret = QC_STATUS_FAIL;
         }
     }
     else
     {
-        ret = RIDEHAL_ERROR_BAD_STATE;
-        RIDEHAL_ERROR( "sem not opened" );
+        ret = QC_STATUS_BAD_STATE;
+        QC_ERROR( "sem not opened" );
     }
 
     return ret;
 }
 
-RideHalError_e SharedSemaphore::Wait( uint32_t timeoutMs )
+QCStatus_e SharedSemaphore::Wait( uint32_t timeoutMs )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     int rv;
     struct timespec ts;
 
     if ( nullptr == m_pSem )
     {
-        ret = RIDEHAL_ERROR_BAD_STATE;
-        RIDEHAL_ERROR( "sem not ready!" );
+        ret = QC_STATUS_BAD_STATE;
+        QC_ERROR( "sem not ready!" );
     }
     else
     {
@@ -147,8 +147,8 @@ RideHalError_e SharedSemaphore::Wait( uint32_t timeoutMs )
             rv = clock_gettime( CLOCK_REALTIME, &ts );
             if ( 0 != rv )
             {
-                RIDEHAL_ERROR( "Failed to get clock realtime: %d", rv );
-                ret = RIDEHAL_ERROR_FAIL;
+                QC_ERROR( "Failed to get clock realtime: %d", rv );
+                ret = QC_STATUS_FAIL;
             }
             else
             {
@@ -162,17 +162,17 @@ RideHalError_e SharedSemaphore::Wait( uint32_t timeoutMs )
         {
             if ( ETIMEDOUT == errno )
             {
-                ret = RIDEHAL_ERROR_TIMEOUT;
+                ret = QC_STATUS_TIMEOUT;
             }
             else if ( EINVAL == errno )
             {
-                RIDEHAL_DEBUG( "Failed to wait on sem <%s>: %d %d", m_name.c_str(), rv, errno );
-                ret = RIDEHAL_ERROR_TIMEOUT;
+                QC_DEBUG( "Failed to wait on sem <%s>: %d %d", m_name.c_str(), rv, errno );
+                ret = QC_STATUS_TIMEOUT;
             }
             else
             {
-                RIDEHAL_ERROR( "Failed to wait on sem <%s>: %d %d", m_name.c_str(), rv, errno );
-                ret = RIDEHAL_ERROR_FAIL;
+                QC_ERROR( "Failed to wait on sem <%s>: %d %d", m_name.c_str(), rv, errno );
+                ret = QC_STATUS_FAIL;
             }
         }
     }
@@ -180,40 +180,40 @@ RideHalError_e SharedSemaphore::Wait( uint32_t timeoutMs )
     return ret;
 }
 
-RideHalError_e SharedSemaphore::Post()
+QCStatus_e SharedSemaphore::Post()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     int rv;
     struct timespec ts;
 
     if ( nullptr == m_pSem )
     {
-        ret = RIDEHAL_ERROR_BAD_STATE;
-        RIDEHAL_ERROR( "sem not ready!" );
+        ret = QC_STATUS_BAD_STATE;
+        QC_ERROR( "sem not ready!" );
     }
     else
     {
         rv = sem_post( m_pSem );
         if ( 0 != rv )
         {
-            RIDEHAL_ERROR( "Failed to post on sem <%s>: %d %d", m_name.c_str(), rv, errno );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Failed to post on sem <%s>: %d %d", m_name.c_str(), rv, errno );
+            ret = QC_STATUS_FAIL;
         }
     }
 
     return ret;
 }
 
-RideHalError_e SharedSemaphore::Reset()
+QCStatus_e SharedSemaphore::Reset()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     int rv;
     struct timespec ts;
 
     if ( nullptr == m_pSem )
     {
-        ret = RIDEHAL_ERROR_BAD_STATE;
-        RIDEHAL_ERROR( "sem not ready!" );
+        ret = QC_STATUS_BAD_STATE;
+        QC_ERROR( "sem not ready!" );
     }
     else
     {
@@ -229,4 +229,4 @@ RideHalError_e SharedSemaphore::Reset()
 
 }   // namespace shared_ring
 }   // namespace sample
-}   // namespace ridehal
+}   // namespace QC

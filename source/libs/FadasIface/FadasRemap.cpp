@@ -14,7 +14,7 @@
 #define FADAS_IMAGE_FORMAT_BGR888_RH ( (FadasImageFormat_e) 14 )
 #define FADAS_IMAGE_FORMAT_UBWC_NV12_RH ( (FadasImageFormat_e) 15 )
 
-namespace ridehal
+namespace QC
 {
 namespace libs
 {
@@ -25,16 +25,15 @@ FadasRemap::FadasRemap() {}
 
 FadasRemap::~FadasRemap() {}
 
-RideHalError_e FadasRemap::SetRemapParams( uint32_t numOfInputs, uint32_t outputWidth,
-                                           uint32_t outputHeight,
-                                           RideHal_ImageFormat_e outputFormat,
-                                           FadasNormlzParams_t normlzR, FadasNormlzParams_t normlzG,
-                                           FadasNormlzParams_t normlzB, bool bEnableUndistortion,
-                                           bool bEnableNormalize )
+QCStatus_e FadasRemap::SetRemapParams( uint32_t numOfInputs, uint32_t outputWidth,
+                                       uint32_t outputHeight, QCImageFormat_e outputFormat,
+                                       FadasNormlzParams_t normlzR, FadasNormlzParams_t normlzG,
+                                       FadasNormlzParams_t normlzB, bool bEnableUndistortion,
+                                       bool bEnableNormalize )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
-    for ( int i = 0; i < RIDEHAL_MAX_INPUTS; i++ )
+    for ( int i = 0; i < QC_MAX_INPUTS; i++ )
     {
         m_workerPtrsDSP[i] = 0;
         m_remapPtrsDSP[i] = 0;
@@ -42,16 +41,15 @@ RideHalError_e FadasRemap::SetRemapParams( uint32_t numOfInputs, uint32_t output
         m_remapPtrsCPU[i] = nullptr;
     }
 
-    if ( ( RIDEHAL_IMAGE_FORMAT_RGB888 != outputFormat ) &&
-         ( RIDEHAL_IMAGE_FORMAT_BGR888 != outputFormat ) )
+    if ( ( QC_IMAGE_FORMAT_RGB888 != outputFormat ) && ( QC_IMAGE_FORMAT_BGR888 != outputFormat ) )
     {
-        RIDEHAL_ERROR( "Invalid output format!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "Invalid output format!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
-    else if ( RIDEHAL_MAX_INPUTS <= numOfInputs )
+    else if ( QC_MAX_INPUTS <= numOfInputs )
     {
-        RIDEHAL_ERROR( "Invalid number of inputs!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "Invalid number of inputs!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
@@ -70,60 +68,59 @@ RideHalError_e FadasRemap::SetRemapParams( uint32_t numOfInputs, uint32_t output
     return ret;
 };
 
-FadasRemapPipeline_e FadasRemap::RemapGetPipelineCPU( RideHal_ImageFormat_e inputFormat,
-                                                      RideHal_ImageFormat_e outputFormat,
+FadasRemapPipeline_e FadasRemap::RemapGetPipelineCPU( QCImageFormat_e inputFormat,
+                                                      QCImageFormat_e outputFormat,
                                                       bool bEnableNormalize )
 {
     FadasRemapPipeline_e pipeline = FADAS_REMAP_PIPELINE_MAX_RH;
 
-    if ( ( RIDEHAL_IMAGE_FORMAT_UYVY == inputFormat ) &&
-         ( RIDEHAL_IMAGE_FORMAT_RGB888 == outputFormat ) &&
+    if ( ( QC_IMAGE_FORMAT_UYVY == inputFormat ) && ( QC_IMAGE_FORMAT_RGB888 == outputFormat ) &&
          ( true == bEnableNormalize ) )   // UYVY to RGB normalize pipeline
     {
         pipeline = FADAS_REMAP_PIPELINE_UYVY_TO_RGB888_NORMU8;
     }
-    else if ( ( RIDEHAL_IMAGE_FORMAT_UYVY == inputFormat ) &&
-              ( RIDEHAL_IMAGE_FORMAT_RGB888 == outputFormat ) &&
+    else if ( ( QC_IMAGE_FORMAT_UYVY == inputFormat ) &&
+              ( QC_IMAGE_FORMAT_RGB888 == outputFormat ) &&
               ( false == bEnableNormalize ) )   // UYVY to RGB pipeline
     {
         pipeline = FADAS_REMAP_PIPELINE_UYVY_TO_RGB888;
     }
-    else if ( ( RIDEHAL_IMAGE_FORMAT_RGB888 == inputFormat ) &&
-              ( RIDEHAL_IMAGE_FORMAT_RGB888 == outputFormat ) &&
+    else if ( ( QC_IMAGE_FORMAT_RGB888 == inputFormat ) &&
+              ( QC_IMAGE_FORMAT_RGB888 == outputFormat ) &&
               ( false == bEnableNormalize ) )   // RGB to RGB pipeline
     {
 
         pipeline = FADAS_REMAP_PIPELINE_3C888;
     }
-    else if ( ( RIDEHAL_IMAGE_FORMAT_UYVY == inputFormat ) &&
-              ( RIDEHAL_IMAGE_FORMAT_BGR888 == outputFormat ) &&
+    else if ( ( QC_IMAGE_FORMAT_UYVY == inputFormat ) &&
+              ( QC_IMAGE_FORMAT_BGR888 == outputFormat ) &&
               ( false == bEnableNormalize ) )   // UYVY to BGR pipeline
     {
         pipeline = FADAS_REMAP_PIPELINE_UYVY_TO_BGR888_RH;
     }
-    else if ( ( RIDEHAL_IMAGE_FORMAT_NV12 == inputFormat ) &&
-              ( RIDEHAL_IMAGE_FORMAT_RGB888 == outputFormat ) &&
+    else if ( ( QC_IMAGE_FORMAT_NV12 == inputFormat ) &&
+              ( QC_IMAGE_FORMAT_RGB888 == outputFormat ) &&
               ( false == bEnableNormalize ) )   // NV12 to RGB pipeline
     {
 
         pipeline = FADAS_REMAP_PIPELINE_Y8UV8_TO_RGB888;
     }
-    else if ( ( RIDEHAL_IMAGE_FORMAT_NV12 == inputFormat ) &&
-              ( RIDEHAL_IMAGE_FORMAT_RGB888 == outputFormat ) &&
+    else if ( ( QC_IMAGE_FORMAT_NV12 == inputFormat ) &&
+              ( QC_IMAGE_FORMAT_RGB888 == outputFormat ) &&
               ( true == bEnableNormalize ) )   // NV12 to RGB normalize pipeline
     {
 
         pipeline = FADAS_REMAP_PIPELINE_Y8UV8_TO_RGB888_NORMU8;
     }
-    else if ( ( RIDEHAL_IMAGE_FORMAT_NV12 == inputFormat ) &&
-              ( RIDEHAL_IMAGE_FORMAT_BGR888 == outputFormat ) &&
+    else if ( ( QC_IMAGE_FORMAT_NV12 == inputFormat ) &&
+              ( QC_IMAGE_FORMAT_BGR888 == outputFormat ) &&
               ( false == bEnableNormalize ) )   // NV12 to BGR pipeline
     {
 
         pipeline = FADAS_REMAP_PIPELINE_Y8UV8_TO_BGR888_RH;
     }
-    else if ( ( RIDEHAL_IMAGE_FORMAT_NV12_UBWC == inputFormat ) &&
-              ( RIDEHAL_IMAGE_FORMAT_BGR888 == outputFormat ) &&
+    else if ( ( QC_IMAGE_FORMAT_NV12_UBWC == inputFormat ) &&
+              ( QC_IMAGE_FORMAT_BGR888 == outputFormat ) &&
               ( false == bEnableNormalize ) )   // NV12 UBWC to BGR pipeline
     {
 
@@ -131,59 +128,58 @@ FadasRemapPipeline_e FadasRemap::RemapGetPipelineCPU( RideHal_ImageFormat_e inpu
     }
     else
     {
-        RIDEHAL_ERROR( "Invalid remap pipeline" );
+        QC_ERROR( "Invalid remap pipeline" );
     }
 
     return pipeline;
 }
 
-FadasIface_FadasRemapPipeline_e FadasRemap::RemapGetPipelineDSP( RideHal_ImageFormat_e inputFormat,
-                                                                 RideHal_ImageFormat_e outputFormat,
+FadasIface_FadasRemapPipeline_e FadasRemap::RemapGetPipelineDSP( QCImageFormat_e inputFormat,
+                                                                 QCImageFormat_e outputFormat,
                                                                  bool bEnableNormalize )
 {
     FadasIface_FadasRemapPipeline_e pipeline = FADAS_REMAP_PIPELINE_MAX_NSP;
 
-    if ( ( RIDEHAL_IMAGE_FORMAT_UYVY == inputFormat ) &&
-         ( RIDEHAL_IMAGE_FORMAT_RGB888 == outputFormat ) &&
+    if ( ( QC_IMAGE_FORMAT_UYVY == inputFormat ) && ( QC_IMAGE_FORMAT_RGB888 == outputFormat ) &&
          ( true == bEnableNormalize ) )   // UYVY to RGB normalize pipeline
     {
         pipeline = FADAS_REMAP_PIPELINE_UYVY_TO_RGB888_NORMU8_NSP;
     }
-    else if ( ( RIDEHAL_IMAGE_FORMAT_UYVY == inputFormat ) &&
-              ( RIDEHAL_IMAGE_FORMAT_RGB888 == outputFormat ) &&
+    else if ( ( QC_IMAGE_FORMAT_UYVY == inputFormat ) &&
+              ( QC_IMAGE_FORMAT_RGB888 == outputFormat ) &&
               ( false == bEnableNormalize ) )   // UYVY to RGB pipeline
     {
         pipeline = FADAS_REMAP_PIPELINE_UYVY_TO_RGB888_NSP;
     }
-    else if ( ( RIDEHAL_IMAGE_FORMAT_RGB888 == inputFormat ) &&
-              ( RIDEHAL_IMAGE_FORMAT_RGB888 == outputFormat ) &&
+    else if ( ( QC_IMAGE_FORMAT_RGB888 == inputFormat ) &&
+              ( QC_IMAGE_FORMAT_RGB888 == outputFormat ) &&
               ( false == bEnableNormalize ) )   // RGB to RGB pipeline
     {
 
         pipeline = FADAS_REMAP_PIPELINE_3C888_NSP;
     }
-    else if ( ( RIDEHAL_IMAGE_FORMAT_UYVY == inputFormat ) &&
-              ( RIDEHAL_IMAGE_FORMAT_BGR888 == outputFormat ) &&
+    else if ( ( QC_IMAGE_FORMAT_UYVY == inputFormat ) &&
+              ( QC_IMAGE_FORMAT_BGR888 == outputFormat ) &&
               ( false == bEnableNormalize ) )   // UYVY to BGR pipeline
     {
         pipeline = FADAS_REMAP_PIPELINE_UYVY_TO_BGR888_NSP;
     }
-    else if ( ( RIDEHAL_IMAGE_FORMAT_NV12 == inputFormat ) &&
-              ( RIDEHAL_IMAGE_FORMAT_RGB888 == outputFormat ) &&
+    else if ( ( QC_IMAGE_FORMAT_NV12 == inputFormat ) &&
+              ( QC_IMAGE_FORMAT_RGB888 == outputFormat ) &&
               ( false == bEnableNormalize ) )   // NV12 to RGB pipeline
     {
 
         pipeline = FADAS_REMAP_PIPELINE_Y8UV8_TO_RGB888_NSP;
     }
-    else if ( ( RIDEHAL_IMAGE_FORMAT_NV12 == inputFormat ) &&
-              ( RIDEHAL_IMAGE_FORMAT_RGB888 == outputFormat ) &&
+    else if ( ( QC_IMAGE_FORMAT_NV12 == inputFormat ) &&
+              ( QC_IMAGE_FORMAT_RGB888 == outputFormat ) &&
               ( true == bEnableNormalize ) )   // NV12 to RGB normalize pipeline
     {
 
         pipeline = FADAS_REMAP_PIPELINE_Y8UV8_TO_RGB888_NORMU8_NSP;
     }
-    else if ( ( RIDEHAL_IMAGE_FORMAT_NV12 == inputFormat ) &&
-              ( RIDEHAL_IMAGE_FORMAT_BGR888 == outputFormat ) &&
+    else if ( ( QC_IMAGE_FORMAT_NV12 == inputFormat ) &&
+              ( QC_IMAGE_FORMAT_BGR888 == outputFormat ) &&
               ( false == bEnableNormalize ) )   // NV12 to BGR pipeline
     {
 
@@ -191,67 +187,66 @@ FadasIface_FadasRemapPipeline_e FadasRemap::RemapGetPipelineDSP( RideHal_ImageFo
     }
     else
     {
-        RIDEHAL_ERROR( "Invalid remap pipeline for inputformat = %d, outputfprmat = %d, "
-                       "bEnableNormalize = %d ",
-                       inputFormat, outputFormat, bEnableNormalize );
+        QC_ERROR( "Invalid remap pipeline for inputformat = %d, outputfprmat = %d, "
+                  "bEnableNormalize = %d ",
+                  inputFormat, outputFormat, bEnableNormalize );
     }
 
     return pipeline;
 }
 
-RideHalError_e FadasRemap::CreatRemapTable( uint32_t inputId, uint32_t mapWidth, uint32_t mapHeight,
-                                            const RideHal_SharedBuffer_t *pMapX,
-                                            const RideHal_SharedBuffer_t *pMapY )
+QCStatus_e FadasRemap::CreatRemapTable( uint32_t inputId, uint32_t mapWidth, uint32_t mapHeight,
+                                        const QCSharedBuffer_t *pMapX,
+                                        const QCSharedBuffer_t *pMapY )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     m_mapWidths[inputId] = mapWidth;
     m_mapHeights[inputId] = mapHeight;
 
     if ( ( true == m_bEnableUndistortion ) && ( ( nullptr == pMapX ) || ( nullptr == pMapY ) ) )
     {
-        RIDEHAL_ERROR( "Null remap pointer!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "Null remap pointer!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else if ( ( true == m_bEnableUndistortion ) &&
-              ( ( RIDEHAL_BUFFER_TYPE_TENSOR != pMapX->type ) || ( nullptr == pMapX->data() ) ) )
+              ( ( QC_BUFFER_TYPE_TENSOR != pMapX->type ) || ( nullptr == pMapX->data() ) ) )
     {
-        RIDEHAL_ERROR( "Invalid mapX table!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "Invalid mapX table!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else if ( ( true == m_bEnableUndistortion ) &&
-              ( ( RIDEHAL_BUFFER_TYPE_TENSOR != pMapY->type ) || ( nullptr == pMapY->data() ) ) )
+              ( ( QC_BUFFER_TYPE_TENSOR != pMapY->type ) || ( nullptr == pMapY->data() ) ) )
     {
-        RIDEHAL_ERROR( "Invalid mapY table!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "Invalid mapY table!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else if ( ( true == m_bEnableUndistortion ) &&
-              ( ( RIDEHAL_TENSOR_TYPE_FLOAT_32 != pMapX->tensorProps.type ) ||
+              ( ( QC_TENSOR_TYPE_FLOAT_32 != pMapX->tensorProps.type ) ||
                 ( 2 != pMapX->tensorProps.numDims ) || ( mapWidth != pMapX->tensorProps.dims[0] ) ||
                 ( mapHeight != pMapX->tensorProps.dims[1] ) ) )
     {
-        RIDEHAL_ERROR( "mapX table size not match!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "mapX table size not match!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else if ( ( true == m_bEnableUndistortion ) &&
-              ( ( RIDEHAL_TENSOR_TYPE_FLOAT_32 != pMapY->tensorProps.type ) ||
+              ( ( QC_TENSOR_TYPE_FLOAT_32 != pMapY->tensorProps.type ) ||
                 ( 2 != pMapY->tensorProps.numDims ) || ( mapWidth != pMapY->tensorProps.dims[0] ) ||
                 ( mapHeight != pMapY->tensorProps.dims[1] ) ) )
     {
-        RIDEHAL_ERROR( "mapY table size not match!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "mapY table size not match!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
-        if ( ( RIDEHAL_PROCESSOR_HTP0 == m_processor ) ||
-             ( RIDEHAL_PROCESSOR_HTP1 == m_processor ) )
+        if ( ( QC_PROCESSOR_HTP0 == m_processor ) || ( QC_PROCESSOR_HTP1 == m_processor ) )
         {
             FadasIface_FadasRemapPipeline_e pipeline = RemapGetPipelineDSP(
                     m_inputFormats[inputId], m_outputFormat, m_bEnableNormalize );
             if ( FADAS_REMAP_PIPELINE_MAX_NSP == pipeline )
             {
-                RIDEHAL_ERROR( "Invalid remap pipelie for DSP!" );
-                ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+                QC_ERROR( "Invalid remap pipelie for DSP!" );
+                ret = QC_STATUS_BAD_ARGUMENTS;
             }
             else
             {
@@ -277,8 +272,8 @@ RideHalError_e FadasRemap::CreatRemapTable( uint32_t inputId, uint32_t mapWidth,
 
                 if ( AEE_SUCCESS != retVal )
                 {
-                    RIDEHAL_ERROR( "Failed to create a remap map for DSP!" );
-                    ret = RIDEHAL_ERROR_FAIL;
+                    QC_ERROR( "Failed to create a remap map for DSP!" );
+                    ret = QC_STATUS_FAIL;
                 }
                 else
                 {
@@ -286,14 +281,14 @@ RideHalError_e FadasRemap::CreatRemapTable( uint32_t inputId, uint32_t mapWidth,
                 }
             }
         }
-        else if ( RIDEHAL_PROCESSOR_GPU == m_processor )
+        else if ( QC_PROCESSOR_GPU == m_processor )
         {
             FadasRemapPipeline_e pipeline = RemapGetPipelineCPU(
                     m_inputFormats[inputId], m_outputFormat, m_bEnableNormalize );
             if ( FADAS_REMAP_PIPELINE_MAX_RH == pipeline )
             {
-                RIDEHAL_ERROR( "Invalid remap pipelie for CPU!" );
-                ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+                QC_ERROR( "Invalid remap pipelie for CPU!" );
+                ret = QC_STATUS_BAD_ARGUMENTS;
             }
             else
             {
@@ -314,8 +309,8 @@ RideHalError_e FadasRemap::CreatRemapTable( uint32_t inputId, uint32_t mapWidth,
 
                 if ( remapPtr == nullptr )
                 {
-                    RIDEHAL_ERROR( "Failed to create a remap map for CPU!" );
-                    ret = RIDEHAL_ERROR_FAIL;
+                    QC_ERROR( "Failed to create a remap map for CPU!" );
+                    ret = QC_STATUS_FAIL;
                 }
                 else
                 {
@@ -329,8 +324,8 @@ RideHalError_e FadasRemap::CreatRemapTable( uint32_t inputId, uint32_t mapWidth,
                     m_inputFormats[inputId], m_outputFormat, m_bEnableNormalize );
             if ( FADAS_REMAP_PIPELINE_MAX_RH == pipeline )
             {
-                RIDEHAL_ERROR( "Invalid remap pipelie for GPU!" );
-                ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+                QC_ERROR( "Invalid remap pipelie for GPU!" );
+                ret = QC_STATUS_BAD_ARGUMENTS;
             }
             else
             {
@@ -351,8 +346,8 @@ RideHalError_e FadasRemap::CreatRemapTable( uint32_t inputId, uint32_t mapWidth,
 
                 if ( remapPtr == nullptr )
                 {
-                    RIDEHAL_ERROR( "Failed to create a remap map for CPU!" );
-                    ret = RIDEHAL_ERROR_FAIL;
+                    QC_ERROR( "Failed to create a remap map for CPU!" );
+                    ret = QC_STATUS_FAIL;
                 }
                 else
                 {
@@ -365,36 +360,35 @@ RideHalError_e FadasRemap::CreatRemapTable( uint32_t inputId, uint32_t mapWidth,
     return ret;
 }
 
-RideHalError_e FadasRemap::CreateRemapWorker( uint32_t inputId, RideHal_ImageFormat_e inputFormat,
-                                              uint32_t inputWidth, uint32_t inputHeight,
-                                              FadasROI_t ROI )
+QCStatus_e FadasRemap::CreateRemapWorker( uint32_t inputId, QCImageFormat_e inputFormat,
+                                          uint32_t inputWidth, uint32_t inputHeight,
+                                          FadasROI_t ROI )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     m_inputFormats[inputId] = inputFormat;
     m_inputWidths[inputId] = inputWidth;
     m_inputHeights[inputId] = inputHeight;
     m_ROIs[inputId] = ROI;
 
-    if ( ( RIDEHAL_IMAGE_FORMAT_UYVY != m_inputFormats[inputId] ) &&
-         ( RIDEHAL_IMAGE_FORMAT_RGB888 != m_inputFormats[inputId] ) &&
-         ( RIDEHAL_IMAGE_FORMAT_NV12 != m_inputFormats[inputId] ) &&
-         ( RIDEHAL_IMAGE_FORMAT_NV12_UBWC != m_inputFormats[inputId] ) )
+    if ( ( QC_IMAGE_FORMAT_UYVY != m_inputFormats[inputId] ) &&
+         ( QC_IMAGE_FORMAT_RGB888 != m_inputFormats[inputId] ) &&
+         ( QC_IMAGE_FORMAT_NV12 != m_inputFormats[inputId] ) &&
+         ( QC_IMAGE_FORMAT_NV12_UBWC != m_inputFormats[inputId] ) )
     {
-        RIDEHAL_ERROR( "Invalid input format for inputId = %d ", inputId );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "Invalid input format for inputId = %d ", inputId );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
-        if ( ( RIDEHAL_PROCESSOR_HTP0 == m_processor ) ||
-             ( RIDEHAL_PROCESSOR_HTP1 == m_processor ) )
+        if ( ( QC_PROCESSOR_HTP0 == m_processor ) || ( QC_PROCESSOR_HTP1 == m_processor ) )
         {
             FadasIface_FadasRemapPipeline_e pipeline = RemapGetPipelineDSP(
                     m_inputFormats[inputId], m_outputFormat, m_bEnableNormalize );
             if ( FADAS_REMAP_PIPELINE_MAX_NSP == pipeline )
             {
-                RIDEHAL_ERROR( "Invalid remap pipelie for DSP!" );
-                ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+                QC_ERROR( "Invalid remap pipelie for DSP!" );
+                ret = QC_STATUS_BAD_ARGUMENTS;
             }
             else
             {
@@ -403,8 +397,8 @@ RideHalError_e FadasRemap::CreateRemapWorker( uint32_t inputId, RideHal_ImageFor
                         FadasIface_FadasRemap_CreateWorkers( m_handle64, &workerPtr, 4, pipeline );
                 if ( AEE_SUCCESS != retVal )
                 {
-                    RIDEHAL_ERROR( "Failed to create a remap worker for DSP!" );
-                    ret = RIDEHAL_ERROR_FAIL;
+                    QC_ERROR( "Failed to create a remap worker for DSP!" );
+                    ret = QC_STATUS_FAIL;
                 }
                 else
                 {
@@ -412,7 +406,7 @@ RideHalError_e FadasRemap::CreateRemapWorker( uint32_t inputId, RideHal_ImageFor
                 }
             }
         }
-        else if ( RIDEHAL_PROCESSOR_GPU == m_processor )
+        else if ( QC_PROCESSOR_GPU == m_processor )
         {
             /*fadas GPU not support multiple threads, no need to create workers*/
         }
@@ -423,16 +417,16 @@ RideHalError_e FadasRemap::CreateRemapWorker( uint32_t inputId, RideHal_ImageFor
                     m_inputFormats[inputId], m_outputFormat, m_bEnableNormalize );
             if ( FADAS_REMAP_PIPELINE_MAX_RH == pipeline )
             {
-                RIDEHAL_ERROR( "Invalid remap pipelie for CPU!" );
-                ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+                QC_ERROR( "Invalid remap pipelie for CPU!" );
+                ret = QC_STATUS_BAD_ARGUMENTS;
             }
             else
             {
                 void *workerPtr = FadasRemap_CreateWorkers( 4, pThreadsAffinity, pipeline );
                 if ( workerPtr == nullptr )
                 {
-                    RIDEHAL_ERROR( "Failed to create a remap worker for CPU!" );
-                    ret = RIDEHAL_ERROR_FAIL;
+                    QC_ERROR( "Failed to create a remap worker for CPU!" );
+                    ret = QC_STATUS_FAIL;
                 }
                 else
                 {
@@ -444,36 +438,35 @@ RideHalError_e FadasRemap::CreateRemapWorker( uint32_t inputId, RideHal_ImageFor
     return ret;
 }
 
-RideHalError_e FadasRemap::RemapRunCPU( const RideHal_SharedBuffer_t *inputs,
-                                        const RideHal_SharedBuffer_t *output )
+QCStatus_e FadasRemap::RemapRunCPU( const QCSharedBuffer_t *inputs, const QCSharedBuffer_t *output )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     /*call unified RegBuf functions even the buffers may have been registered*/
-    int32_t srcFds[RIDEHAL_MAX_INPUTS];
+    int32_t srcFds[QC_MAX_INPUTS];
     int32_t dstFd;
     for ( uint32_t inputId = 0; inputId < m_numOfInputs; inputId++ )
     {
-        const RideHal_SharedBuffer_t *input = &inputs[inputId];
+        const QCSharedBuffer_t *input = &inputs[inputId];
         srcFds[inputId] = RegBuf( input, FADAS_BUF_TYPE_IN );
         if ( srcFds[inputId] < 0 )
         {
-            RIDEHAL_ERROR( "Input Buffer register failed!" );
-            ret = RIDEHAL_ERROR_INVALID_BUF;
+            QC_ERROR( "Input Buffer register failed!" );
+            ret = QC_STATUS_INVALID_BUF;
             break;
         }
     }
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         dstFd = RegBuf( output, FADAS_BUF_TYPE_OUT );
         if ( dstFd < 0 )
         {
-            RIDEHAL_ERROR( "Output buffer register failed!" );
-            ret = RIDEHAL_ERROR_INVALID_BUF;
+            QC_ERROR( "Output buffer register failed!" );
+            ret = QC_STATUS_INVALID_BUF;
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         size_t outputSize = output->size / output->imgProps.batchSize;
         for ( uint32_t inputId = 0; inputId < m_numOfInputs; inputId++ )
@@ -490,20 +483,20 @@ RideHalError_e FadasRemap::RemapRunCPU( const RideHal_SharedBuffer_t *inputs,
                 srcImg.props.stride[i] = inputs[inputId].imgProps.stride[i];
             }
             srcImg.plane[0] = pSrc;
-            if ( RIDEHAL_IMAGE_FORMAT_UYVY == m_inputFormats[inputId] )
+            if ( QC_IMAGE_FORMAT_UYVY == m_inputFormats[inputId] )
             {
                 srcImg.props.format = FADAS_IMAGE_FORMAT_UYVY;
             }
-            else if ( RIDEHAL_IMAGE_FORMAT_RGB888 == m_inputFormats[inputId] )
+            else if ( QC_IMAGE_FORMAT_RGB888 == m_inputFormats[inputId] )
             {
                 srcImg.props.format = FADAS_IMAGE_FORMAT_RGB888;
             }
-            else if ( RIDEHAL_IMAGE_FORMAT_NV12 == m_inputFormats[inputId] )
+            else if ( QC_IMAGE_FORMAT_NV12 == m_inputFormats[inputId] )
             {
                 srcImg.props.format = FADAS_IMAGE_FORMAT_Y8UV8;
                 srcImg.plane[1] = pSrc + inputs[inputId].imgProps.planeBufSize[0];
             }
-            else if ( RIDEHAL_IMAGE_FORMAT_NV12_UBWC == m_inputFormats[inputId] )
+            else if ( QC_IMAGE_FORMAT_NV12_UBWC == m_inputFormats[inputId] )
             {
                 srcImg.props.format = FADAS_IMAGE_FORMAT_UBWC_NV12_RH;
                 srcImg.props.numPlanes = 1;
@@ -514,26 +507,26 @@ RideHalError_e FadasRemap::RemapRunCPU( const RideHal_SharedBuffer_t *inputs,
             }
             else
             {
-                RIDEHAL_ERROR( "Invalid input format for inputId = %d!", inputId );
-                ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+                QC_ERROR( "Invalid input format for inputId = %d!", inputId );
+                ret = QC_STATUS_BAD_ARGUMENTS;
             }
             srcImg.bAllocated = false;
 
             FadasImage_t rgbImg{ 0 };
             rgbImg.props.width = output->imgProps.width;
             rgbImg.props.height = output->imgProps.height;
-            if ( RIDEHAL_IMAGE_FORMAT_RGB888 == m_outputFormat )
+            if ( QC_IMAGE_FORMAT_RGB888 == m_outputFormat )
             {
                 rgbImg.props.format = FADAS_IMAGE_FORMAT_RGB888;
             }
-            else if ( RIDEHAL_IMAGE_FORMAT_BGR888 == m_outputFormat )
+            else if ( QC_IMAGE_FORMAT_BGR888 == m_outputFormat )
             {
                 rgbImg.props.format = FADAS_IMAGE_FORMAT_BGR888_RH;
             }
             else
             {
-                RIDEHAL_ERROR( "Invalid output format!" );
-                ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+                QC_ERROR( "Invalid output format!" );
+                ret = QC_STATUS_BAD_ARGUMENTS;
             }
             rgbImg.props.numPlanes = output->imgProps.numPlanes;
             for ( int i = 0; i < output->imgProps.numPlanes; i++ )
@@ -543,14 +536,14 @@ RideHalError_e FadasRemap::RemapRunCPU( const RideHal_SharedBuffer_t *inputs,
             rgbImg.plane[0] = pDst;
             rgbImg.bAllocated = false;
 
-            if ( RIDEHAL_ERROR_NONE == ret )
+            if ( QC_STATUS_OK == ret )
             {
                 FadasROI_t roi = m_ROIs[inputId];
                 FadasRemapMap_t *remapPtr = m_remapPtrsCPU[inputId];
                 void *workerPtr = m_workerPtrsCPU[inputId];
                 FadasError_e retFadas;
 
-                if ( RIDEHAL_PROCESSOR_GPU == m_processor )
+                if ( QC_PROCESSOR_GPU == m_processor )
                 {
                     if ( false == m_bEnableNormalize )
                     {
@@ -564,9 +557,9 @@ RideHalError_e FadasRemap::RemapRunCPU( const RideHal_SharedBuffer_t *inputs,
                     }
                     if ( FADAS_ERROR_NONE != retFadas )
                     {
-                        RIDEHAL_ERROR( "FadasRemap_RunGPU failed for batch %d: ret = 0x%x", inputId,
-                                       retFadas );
-                        ret = RIDEHAL_ERROR_FAIL;
+                        QC_ERROR( "FadasRemap_RunGPU failed for batch %d: ret = 0x%x", inputId,
+                                  retFadas );
+                        ret = QC_STATUS_FAIL;
                     }
                 }
                 else
@@ -582,13 +575,13 @@ RideHalError_e FadasRemap::RemapRunCPU( const RideHal_SharedBuffer_t *inputs,
                     }
                     if ( FADAS_ERROR_NONE != retFadas )
                     {
-                        RIDEHAL_ERROR( "FadasRemap_RunMT failed for batch %d: ret = 0x%x", inputId,
-                                       retFadas );
-                        ret = RIDEHAL_ERROR_FAIL;
+                        QC_ERROR( "FadasRemap_RunMT failed for batch %d: ret = 0x%x", inputId,
+                                  retFadas );
+                        ret = QC_STATUS_FAIL;
                     }
                 }
             }
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
                 break;
             }
@@ -598,41 +591,40 @@ RideHalError_e FadasRemap::RemapRunCPU( const RideHal_SharedBuffer_t *inputs,
     return ret;
 }
 
-RideHalError_e FadasRemap::RemapRunDSP( const RideHal_SharedBuffer_t *inputs,
-                                        const RideHal_SharedBuffer_t *output )
+QCStatus_e FadasRemap::RemapRunDSP( const QCSharedBuffer_t *inputs, const QCSharedBuffer_t *output )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     /*call unified RegBuf functions even the buffers may have been registered*/
-    int32_t srcFds[RIDEHAL_MAX_INPUTS];
+    int32_t srcFds[QC_MAX_INPUTS];
     int32_t dstFd;
     for ( uint32_t inputId = 0; inputId < m_numOfInputs; inputId++ )
     {
-        const RideHal_SharedBuffer_t *input = &inputs[inputId];
+        const QCSharedBuffer_t *input = &inputs[inputId];
         srcFds[inputId] = RegBuf( input, FADAS_BUF_TYPE_IN );
         if ( srcFds[inputId] < 0 )
         {
-            RIDEHAL_ERROR( "Input Buffer register failed!" );
-            ret = RIDEHAL_ERROR_INVALID_BUF;
+            QC_ERROR( "Input Buffer register failed!" );
+            ret = QC_STATUS_INVALID_BUF;
             break;
         }
     }
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         dstFd = RegBuf( output, FADAS_BUF_TYPE_OUT );
         if ( dstFd < 0 )
         {
-            RIDEHAL_ERROR( "Output buffer register failed!" );
-            ret = RIDEHAL_ERROR_INVALID_BUF;
+            QC_ERROR( "Output buffer register failed!" );
+            ret = QC_STATUS_INVALID_BUF;
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         size_t outputSize = output->size / output->imgProps.batchSize;
-        FadasIface_FadasROI_t ROIs[RIDEHAL_MAX_INPUTS];
-        FadasIface_FadasImgProps_t srcImgProps[RIDEHAL_MAX_INPUTS];
-        uint32_t offsets[RIDEHAL_MAX_INPUTS];
+        FadasIface_FadasROI_t ROIs[QC_MAX_INPUTS];
+        FadasIface_FadasImgProps_t srcImgProps[QC_MAX_INPUTS];
+        uint32_t offsets[QC_MAX_INPUTS];
 
         for ( uint32_t inputId = 0; inputId < m_numOfInputs; inputId++ )
         {
@@ -648,22 +640,22 @@ RideHalError_e FadasRemap::RemapRunDSP( const RideHal_SharedBuffer_t *inputs,
             {
                 srcImgProp.actualHeight[i] = inputs[inputId].imgProps.actualHeight[i];
             }
-            if ( RIDEHAL_IMAGE_FORMAT_UYVY == m_inputFormats[inputId] )
+            if ( QC_IMAGE_FORMAT_UYVY == m_inputFormats[inputId] )
             {
                 srcImgProp.format = FADAS_IMAGE_FORMAT_UYVY_NSP;
             }
-            else if ( RIDEHAL_IMAGE_FORMAT_RGB888 == m_inputFormats[inputId] )
+            else if ( QC_IMAGE_FORMAT_RGB888 == m_inputFormats[inputId] )
             {
                 srcImgProp.format = FADAS_IMAGE_FORMAT_RGB888_NSP;
             }
-            else if ( RIDEHAL_IMAGE_FORMAT_NV12 == m_inputFormats[inputId] )
+            else if ( QC_IMAGE_FORMAT_NV12 == m_inputFormats[inputId] )
             {
                 srcImgProp.format = FADAS_IMAGE_FORMAT_Y8UV8_NSP;
             }
             else
             {
-                RIDEHAL_ERROR( "Invalid input format for inputId = %d!", inputId );
-                ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+                QC_ERROR( "Invalid input format for inputId = %d!", inputId );
+                ret = QC_STATUS_BAD_ARGUMENTS;
                 break;
             }
             srcImgProps[inputId] = srcImgProp;
@@ -684,7 +676,7 @@ RideHalError_e FadasRemap::RemapRunDSP( const RideHal_SharedBuffer_t *inputs,
             dstImgProp.stride[i] = output->imgProps.stride[i];
         }
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             AEEResult retV;
             if ( false == m_bEnableNormalize )
@@ -713,8 +705,8 @@ RideHalError_e FadasRemap::RemapRunDSP( const RideHal_SharedBuffer_t *inputs,
             }
             if ( retV != AEE_SUCCESS )
             {
-                RIDEHAL_ERROR( "Remap888 failed: ret = 0x%x", retV );
-                ret = RIDEHAL_ERROR_FAIL;
+                QC_ERROR( "Remap888 failed: ret = 0x%x", retV );
+                ret = QC_STATUS_FAIL;
             }
         }
     }
@@ -722,20 +714,19 @@ RideHalError_e FadasRemap::RemapRunDSP( const RideHal_SharedBuffer_t *inputs,
     return ret;
 }
 
-RideHalError_e FadasRemap::RemapRun( const RideHal_SharedBuffer_t *inputs,
-                                     const RideHal_SharedBuffer_t *output )
+QCStatus_e FadasRemap::RemapRun( const QCSharedBuffer_t *inputs, const QCSharedBuffer_t *output )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     if ( nullptr == inputs )
     {
-        RIDEHAL_ERROR( "NULL pointer for input buffers!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "NULL pointer for input buffers!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else if ( nullptr == output )
     {
-        RIDEHAL_ERROR( "NULL pointer for output buffer!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "NULL pointer for output buffer!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
@@ -743,29 +734,29 @@ RideHalError_e FadasRemap::RemapRun( const RideHal_SharedBuffer_t *inputs,
         {
             if ( m_inputFormats[inputId] != inputs[inputId].imgProps.format )
             {
-                RIDEHAL_ERROR( "Format in input buffer and config not match!" );
-                ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+                QC_ERROR( "Format in input buffer and config not match!" );
+                ret = QC_STATUS_BAD_ARGUMENTS;
             }
             else if ( m_inputWidths[inputId] != inputs[inputId].imgProps.width )
             {
-                RIDEHAL_ERROR( "Width in input buffer and config not match!" );
-                ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+                QC_ERROR( "Width in input buffer and config not match!" );
+                ret = QC_STATUS_BAD_ARGUMENTS;
             }
             else if ( m_inputHeights[inputId] != inputs[inputId].imgProps.height )
             {
-                RIDEHAL_ERROR( "Height in input buffer and config not match!" );
-                ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+                QC_ERROR( "Height in input buffer and config not match!" );
+                ret = QC_STATUS_BAD_ARGUMENTS;
             }
             else if ( 1 != inputs[inputId].imgProps.batchSize )
             {
-                RIDEHAL_ERROR( "Batch in input buffer must be 1!" );
-                ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+                QC_ERROR( "Batch in input buffer must be 1!" );
+                ret = QC_STATUS_BAD_ARGUMENTS;
             }
             else
             {
-                RIDEHAL_INFO( "Input image property check pass for id=%d!", inputId );
+                QC_INFO( "Input image property check pass for id=%d!", inputId );
             }
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
                 break;
             }
@@ -773,33 +764,32 @@ RideHalError_e FadasRemap::RemapRun( const RideHal_SharedBuffer_t *inputs,
 
         if ( m_outputFormat != output->imgProps.format )
         {
-            RIDEHAL_ERROR( "Format in output buffer and config not match!" );
-            ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+            QC_ERROR( "Format in output buffer and config not match!" );
+            ret = QC_STATUS_BAD_ARGUMENTS;
         }
         else if ( m_outputWidth != output->imgProps.width )
         {
-            RIDEHAL_ERROR( "Width in output buffer and config not match!" );
-            ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+            QC_ERROR( "Width in output buffer and config not match!" );
+            ret = QC_STATUS_BAD_ARGUMENTS;
         }
         else if ( m_outputHeight != output->imgProps.height )
         {
-            RIDEHAL_ERROR( "Height in output buffer and config not match!" );
-            ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+            QC_ERROR( "Height in output buffer and config not match!" );
+            ret = QC_STATUS_BAD_ARGUMENTS;
         }
         else if ( m_numOfInputs != output->imgProps.batchSize )
         {
-            RIDEHAL_ERROR( "Batch in output buffer and config not match!" );
-            ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+            QC_ERROR( "Batch in output buffer and config not match!" );
+            ret = QC_STATUS_BAD_ARGUMENTS;
         }
         else
         {
-            RIDEHAL_INFO( "Output image property check pass!" );
+            QC_INFO( "Output image property check pass!" );
         }
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
-            if ( ( RIDEHAL_PROCESSOR_HTP0 == m_processor ) ||
-                 ( RIDEHAL_PROCESSOR_HTP1 == m_processor ) )
+            if ( ( QC_PROCESSOR_HTP0 == m_processor ) || ( QC_PROCESSOR_HTP1 == m_processor ) )
             {
                 ret = RemapRunDSP( inputs, output );
             }
@@ -813,14 +803,13 @@ RideHalError_e FadasRemap::RemapRun( const RideHal_SharedBuffer_t *inputs,
     return ret;
 }
 
-RideHalError_e FadasRemap::DestroyWorkers()
+QCStatus_e FadasRemap::DestroyWorkers()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
-    for ( int i = 0; i < RIDEHAL_MAX_INPUTS; i++ )
+    for ( int i = 0; i < QC_MAX_INPUTS; i++ )
     {
-        if ( ( RIDEHAL_PROCESSOR_HTP0 == m_processor ) ||
-             ( RIDEHAL_PROCESSOR_HTP1 == m_processor ) )
+        if ( ( QC_PROCESSOR_HTP0 == m_processor ) || ( QC_PROCESSOR_HTP1 == m_processor ) )
         {
             if ( 0 != m_workerPtrsDSP[i] )
             {
@@ -828,12 +817,12 @@ RideHalError_e FadasRemap::DestroyWorkers()
                         FadasIface_FadasRemap_DestroyWorkers( m_handle64, m_workerPtrsDSP[i] );
                 if ( AEE_SUCCESS != retVal )
                 {
-                    RIDEHAL_ERROR( "Destroy worker failed!" );
-                    ret = RIDEHAL_ERROR_FAIL;
+                    QC_ERROR( "Destroy worker failed!" );
+                    ret = QC_STATUS_FAIL;
                 }
             }
         }
-        else if ( RIDEHAL_PROCESSOR_GPU == m_processor )
+        else if ( QC_PROCESSOR_GPU == m_processor )
         {
             /*do nothing for fadas GPU */
         }
@@ -844,8 +833,8 @@ RideHalError_e FadasRemap::DestroyWorkers()
                 FadasError_e retVal = FadasRemap_DestroyWorkers( m_workerPtrsCPU[i] );
                 if ( FADAS_ERROR_NONE != retVal )
                 {
-                    RIDEHAL_ERROR( "Destroy worker failed!" );
-                    ret = RIDEHAL_ERROR_FAIL;
+                    QC_ERROR( "Destroy worker failed!" );
+                    ret = QC_STATUS_FAIL;
                 }
             }
         }
@@ -854,14 +843,13 @@ RideHalError_e FadasRemap::DestroyWorkers()
     return ret;
 }
 
-RideHalError_e FadasRemap::DestroyMap()
+QCStatus_e FadasRemap::DestroyMap()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
-    for ( int i = 0; i < RIDEHAL_MAX_INPUTS; i++ )
+    for ( int i = 0; i < QC_MAX_INPUTS; i++ )
     {
-        if ( ( RIDEHAL_PROCESSOR_HTP0 == m_processor ) ||
-             ( RIDEHAL_PROCESSOR_HTP1 == m_processor ) )
+        if ( ( QC_PROCESSOR_HTP0 == m_processor ) || ( QC_PROCESSOR_HTP1 == m_processor ) )
         {
             if ( 0 != m_remapPtrsDSP[i] )
             {
@@ -869,20 +857,20 @@ RideHalError_e FadasRemap::DestroyMap()
                         FadasIface_FadasRemap_DestroyMap( m_handle64, m_remapPtrsDSP[i] );
                 if ( AEE_SUCCESS != retVal )
                 {
-                    RIDEHAL_ERROR( "Destroy map failed!" );
-                    ret = RIDEHAL_ERROR_FAIL;
+                    QC_ERROR( "Destroy map failed!" );
+                    ret = QC_STATUS_FAIL;
                 }
             }
         }
-        else if ( RIDEHAL_PROCESSOR_GPU == m_processor )
+        else if ( QC_PROCESSOR_GPU == m_processor )
         {
             if ( nullptr != m_remapPtrsCPU[i] )
             {
                 FadasError_e retVal = s_FadasRemap_DestroyMapGPU( m_remapPtrsCPU[i] );
                 if ( FADAS_ERROR_NONE != retVal )
                 {
-                    RIDEHAL_ERROR( "Destroy map failed!" );
-                    ret = RIDEHAL_ERROR_FAIL;
+                    QC_ERROR( "Destroy map failed!" );
+                    ret = QC_STATUS_FAIL;
                 }
             }
         }
@@ -893,8 +881,8 @@ RideHalError_e FadasRemap::DestroyMap()
                 FadasError_e retVal = FadasRemap_DestroyMap( m_remapPtrsCPU[i] );
                 if ( FADAS_ERROR_NONE != retVal )
                 {
-                    RIDEHAL_ERROR( "Destroy map failed!" );
-                    ret = RIDEHAL_ERROR_FAIL;
+                    QC_ERROR( "Destroy map failed!" );
+                    ret = QC_STATUS_FAIL;
                 }
             }
         }
@@ -905,4 +893,4 @@ RideHalError_e FadasRemap::DestroyMap()
 
 }   // namespace FadasIface
 }   // namespace libs
-}   // namespace ridehal
+}   // namespace QC

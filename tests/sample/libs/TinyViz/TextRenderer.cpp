@@ -5,7 +5,7 @@
 
 #include "TextRenderer.hpp"
 
-namespace ridehal
+namespace QC
 {
 namespace sample
 {
@@ -75,4 +75,4 @@ TextInfo *NumTextCollect::getTextInfo( uint32_t idx )
 }
 
 }   // namespace sample
-}   // namespace ridehal
+}   // namespace QC

@@ -2,17 +2,17 @@
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
+#include "QC/component/OpticalFlow.hpp"
 #include "md5_utils.hpp"
-#include "ridehal/component/OpticalFlow.hpp"
 #include "gtest/gtest.h"
 #include <chrono>
 #include <cstdlib>
 #include <stdio.h>
 #include <unistd.h>
 
-using namespace ridehal::common;
-using namespace ridehal::component;
-using namespace ridehal::test::utils;
+using namespace QC::common;
+using namespace QC::component;
+using namespace QC::test::utils;
 
 #define ALIGN_S( size, align ) ( ( size + align - 1 ) / align ) * align
 
@@ -46,36 +46,35 @@ static void Eva_OpticalFlowRun( std::string name, OpticalFlow_Config_t &config,
                                 std::string goldenMvMap = "", std::string goldenMvConf = "" )
 {
     OpticalFlow ofl;
-    RideHalError_e ret;
-    RideHal_SharedBuffer_t refImg;
-    RideHal_SharedBuffer_t curImg;
-    RideHal_SharedBuffer_t mvFwdMap;
-    RideHal_SharedBuffer_t mvConf;
-    RideHal_SharedBuffer_t mvFwdMapG;
-    RideHal_SharedBuffer_t mvConfG;
+    QCStatus_e ret;
+    QCSharedBuffer_t refImg;
+    QCSharedBuffer_t curImg;
+    QCSharedBuffer_t mvFwdMap;
+    QCSharedBuffer_t mvConf;
+    QCSharedBuffer_t mvFwdMapG;
+    QCSharedBuffer_t mvConfG;
 
     uint32_t width = ( config.width >> config.amFilter.nStepSize ) << config.amFilter.nUpScale;
     uint32_t height = ( config.height >> config.amFilter.nStepSize ) << config.amFilter.nUpScale;
 
-    RideHal_TensorProps_t mvFwdMapTsProp = {
-            RIDEHAL_TENSOR_TYPE_UINT_16,
-            { 1, ALIGN_S( height, 8 ), ALIGN_S( width * 2, 128 ), 1 },
-            4 };
-    RideHal_TensorProps_t mvConfTsProp = { RIDEHAL_TENSOR_TYPE_UINT_8,
-                                           { 1, ALIGN_S( height, 8 ), ALIGN_S( width, 128 ), 1 },
-                                           4 };
+    QCTensorProps_t mvFwdMapTsProp = { QC_TENSOR_TYPE_UINT_16,
+                                       { 1, ALIGN_S( height, 8 ), ALIGN_S( width * 2, 128 ), 1 },
+                                       4 };
+    QCTensorProps_t mvConfTsProp = { QC_TENSOR_TYPE_UINT_8,
+                                     { 1, ALIGN_S( height, 8 ), ALIGN_S( width, 128 ), 1 },
+                                     4 };
 
 
     printf( "-- Test for %s\n", name.c_str() );
 
     ret = refImg.Allocate( config.width, config.height, config.format );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
     ret = curImg.Allocate( config.width, config.height, config.format );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
     ret = mvFwdMap.Allocate( &mvFwdMapTsProp );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
     ret = mvConf.Allocate( &mvConfTsProp );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     if ( false == img1.empty() )
     {
@@ -94,22 +93,22 @@ static void Eva_OpticalFlowRun( std::string name, OpticalFlow_Config_t &config,
     }
 
     ret = ofl.Init( name.c_str(), &config, LOGGER_LEVEL_VERBOSE );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = ofl.RegisterBuffers( &refImg, 1 );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
     ret = ofl.RegisterBuffers( &curImg, 1 );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
     ret = ofl.RegisterBuffers( &mvFwdMap, 1 );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
     ret = ofl.RegisterBuffers( &mvConf, 1 );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = ofl.Start();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = ofl.Execute( &refImg, &curImg, &mvFwdMap, &mvConf );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     if ( ( false == goldenMvMap.empty() ) && ( false == goldenMvConf.empty() ) )
     {
@@ -118,9 +117,9 @@ static void Eva_OpticalFlowRun( std::string name, OpticalFlow_Config_t &config,
         // SaveRaw( goldenMvConf, mvConf.data(), mvConf.size );
 
         ret = mvFwdMapG.Allocate( &mvFwdMapTsProp );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
         ret = mvConfG.Allocate( &mvConfTsProp );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         LoadRaw( mvFwdMapG.data(), mvFwdMapG.size, goldenMvMap );
         LoadRaw( mvConfG.data(), mvConfG.size, goldenMvConf );
@@ -138,31 +137,31 @@ static void Eva_OpticalFlowRun( std::string name, OpticalFlow_Config_t &config,
     }
 
     ret = ofl.Execute( &curImg, &refImg, &mvFwdMap, &mvConf );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = ofl.Stop();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = ofl.DeRegisterBuffers( &refImg, 1 );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
     ret = ofl.DeRegisterBuffers( &curImg, 1 );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
     ret = ofl.DeRegisterBuffers( &mvFwdMap, 1 );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
     ret = ofl.DeRegisterBuffers( &mvConf, 1 );
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = ofl.Deinit();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = refImg.Free();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
     ret = curImg.Free();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
     ret = mvFwdMap.Free();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
     ret = mvConf.Free();
-    ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 }
 
 TEST( EVA, SANITY_OpticalFlowCPU )
@@ -209,7 +208,7 @@ TEST( EVA, L2_OpticalFlowFormat )
         OpticalFlow_Config_t config;
         config.width = 1920;
         config.height = 1024;
-        config.format = RIDEHAL_IMAGE_FORMAT_UYVY;
+        config.format = QC_IMAGE_FORMAT_UYVY;
         config.filterOperationMode = EVA_OF_MODE_CPU;
         Eva_OpticalFlowRun( "OFL0_CPU_UYVY", config );
     }
@@ -217,7 +216,7 @@ TEST( EVA, L2_OpticalFlowFormat )
         OpticalFlow_Config_t config;
         config.width = 1920;
         config.height = 1024;
-        config.format = RIDEHAL_IMAGE_FORMAT_UYVY;
+        config.format = QC_IMAGE_FORMAT_UYVY;
         config.filterOperationMode = EVA_OF_MODE_DSP;
         Eva_OpticalFlowRun( "OFL0_DSP_UYVY", config );
     }
@@ -227,7 +226,7 @@ TEST( EVA, L2_OpticalFlowFormat )
         OpticalFlow_Config_t config;
         config.width = 1920;
         config.height = 1024;
-        config.format = RIDEHAL_IMAGE_FORMAT_P010;
+        config.format = QC_IMAGE_FORMAT_P010;
         config.filterOperationMode = EVA_OF_MODE_DISABLE;
         Eva_OpticalFlowRun( "OFL0_NONE_P010", config );
     }
@@ -255,7 +254,7 @@ TEST( EVA, L2_OpticalFlowBackward )
 
 TEST( EVA, L2_OpticalFlowError )
 {
-    RideHalError_e ret;
+    QCStatus_e ret;
     {
         OpticalFlow ofl;
         OpticalFlow_Config_t configDft;
@@ -264,249 +263,248 @@ TEST( EVA, L2_OpticalFlowError )
         OpticalFlow_Config_t config = configDft;
 
         ret = ofl.Init( nullptr, &config );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         ret = ofl.Init( "OFL0", nullptr );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         config = configDft;
-        config.format = RIDEHAL_IMAGE_FORMAT_NV12_UBWC;
+        config.format = QC_IMAGE_FORMAT_NV12_UBWC;
         ret = ofl.Init( "OFL0", &config );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         config = configDft;
         config.filterOperationMode = EVA_OF_MODE_MAX;
         ret = ofl.Init( "OFL0", &config );
-        ASSERT_EQ( RIDEHAL_ERROR_FAIL, ret );
+        ASSERT_EQ( QC_STATUS_FAIL, ret );
 
         config = configDft;
         config.direction = EVA_OF_BIDIRECTIONAL;
         ret = ofl.Init( "OFL0", &config );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         config = configDft; /* super large image */
         config.width = 409600;
         config.height = 409600;
         ret = ofl.Init( "OFL0", &config );
-        ASSERT_EQ( RIDEHAL_ERROR_FAIL, ret );
+        ASSERT_EQ( QC_STATUS_FAIL, ret );
 
         ret = ofl.Deinit();
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
         config = configDft;
-        RideHal_SharedBuffer_t refImg;
-        RideHal_SharedBuffer_t curImg;
-        RideHal_SharedBuffer_t mvFwdMap;
-        RideHal_SharedBuffer_t mvConf;
+        QCSharedBuffer_t refImg;
+        QCSharedBuffer_t curImg;
+        QCSharedBuffer_t mvFwdMap;
+        QCSharedBuffer_t mvConf;
 
         uint32_t width = ( config.width >> config.amFilter.nStepSize ) << config.amFilter.nUpScale;
         uint32_t height = ( config.height >> config.amFilter.nStepSize )
                           << config.amFilter.nUpScale;
 
-        RideHal_TensorProps_t mvFwdMapTsProp = {
-                RIDEHAL_TENSOR_TYPE_UINT_16,
+        QCTensorProps_t mvFwdMapTsProp = {
+                QC_TENSOR_TYPE_UINT_16,
                 { 1, ALIGN_S( height, 8 ), ALIGN_S( width * 2, 128 ), 1 },
                 4 };
-        RideHal_TensorProps_t mvConfTsProp = {
-                RIDEHAL_TENSOR_TYPE_UINT_8,
-                { 1, ALIGN_S( height, 8 ), ALIGN_S( width, 128 ), 1 },
-                4 };
+        QCTensorProps_t mvConfTsProp = { QC_TENSOR_TYPE_UINT_8,
+                                         { 1, ALIGN_S( height, 8 ), ALIGN_S( width, 128 ), 1 },
+                                         4 };
 
         ret = refImg.Allocate( config.width, config.height, config.format );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
         ret = curImg.Allocate( config.width, config.height, config.format );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
         ret = mvFwdMap.Allocate( &mvFwdMapTsProp );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
         ret = mvConf.Allocate( &mvConfTsProp );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = ofl.RegisterBuffers( &refImg, 1 );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
         ret = ofl.DeRegisterBuffers( &refImg, 1 );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
         ret = ofl.Execute( &refImg, &curImg, &mvFwdMap, &mvConf );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
         ret = ofl.Start();
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
         ret = ofl.Stop();
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_STATE, ret );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
         ret = ofl.Init( "OFL0", &config );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = ofl.RegisterBuffers( nullptr, 1 );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         ret = ofl.RegisterBuffers( &refImg, 0 );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
-        RideHal_SharedBuffer_t invalidImg = refImg;
+        QCSharedBuffer_t invalidImg = refImg;
         invalidImg.buffer.dmaHandle = 0xdeadbeef;
         ret = ofl.RegisterBuffers( &invalidImg, 1 );
-        ASSERT_EQ( RIDEHAL_ERROR_FAIL, ret );
+        ASSERT_EQ( QC_STATUS_FAIL, ret );
 
         ret = ofl.Start();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = ofl.RegisterBuffers( &curImg, 1 );
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = ofl.Execute( &refImg, &curImg, &mvFwdMap, nullptr );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         ret = ofl.Execute( &refImg, &curImg, nullptr, &mvConf );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         ret = ofl.Execute( &refImg, nullptr, &mvFwdMap, &mvConf );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
         ret = ofl.Execute( nullptr, &curImg, &mvFwdMap, &mvConf );
-        ASSERT_EQ( RIDEHAL_ERROR_BAD_ARGUMENTS, ret );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
-        RideHal_SharedBuffer_t invalidFwdMap = mvFwdMap;
-        invalidFwdMap.type = RIDEHAL_BUFFER_TYPE_IMAGE;
+        QCSharedBuffer_t invalidFwdMap = mvFwdMap;
+        invalidFwdMap.type = QC_BUFFER_TYPE_IMAGE;
         ret = ofl.Execute( &refImg, &curImg, &invalidFwdMap, &mvConf );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidFwdMap = mvFwdMap;
         invalidFwdMap.buffer.pData = nullptr;
         ret = ofl.Execute( &refImg, &curImg, &invalidFwdMap, &mvConf );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidFwdMap = mvFwdMap;
         invalidFwdMap.tensorProps.numDims = 8;
         ret = ofl.Execute( &refImg, &curImg, &invalidFwdMap, &mvConf );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidFwdMap = mvFwdMap;
-        invalidFwdMap.tensorProps.type = RIDEHAL_TENSOR_TYPE_INT_16;
+        invalidFwdMap.tensorProps.type = QC_TENSOR_TYPE_INT_16;
         ret = ofl.Execute( &refImg, &curImg, &invalidFwdMap, &mvConf );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidFwdMap = mvFwdMap;
         invalidFwdMap.tensorProps.dims[0] = 2;
         ret = ofl.Execute( &refImg, &curImg, &invalidFwdMap, &mvConf );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidFwdMap = mvFwdMap;
         invalidFwdMap.tensorProps.dims[1] += 2;
         ret = ofl.Execute( &refImg, &curImg, &invalidFwdMap, &mvConf );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidFwdMap = mvFwdMap;
         invalidFwdMap.tensorProps.dims[2] += 2;
         ret = ofl.Execute( &refImg, &curImg, &invalidFwdMap, &mvConf );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidFwdMap = mvFwdMap;
         invalidFwdMap.tensorProps.dims[3] += 2;
         ret = ofl.Execute( &refImg, &curImg, &invalidFwdMap, &mvConf );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
-        RideHal_SharedBuffer_t invalidMvConf = mvConf;
-        invalidMvConf.type = RIDEHAL_BUFFER_TYPE_IMAGE;
+        QCSharedBuffer_t invalidMvConf = mvConf;
+        invalidMvConf.type = QC_BUFFER_TYPE_IMAGE;
         ret = ofl.Execute( &refImg, &curImg, &mvFwdMap, &invalidMvConf );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidMvConf = mvConf;
         invalidMvConf.buffer.pData = nullptr;
         ret = ofl.Execute( &refImg, &curImg, &mvFwdMap, &invalidMvConf );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidMvConf = mvConf;
         invalidMvConf.tensorProps.numDims = 8;
         ret = ofl.Execute( &refImg, &curImg, &mvFwdMap, &invalidMvConf );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidMvConf = mvConf;
-        invalidMvConf.tensorProps.type = RIDEHAL_TENSOR_TYPE_INT_16;
+        invalidMvConf.tensorProps.type = QC_TENSOR_TYPE_INT_16;
         ret = ofl.Execute( &refImg, &curImg, &mvFwdMap, &invalidMvConf );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidMvConf = mvConf;
         invalidMvConf.tensorProps.dims[0] = 2;
         ret = ofl.Execute( &refImg, &curImg, &mvFwdMap, &invalidMvConf );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidMvConf = mvConf;
         invalidMvConf.tensorProps.dims[1] += 2;
         ret = ofl.Execute( &refImg, &curImg, &mvFwdMap, &invalidMvConf );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidMvConf = mvConf;
         invalidMvConf.tensorProps.dims[2] += 2;
         ret = ofl.Execute( &refImg, &curImg, &mvFwdMap, &invalidMvConf );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidMvConf = mvConf;
         invalidMvConf.tensorProps.dims[3] += 2;
         ret = ofl.Execute( &refImg, &curImg, &mvFwdMap, &invalidMvConf );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidImg = refImg;
-        invalidImg.type = RIDEHAL_BUFFER_TYPE_TENSOR;
+        invalidImg.type = QC_BUFFER_TYPE_TENSOR;
         ret = ofl.Execute( &invalidImg, &curImg, &mvFwdMap, &mvConf );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidImg = refImg;
         invalidImg.buffer.pData = nullptr;
         ret = ofl.Execute( &invalidImg, &curImg, &mvFwdMap, &mvConf );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidImg = refImg;
-        invalidImg.imgProps.format = RIDEHAL_IMAGE_FORMAT_RGB888;
+        invalidImg.imgProps.format = QC_IMAGE_FORMAT_RGB888;
         ret = ofl.Execute( &invalidImg, &curImg, &mvFwdMap, &mvConf );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidImg = refImg;
         invalidImg.imgProps.width += 1;
         ret = ofl.Execute( &invalidImg, &curImg, &mvFwdMap, &mvConf );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidImg = refImg;
         invalidImg.imgProps.height += 1;
         ret = ofl.Execute( &invalidImg, &curImg, &mvFwdMap, &mvConf );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidImg = refImg;
         invalidImg.imgProps.numPlanes += 1;
         ret = ofl.Execute( &invalidImg, &curImg, &mvFwdMap, &mvConf );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidImg = refImg;
         invalidImg.imgProps.stride[0] += 1;
         ret = ofl.Execute( &invalidImg, &curImg, &mvFwdMap, &mvConf );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         invalidImg = refImg;
         invalidImg.imgProps.planeBufSize[0] += 1;
         ret = ofl.Execute( &invalidImg, &curImg, &mvFwdMap, &mvConf );
-        ASSERT_EQ( RIDEHAL_ERROR_INVALID_BUF, ret );
+        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
 
         ret = ofl.Stop();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = ofl.Deinit();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
         ret = refImg.Free();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
         ret = curImg.Free();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
         ret = mvFwdMap.Free();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
         ret = mvConf.Free();
-        ASSERT_EQ( RIDEHAL_ERROR_NONE, ret );
+        ASSERT_EQ( QC_STATUS_OK, ret );
     }
 }
 #endif
 
-#ifndef GTEST_RIDEHAL
+#ifndef GTEST_QCNODE
 int main( int argc, char **argv )
 {
     ::testing::InitGoogleTest( &argc, argv );

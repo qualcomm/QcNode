@@ -1,7 +1,7 @@
 
 cmake_minimum_required(VERSION 3.15.0)
 
-project(ridehal LANGUAGES C CXX)
+project(qcnode LANGUAGES C CXX)
 
 option(ENABLE_GCOV "Enable GCC Code Coverage" OFF)
 option(ENABLE_DEMUXER "Enable Demuxer building" OFF)
@@ -23,8 +23,8 @@ else()
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -DNDEBUG")
 endif()
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fmacro-prefix-map=${CMAKE_CURRENT_SOURCE_DIR}=/ridehal")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fmacro-prefix-map=${CMAKE_CURRENT_SOURCE_DIR}=/ridehal")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fmacro-prefix-map=${CMAKE_CURRENT_SOURCE_DIR}=/qcnode")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fmacro-prefix-map=${CMAKE_CURRENT_SOURCE_DIR}=/qcnode")
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

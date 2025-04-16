@@ -2,12 +2,12 @@
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
-#include "ridehal/sample/SampleDepthFromStereoViz.hpp"
+#include "QC/sample/SampleDepthFromStereoViz.hpp"
 #include <algorithm>
 #include <cmath>
 #include <math.h>
 
-namespace ridehal
+namespace QC
 {
 namespace sample
 {
@@ -84,15 +84,15 @@ static const char *s_pSourceDispColor = KernelCode(   //
 SampleDepthFromStereoViz::SampleDepthFromStereoViz() {}
 SampleDepthFromStereoViz::~SampleDepthFromStereoViz() {}
 
-RideHalError_e SampleDepthFromStereoViz::ParseConfig( SampleConfig_t &config )
+QCStatus_e SampleDepthFromStereoViz::ParseConfig( SampleConfig_t &config )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
-    m_processor = Get( config, "processor", RIDEHAL_PROCESSOR_GPU );
-    if ( ( RIDEHAL_PROCESSOR_CPU != m_processor ) && ( RIDEHAL_PROCESSOR_GPU != m_processor ) )
+    m_processor = Get( config, "processor", QC_PROCESSOR_GPU );
+    if ( ( QC_PROCESSOR_CPU != m_processor ) && ( QC_PROCESSOR_GPU != m_processor ) )
     {
-        RIDEHAL_ERROR( "invalid processor type" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "invalid processor type" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     m_width = Get( config, "width", 1280u );
@@ -104,41 +104,41 @@ RideHalError_e SampleDepthFromStereoViz::ParseConfig( SampleConfig_t &config )
     m_poolSize = Get( config, "pool_size", 4 );
     if ( 0 == m_poolSize )
     {
-        RIDEHAL_ERROR( "invalid pool_size = %d\n", m_poolSize );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "invalid pool_size = %d\n", m_poolSize );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     m_inputTopicName = Get( config, "input_topic", "" );
     if ( "" == m_inputTopicName )
     {
-        RIDEHAL_ERROR( "no input topic\n" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "no input topic\n" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     m_outputTopicName = Get( config, "output_topic", "" );
     if ( "" == m_outputTopicName )
     {
-        RIDEHAL_ERROR( "no output topic\n" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "no output topic\n" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     return ret;
 }
 
-RideHalError_e SampleDepthFromStereoViz::Init( std::string name, SampleConfig_t &config )
+QCStatus_e SampleDepthFromStereoViz::Init( std::string name, SampleConfig_t &config )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     ret = SampleIF::Init( name );
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = ParseConfig( config );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
-        RideHal_ImageProps_t imgProp;
-        imgProp.format = RIDEHAL_IMAGE_FORMAT_RGB888;
+        QCImageProps_t imgProp;
+        imgProp.format = QC_IMAGE_FORMAT_RGB888;
         imgProp.batchSize = 1;
         imgProp.width = m_width;
         imgProp.height = m_height;
@@ -149,36 +149,36 @@ RideHalError_e SampleDepthFromStereoViz::Init( std::string name, SampleConfig_t 
         ret = m_rgbPool.Init( name + ".rgb", LOGGER_LEVEL_INFO, m_poolSize, imgProp );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = m_sub.Init( name, m_inputTopicName );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = m_pub.Init( name, m_outputTopicName );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
-        if ( RIDEHAL_PROCESSOR_GPU == m_processor )
+        if ( QC_PROCESSOR_GPU == m_processor )
         {
             ret = m_openclSrvObj.Init( name.c_str(), LOGGER_LEVEL_ERROR );
 
-            if ( RIDEHAL_ERROR_NONE == ret )
+            if ( QC_STATUS_OK == ret )
             {
                 ret = m_openclSrvObj.LoadFromSource( s_pSourceDispColor );
-                if ( RIDEHAL_ERROR_NONE != ret )
+                if ( QC_STATUS_OK != ret )
                 {
-                    RIDEHAL_ERROR( "Failed to load kernel source code" );
+                    QC_ERROR( "Failed to load kernel source code" );
                 }
             }
-            if ( RIDEHAL_ERROR_NONE == ret )
+            if ( QC_STATUS_OK == ret )
             {
                 ret = m_openclSrvObj.CreateKernel( &m_kernel, "DispColorConvert" );
-                if ( RIDEHAL_ERROR_NONE != ret )
+                if ( QC_STATUS_OK != ret )
                 {
-                    RIDEHAL_ERROR( "Failed to create kernel" );
+                    QC_ERROR( "Failed to create kernel" );
                 }
             }
         }
@@ -187,11 +187,11 @@ RideHalError_e SampleDepthFromStereoViz::Init( std::string name, SampleConfig_t 
     return ret;
 }
 
-RideHalError_e SampleDepthFromStereoViz::Start()
+QCStatus_e SampleDepthFromStereoViz::Start()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         m_stop = false;
         m_thread = std::thread( &SampleDepthFromStereoViz::ThreadMain, this );
@@ -200,11 +200,11 @@ RideHalError_e SampleDepthFromStereoViz::Start()
     return ret;
 }
 
-RideHalError_e SampleDepthFromStereoViz::ConvertToRgbCPU( RideHal_SharedBuffer_t *pDisparity,
-                                                          RideHal_SharedBuffer_t *pConf,
-                                                          RideHal_SharedBuffer_t *pRGB )
+QCStatus_e SampleDepthFromStereoViz::ConvertToRgbCPU( QCSharedBuffer_t *pDisparity,
+                                                      QCSharedBuffer_t *pConf,
+                                                      QCSharedBuffer_t *pRGB )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     auto strideW = pConf->tensorProps.dims[2];
     auto strideW_Disp = pDisparity->tensorProps.dims[2] * sizeof( uint16_t );
@@ -271,11 +271,11 @@ RideHalError_e SampleDepthFromStereoViz::ConvertToRgbCPU( RideHal_SharedBuffer_t
     return ret;
 }
 
-RideHalError_e SampleDepthFromStereoViz::ConvertToRgbGPU( RideHal_SharedBuffer_t *pDisparity,
-                                                          RideHal_SharedBuffer_t *pConf,
-                                                          RideHal_SharedBuffer_t *pRGB )
+QCStatus_e SampleDepthFromStereoViz::ConvertToRgbGPU( QCSharedBuffer_t *pDisparity,
+                                                      QCSharedBuffer_t *pConf,
+                                                      QCSharedBuffer_t *pRGB )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     OpenclIfcae_Arg_t openclArgs[9];
     OpenclIface_WorkParams_t openclWorkParams;
     openclWorkParams.workDim = 2;
@@ -293,30 +293,30 @@ RideHalError_e SampleDepthFromStereoViz::ConvertToRgbGPU( RideHal_SharedBuffer_t
     cl_uint strideRGB = m_width * 3;
 
     ret = m_openclSrvObj.RegBuf( &( pDisparity->buffer ), &clMemDisp );
-    if ( RIDEHAL_ERROR_NONE != ret )
+    if ( QC_STATUS_OK != ret )
     {
-        RIDEHAL_ERROR( "Failed to create cl mv mem" );
+        QC_ERROR( "Failed to create cl mv mem" );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = m_openclSrvObj.RegBuf( &( pConf->buffer ), &clMemConf );
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
-            RIDEHAL_ERROR( "Failed to create cl mvConf mem" );
+            QC_ERROR( "Failed to create cl mvConf mem" );
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = m_openclSrvObj.RegBuf( &( pRGB->buffer ), &clMemRGB );
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
-            RIDEHAL_ERROR( "Failed to create cl rgb mem" );
+            QC_ERROR( "Failed to create cl rgb mem" );
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         openclArgs[0].pArg = (void *) &clMemDisp;
         openclArgs[0].argSize = sizeof( cl_mem );
@@ -338,9 +338,9 @@ RideHalError_e SampleDepthFromStereoViz::ConvertToRgbGPU( RideHal_SharedBuffer_t
         openclArgs[8].argSize = sizeof( cl_uchar );
 
         ret = m_openclSrvObj.Execute( &m_kernel, openclArgs, 9, &openclWorkParams );
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
-            RIDEHAL_ERROR( "Failed to execute kernel" );
+            QC_ERROR( "Failed to execute kernel" );
         }
     }
 
@@ -349,27 +349,27 @@ RideHalError_e SampleDepthFromStereoViz::ConvertToRgbGPU( RideHal_SharedBuffer_t
 
 void SampleDepthFromStereoViz::ThreadMain()
 {
-    RideHalError_e ret;
+    QCStatus_e ret;
     while ( false == m_stop )
     {
         DataFrames_t frames;
         ret = m_sub.Receive( frames );
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
-            RIDEHAL_DEBUG( "receive frameId %" PRIu64 ", timestamp %" PRIu64 "\n",
-                           frames.FrameId( 0 ), frames.Timestamp( 0 ) );
+            QC_DEBUG( "receive frameId %" PRIu64 ", timestamp %" PRIu64 "\n", frames.FrameId( 0 ),
+                      frames.Timestamp( 0 ) );
 
             std::shared_ptr<SharedBuffer_t> rgb = m_rgbPool.Get();
             if ( nullptr != rgb )
             {
-                RideHal_SharedBuffer_t &disp = frames.SharedBuffer( 0 );
-                RideHal_SharedBuffer_t &conf = frames.SharedBuffer( 1 );
+                QCSharedBuffer_t &disp = frames.SharedBuffer( 0 );
+                QCSharedBuffer_t &conf = frames.SharedBuffer( 1 );
 
-                if ( RIDEHAL_ERROR_NONE == ret )
+                if ( QC_STATUS_OK == ret )
                 {
                     PROFILER_BEGIN();
                     TRACE_BEGIN( frames.FrameId( 0 ) );
-                    if ( RIDEHAL_PROCESSOR_CPU == m_processor )
+                    if ( QC_PROCESSOR_CPU == m_processor )
                     {
                         ret = ConvertToRgbCPU( &disp, &conf, &rgb->sharedBuffer );
                     }
@@ -377,7 +377,7 @@ void SampleDepthFromStereoViz::ThreadMain()
                     {
                         ret = ConvertToRgbGPU( &disp, &conf, &rgb->sharedBuffer );
                     }
-                    if ( RIDEHAL_ERROR_NONE == ret )
+                    if ( QC_STATUS_OK == ret )
                     {
                         PROFILER_END();
                         TRACE_END( frames.FrameId( 0 ) );
@@ -391,8 +391,8 @@ void SampleDepthFromStereoViz::ThreadMain()
                     }
                     else
                     {
-                        RIDEHAL_ERROR( "DepthFromStereoViz failed for %" PRIu64 " : %d",
-                                       frames.FrameId( 0 ), ret );
+                        QC_ERROR( "DepthFromStereoViz failed for %" PRIu64 " : %d",
+                                  frames.FrameId( 0 ), ret );
                     }
                 }
             }
@@ -400,9 +400,9 @@ void SampleDepthFromStereoViz::ThreadMain()
     }
 }
 
-RideHalError_e SampleDepthFromStereoViz::Stop()
+QCStatus_e SampleDepthFromStereoViz::Stop()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     m_stop = true;
     if ( m_thread.joinable() )
@@ -415,13 +415,13 @@ RideHalError_e SampleDepthFromStereoViz::Stop()
     return ret;
 }
 
-RideHalError_e SampleDepthFromStereoViz::Deinit()
+QCStatus_e SampleDepthFromStereoViz::Deinit()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     return ret;
 }
 
 REGISTER_SAMPLE( DepthFromStereoViz, SampleDepthFromStereoViz );
 
 }   // namespace sample
-}   // namespace ridehal
+}   // namespace QC

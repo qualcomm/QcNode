@@ -3,11 +3,11 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#include "ridehal/sample/SampleQnn.hpp"
+#include "QC/sample/SampleQnn.hpp"
 #include "QnnSampleAppUtils.hpp"
 
 
-namespace ridehal
+namespace QC
 {
 namespace sample
 {
@@ -32,16 +32,16 @@ static void SampleQnn_ErrorCallback( void *pAppPriv, void *pOutputPriv,
 SampleQnn::SampleQnn() {}
 SampleQnn::~SampleQnn() {}
 
-RideHalError_e SampleQnn::ParseConfig( SampleConfig_t &config )
+QCStatus_e SampleQnn::ParseConfig( SampleConfig_t &config )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     m_modelPath = Get( config, "model_path", "" );
     m_config.modelPath = m_modelPath.c_str();
     if ( "" == m_config.modelPath )
     {
-        RIDEHAL_ERROR( "invalid modelPath\n" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "invalid modelPath\n" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     auto imageConvertTypeStr = Get( config, "image_convert", "default" );
@@ -59,22 +59,22 @@ RideHalError_e SampleQnn::ParseConfig( SampleConfig_t &config )
     }
     else
     {
-        RIDEHAL_ERROR( "invalid image_convert\n" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "invalid image_convert\n" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
-    m_config.processorType = Get( config, "processor", RIDEHAL_PROCESSOR_HTP0 );
-    if ( RIDEHAL_PROCESSOR_MAX == m_config.processorType )
+    m_config.processorType = Get( config, "processor", QC_PROCESSOR_HTP0 );
+    if ( QC_PROCESSOR_MAX == m_config.processorType )
     {
-        RIDEHAL_ERROR( "invalid processor %s\n", Get( config, "processor", "" ).c_str() );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "invalid processor %s\n", Get( config, "processor", "" ).c_str() );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     m_poolSize = Get( config, "pool_size", 4 );
     if ( 0 == m_poolSize )
     {
-        RIDEHAL_ERROR( "invalid pool_size = %d\n", m_poolSize );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "invalid pool_size = %d\n", m_poolSize );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     m_bAsync = Get( config, "async", false );
@@ -82,15 +82,15 @@ RideHalError_e SampleQnn::ParseConfig( SampleConfig_t &config )
     m_inputTopicName = Get( config, "input_topic", "" );
     if ( "" == m_inputTopicName )
     {
-        RIDEHAL_ERROR( "no input topic\n" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "no input topic\n" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     m_outputTopicName = Get( config, "output_topic", "" );
     if ( "" == m_outputTopicName )
     {
-        RIDEHAL_ERROR( "no output topic\n" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "no output topic\n" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     m_modelInOutInfoTopicName = Get( config, "model_io_info_topic", "" );
@@ -108,16 +108,16 @@ RideHalError_e SampleQnn::ParseConfig( SampleConfig_t &config )
             split( opPackage, opPackagePaths[i], ':' );
             if ( opPackage.size() != 2 )
             {
-                RIDEHAL_ERROR( "invalid opPackage params: %s\n", opPackagePaths[i].c_str() );
-                ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+                QC_ERROR( "invalid opPackage params: %s\n", opPackagePaths[i].c_str() );
+                ret = QC_STATUS_BAD_ARGUMENTS;
                 break;
             }
             m_udoPkgs[i].udoLibPath = opPackage[0];
             m_udoPkgs[i].interfaceProvider = opPackage[1];
             m_opPackagePaths[i].udoLibPath = m_udoPkgs[i].udoLibPath.c_str();
             m_opPackagePaths[i].interfaceProvider = m_udoPkgs[i].interfaceProvider.c_str();
-            RIDEHAL_INFO( "opPackage params %d, udoLibPath: %s, interfaceProvider: %s\n", i,
-                          m_opPackagePaths[i].udoLibPath, m_opPackagePaths[i].interfaceProvider );
+            QC_INFO( "opPackage params %d, udoLibPath: %s, interfaceProvider: %s\n", i,
+                     m_opPackagePaths[i].udoLibPath, m_opPackagePaths[i].interfaceProvider );
         }
         m_config.numOfUdoPackages = m_opPackagePaths.size();
         m_config.pUdoPackages = &m_opPackagePaths[0];
@@ -126,47 +126,47 @@ RideHalError_e SampleQnn::ParseConfig( SampleConfig_t &config )
     return ret;
 }
 
-RideHalError_e SampleQnn::Init( std::string name, SampleConfig_t &config )
+QCStatus_e SampleQnn::Init( std::string name, SampleConfig_t &config )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     ret = SampleIF::Init( name );
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = ParseConfig( config );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = SampleIF::Init( m_config.processorType );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         TRACE_BEGIN( SYSTRACE_TASK_INIT );
         ret = m_qnn.Init( name.c_str(), &m_config );
         TRACE_END( SYSTRACE_TASK_INIT );
     }
 
-    if ( ( RIDEHAL_ERROR_NONE == ret ) && ( true == m_bAsync ) )
+    if ( ( QC_STATUS_OK == ret ) && ( true == m_bAsync ) )
     {
         ret = m_qnn.RegisterCallback( SampleQnn_OutputCallback, SampleQnn_ErrorCallback,
                                       &m_condVar );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = m_qnn.GetInputInfo( &m_inputInfoList );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = m_qnn.GetOutputInfo( &m_outputInfoList );
     }
 
     const size_t outputNum = m_outputInfoList.num;
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         m_tensorPools.resize( outputNum );
 
@@ -175,26 +175,26 @@ RideHalError_e SampleQnn::Init( std::string name, SampleConfig_t &config )
         {
             ret = m_tensorPools[index].Init(
                     "Qnn." + name + "." + std::to_string( index ), LOGGER_LEVEL_INFO, m_poolSize,
-                    m_outputInfoList.pInfo[i].properties, RIDEHAL_BUFFER_USAGE_HTP );
+                    m_outputInfoList.pInfo[i].properties, QC_BUFFER_USAGE_HTP );
             index += 1;
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
                 break;
             }
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = m_sub.Init( name, m_inputTopicName );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = m_pub.Init( name, m_outputTopicName );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         if ( "" != m_modelInOutInfoTopicName )
         {
@@ -205,16 +205,16 @@ RideHalError_e SampleQnn::Init( std::string name, SampleConfig_t &config )
     return ret;
 }
 
-RideHalError_e SampleQnn::Start()
+QCStatus_e SampleQnn::Start()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     QnnRuntime_TensorInfoList_t inputInfoList;
     QnnRuntime_TensorInfoList_t outputInfoList;
     ModelInOutInfo_t ioInfo;
     if ( "" != m_modelInOutInfoTopicName )
     {
         ret = m_qnn.GetInputInfo( &inputInfoList );
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             for ( uint32_t i = 0; i < inputInfoList.num; i++ )
             {
@@ -228,7 +228,7 @@ RideHalError_e SampleQnn::Start()
             ret = m_qnn.GetOutputInfo( &outputInfoList );
         }
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             for ( uint32_t i = 0; i < outputInfoList.num; i++ )
             {
@@ -246,7 +246,7 @@ RideHalError_e SampleQnn::Start()
     TRACE_BEGIN( SYSTRACE_TASK_START );
     ret = m_qnn.Start();
     TRACE_END( SYSTRACE_TASK_START );
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         m_stop = false;
         m_thread = std::thread( &SampleQnn::ThreadMain, this );
@@ -257,7 +257,7 @@ RideHalError_e SampleQnn::Start()
 
 void SampleQnn::ThreadMain()
 {
-    RideHalError_e ret;
+    QCStatus_e ret;
     std::mutex mtx;
     uint64_t asyncResult = 0;
 
@@ -265,24 +265,24 @@ void SampleQnn::ThreadMain()
     {
         DataFrames_t frames;
         ret = m_sub.Receive( frames );
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
-            RIDEHAL_DEBUG( "receive frameId %" PRIu64 ", timestamp %" PRIu64 "\n",
-                           frames.FrameId( 0 ), frames.Timestamp( 0 ) );
-            std::vector<RideHal_SharedBuffer_t> inputs;
-            std::vector<RideHal_SharedBuffer_t> outputs;
+            QC_DEBUG( "receive frameId %" PRIu64 ", timestamp %" PRIu64 "\n", frames.FrameId( 0 ),
+                      frames.Timestamp( 0 ) );
+            std::vector<QCSharedBuffer_t> inputs;
+            std::vector<QCSharedBuffer_t> outputs;
             std::vector<std::shared_ptr<SharedBuffer_t>> outputBuffers;
             for ( auto &frame : frames.frames )
             {
-                if ( RIDEHAL_BUFFER_TYPE_IMAGE == frame.BufferType() )
+                if ( QC_BUFFER_TYPE_IMAGE == frame.BufferType() )
                 {
-                    if ( ( RIDEHAL_IMAGE_FORMAT_NV12 == frame.SharedBuffer().imgProps.format ) ||
-                         ( RIDEHAL_IMAGE_FORMAT_P010 == frame.SharedBuffer().imgProps.format ) )
+                    if ( ( QC_IMAGE_FORMAT_NV12 == frame.SharedBuffer().imgProps.format ) ||
+                         ( QC_IMAGE_FORMAT_P010 == frame.SharedBuffer().imgProps.format ) )
                     {
-                        RideHal_SharedBuffer luma;
-                        RideHal_SharedBuffer chroma;
+                        QCSharedBuffer luma;
+                        QCSharedBuffer chroma;
                         ret = frame.SharedBuffer().ImageToTensor( &luma, &chroma );
-                        if ( RIDEHAL_ERROR_NONE == ret )
+                        if ( QC_STATUS_OK == ret )
                         {
                             if ( SAMPLE_QNN_IMAGE_CONVERT_DEFAULT == m_imageConvertType )
                             {
@@ -302,9 +302,9 @@ void SampleQnn::ThreadMain()
                     }
                     else
                     {
-                        RideHal_SharedBuffer_t sharedBuffer;
+                        QCSharedBuffer_t sharedBuffer;
                         ret = frame.SharedBuffer().ImageToTensor( &sharedBuffer );
-                        if ( RIDEHAL_ERROR_NONE == ret )
+                        if ( QC_STATUS_OK == ret )
                         {
                             inputs.push_back( sharedBuffer );
                         }
@@ -314,16 +314,16 @@ void SampleQnn::ThreadMain()
                 {
                     inputs.push_back( frame.SharedBuffer() );
                 }
-                if ( RIDEHAL_ERROR_NONE != ret )
+                if ( QC_STATUS_OK != ret )
                 { /* only possible has error for image */
-                    RIDEHAL_ERROR( "QNN failed to do image to tensor convert for frameId %" PRIu64
-                                   ": ret = %d",
-                                   frames.FrameId( 0 ), ret );
+                    QC_ERROR( "QNN failed to do image to tensor convert for frameId %" PRIu64
+                              ": ret = %d",
+                              frames.FrameId( 0 ), ret );
                     break;
                 }
             }
 
-            for ( size_t i = 0; ( i < m_outputInfoList.num ) && ( RIDEHAL_ERROR_NONE == ret ); i++ )
+            for ( size_t i = 0; ( i < m_outputInfoList.num ) && ( QC_STATUS_OK == ret ); i++ )
             {
                 std::shared_ptr<SharedBuffer_t> buffer = m_tensorPools[i].Get();
                 if ( nullptr != buffer )
@@ -333,14 +333,14 @@ void SampleQnn::ThreadMain()
                 }
                 else
                 {
-                    ret = RIDEHAL_ERROR_NOMEM;
+                    ret = QC_STATUS_NOMEM;
                 }
             }
 
-            if ( RIDEHAL_ERROR_NONE == ret )
+            if ( QC_STATUS_OK == ret )
             {
                 ret = SampleIF::Lock();
-                if ( RIDEHAL_ERROR_NONE == ret )
+                if ( QC_STATUS_OK == ret )
                 {
                     PROFILER_BEGIN();
                     TRACE_BEGIN( frames.FrameId( 0 ) );
@@ -349,16 +349,15 @@ void SampleQnn::ThreadMain()
                         asyncResult = 0xdeadbeef;
                         ret = m_qnn.Execute( inputs.data(), inputs.size(), outputs.data(),
                                              outputs.size(), &asyncResult );
-                        if ( RIDEHAL_ERROR_NONE == ret )
+                        if ( QC_STATUS_OK == ret )
                         {
                             std::unique_lock<std::mutex> lock( mtx );
                             (void) m_condVar.wait_for( lock, std::chrono::milliseconds( 1000 ) );
                             if ( 0 != asyncResult )
                             {
-                                RIDEHAL_ERROR( "QNN Async Execute failed for %" PRIu64
-                                               " : %" PRIu64,
-                                               frames.FrameId( 0 ), asyncResult );
-                                ret = RIDEHAL_ERROR_FAIL;
+                                QC_ERROR( "QNN Async Execute failed for %" PRIu64 " : %" PRIu64,
+                                          frames.FrameId( 0 ), asyncResult );
+                                ret = QC_STATUS_FAIL;
                             }
                         }
                     }
@@ -367,21 +366,21 @@ void SampleQnn::ThreadMain()
                         ret = m_qnn.Execute( inputs.data(), inputs.size(), outputs.data(),
                                              outputs.size() );
                     }
-                    if ( RIDEHAL_ERROR_NONE == ret )
+                    if ( QC_STATUS_OK == ret )
                     {
                         PROFILER_END();
                         TRACE_END( frames.FrameId( 0 ) );
                     }
                     else
                     {
-                        RIDEHAL_ERROR( "QNN Execute failed for %" PRIu64 " : %d",
-                                       frames.FrameId( 0 ), ret );
+                        QC_ERROR( "QNN Execute failed for %" PRIu64 " : %d", frames.FrameId( 0 ),
+                                  ret );
                     }
                     (void) SampleIF::Unlock();
                 }
             }
 
-            if ( RIDEHAL_ERROR_NONE == ret )
+            if ( QC_STATUS_OK == ret )
             {
                 DataFrames_t outTensors;
                 size_t index = 0;
@@ -401,16 +400,16 @@ void SampleQnn::ThreadMain()
             }
             else
             {
-                RIDEHAL_ERROR( "QNN Execute failed for frameId %" PRIu64 ": ret = %d",
-                               frames.FrameId( 0 ), ret );
+                QC_ERROR( "QNN Execute failed for frameId %" PRIu64 ": ret = %d",
+                          frames.FrameId( 0 ), ret );
             }
         }
     }
 }
 
-RideHalError_e SampleQnn::Stop()
+QCStatus_e SampleQnn::Stop()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     m_stop = true;
     if ( m_thread.joinable() )
@@ -426,9 +425,9 @@ RideHalError_e SampleQnn::Stop()
     return ret;
 }
 
-RideHalError_e SampleQnn::Deinit()
+QCStatus_e SampleQnn::Deinit()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     TRACE_BEGIN( SYSTRACE_TASK_DEINIT );
     ret = m_qnn.Deinit();
@@ -440,4 +439,4 @@ RideHalError_e SampleQnn::Deinit()
 REGISTER_SAMPLE( Qnn, SampleQnn );
 
 }   // namespace sample
-}   // namespace ridehal
+}   // namespace QC

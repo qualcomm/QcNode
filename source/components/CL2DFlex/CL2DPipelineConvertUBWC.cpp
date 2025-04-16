@@ -5,7 +5,7 @@
 
 #include "include/CL2DPipelineConvertUBWC.hpp"
 
-namespace ridehal
+namespace QC
 {
 namespace component
 {
@@ -14,10 +14,10 @@ CL2DPipelineConvertUBWC::CL2DPipelineConvertUBWC() {}
 
 CL2DPipelineConvertUBWC::~CL2DPipelineConvertUBWC() {}
 
-RideHalError_e CL2DPipelineConvertUBWC::Init( uint32_t inputId, cl_kernel *pKernel,
-                                              CL2DFlex_Config_t *pConfig, OpenclSrv *pOpenclSrvObj )
+QCStatus_e CL2DPipelineConvertUBWC::Init( uint32_t inputId, cl_kernel *pKernel,
+                                          CL2DFlex_Config_t *pConfig, OpenclSrv *pOpenclSrvObj )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     m_inputId = inputId;
     m_pOpenclSrvObj = pOpenclSrvObj;
@@ -25,16 +25,16 @@ RideHalError_e CL2DPipelineConvertUBWC::Init( uint32_t inputId, cl_kernel *pKern
 
     if ( ( m_config.outputWidth == m_config.ROIs[m_inputId].width ) &&
          ( m_config.outputHeight == m_config.ROIs[m_inputId].height ) &&
-         ( RIDEHAL_IMAGE_FORMAT_NV12_UBWC == m_config.inputFormats[m_inputId] ) &&
-         ( RIDEHAL_IMAGE_FORMAT_NV12 == m_config.outputFormat ) )
+         ( QC_IMAGE_FORMAT_NV12_UBWC == m_config.inputFormats[m_inputId] ) &&
+         ( QC_IMAGE_FORMAT_NV12 == m_config.outputFormat ) )
     {
         m_pipeline = CL2DFLEX_PIPELINE_CONVERT_NV12UBWC_TO_NV12;
         ret = m_pOpenclSrvObj->CreateKernel( pKernel, "ConvertUBWC" );
     }
     else
     {
-        RIDEHAL_ERROR( "Invalid CL2DFlex ConvertUBWC pipeline for inputId=%d!", m_inputId );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "Invalid CL2DFlex ConvertUBWC pipeline for inputId=%d!", m_inputId );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     m_pKernel = pKernel;
@@ -42,19 +42,19 @@ RideHalError_e CL2DPipelineConvertUBWC::Init( uint32_t inputId, cl_kernel *pKern
     return ret;
 }
 
-RideHalError_e CL2DPipelineConvertUBWC::Deinit()
+QCStatus_e CL2DPipelineConvertUBWC::Deinit()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     // empty function
 
     return ret;
 }
 
-RideHalError_e CL2DPipelineConvertUBWC::Execute( const RideHal_SharedBuffer_t *pInput,
-                                                 const RideHal_SharedBuffer_t *pOutput )
+QCStatus_e CL2DPipelineConvertUBWC::Execute( const QCSharedBuffer_t *pInput,
+                                             const QCSharedBuffer_t *pOutput )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     if ( CL2DFLEX_PIPELINE_CONVERT_NV12UBWC_TO_NV12 == m_pipeline )
     {
@@ -62,30 +62,29 @@ RideHalError_e CL2DPipelineConvertUBWC::Execute( const RideHal_SharedBuffer_t *p
     }
     else
     {
-        RIDEHAL_ERROR( "Invalid CL2DFlex ConvertUBWC pipeline for m_inputId=%d!", m_inputId );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "Invalid CL2DFlex ConvertUBWC pipeline for m_inputId=%d!", m_inputId );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     return ret;
 }
 
-RideHalError_e CL2DPipelineConvertUBWC::ExecuteWithROI( const RideHal_SharedBuffer_t *pInput,
-                                                        const RideHal_SharedBuffer_t *pOutput,
-                                                        const CL2DFlex_ROIConfig_t *pROIs,
-                                                        const uint32_t numROIs )
+QCStatus_e CL2DPipelineConvertUBWC::ExecuteWithROI( const QCSharedBuffer_t *pInput,
+                                                    const QCSharedBuffer_t *pOutput,
+                                                    const CL2DFlex_ROIConfig_t *pROIs,
+                                                    const uint32_t numROIs )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+    QCStatus_e ret = QC_STATUS_BAD_ARGUMENTS;
 
     // empty function
 
     return ret;
 }
 
-RideHalError_e
-CL2DPipelineConvertUBWC::ConvertUBWCFromNV12UBWCToNV12( const RideHal_SharedBuffer_t *pInput,
-                                                        const RideHal_SharedBuffer_t *pOutput )
+QCStatus_e CL2DPipelineConvertUBWC::ConvertUBWCFromNV12UBWCToNV12( const QCSharedBuffer_t *pInput,
+                                                                   const QCSharedBuffer_t *pOutput )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     uint32_t sizeOne = ( uint32_t )( pOutput->size ) / ( pOutput->imgProps.batchSize );
     uint32_t dstOffset = ( uint32_t )( pOutput->offset ) + m_inputId * sizeOne;
@@ -104,18 +103,18 @@ CL2DPipelineConvertUBWC::ConvertUBWCFromNV12UBWCToNV12( const RideHal_SharedBuff
     ret = m_pOpenclSrvObj->RegImage( pInput->data(), pInput->buffer.dmaHandle, &bufferSrc,
                                      &inputImageFormat, &inputImageDesc );
 
-    if ( RIDEHAL_ERROR_NONE != ret )
+    if ( QC_STATUS_OK != ret )
     {
-        RIDEHAL_ERROR( "Failed to register input image!" );
+        QC_ERROR( "Failed to register input image!" );
     }
     else
     {
         ret = m_pOpenclSrvObj->RegBuf( &( pOutput->buffer ), &bufferDst );
     }
 
-    if ( RIDEHAL_ERROR_NONE != ret )
+    if ( QC_STATUS_OK != ret )
     {
-        RIDEHAL_ERROR( "Failed to register output image!" );
+        QC_ERROR( "Failed to register output image!" );
     }
     else
     {
@@ -130,9 +129,9 @@ CL2DPipelineConvertUBWC::ConvertUBWCFromNV12UBWCToNV12( const RideHal_SharedBuff
         ret = m_pOpenclSrvObj->RegPlane( pInput->data(), &bufferSrcY, &inputYFormat, &inputYDesc );
     }
 
-    if ( RIDEHAL_ERROR_NONE != ret )
+    if ( QC_STATUS_OK != ret )
     {
-        RIDEHAL_ERROR( "Failed to register input Y plane!" );
+        QC_ERROR( "Failed to register input Y plane!" );
     }
     else
     {
@@ -148,9 +147,9 @@ CL2DPipelineConvertUBWC::ConvertUBWCFromNV12UBWCToNV12( const RideHal_SharedBuff
                                          &inputUVDesc );
     }
 
-    if ( RIDEHAL_ERROR_NONE != ret )
+    if ( QC_STATUS_OK != ret )
     {
-        RIDEHAL_ERROR( "Failed to register input UV plane!" );
+        QC_ERROR( "Failed to register input UV plane!" );
     }
     else
     {
@@ -193,14 +192,14 @@ CL2DPipelineConvertUBWC::ConvertUBWCFromNV12UBWCToNV12( const RideHal_SharedBuff
         ret = m_pOpenclSrvObj->Execute( m_pKernel, OpenclArgs, numOfArgs, &OpenclWorkParams );
     }
 
-    if ( RIDEHAL_ERROR_NONE != ret )
+    if ( QC_STATUS_OK != ret )
     {
-        RIDEHAL_ERROR( "Failed to execute ConvertUBWC UBWC to NV12 OpenCL kernel!" );
-        ret = RIDEHAL_ERROR_FAIL;
+        QC_ERROR( "Failed to execute ConvertUBWC UBWC to NV12 OpenCL kernel!" );
+        ret = QC_STATUS_FAIL;
     }
 
     return ret;
 }
 
 }   // namespace component
-}   // namespace ridehal
+}   // namespace QC

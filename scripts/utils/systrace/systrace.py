@@ -45,9 +45,9 @@ class SysTraceRecord(MyStructure):
                  ('reserved',ctypes.c_ubyte*7) ]
 
 
-parser = argparse.ArgumentParser(description='RideHal systrace parser')
-parser.add_argument('-i', '--input', type=str, default='ridehal_systrace.bin', help='the RideHal systrace bin file path')
-parser.add_argument('-o', '--output', type=str, default='ridehal_systrace.json', required=False, help='the output json file of the RideHal systrace')
+parser = argparse.ArgumentParser(description='QC systrace parser')
+parser.add_argument('-i', '--input', type=str, default='qcnode_systrace.bin', help='the QC systrace bin file path')
+parser.add_argument('-o', '--output', type=str, default='qcnode_systrace.json', required=False, help='the output json file of the QC systrace')
 args = parser.parse_args()
 
 events = []
@@ -94,14 +94,14 @@ for i in range(numRec):
     events.append(evt)
 
 
-RideHalTrace = {
+QCTrace = {
   'traceEvents': events,
   'displayTimeUnit': 'ns',
   'otherData': {
-    'version': 'ridehal trace v1.0.0'
+    'version': 'qcnode trace v1.0.0'
   }
 }
 
 with open(args.output, 'w') as f:
-    json.dump(RideHalTrace, f)
-    print('generare RideHal systrace:', f.name)
+    json.dump(QCTrace, f)
+    print('generare QC systrace:', f.name)

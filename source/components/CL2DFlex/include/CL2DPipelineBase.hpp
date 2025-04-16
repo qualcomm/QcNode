@@ -3,15 +3,15 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#ifndef RIDEHAL_CL2D_PIPELINE_BASE_HPP
-#define RIDEHAL_CL2D_PIPELINE_BASE_HPP
+#ifndef QC_CL2D_PIPELINE_BASE_HPP
+#define QC_CL2D_PIPELINE_BASE_HPP
 
-#include "ridehal/component/CL2DFlex.hpp"
+#include "QC/component/CL2DFlex.hpp"
 
-using namespace ridehal::common;
-using namespace ridehal::libs::OpenclIface;
+using namespace QC::common;
+using namespace QC::libs::OpenclIface;
 
-namespace ridehal
+namespace QC
 {
 namespace component
 {
@@ -74,17 +74,17 @@ public:
 
     void DeinitLogger();
 
-    virtual RideHalError_e Init( uint32_t inputId, cl_kernel *pKernel, CL2DFlex_Config_t *pConfig,
-                                 OpenclSrv *pOpenclSrvObj ) = 0;
+    virtual QCStatus_e Init( uint32_t inputId, cl_kernel *pKernel, CL2DFlex_Config_t *pConfig,
+                             OpenclSrv *pOpenclSrvObj ) = 0;
 
-    virtual RideHalError_e Deinit() = 0;
+    virtual QCStatus_e Deinit() = 0;
 
-    virtual RideHalError_e Execute( const RideHal_SharedBuffer_t *pInput,
-                                    const RideHal_SharedBuffer_t *pOutput ) = 0;
-    virtual RideHalError_e ExecuteWithROI( const RideHal_SharedBuffer_t *pInput,
-                                           const RideHal_SharedBuffer_t *pOutput,
-                                           const CL2DFlex_ROIConfig_t *pROIs,
-                                           const uint32_t numROIs ) = 0;
+    virtual QCStatus_e Execute( const QCSharedBuffer_t *pInput,
+                                const QCSharedBuffer_t *pOutput ) = 0;
+    virtual QCStatus_e ExecuteWithROI( const QCSharedBuffer_t *pInput,
+                                       const QCSharedBuffer_t *pOutput,
+                                       const CL2DFlex_ROIConfig_t *pROIs,
+                                       const uint32_t numROIs ) = 0;
 
 protected:
     std::string m_name;
@@ -93,11 +93,11 @@ protected:
     CL2DFlex_Config_t m_config;
     OpenclSrv *m_pOpenclSrvObj;
     CL2DFlex_Pipeline_e m_pipeline;
-    RIDEHAL_DECLARE_LOGGER();
+    QC_DECLARE_LOGGER();
 
 };   // class CL2DPipelineBase
 
 }   // namespace component
-}   // namespace ridehal
+}   // namespace QC
 
-#endif   // RIDEHAL_CL2D_PIPELINE_BASE_HPP
+#endif   // QC_CL2D_PIPELINE_BASE_HPP

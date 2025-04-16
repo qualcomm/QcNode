@@ -3,10 +3,10 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#include "ridehal/component/Voxelization.hpp"
+#include "QC/component/Voxelization.hpp"
 #include "Voxelization.cl.h"
 
-namespace ridehal
+namespace QC
 {
 namespace component
 {
@@ -15,35 +15,35 @@ Voxelization::Voxelization() {}
 
 Voxelization::~Voxelization() {}
 
-RideHalError_e Voxelization::Init( const char *pName, const Voxelization_Config_t *pConfig,
-                                   Logger_Level_e level )
+QCStatus_e Voxelization::Init( const char *pName, const Voxelization_Config_t *pConfig,
+                               Logger_Level_e level )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     bool bIFInitOK = false;
     bool bFadasInitOK = false;
     bool bOpenclInitOK = false;
     bool bcoorAllocOK = false;
 
     ret = ComponentIF::Init( pName, level );
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         bIFInitOK = true;
         if ( nullptr == pConfig )
         {
-            RIDEHAL_ERROR( "pConfig is nullptr!" );
-            ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+            QC_ERROR( "pConfig is nullptr!" );
+            ret = QC_STATUS_BAD_ARGUMENTS;
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
-        if ( RIDEHAL_PROCESSOR_GPU == pConfig->processor )
+        if ( QC_PROCESSOR_GPU == pConfig->processor )
         {
             ret = m_OpenclSrvObj.Init( pName, level );
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
-                RIDEHAL_ERROR( "Init OpenclSrvObj1 failed!" );
-                ret = RIDEHAL_ERROR_FAIL;
+                QC_ERROR( "Init OpenclSrvObj1 failed!" );
+                ret = QC_STATUS_FAIL;
             }
             else
             {
@@ -51,10 +51,10 @@ RideHalError_e Voxelization::Init( const char *pName, const Voxelization_Config_
                 ret = m_OpenclSrvObj.LoadFromSource( s_pSourceVoxelization );
             }
 
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
-                RIDEHAL_ERROR( "Load kernel from source s_pSourceVoxelization failed!" );
-                ret = RIDEHAL_ERROR_FAIL;
+                QC_ERROR( "Load kernel from source s_pSourceVoxelization failed!" );
+                ret = QC_STATUS_FAIL;
             }
             else
             {
@@ -70,15 +70,15 @@ RideHalError_e Voxelization::Init( const char *pName, const Voxelization_Config_
                 }
                 else
                 {
-                    RIDEHAL_ERROR( "GPU voxelization mode is invalid!" );
-                    ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+                    QC_ERROR( "GPU voxelization mode is invalid!" );
+                    ret = QC_STATUS_BAD_ARGUMENTS;
                 }
             }
 
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
-                RIDEHAL_ERROR( "Create kernel1 for ClusterPoints failed!" );
-                ret = RIDEHAL_ERROR_FAIL;
+                QC_ERROR( "Create kernel1 for ClusterPoints failed!" );
+                ret = QC_STATUS_FAIL;
             }
             else
             {
@@ -94,15 +94,15 @@ RideHalError_e Voxelization::Init( const char *pName, const Voxelization_Config_
                 }
                 else
                 {
-                    RIDEHAL_ERROR( "GPU voxelization mode is invalid!" );
-                    ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+                    QC_ERROR( "GPU voxelization mode is invalid!" );
+                    ret = QC_STATUS_BAD_ARGUMENTS;
                 }
             }
 
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
-                RIDEHAL_ERROR( "Create kernel2 for FeatureGather failed!" );
-                ret = RIDEHAL_ERROR_FAIL;
+                QC_ERROR( "Create kernel2 for FeatureGather failed!" );
+                ret = QC_STATUS_FAIL;
             }
             else
             {
@@ -110,49 +110,49 @@ RideHalError_e Voxelization::Init( const char *pName, const Voxelization_Config_
                         ceil( ( pConfig->maxXRange - pConfig->minXRange ) / pConfig->pillarXSize );
                 size_t gridYSize =
                         ceil( ( pConfig->maxYRange - pConfig->minYRange ) / pConfig->pillarYSize );
-                RideHal_TensorProps_t coorToPlrIdxProp = {
-                        RIDEHAL_TENSOR_TYPE_INT_32,
+                QCTensorProps_t coorToPlrIdxProp = {
+                        QC_TENSOR_TYPE_INT_32,
                         { ( uint32_t )( gridXSize * gridYSize * 2 ), 0 },
                         1,
                 };
                 ret = m_coorToPlrIdx.Allocate( &coorToPlrIdxProp );
             }
 
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
-                RIDEHAL_ERROR( "Failed to allocate coorToPlrIdx buffer!" );
+                QC_ERROR( "Failed to allocate coorToPlrIdx buffer!" );
             }
             else
             {
                 bcoorAllocOK = true;
-                RideHal_TensorProps_t outPlrsProp = {
-                        RIDEHAL_TENSOR_TYPE_INT_32,
+                QCTensorProps_t outPlrsProp = {
+                        QC_TENSOR_TYPE_INT_32,
                         { pConfig->maxNumPlrs + 1,
                           0 }, /* add one more place to record pillar number */
                         1,
                 };
                 ret = m_numOfPts.Allocate( &outPlrsProp );
             }
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
-                RIDEHAL_ERROR( "Failed to allocate numOfPts buffer!" );
+                QC_ERROR( "Failed to allocate numOfPts buffer!" );
             }
         }
         else
         {
             if ( VOXELIZATION_INPUT_XYZR != pConfig->inputMode )
             {
-                ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
-                RIDEHAL_ERROR( "Fadas only support 4 dimensions point cloud input!" );
+                ret = QC_STATUS_BAD_ARGUMENTS;
+                QC_ERROR( "Fadas only support 4 dimensions point cloud input!" );
             }
             else
             {
                 ret = m_plrPre.Init( pConfig->processor, pName, level );
             }
 
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
-                RIDEHAL_ERROR( "Failed to init FadasPlrPre!" );
+                QC_ERROR( "Failed to init FadasPlrPre!" );
             }
             else
             {
@@ -165,16 +165,16 @@ RideHalError_e Voxelization::Init( const char *pName, const Voxelization_Config_
                         pConfig->maxNumPtsPerPlr, pConfig->numOutFeatureDim );
             }
 
-            if ( RIDEHAL_ERROR_NONE == ret )
+            if ( QC_STATUS_OK == ret )
             {
                 ret = m_plrPre.CreatePreProc();
             }
         }
     }
 
-    if ( ret != RIDEHAL_ERROR_NONE )
+    if ( ret != QC_STATUS_OK )
     { /* do error clean up */
-        RIDEHAL_ERROR( "PlrPre Init failed: %d!", ret );
+        QC_ERROR( "PlrPre Init failed: %d!", ret );
 
         if ( bFadasInitOK )
         {
@@ -195,103 +195,103 @@ RideHalError_e Voxelization::Init( const char *pName, const Voxelization_Config_
     }
     else
     {
-        m_state = RIDEHAL_COMPONENT_STATE_READY;
+        m_state = QC_OBJECT_STATE_READY;
         m_config = *pConfig;
     }
 
     return ret;
 }
 
-RideHalError_e Voxelization::Start()
+QCStatus_e Voxelization::Start()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
-    if ( RIDEHAL_COMPONENT_STATE_READY == m_state )
+    if ( QC_OBJECT_STATE_READY == m_state )
     {
-        m_state = RIDEHAL_COMPONENT_STATE_RUNNING;
+        m_state = QC_OBJECT_STATE_RUNNING;
     }
     else
     {
-        RIDEHAL_ERROR( "Start is not allowed when in state %d!", m_state );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_ERROR( "Start is not allowed when in state %d!", m_state );
+        ret = QC_STATUS_BAD_STATE;
     }
 
     return ret;
 }
 
-RideHalError_e Voxelization::Stop()
+QCStatus_e Voxelization::Stop()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
-    if ( RIDEHAL_COMPONENT_STATE_RUNNING == m_state )
+    if ( QC_OBJECT_STATE_RUNNING == m_state )
     {
-        m_state = RIDEHAL_COMPONENT_STATE_READY;
+        m_state = QC_OBJECT_STATE_READY;
     }
     else
     {
-        RIDEHAL_ERROR( "Stop is not allowed when in state %d!", m_state );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_ERROR( "Stop is not allowed when in state %d!", m_state );
+        ret = QC_STATUS_BAD_STATE;
     }
 
     return ret;
 }
 
-RideHalError_e Voxelization::Deinit()
+QCStatus_e Voxelization::Deinit()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
-    if ( RIDEHAL_COMPONENT_STATE_READY != m_state )
+    if ( QC_OBJECT_STATE_READY != m_state )
     {
-        RIDEHAL_ERROR( "Deinit is not allowed when in state %d!", m_state );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_ERROR( "Deinit is not allowed when in state %d!", m_state );
+        ret = QC_STATUS_BAD_STATE;
     }
     else
     {
-        RideHalError_e ret2;
-        if ( RIDEHAL_PROCESSOR_GPU == m_config.processor )
+        QCStatus_e ret2;
+        if ( QC_PROCESSOR_GPU == m_config.processor )
         {
             ret2 = m_OpenclSrvObj.Deinit();
-            if ( RIDEHAL_ERROR_NONE != ret2 )
+            if ( QC_STATUS_OK != ret2 )
             {
-                RIDEHAL_ERROR( "Release OpenclSrvObj resources failed!" );
+                QC_ERROR( "Release OpenclSrvObj resources failed!" );
                 ret = ret2;
             }
 
             ret2 = m_numOfPts.Free();
-            if ( RIDEHAL_ERROR_NONE != ret2 )
+            if ( QC_STATUS_OK != ret2 )
             {
-                RIDEHAL_ERROR( "Failed to free numOfPts buffer!" );
+                QC_ERROR( "Failed to free numOfPts buffer!" );
                 ret = ret2;
             }
 
             ret2 = m_coorToPlrIdx.Free();
-            if ( RIDEHAL_ERROR_NONE != ret2 )
+            if ( QC_STATUS_OK != ret2 )
             {
-                RIDEHAL_ERROR( "Failed to free coorToPlrIdx buffer!" );
+                QC_ERROR( "Failed to free coorToPlrIdx buffer!" );
                 ret = ret2;
             }
         }
         else
         {
             ret2 = m_plrPre.DestroyPreProc();
-            if ( RIDEHAL_ERROR_NONE != ret2 )
+            if ( QC_STATUS_OK != ret2 )
             {
-                RIDEHAL_ERROR( "PlrPre DestroyPreProc failed: %d!", ret2 );
+                QC_ERROR( "PlrPre DestroyPreProc failed: %d!", ret2 );
                 ret = ret2;
             }
 
             ret2 = m_plrPre.Deinit();
-            if ( RIDEHAL_ERROR_NONE != ret2 )
+            if ( QC_STATUS_OK != ret2 )
             {
-                RIDEHAL_ERROR( "PlrPre Deinit failed: %d!", ret2 );
+                QC_ERROR( "PlrPre Deinit failed: %d!", ret2 );
                 ret = ret2;
             }
         }
 
         ret2 = ComponentIF::Deinit();
-        if ( RIDEHAL_ERROR_NONE != ret2 )
+        if ( QC_STATUS_OK != ret2 )
         {
-            RIDEHAL_ERROR( "Deinit ComponentIF failed!" );
+            QC_ERROR( "Deinit ComponentIF failed!" );
             ret = ret2;
         }
     }
@@ -299,36 +299,35 @@ RideHalError_e Voxelization::Deinit()
     return ret;
 }
 
-RideHalError_e Voxelization::RegisterBuffers( const RideHal_SharedBuffer_t *pBuffers,
-                                              uint32_t numBuffers, FadasBufType_e bufferType )
+QCStatus_e Voxelization::RegisterBuffers( const QCSharedBuffer_t *pBuffers, uint32_t numBuffers,
+                                          FadasBufType_e bufferType )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
-    if ( ( RIDEHAL_COMPONENT_STATE_READY != m_state ) &&
-         ( RIDEHAL_COMPONENT_STATE_RUNNING != m_state ) )
+    if ( ( QC_OBJECT_STATE_READY != m_state ) && ( QC_OBJECT_STATE_RUNNING != m_state ) )
     {
-        RIDEHAL_ERROR( "PlrPre component not in ready or running status!" );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_ERROR( "PlrPre component not in ready or running status!" );
+        ret = QC_STATUS_BAD_STATE;
     }
     else if ( nullptr == pBuffers )
     {
-        RIDEHAL_ERROR( "Empty buffers pointer!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "Empty buffers pointer!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
         for ( uint32_t i = 0; i < numBuffers; i++ )
         {
-            const RideHal_SharedBuffer_t *pBuf = &pBuffers[i];
-            if ( RIDEHAL_BUFFER_TYPE_TENSOR == pBuf->type )
+            const QCSharedBuffer_t *pBuf = &pBuffers[i];
+            if ( QC_BUFFER_TYPE_TENSOR == pBuf->type )
             {
-                if ( RIDEHAL_PROCESSOR_GPU == m_config.processor )
+                if ( QC_PROCESSOR_GPU == m_config.processor )
                 {
                     cl_mem bufferCL;
                     ret = m_OpenclSrvObj.RegBuf( &( pBuffers[i].buffer ), &bufferCL );
-                    if ( RIDEHAL_ERROR_NONE != ret )
+                    if ( QC_STATUS_OK != ret )
                     {
-                        RIDEHAL_ERROR( "Failed to register buffer[%d] for GPU!", i );
+                        QC_ERROR( "Failed to register buffer[%d] for GPU!", i );
                     }
                 }
                 else
@@ -336,18 +335,18 @@ RideHalError_e Voxelization::RegisterBuffers( const RideHal_SharedBuffer_t *pBuf
                     int32_t fd = m_plrPre.RegBuf( pBuf, bufferType );
                     if ( 0 > fd )
                     {
-                        RIDEHAL_ERROR( "Failed to register buffer[%d]!", i );
-                        ret = RIDEHAL_ERROR_FAIL;
+                        QC_ERROR( "Failed to register buffer[%d]!", i );
+                        ret = QC_STATUS_FAIL;
                     }
                 }
             }
             else
             {
-                RIDEHAL_ERROR( "buffer[%d] is not tensor!", i );
-                ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+                QC_ERROR( "buffer[%d] is not tensor!", i );
+                ret = QC_STATUS_BAD_ARGUMENTS;
             }
 
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
                 break;
             }
@@ -357,35 +356,33 @@ RideHalError_e Voxelization::RegisterBuffers( const RideHal_SharedBuffer_t *pBuf
     return ret;
 }
 
-RideHalError_e Voxelization::DeRegisterBuffers( const RideHal_SharedBuffer_t *pBuffers,
-                                                uint32_t numBuffers )
+QCStatus_e Voxelization::DeRegisterBuffers( const QCSharedBuffer_t *pBuffers, uint32_t numBuffers )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
-    if ( ( RIDEHAL_COMPONENT_STATE_READY != m_state ) &&
-         ( RIDEHAL_COMPONENT_STATE_RUNNING != m_state ) )
+    if ( ( QC_OBJECT_STATE_READY != m_state ) && ( QC_OBJECT_STATE_RUNNING != m_state ) )
     {
-        RIDEHAL_ERROR( "PlrPre component not in ready or running status!" );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_ERROR( "PlrPre component not in ready or running status!" );
+        ret = QC_STATUS_BAD_STATE;
     }
     else if ( nullptr == pBuffers )
     {
-        RIDEHAL_ERROR( "Empty buffers pointer!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "Empty buffers pointer!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
         for ( uint32_t i = 0; i < numBuffers; i++ )
         {
-            const RideHal_SharedBuffer_t *pBuf = &pBuffers[i];
-            if ( RIDEHAL_BUFFER_TYPE_TENSOR == pBuf->type )
+            const QCSharedBuffer_t *pBuf = &pBuffers[i];
+            if ( QC_BUFFER_TYPE_TENSOR == pBuf->type )
             {
-                if ( RIDEHAL_PROCESSOR_GPU == m_config.processor )
+                if ( QC_PROCESSOR_GPU == m_config.processor )
                 {
                     ret = m_OpenclSrvObj.DeregBuf( &( pBuffers[i].buffer ) );
-                    if ( RIDEHAL_ERROR_NONE != ret )
+                    if ( QC_STATUS_OK != ret )
                     {
-                        RIDEHAL_ERROR( "Failed to deregister buffer[%d] for GPU!", i );
+                        QC_ERROR( "Failed to deregister buffer[%d] for GPU!", i );
                     }
                 }
                 else
@@ -395,11 +392,11 @@ RideHalError_e Voxelization::DeRegisterBuffers( const RideHal_SharedBuffer_t *pB
             }
             else
             {
-                RIDEHAL_ERROR( "buffer[%d] is not tensor!", i );
-                ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+                QC_ERROR( "buffer[%d] is not tensor!", i );
+                ret = QC_STATUS_BAD_ARGUMENTS;
             }
 
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
                 break;
             }
@@ -409,35 +406,35 @@ RideHalError_e Voxelization::DeRegisterBuffers( const RideHal_SharedBuffer_t *pB
     return ret;
 }
 
-RideHalError_e Voxelization::ExecuteCL( const RideHal_SharedBuffer_t *pInPts,
-                                        const RideHal_SharedBuffer_t *pOutPlrs,
-                                        const RideHal_SharedBuffer_t *pOutFeature )
+QCStatus_e Voxelization::ExecuteCL( const QCSharedBuffer_t *pInPts,
+                                    const QCSharedBuffer_t *pOutPlrs,
+                                    const QCSharedBuffer_t *pOutFeature )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     bool bRegOK = true;
 
     cl_mem bufferSrc;
     ret = m_OpenclSrvObj.RegBuf( &( pInPts->buffer ), &bufferSrc );
-    if ( RIDEHAL_ERROR_NONE != ret )
+    if ( QC_STATUS_OK != ret )
     {
-        RIDEHAL_ERROR( "Failed to register input points buffer!" );
+        QC_ERROR( "Failed to register input points buffer!" );
         bRegOK = false;
     }
 
     cl_mem bufferDst1;
     ret = m_OpenclSrvObj.RegBuf( &( pOutPlrs->buffer ), &bufferDst1 );
-    if ( RIDEHAL_ERROR_NONE != ret )
+    if ( QC_STATUS_OK != ret )
     {
-        RIDEHAL_ERROR( "Failed to register output pillars buffer!" );
+        QC_ERROR( "Failed to register output pillars buffer!" );
         bRegOK = false;
     }
 
     cl_mem bufferDst2;
     ret = m_OpenclSrvObj.RegBuf( &( pOutFeature->buffer ), &bufferDst2 );
-    if ( RIDEHAL_ERROR_NONE != ret )
+    if ( QC_STATUS_OK != ret )
     {
-        RIDEHAL_ERROR( "Failed to register output features buffer!" );
+        QC_ERROR( "Failed to register output features buffer!" );
         bRegOK = false;
     }
 
@@ -445,9 +442,9 @@ RideHalError_e Voxelization::ExecuteCL( const RideHal_SharedBuffer_t *pInPts,
     (void) memset( m_numOfPts.data(), 0, m_numOfPts.size );
     cl_mem bufferNumOfPts;
     ret = m_OpenclSrvObj.RegBuf( &( m_numOfPts.buffer ), &bufferNumOfPts );
-    if ( RIDEHAL_ERROR_NONE != ret )
+    if ( QC_STATUS_OK != ret )
     {
-        RIDEHAL_ERROR( "Failed to register numOfPts buffer!" );
+        QC_ERROR( "Failed to register numOfPts buffer!" );
         bRegOK = false;
     }
 
@@ -457,9 +454,9 @@ RideHalError_e Voxelization::ExecuteCL( const RideHal_SharedBuffer_t *pInPts,
     (void) memset( m_coorToPlrIdx.data(), -1, m_coorToPlrIdx.size );
     cl_mem bufferCoorToPlr;
     ret = m_OpenclSrvObj.RegBuf( &( m_coorToPlrIdx.buffer ), &bufferCoorToPlr );
-    if ( RIDEHAL_ERROR_NONE != ret )
+    if ( QC_STATUS_OK != ret )
     {
-        RIDEHAL_ERROR( "Failed to register coorToPlrIdx buffer!" );
+        QC_ERROR( "Failed to register coorToPlrIdx buffer!" );
         bRegOK = false;
     }
 
@@ -517,10 +514,10 @@ RideHalError_e Voxelization::ExecuteCL( const RideHal_SharedBuffer_t *pInPts,
         OpenclWorkParams1.pLocalWorkSize = NULL;
 
         ret = m_OpenclSrvObj.Execute( &m_kernel1, OpenclArgs1, numOfArgs1, &OpenclWorkParams1 );
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
-            RIDEHAL_ERROR( "Failed to execute ClusterPoints OpenCL kernel!" );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Failed to execute ClusterPoints OpenCL kernel!" );
+            ret = QC_STATUS_FAIL;
         }
         else
         {
@@ -564,10 +561,10 @@ RideHalError_e Voxelization::ExecuteCL( const RideHal_SharedBuffer_t *pInPts,
             OpenclWorkParams2.pLocalWorkSize = NULL;
 
             ret = m_OpenclSrvObj.Execute( &m_kernel2, OpenclArgs2, numOfArgs2, &OpenclWorkParams2 );
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
-                RIDEHAL_ERROR( "Failed to execute FeatureGather OpenCL kernel!" );
-                ret = RIDEHAL_ERROR_FAIL;
+                QC_ERROR( "Failed to execute FeatureGather OpenCL kernel!" );
+                ret = QC_STATUS_FAIL;
             }
         }
     }
@@ -575,74 +572,73 @@ RideHalError_e Voxelization::ExecuteCL( const RideHal_SharedBuffer_t *pInPts,
     return ret;
 }
 
-RideHalError_e Voxelization::Execute( const RideHal_SharedBuffer_t *pInPts,
-                                      const RideHal_SharedBuffer_t *pOutPlrs,
-                                      const RideHal_SharedBuffer_t *pOutFeature )
+QCStatus_e Voxelization::Execute( const QCSharedBuffer_t *pInPts, const QCSharedBuffer_t *pOutPlrs,
+                                  const QCSharedBuffer_t *pOutFeature )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
-    if ( RIDEHAL_COMPONENT_STATE_RUNNING != m_state )
+    if ( QC_OBJECT_STATE_RUNNING != m_state )
     {
-        RIDEHAL_ERROR( "Execute is not allowed when in state %d!", m_state );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_ERROR( "Execute is not allowed when in state %d!", m_state );
+        ret = QC_STATUS_BAD_STATE;
     }
     else if ( nullptr == pInPts )
     {
-        RIDEHAL_ERROR( "pInPts is nullptr!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "pInPts is nullptr!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
-    else if ( ( RIDEHAL_BUFFER_TYPE_TENSOR != pInPts->type ) ||
-              ( nullptr == pInPts->buffer.pData ) || ( 2 != pInPts->tensorProps.numDims ) ||
-              ( RIDEHAL_TENSOR_TYPE_FLOAT_32 != pInPts->tensorProps.type ) ||
+    else if ( ( QC_BUFFER_TYPE_TENSOR != pInPts->type ) || ( nullptr == pInPts->buffer.pData ) ||
+              ( 2 != pInPts->tensorProps.numDims ) ||
+              ( QC_TENSOR_TYPE_FLOAT_32 != pInPts->tensorProps.type ) ||
               ( m_config.numInFeatureDim != pInPts->tensorProps.dims[1] ) )
     {
-        RIDEHAL_ERROR( "pInPts is invalid!" );
-        ret = RIDEHAL_ERROR_INVALID_BUF;
+        QC_ERROR( "pInPts is invalid!" );
+        ret = QC_STATUS_INVALID_BUF;
     }
     else if ( nullptr == pOutPlrs )
     {
-        RIDEHAL_ERROR( "pOutPlrs is nullptr!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "pOutPlrs is nullptr!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else if ( ( VOXELIZATION_INPUT_XYZR == m_config.inputMode ) &&
-              ( ( RIDEHAL_BUFFER_TYPE_TENSOR != pOutPlrs->type ) ||
+              ( ( QC_BUFFER_TYPE_TENSOR != pOutPlrs->type ) ||
                 ( nullptr == pOutPlrs->buffer.pData ) || ( 2 != pOutPlrs->tensorProps.numDims ) ||
-                ( RIDEHAL_TENSOR_TYPE_FLOAT_32 != pOutPlrs->tensorProps.type ) ||
+                ( QC_TENSOR_TYPE_FLOAT_32 != pOutPlrs->tensorProps.type ) ||
                 ( m_config.maxNumPlrs != pOutPlrs->tensorProps.dims[0] ) ||
                 ( VOXELIZATION_PILLAR_COORDS_DIM != pOutPlrs->tensorProps.dims[1] ) ) )
     {
-        RIDEHAL_ERROR( "pOutPlrs is invalid for XYZR pointcloud input!" );
-        ret = RIDEHAL_ERROR_INVALID_BUF;
+        QC_ERROR( "pOutPlrs is invalid for XYZR pointcloud input!" );
+        ret = QC_STATUS_INVALID_BUF;
     }
     else if ( ( VOXELIZATION_INPUT_XYZRT == m_config.inputMode ) &&
-              ( ( RIDEHAL_BUFFER_TYPE_TENSOR != pOutPlrs->type ) ||
+              ( ( QC_BUFFER_TYPE_TENSOR != pOutPlrs->type ) ||
                 ( nullptr == pOutPlrs->buffer.pData ) || ( 2 != pOutPlrs->tensorProps.numDims ) ||
-                ( RIDEHAL_TENSOR_TYPE_INT_32 != pOutPlrs->tensorProps.type ) ||
+                ( QC_TENSOR_TYPE_INT_32 != pOutPlrs->tensorProps.type ) ||
                 ( m_config.maxNumPlrs != pOutPlrs->tensorProps.dims[0] ) ||
                 ( 2 != pOutPlrs->tensorProps.dims[1] ) ) )
     {
-        RIDEHAL_ERROR( "pOutPlrs is invalid for XYZRT pointcloud input!" );
-        ret = RIDEHAL_ERROR_INVALID_BUF;
+        QC_ERROR( "pOutPlrs is invalid for XYZRT pointcloud input!" );
+        ret = QC_STATUS_INVALID_BUF;
     }
     else if ( nullptr == pOutFeature )
     {
-        RIDEHAL_ERROR( "pOutFeature is nullptr!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "pOutFeature is nullptr!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
-    else if ( ( RIDEHAL_BUFFER_TYPE_TENSOR != pOutFeature->type ) ||
+    else if ( ( QC_BUFFER_TYPE_TENSOR != pOutFeature->type ) ||
               ( nullptr == pOutFeature->buffer.pData ) ||
               ( 3 != pOutFeature->tensorProps.numDims ) ||
-              ( RIDEHAL_TENSOR_TYPE_FLOAT_32 != pOutFeature->tensorProps.type ) ||
+              ( QC_TENSOR_TYPE_FLOAT_32 != pOutFeature->tensorProps.type ) ||
               ( m_config.maxNumPlrs != pOutFeature->tensorProps.dims[0] ) ||
               ( m_config.maxNumPtsPerPlr != pOutFeature->tensorProps.dims[1] ) ||
               ( m_config.numOutFeatureDim != pOutFeature->tensorProps.dims[2] ) )
     {
-        RIDEHAL_ERROR( "pOutFeature is invalid!" );
-        ret = RIDEHAL_ERROR_INVALID_BUF;
+        QC_ERROR( "pOutFeature is invalid!" );
+        ret = QC_STATUS_INVALID_BUF;
     }
     else
     {
-        if ( RIDEHAL_PROCESSOR_GPU == m_config.processor )
+        if ( QC_PROCESSOR_GPU == m_config.processor )
         {
             ret = ExecuteCL( pInPts, pOutPlrs, pOutFeature );
         }
@@ -656,4 +652,4 @@ RideHalError_e Voxelization::Execute( const RideHal_SharedBuffer_t *pInPts,
 }
 
 }   // namespace component
-}   // namespace ridehal
+}   // namespace QC

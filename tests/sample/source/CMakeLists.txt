@@ -5,7 +5,7 @@ set( HEADERS_DIR
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
 )
 
-set( RIDEHAL_SAMPLE_SOURCES
+set( QCNODE_SAMPLE_SOURCES
     SampleIF.cpp
     SampleC2D.cpp
     SamplePlrPost.cpp
@@ -31,24 +31,24 @@ set( RIDEHAL_SAMPLE_SOURCES
 )
 
 if( "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" AND "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "aarch64" )
-    list( APPEND RIDEHAL_SAMPLE_SOURCES SampleGL2DFlex.cpp )
+    list( APPEND QCNODE_SAMPLE_SOURCES SampleGL2DFlex.cpp )
 endif()
 
-set( RIDEHAL_SAMPLE_DEFINITIONS )
+set( QCNODE_SAMPLE_DEFINITIONS )
 
-if( NOT TARGET RideHal )
-  find_package(RideHal)
-  if( NOT TARGET RideHal )
-    message(FATAL_ERROR "RideHal SDK not found")
+if( NOT TARGET QCNode )
+  find_package(QCNode)
+  if( NOT TARGET QCNode )
+    message(FATAL_ERROR "QCNode SDK not found")
   endif()
 endif()
 
-set( TARGET_LIBRARIES RideHal SharedRing )
+set( TARGET_LIBRARIES QCNode SharedRing )
 
 if( NOT TARGET TinyViz )
   message(STATUS "build sample without TinyViz")
 else()
-  list( APPEND RIDEHAL_SAMPLE_SOURCES SampleTinyViz.cpp )
+  list( APPEND QCNODE_SAMPLE_SOURCES SampleTinyViz.cpp )
   list( APPEND TARGET_LIBRARIES TinyViz )
 endif()
 
@@ -59,25 +59,25 @@ endif()
 if ( NOT DEFINED QNN_SDK_ROOT )
   message(STATUS "build sample without QnnRuntime")
 else()
-  list( APPEND RIDEHAL_SAMPLE_SOURCES SampleQnn.cpp )
+  list( APPEND QCNODE_SAMPLE_SOURCES SampleQnn.cpp )
 endif()
 
 if ( ENABLE_DEMUXER )
-  list( APPEND RIDEHAL_SAMPLE_SOURCES SampleVideoDemuxer.cpp )
+  list( APPEND QCNODE_SAMPLE_SOURCES SampleVideoDemuxer.cpp )
   list( APPEND TARGET_LIBRARIES VidcDemuxer )
 else()
   message(STATUS "build sample without VideoDemuxer")
 endif()
 
-add_library( RideHalSample SHARED ${RIDEHAL_SAMPLE_SOURCES} )
+add_library( QCNodeSample SHARED ${QCNODE_SAMPLE_SOURCES} )
 
-set_property( TARGET RideHalSample PROPERTY LINKER_LANGUAGE CXX )
-set_property( TARGET RideHalSample PROPERTY POSITION_INDEPENDENT_CODE ON )
+set_property( TARGET QCNodeSample PROPERTY LINKER_LANGUAGE CXX )
+set_property( TARGET QCNodeSample PROPERTY POSITION_INDEPENDENT_CODE ON )
 
-target_include_directories( RideHalSample PUBLIC ${HEADERS_DIR} )
+target_include_directories( QCNodeSample PUBLIC ${HEADERS_DIR} )
 
-target_link_libraries( RideHalSample PUBLIC ${TARGET_LIBRARIES} OpenclIface )
+target_link_libraries( QCNodeSample PUBLIC ${TARGET_LIBRARIES} OpenclIface )
 
-target_compile_definitions( RideHalSample PUBLIC ${RIDEHAL_SAMPLE_DEFINITIONS} )
+target_compile_definitions( QCNodeSample PUBLIC ${QCNODE_SAMPLE_DEFINITIONS} )
 
-install(TARGETS RideHalSample DESTINATION lib)
+install(TARGETS QCNodeSample DESTINATION lib)

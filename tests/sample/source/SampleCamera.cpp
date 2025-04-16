@@ -3,10 +3,10 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#include "ridehal/sample/SampleCamera.hpp"
+#include "QC/sample/SampleCamera.hpp"
 #include <time.h>
 
-namespace ridehal
+namespace QC
 {
 namespace sample
 {
@@ -70,7 +70,7 @@ void SampleCamera::FrameCallBack( CameraFrame_t *pFrame )
     }
     else
     {
-        RIDEHAL_ERROR( "no publisher for stream %u", pFrame->streamId );
+        QC_ERROR( "no publisher for stream %u", pFrame->streamId );
     }
 
     if ( true == m_bImmediateRelease )
@@ -92,7 +92,7 @@ void SampleCamera::FrameCallBack( CameraFrame_t *pFrame )
 
 void SampleCamera::EventCallBack( const uint32_t eventId, const void *pPayload )
 {
-    RIDEHAL_INFO( "Received event: %d, pPayload:%p", eventId, pPayload );
+    QC_INFO( "Received event: %d, pPayload:%p", eventId, pPayload );
 }
 
 void SampleCamera::FrameCallBack( CameraFrame_t *pFrame, void *pPrivData )
@@ -108,12 +108,12 @@ void SampleCamera::EventCallBack( const uint32_t eventId, const void *pPayload, 
     self->EventCallBack( eventId, pPayload );
 }
 
-RideHalError_e SampleCamera::Init( std::string name, SampleConfig_t &config )
+QCStatus_e SampleCamera::Init( std::string name, SampleConfig_t &config )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     ret = SampleIF::Init( name );
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         TRACE_ON( CAMERA );
 
@@ -121,8 +121,8 @@ RideHalError_e SampleCamera::Init( std::string name, SampleConfig_t &config )
         m_camConfig.inputId = Get( config, "input_id", -1 );
         if ( -1 == m_camConfig.inputId )
         {
-            RIDEHAL_ERROR( "invalid input id = %d", m_camConfig.inputId );
-            ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+            QC_ERROR( "invalid input id = %d", m_camConfig.inputId );
+            ret = QC_STATUS_BAD_ARGUMENTS;
         }
 
         m_camConfig.srcId = Get( config, "src_id", 0 );
@@ -146,38 +146,38 @@ RideHalError_e SampleCamera::Init( std::string name, SampleConfig_t &config )
             m_camConfig.streamConfig[i].width = Get( config, "width" + suffix, 0 );
             if ( 0 == m_camConfig.streamConfig[i].width )
             {
-                RIDEHAL_ERROR( "invalid width for stream %u", i );
-                ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+                QC_ERROR( "invalid width for stream %u", i );
+                ret = QC_STATUS_BAD_ARGUMENTS;
             }
 
             m_camConfig.streamConfig[i].height = Get( config, "height" + suffix, 0 );
             if ( 0 == m_camConfig.streamConfig[i].height )
             {
-                RIDEHAL_ERROR( "invalid height for stream %u", i );
-                ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+                QC_ERROR( "invalid height for stream %u", i );
+                ret = QC_STATUS_BAD_ARGUMENTS;
             }
 
             m_camConfig.streamConfig[i].format =
-                    Get( config, "format" + suffix, RIDEHAL_IMAGE_FORMAT_NV12 );
-            if ( RIDEHAL_IMAGE_FORMAT_MAX == m_camConfig.streamConfig[i].format )
+                    Get( config, "format" + suffix, QC_IMAGE_FORMAT_NV12 );
+            if ( QC_IMAGE_FORMAT_MAX == m_camConfig.streamConfig[i].format )
             {
-                RIDEHAL_ERROR( "invalid format for stream %u", i );
-                ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+                QC_ERROR( "invalid format for stream %u", i );
+                ret = QC_STATUS_BAD_ARGUMENTS;
             }
 
             m_camConfig.streamConfig[i].bufCnt = Get( config, "pool_size" + suffix, 4 );
             if ( 0 == m_camConfig.streamConfig[i].bufCnt )
             {
-                RIDEHAL_ERROR( "invalid pool_size for stream %u", i );
-                ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+                QC_ERROR( "invalid pool_size for stream %u", i );
+                ret = QC_STATUS_BAD_ARGUMENTS;
             }
 
             m_camConfig.streamConfig[i].submitRequestPattern =
                     Get( config, "submit_request_pattern" + suffix, 0 );
             if ( m_camConfig.streamConfig[i].submitRequestPattern > 10 )
             {
-                RIDEHAL_ERROR( "invalid submit_request_pattern for stream %u", i );
-                ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+                QC_ERROR( "invalid submit_request_pattern for stream %u", i );
+                ret = QC_STATUS_BAD_ARGUMENTS;
             }
 
             m_camConfig.streamConfig[i].streamId = Get( config, "stream_id" + suffix, i );
@@ -185,8 +185,8 @@ RideHalError_e SampleCamera::Init( std::string name, SampleConfig_t &config )
             std::string topicName = Get( config, "topic" + suffix, "" );
             if ( "" == topicName )
             {
-                RIDEHAL_ERROR( "no topic for stream %u", i );
-                ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+                QC_ERROR( "no topic for stream %u", i );
+                ret = QC_STATUS_BAD_ARGUMENTS;
             }
             else
             {
@@ -205,11 +205,11 @@ RideHalError_e SampleCamera::Init( std::string name, SampleConfig_t &config )
         m_bImmediateRelease = Get( config, "immediate_release", false );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         TRACE_BEGIN( SYSTRACE_TASK_INIT );
         ret = m_camera.Init( (char *) name.c_str(), &m_camConfig );
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             ret = m_camera.RegisterCallback( SampleCamera::FrameCallBack,
                                              SampleCamera::EventCallBack, (void *) this );
@@ -218,37 +218,37 @@ RideHalError_e SampleCamera::Init( std::string name, SampleConfig_t &config )
         {
             if ( m_bIgnoreError )
             {
-                RIDEHAL_ERROR( "Init failed: %d, ignore it" );
-                ret = RIDEHAL_ERROR_NONE;
+                QC_ERROR( "Init failed: %d, ignore it" );
+                ret = QC_STATUS_OK;
             }
         }
         TRACE_END( SYSTRACE_TASK_INIT );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         for ( uint32_t i = 0; i < m_camConfig.numStream; i++ )
         {
             uint32_t streamId = m_camConfig.streamConfig[i].streamId;
             uint32_t bufCnt = m_camConfig.streamConfig[i].bufCnt;
-            std::vector<RideHal_SharedBuffer_t> buffers;
+            std::vector<QCSharedBuffer_t> buffers;
             buffers.resize( bufCnt );
             ret = m_camera.GetBuffers( buffers.data(), bufCnt, streamId );
-            if ( RIDEHAL_ERROR_NONE == ret )
+            if ( QC_STATUS_OK == ret )
             {
                 ret = SampleIF::RegisterBuffers( name + "." + std::to_string( streamId ),
                                                  buffers.data(), bufCnt );
             }
 
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
-                RIDEHAL_ERROR( "failed to register buffers for stream %u", streamId );
+                QC_ERROR( "failed to register buffers for stream %u", streamId );
                 break;
             }
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         for ( uint32_t i = 0; i < m_camConfig.numStream; i++ )
         {
@@ -256,10 +256,9 @@ RideHalError_e SampleCamera::Init( std::string name, SampleConfig_t &config )
             std::string topicName = m_topicNameMap[streamId];
             m_pubMap[streamId] = std::make_shared<DataPublisher<DataFrames_t>>();
             ret = m_pubMap[streamId]->Init( name + "." + std::to_string( streamId ), topicName );
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
-                RIDEHAL_ERROR( "create topic %s for stream %u failed: %d", topicName.c_str(), i,
-                               ret );
+                QC_ERROR( "create topic %s for stream %u failed: %d", topicName.c_str(), i, ret );
                 break;
             }
         }
@@ -268,28 +267,28 @@ RideHalError_e SampleCamera::Init( std::string name, SampleConfig_t &config )
     return ret;
 }
 
-RideHalError_e SampleCamera::Start()
+QCStatus_e SampleCamera::Start()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     TRACE_BEGIN( SYSTRACE_TASK_START );
     ret = m_camera.Start();
     TRACE_END( SYSTRACE_TASK_START );
-    if ( ret != RIDEHAL_ERROR_NONE )
+    if ( ret != QC_STATUS_OK )
     {
         if ( m_bIgnoreError )
         {
-            RIDEHAL_ERROR( "Start failed: %d, ignore it", ret );
-            ret = RIDEHAL_ERROR_NONE;
+            QC_ERROR( "Start failed: %d, ignore it", ret );
+            ret = QC_STATUS_OK;
         }
     }
 
     return ret;
 }
 
-RideHalError_e SampleCamera::Stop()
+QCStatus_e SampleCamera::Stop()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     TRACE_BEGIN( SYSTRACE_TASK_STOP );
     ret = m_camera.Stop();
@@ -299,9 +298,9 @@ RideHalError_e SampleCamera::Stop()
     return ret;
 }
 
-RideHalError_e SampleCamera::Deinit()
+QCStatus_e SampleCamera::Deinit()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     TRACE_BEGIN( SYSTRACE_TASK_DEINIT );
     ret = m_camera.Deinit();
@@ -313,4 +312,4 @@ RideHalError_e SampleCamera::Deinit()
 REGISTER_SAMPLE( Camera, SampleCamera );
 
 }   // namespace sample
-}   // namespace ridehal
+}   // namespace QC

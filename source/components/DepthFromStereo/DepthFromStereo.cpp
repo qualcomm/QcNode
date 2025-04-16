@@ -2,25 +2,25 @@
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
-#include "ridehal/component/DepthFromStereo.hpp"
+#include "QC/component/DepthFromStereo.hpp"
 
-namespace ridehal
+namespace QC
 {
 namespace component
 {
 
-#define RIDEHAL_EVA_DFS_NUM_ICONFIG 6
-#define RIDEHAL_EVA_DFS_NUM_FCONFIG 15
+#define QC_EVA_DFS_NUM_ICONFIG 6
+#define QC_EVA_DFS_NUM_FCONFIG 15
 
-#define ALIGN_S( size, align ) ( ( ( ( size ) + ( align ) - 1 ) / ( align ) ) * ( align ) )
+#define ALIGN_S( size, align ) ( ( ( ( size ) + (align) -1 ) / ( align ) ) * ( align ) )
 
-static const char *evaDFSIConfigStrings[RIDEHAL_EVA_DFS_NUM_ICONFIG] = {
+static const char *evaDFSIConfigStrings[QC_EVA_DFS_NUM_ICONFIG] = {
         EVA_DFS_ICONFIG_ACTUAL_FPS,         EVA_DFS_ICONFIG_OPERATIONAL_FPS,
         EVA_DFS_ICONFIG_PRIMARY_IMAGE_INFO, EVA_DFS_ICONFIG_AUXILIARY_IMAGE_INFO,
         EVA_DFS_ICONFIG_CONF_OUTPUT_ENABLE, EVA_DFS_ICONFIG_SLIC_OUTPUT_ENABLE,
 };
 
-static const char *evaDFSFrameConfigStrings[RIDEHAL_EVA_DFS_NUM_FCONFIG] = {
+static const char *evaDFSFrameConfigStrings[QC_EVA_DFS_NUM_FCONFIG] = {
         EVA_DFS_FCONFIG_HOLE_FILL_ENABLE,
         EVA_DFS_FCONFIG_HOLE_FILL_CONFIG,
         EVA_DFS_FCONFIG_AM_FILTER_ENABLE,
@@ -40,7 +40,7 @@ static const char *evaDFSFrameConfigStrings[RIDEHAL_EVA_DFS_NUM_FCONFIG] = {
 
 DepthFromStereo_Config::DepthFromStereo_Config()
 {
-    this->format = RIDEHAL_IMAGE_FORMAT_NV12;
+    this->format = QC_IMAGE_FORMAT_NV12;
     this->width = 0;
     this->height = 0;
     this->frameRate = 30;
@@ -109,22 +109,22 @@ void DepthFromStereo::EvaSessionCallbackHandler( const EvaSession_t hSession, Ev
 
 void DepthFromStereo::EvaSessionCallbackHandler( const EvaSession_t hSession, EvaEvent_e eEvent )
 {
-    RIDEHAL_DEBUG( "Received Session callback for session: %p, eEvent: %d", hSession, eEvent );
+    QC_DEBUG( "Received Session callback for session: %p, eEvent: %d", hSession, eEvent );
     if ( EVA_EVFATAL == eEvent )
     {
-        RIDEHAL_ERROR( "set state to ERROR" );
-        m_state = RIDEHAL_COMPONENT_STATE_ERROR;
+        QC_ERROR( "set state to ERROR" );
+        m_state = QC_OBJECT_STATE_ERROR;
     }
 }
 
-RideHalError_e DepthFromStereo::UpdateIconfig( EvaConfigList_t *pConfigList )
+QCStatus_e DepthFromStereo::UpdateIconfig( EvaConfigList_t *pConfigList )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     EvaStatus_e rc = EvaDFSQueryConfigIndices( &evaDFSIConfigStrings[0], pConfigList );
     if ( rc != EVA_SUCCESS )
     {
-        RIDEHAL_ERROR( "Failed to Query I config Indices: %d", rc );
-        ret = RIDEHAL_ERROR_FAIL;
+        QC_ERROR( "Failed to Query I config Indices: %d", rc );
+        ret = QC_STATUS_FAIL;
     }
     else
     {
@@ -160,27 +160,27 @@ RideHalError_e DepthFromStereo::UpdateIconfig( EvaConfigList_t *pConfigList )
     return ret;
 }
 
-RideHalError_e DepthFromStereo::ValidateConfig( const DepthFromStereo_Config_t *pConfig )
+QCStatus_e DepthFromStereo::ValidateConfig( const DepthFromStereo_Config_t *pConfig )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     if ( nullptr == pConfig )
     {
-        RIDEHAL_ERROR( "pConfig is nullptr!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "pConfig is nullptr!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
-    else if ( ( pConfig->format != RIDEHAL_IMAGE_FORMAT_NV12 ) &&
-              ( pConfig->format != RIDEHAL_IMAGE_FORMAT_P010 ) &&
-              ( pConfig->format != RIDEHAL_IMAGE_FORMAT_NV12_UBWC ) &&
-              ( pConfig->format != RIDEHAL_IMAGE_FORMAT_TP10_UBWC ) )
+    else if ( ( pConfig->format != QC_IMAGE_FORMAT_NV12 ) &&
+              ( pConfig->format != QC_IMAGE_FORMAT_P010 ) &&
+              ( pConfig->format != QC_IMAGE_FORMAT_NV12_UBWC ) &&
+              ( pConfig->format != QC_IMAGE_FORMAT_TP10_UBWC ) )
     {
-        RIDEHAL_ERROR( "invalid format!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "invalid format!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else if ( ( EVA_DFS_SEARCH_L2R != pConfig->dfsSearchDir ) &&
               ( EVA_DFS_SEARCH_R2L != pConfig->dfsSearchDir ) )
     {
-        RIDEHAL_ERROR( "invalid serach direction!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "invalid serach direction!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
@@ -189,35 +189,35 @@ RideHalError_e DepthFromStereo::ValidateConfig( const DepthFromStereo_Config_t *
     return ret;
 }
 
-EvaColorFormat_e DepthFromStereo::GetEvaColorFormat( RideHal_ImageFormat_e colorFormat )
+EvaColorFormat_e DepthFromStereo::GetEvaColorFormat( QCImageFormat_e colorFormat )
 {
     EvaColorFormat_e evaFormat = EVA_COLORFORMAT_MAX;
 
     switch ( colorFormat )
     {
-        case RIDEHAL_IMAGE_FORMAT_NV12:
+        case QC_IMAGE_FORMAT_NV12:
         {
             evaFormat = EVA_COLORFORMAT_NV12;
             break;
         }
-        case RIDEHAL_IMAGE_FORMAT_P010:
+        case QC_IMAGE_FORMAT_P010:
         {
             evaFormat = EVA_COLORFORMAT_P010_MSB;
             break;
         }
-        case RIDEHAL_IMAGE_FORMAT_NV12_UBWC:
+        case QC_IMAGE_FORMAT_NV12_UBWC:
         {
             evaFormat = EVA_COLORFORMAT_NV12_UBWC;
             break;
         }
-        case RIDEHAL_IMAGE_FORMAT_TP10_UBWC:
+        case QC_IMAGE_FORMAT_TP10_UBWC:
         {
             evaFormat = EVA_COLORFORMAT_TP10_UBWC;
             break;
         }
         default:
         {
-            RIDEHAL_ERROR( "Unsupport corlor sormat: %d", colorFormat );
+            QC_ERROR( "Unsupport corlor sormat: %d", colorFormat );
             break;
         }
     }
@@ -225,22 +225,22 @@ EvaColorFormat_e DepthFromStereo::GetEvaColorFormat( RideHal_ImageFormat_e color
     return evaFormat;
 }
 
-RideHalError_e DepthFromStereo::Init( const char *pName, const DepthFromStereo_Config_t *pConfig,
-                                      Logger_Level_e level )
+QCStatus_e DepthFromStereo::Init( const char *pName, const DepthFromStereo_Config_t *pConfig,
+                                  Logger_Level_e level )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     bool bIFInitOK = false;
     EvaStatus_e rc;
 
     EvaConfigList_t configList;
-    EvaConfig_t configs[RIDEHAL_EVA_DFS_NUM_ICONFIG];
+    EvaConfig_t configs[QC_EVA_DFS_NUM_ICONFIG];
 
     ret = ComponentIF::Init( pName, level );
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         bIFInitOK = true;
         ret = ValidateConfig( pConfig );
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         { /* parameters are OK */
             m_config = *pConfig;
             m_outputWidth = m_config.width;
@@ -248,65 +248,64 @@ RideHalError_e DepthFromStereo::Init( const char *pName, const DepthFromStereo_C
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         m_hDFSSession = EvaCreateSession( EvaSessionCallbackHandler, this, NULL );
         if ( nullptr == m_hDFSSession )
         {
-            RIDEHAL_ERROR( "EVADepthFromStereo : Failed to Create Session" );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "EVADepthFromStereo : Failed to Create Session" );
+            ret = QC_STATUS_FAIL;
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         EvaColorFormat_e evaFormat = GetEvaColorFormat( m_config.format );
         rc = EvaQueryImageInfo( evaFormat, m_config.width, m_config.height, &m_imageInfo );
         if ( rc != EVA_SUCCESS )
         {
-            RIDEHAL_ERROR( "EVADepthFromStereo: Failed to get image info: %d", rc );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "EVADepthFromStereo: Failed to get image info: %d", rc );
+            ret = QC_STATUS_FAIL;
         }
         else
         {
-            RIDEHAL_DEBUG(
-                    "ImageInfo: WxH=%ux%u format=%d planes=%u total size=%u, width stride=[%u "
-                    "%u %u %u], aligned size=[%u %u %u %u]",
-                    m_imageInfo.nWidth, m_imageInfo.nHeight, m_imageInfo.eFormat,
-                    m_imageInfo.nPlanes, m_imageInfo.nTotalSize, m_imageInfo.nWidthStride[0],
-                    m_imageInfo.nWidthStride[1], m_imageInfo.nWidthStride[2],
-                    m_imageInfo.nWidthStride[3], m_imageInfo.nAlignedSize[0],
-                    m_imageInfo.nAlignedSize[1], m_imageInfo.nAlignedSize[2],
-                    m_imageInfo.nAlignedSize[3] );
+            QC_DEBUG( "ImageInfo: WxH=%ux%u format=%d planes=%u total size=%u, width stride=[%u "
+                      "%u %u %u], aligned size=[%u %u %u %u]",
+                      m_imageInfo.nWidth, m_imageInfo.nHeight, m_imageInfo.eFormat,
+                      m_imageInfo.nPlanes, m_imageInfo.nTotalSize, m_imageInfo.nWidthStride[0],
+                      m_imageInfo.nWidthStride[1], m_imageInfo.nWidthStride[2],
+                      m_imageInfo.nWidthStride[3], m_imageInfo.nAlignedSize[0],
+                      m_imageInfo.nAlignedSize[1], m_imageInfo.nAlignedSize[2],
+                      m_imageInfo.nAlignedSize[3] );
         }
     }
 
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
-        configList.nConfigs = RIDEHAL_EVA_DFS_NUM_ICONFIG;
+        configList.nConfigs = QC_EVA_DFS_NUM_ICONFIG;
         configList.pConfigs = configs;
         ret = UpdateIconfig( &configList );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         m_hEvaDFS = EvaInitDFS( m_hDFSSession, &configList, &m_outBufInfo, NULL, this );
         if ( nullptr == m_hEvaDFS )
         {
-            RIDEHAL_ERROR( "Failed to Init DFS" );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Failed to Init DFS" );
+            ret = QC_STATUS_FAIL;
         }
         else
         {
-            RIDEHAL_DEBUG( "output disparity buffer size %u, conf map buf size %u",
-                           m_outBufInfo.nDispMapBytes, m_outBufInfo.nConfMapBytes );
+            QC_DEBUG( "output disparity buffer size %u, conf map buf size %u",
+                      m_outBufInfo.nDispMapBytes, m_outBufInfo.nConfMapBytes );
         }
     }
 
-    if ( ret != RIDEHAL_ERROR_NONE )
+    if ( ret != QC_STATUS_OK )
     { /* do error clean up */
-        RIDEHAL_ERROR( "DepthFromStereo Init failed: %d!", ret );
+        QC_ERROR( "DepthFromStereo Init failed: %d!", ret );
 
         if ( nullptr != m_hDFSSession )
         {
@@ -321,31 +320,29 @@ RideHalError_e DepthFromStereo::Init( const char *pName, const DepthFromStereo_C
     }
     else
     {
-        m_state = RIDEHAL_COMPONENT_STATE_READY;
+        m_state = QC_OBJECT_STATE_READY;
     }
 
     return ret;
 }
 
-RideHalError_e DepthFromStereo::RegisterBuffers( const RideHal_SharedBuffer_t *pBuffers,
-                                                 uint32_t numBuffers )
+QCStatus_e DepthFromStereo::RegisterBuffers( const QCSharedBuffer_t *pBuffers, uint32_t numBuffers )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
-    if ( ( RIDEHAL_COMPONENT_STATE_READY != m_state ) &&
-         ( RIDEHAL_COMPONENT_STATE_RUNNING != m_state ) )
+    QCStatus_e ret = QC_STATUS_OK;
+    if ( ( QC_OBJECT_STATE_READY != m_state ) && ( QC_OBJECT_STATE_RUNNING != m_state ) )
     {
-        RIDEHAL_ERROR( "Register Buffers is not allowed when in state %d!", m_state );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_ERROR( "Register Buffers is not allowed when in state %d!", m_state );
+        ret = QC_STATUS_BAD_STATE;
     }
     else if ( nullptr == pBuffers )
     {
-        RIDEHAL_ERROR( "pBuffers is nullptr!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "pBuffers is nullptr!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else if ( 0 == numBuffers )
     {
-        RIDEHAL_ERROR( "numBuffers is 0!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "numBuffers is 0!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
@@ -353,7 +350,7 @@ RideHalError_e DepthFromStereo::RegisterBuffers( const RideHal_SharedBuffer_t *p
         {
             EvaMem_t *pEvaMem;
             ret = RegisterEvaMem( &pBuffers[i], &pEvaMem );
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
                 break;
             }
@@ -362,16 +359,16 @@ RideHalError_e DepthFromStereo::RegisterBuffers( const RideHal_SharedBuffer_t *p
     return ret;
 }
 
-RideHalError_e DepthFromStereo::SetInitialFrameConfig()
+QCStatus_e DepthFromStereo::SetInitialFrameConfig()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     EvaStatus_e rc;
 
     EvaConfigList_t configList;
-    EvaConfig_t configs[RIDEHAL_EVA_DFS_NUM_FCONFIG];
-    (void) memset( configs, 0, sizeof( EvaConfig_t ) * RIDEHAL_EVA_DFS_NUM_FCONFIG );
+    EvaConfig_t configs[QC_EVA_DFS_NUM_FCONFIG];
+    (void) memset( configs, 0, sizeof( EvaConfig_t ) * QC_EVA_DFS_NUM_FCONFIG );
 
-    configList.nConfigs = RIDEHAL_EVA_DFS_NUM_FCONFIG;
+    configList.nConfigs = QC_EVA_DFS_NUM_FCONFIG;
     configList.pConfigs = configs;
 
     rc = EvaDFSQueryConfigIndices( &evaDFSFrameConfigStrings[0], &configList );
@@ -447,48 +444,48 @@ RideHalError_e DepthFromStereo::SetInitialFrameConfig()
         rc = EvaDFSSetFrameConfig( m_hEvaDFS, &configList );
         if ( EVA_SUCCESS != rc )
         {
-            RIDEHAL_ERROR( "Failed to Set F config: %d", rc );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Failed to Set F config: %d", rc );
+            ret = QC_STATUS_FAIL;
         }
     }
     else
     {
-        RIDEHAL_ERROR( "Failed to Query F config Indices: %d", rc );
-        ret = RIDEHAL_ERROR_FAIL;
+        QC_ERROR( "Failed to Query F config Indices: %d", rc );
+        ret = QC_STATUS_FAIL;
     }
 
     return ret;
 }
 
 
-RideHalError_e DepthFromStereo::Start()
+QCStatus_e DepthFromStereo::Start()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     EvaStatus_e rc;
 
-    if ( RIDEHAL_COMPONENT_STATE_READY != m_state )
+    if ( QC_OBJECT_STATE_READY != m_state )
     {
-        RIDEHAL_ERROR( "Start is not allowed when in state %d!", m_state );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_ERROR( "Start is not allowed when in state %d!", m_state );
+        ret = QC_STATUS_BAD_STATE;
     }
     else
     {
         rc = EvaStartSession( m_hDFSSession );
         if ( EVA_SUCCESS != rc )
         {
-            RIDEHAL_ERROR( "Failed to Start Session: %d", rc );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Failed to Start Session: %d", rc );
+            ret = QC_STATUS_FAIL;
         }
         else
         {
             ret = SetInitialFrameConfig();
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
-                RIDEHAL_ERROR( "Failed to set Session config" );
+                QC_ERROR( "Failed to set Session config" );
             }
             else
             {
-                m_state = RIDEHAL_COMPONENT_STATE_RUNNING;
+                m_state = QC_OBJECT_STATE_RUNNING;
             }
         }
     }
@@ -496,10 +493,9 @@ RideHalError_e DepthFromStereo::Start()
     return ret;
 }
 
-RideHalError_e DepthFromStereo::RegisterEvaMem( const RideHal_SharedBuffer_t *pBuffer,
-                                                EvaMem_t **pEvaMem )
+QCStatus_e DepthFromStereo::RegisterEvaMem( const QCSharedBuffer_t *pBuffer, EvaMem_t **pEvaMem )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     EvaStatus_e rc;
     EvaMem_t mem;
 
@@ -510,15 +506,15 @@ RideHalError_e DepthFromStereo::RegisterEvaMem( const RideHal_SharedBuffer_t *pB
         mem.nOffset = pBuffer->offset;
         mem.pAddress = pBuffer->data();
         mem.hMemHandle = (void *) pBuffer->buffer.dmaHandle;
-        if ( 0 != ( pBuffer->buffer.flags & RIDEHAL_BUFFER_FLAGS_CACHE_WB_WA ) )
+        if ( 0 != ( pBuffer->buffer.flags & QC_BUFFER_FLAGS_CACHE_WB_WA ) )
         {
             mem.bCached = true;
         }
         rc = EvaMemRegister( m_hDFSSession, &mem );
         if ( EVA_SUCCESS != rc )
         {
-            RIDEHAL_ERROR( "EvaMemRegister(%p) failed: %d", pBuffer->data(), rc );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "EvaMemRegister(%p) failed: %d", pBuffer->data(), rc );
+            ret = QC_STATUS_FAIL;
         }
         else
         {
@@ -533,24 +529,23 @@ RideHalError_e DepthFromStereo::RegisterEvaMem( const RideHal_SharedBuffer_t *pB
     return ret;
 }
 
-RideHalError_e DepthFromStereo::ValidateImageBuffer( const RideHal_SharedBuffer_t *pImage )
+QCStatus_e DepthFromStereo::ValidateImageBuffer( const QCSharedBuffer_t *pImage )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
 
     if ( nullptr == pImage )
     {
-        RIDEHAL_ERROR( "pImage is nullptr!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "pImage is nullptr!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
-    else if ( ( RIDEHAL_BUFFER_TYPE_IMAGE != pImage->type ) ||
-              ( nullptr == pImage->buffer.pData ) ||
+    else if ( ( QC_BUFFER_TYPE_IMAGE != pImage->type ) || ( nullptr == pImage->buffer.pData ) ||
               ( m_config.format != pImage->imgProps.format ) ||
               ( m_config.width != pImage->imgProps.width ) ||
               ( m_config.height != pImage->imgProps.height ) ||
               ( m_imageInfo.nPlanes != pImage->imgProps.numPlanes ) )
     {
-        RIDEHAL_ERROR( "pImage is invalid!" );
-        ret = RIDEHAL_ERROR_INVALID_BUF;
+        QC_ERROR( "pImage is invalid!" );
+        ret = QC_STATUS_INVALID_BUF;
     }
     else
     {
@@ -558,15 +553,15 @@ RideHalError_e DepthFromStereo::ValidateImageBuffer( const RideHal_SharedBuffer_
         {
             if ( m_imageInfo.nWidthStride[i] != pImage->imgProps.stride[i] )
             {
-                RIDEHAL_ERROR( "pImage with invalid stride in plane %u: %u != %u", i,
-                               m_imageInfo.nWidthStride[i], pImage->imgProps.stride[i] );
-                ret = RIDEHAL_ERROR_INVALID_BUF;
+                QC_ERROR( "pImage with invalid stride in plane %u: %u != %u", i,
+                          m_imageInfo.nWidthStride[i], pImage->imgProps.stride[i] );
+                ret = QC_STATUS_INVALID_BUF;
             }
             else if ( m_imageInfo.nAlignedSize[i] != pImage->imgProps.planeBufSize[i] )
             {
-                RIDEHAL_ERROR( "pImage with invalid plane buf size in plane %u: %u != %u", i,
-                               m_imageInfo.nAlignedSize[i], pImage->imgProps.planeBufSize[i] );
-                ret = RIDEHAL_ERROR_INVALID_BUF;
+                QC_ERROR( "pImage with invalid plane buf size in plane %u: %u != %u", i,
+                          m_imageInfo.nAlignedSize[i], pImage->imgProps.planeBufSize[i] );
+                ret = QC_STATUS_INVALID_BUF;
             }
             else
             {
@@ -578,12 +573,12 @@ RideHalError_e DepthFromStereo::ValidateImageBuffer( const RideHal_SharedBuffer_
 }
 
 
-RideHalError_e DepthFromStereo::Execute( const RideHal_SharedBuffer_t *pPriImage,
-                                         const RideHal_SharedBuffer_t *pAuxImage,
-                                         const RideHal_SharedBuffer_t *pDispMap,
-                                         const RideHal_SharedBuffer_t *pConfMap )
+QCStatus_e DepthFromStereo::Execute( const QCSharedBuffer_t *pPriImage,
+                                     const QCSharedBuffer_t *pAuxImage,
+                                     const QCSharedBuffer_t *pDispMap,
+                                     const QCSharedBuffer_t *pConfMap )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     EvaStatus_e rc;
     EvaMem_t *pPriMem = nullptr;
     EvaMem_t *pAuxMem = nullptr;
@@ -593,79 +588,79 @@ RideHalError_e DepthFromStereo::Execute( const RideHal_SharedBuffer_t *pPriImage
     EvaImage_t auxImage;
     EvaDFSOutput_t dfsOutput;
 
-    if ( RIDEHAL_COMPONENT_STATE_RUNNING != m_state )
+    if ( QC_OBJECT_STATE_RUNNING != m_state )
     {
-        RIDEHAL_ERROR( "Execute is not allowed when in state %d!", m_state );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_ERROR( "Execute is not allowed when in state %d!", m_state );
+        ret = QC_STATUS_BAD_STATE;
     }
     else if ( nullptr == pDispMap )
     {
-        RIDEHAL_ERROR( "pDispMap is nullptr!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "pDispMap is nullptr!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
-    else if ( ( RIDEHAL_BUFFER_TYPE_TENSOR != pDispMap->type ) ||
+    else if ( ( QC_BUFFER_TYPE_TENSOR != pDispMap->type ) ||
               ( nullptr == pDispMap->buffer.pData ) || ( 4 != pDispMap->tensorProps.numDims ) ||
-              ( RIDEHAL_TENSOR_TYPE_UINT_16 != pDispMap->tensorProps.type ) ||
+              ( QC_TENSOR_TYPE_UINT_16 != pDispMap->tensorProps.type ) ||
               ( 1 != pDispMap->tensorProps.dims[0] ) ||
               ( ALIGN_S( m_outputHeight, 2 ) != pDispMap->tensorProps.dims[1] ) ||
               ( ALIGN_S( m_outputWidth, 128 ) != pDispMap->tensorProps.dims[2] ) ||
               ( 1 != pDispMap->tensorProps.dims[3] ) )
     {
-        RIDEHAL_ERROR( "pDispMap is invalid!" );
-        ret = RIDEHAL_ERROR_INVALID_BUF;
+        QC_ERROR( "pDispMap is invalid!" );
+        ret = QC_STATUS_INVALID_BUF;
     }
     else if ( nullptr == pConfMap )
     {
-        RIDEHAL_ERROR( "pConfMap is nullptr!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "pConfMap is nullptr!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
-    else if ( ( RIDEHAL_BUFFER_TYPE_TENSOR != pConfMap->type ) ||
+    else if ( ( QC_BUFFER_TYPE_TENSOR != pConfMap->type ) ||
               ( nullptr == pConfMap->buffer.pData ) || ( 4 != pConfMap->tensorProps.numDims ) ||
-              ( RIDEHAL_TENSOR_TYPE_UINT_8 != pConfMap->tensorProps.type ) ||
+              ( QC_TENSOR_TYPE_UINT_8 != pConfMap->tensorProps.type ) ||
               ( 1 != pConfMap->tensorProps.dims[0] ) ||
               ( ALIGN_S( m_outputHeight, 1 ) != pConfMap->tensorProps.dims[1] ) ||
               ( ALIGN_S( m_outputWidth, 128 ) != pConfMap->tensorProps.dims[2] ) ||
               ( 1 != pConfMap->tensorProps.dims[3] ) )
     {
-        RIDEHAL_ERROR( "pConfMap is invalid!" );
-        ret = RIDEHAL_ERROR_INVALID_BUF;
+        QC_ERROR( "pConfMap is invalid!" );
+        ret = QC_STATUS_INVALID_BUF;
     }
     else
     {
         /* OK */
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = ValidateImageBuffer( pPriImage );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = ValidateImageBuffer( pAuxImage );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = RegisterEvaMem( pPriImage, &pPriMem );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = RegisterEvaMem( pAuxImage, &pAuxMem );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = RegisterEvaMem( pDispMap, &pDispMem );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         ret = RegisterEvaMem( pConfMap, &pConfMem );
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         priImage.pBuffer = pPriMem;
         priImage.sImageInfo = m_imageInfo;
@@ -680,62 +675,61 @@ RideHalError_e DepthFromStereo::Execute( const RideHal_SharedBuffer_t *pPriImage
         rc = EvaDFS_Sync( m_hEvaDFS, &priImage, &auxImage, &dfsOutput, nullptr );
         if ( EVA_SUCCESS != rc )
         {
-            RIDEHAL_ERROR( "EvaDFS_Sync failed: %d", rc );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "EvaDFS_Sync failed: %d", rc );
+            ret = QC_STATUS_FAIL;
         }
     }
 
     return ret;
 }
 
-RideHalError_e DepthFromStereo::Stop()
+QCStatus_e DepthFromStereo::Stop()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     EvaStatus_e rc;
 
-    if ( RIDEHAL_COMPONENT_STATE_RUNNING != m_state )
+    if ( QC_OBJECT_STATE_RUNNING != m_state )
     {
-        RIDEHAL_ERROR( "Stop is not allowed when in state %d!", m_state );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_ERROR( "Stop is not allowed when in state %d!", m_state );
+        ret = QC_STATUS_BAD_STATE;
     }
     else
     {
         rc = EvaStopSession( m_hDFSSession );
         if ( EVA_SUCCESS != rc )
         {
-            RIDEHAL_ERROR( "Failed to stop Session: %d", rc );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Failed to stop Session: %d", rc );
+            ret = QC_STATUS_FAIL;
         }
         else
         {
-            m_state = RIDEHAL_COMPONENT_STATE_READY;
+            m_state = QC_OBJECT_STATE_READY;
         }
     }
 
     return ret;
 }
 
-RideHalError_e DepthFromStereo::DeRegisterBuffers( const RideHal_SharedBuffer_t *pBuffers,
-                                                   uint32_t numBuffers )
+QCStatus_e DepthFromStereo::DeRegisterBuffers( const QCSharedBuffer_t *pBuffers,
+                                               uint32_t numBuffers )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     EvaStatus_e rc;
 
-    if ( ( RIDEHAL_COMPONENT_STATE_READY != m_state ) &&
-         ( RIDEHAL_COMPONENT_STATE_RUNNING != m_state ) )
+    if ( ( QC_OBJECT_STATE_READY != m_state ) && ( QC_OBJECT_STATE_RUNNING != m_state ) )
     {
-        RIDEHAL_ERROR( "DeRegisterBuffers is not allowed when in state %d!", m_state );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_ERROR( "DeRegisterBuffers is not allowed when in state %d!", m_state );
+        ret = QC_STATUS_BAD_STATE;
     }
     else if ( nullptr == pBuffers )
     {
-        RIDEHAL_ERROR( "Empty buffers pointer!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "Empty buffers pointer!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else if ( 0 == numBuffers )
     {
-        RIDEHAL_ERROR( "numBuffers is 0!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "numBuffers is 0!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
@@ -748,8 +742,8 @@ RideHalError_e DepthFromStereo::DeRegisterBuffers( const RideHal_SharedBuffer_t 
                 rc = EvaMemDeregister( m_hDFSSession, &mem );
                 if ( EVA_SUCCESS != rc )
                 {
-                    RIDEHAL_ERROR( "EvaMemDeregister(%p) failed: %d", mem.pAddress, rc );
-                    ret = RIDEHAL_ERROR_FAIL;
+                    QC_ERROR( "EvaMemDeregister(%p) failed: %d", mem.pAddress, rc );
+                    ret = QC_STATUS_FAIL;
                     break;
                 }
                 else
@@ -763,15 +757,15 @@ RideHalError_e DepthFromStereo::DeRegisterBuffers( const RideHal_SharedBuffer_t 
     return ret;
 }
 
-RideHalError_e DepthFromStereo::Deinit()
+QCStatus_e DepthFromStereo::Deinit()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     EvaStatus_e rc;
 
-    if ( RIDEHAL_COMPONENT_STATE_READY != m_state )
+    if ( QC_OBJECT_STATE_READY != m_state )
     {
-        RIDEHAL_ERROR( "Deinit is not allowed when in state %d!", m_state );
-        ret = RIDEHAL_ERROR_BAD_STATE;
+        QC_ERROR( "Deinit is not allowed when in state %d!", m_state );
+        ret = QC_STATUS_BAD_STATE;
     }
     else
     {
@@ -781,8 +775,8 @@ RideHalError_e DepthFromStereo::Deinit()
             rc = EvaMemDeregister( m_hDFSSession, &mem );
             if ( EVA_SUCCESS != rc )
             {
-                RIDEHAL_ERROR( "EvaMemDeregister(%p) failed: %d", mem.pAddress, rc );
-                ret = RIDEHAL_ERROR_FAIL;
+                QC_ERROR( "EvaMemDeregister(%p) failed: %d", mem.pAddress, rc );
+                ret = QC_STATUS_FAIL;
             }
         }
         m_evaMemMap.clear();
@@ -790,23 +784,23 @@ RideHalError_e DepthFromStereo::Deinit()
         rc = EvaDeInitDFS( m_hEvaDFS );
         if ( EVA_SUCCESS != rc )
         {
-            RIDEHAL_ERROR( "Failed to deinit DFS: %d", rc );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Failed to deinit DFS: %d", rc );
+            ret = QC_STATUS_FAIL;
         }
         m_hEvaDFS = nullptr;
 
         rc = EvaDeleteSession( m_hDFSSession );
         if ( EVA_SUCCESS != rc )
         {
-            RIDEHAL_ERROR( "Failed to delete Session: %d", rc );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Failed to delete Session: %d", rc );
+            ret = QC_STATUS_FAIL;
         }
         m_hDFSSession = nullptr;
 
-        RideHalError_e ret2 = ComponentIF::Deinit();
-        if ( RIDEHAL_ERROR_NONE != ret2 )
+        QCStatus_e ret2 = ComponentIF::Deinit();
+        if ( QC_STATUS_OK != ret2 )
         {
-            RIDEHAL_ERROR( "Deinit ComponentIF failed!" );
+            QC_ERROR( "Deinit ComponentIF failed!" );
             ret = ret2;
         }
     }
@@ -815,4 +809,4 @@ RideHalError_e DepthFromStereo::Deinit()
 }
 
 }   // namespace component
-}   // namespace ridehal
+}   // namespace QC

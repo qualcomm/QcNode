@@ -17,12 +17,12 @@
 #include <unistd.h>
 #include <vector>
 
+#include "QC/component/QnnRuntime.hpp"
+#include "QC/infras/memory/SharedBuffer.hpp"
 #include "QnnSampleAppUtils.hpp"
-#include "ridehal/common/SharedBuffer.hpp"
-#include "ridehal/component/QnnRuntime.hpp"
 
-using namespace ridehal::component;
-using namespace ridehal::common;
+using namespace QC::component;
+using namespace QC::common;
 
 static bool s_bDisableDumpingOutputs = false;
 
@@ -82,7 +82,7 @@ typedef struct
     std::string name;
     std::string modelPath;
     int nLoops = 100;
-    RideHal_ProcessorType_e processor = RIDEHAL_PROCESSOR_HTP0;
+    QCProcessorType_e processor = QC_PROCESSOR_HTP0;
     std::vector<QnnTest_Buffer_t> inputs;
     std::vector<QnnRuntime_UdoPackage_t> opPackagePaths;
     int tid; /* deploy this on which thread */
@@ -113,11 +113,11 @@ public:
     QnnTestRunner() {}
     ~QnnTestRunner() {}
 
-    RideHalError_e Init( QnnTest_Parameters_t &params )
+    QCStatus_e Init( QnnTest_Parameters_t &params )
     {
         m_params = params;
 
-        RideHalError_e ret = RIDEHAL_ERROR_NONE;
+        QCStatus_e ret = QC_STATUS_OK;
         auto &name = m_params.name;
         auto &modelPath = m_params.modelPath;
         auto processor = m_params.processor;
@@ -135,7 +135,7 @@ public:
                      QNN_PRIORITY_DEFAULT,
                      nullptr,
                      0 };
-        if ( ( RIDEHAL_PROCESSOR_CPU == processor ) || ( RIDEHAL_PROCESSOR_GPU == processor ) )
+        if ( ( QC_PROCESSOR_CPU == processor ) || ( QC_PROCESSOR_GPU == processor ) )
         {
             m_config.loadType = QNNRUNTIME_LOAD_SHARED_LIBRARY_FROM_FILE;
         }
@@ -147,7 +147,7 @@ public:
         }
 
         ret = m_qnn.Init( name.c_str(), &m_config, LOGGER_LEVEL_INFO );
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
             printf( "[%s] Failed to create QNN Runtime, error is %d\n", name.c_str(), ret );
         }
@@ -155,37 +155,37 @@ public:
         auto cost = std::chrono::duration_cast<std::chrono::microseconds>( end - begin ).count();
         printf( "[%s] Init cost %.2f ms\n", name.c_str(), (float) cost / 1000.0 );
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             ret = m_qnn.GetInputInfo( &m_inputInfoList );
         }
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             m_inputBuffers.resize( m_inputInfoList.num );
         }
 
 
         uint32_t outputNum = 0;
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             ret = m_qnn.GetOutputInfo( &m_outputInfoList );
         }
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             m_outputBuffers.resize( m_outputInfoList.num );
         }
 
-        for ( size_t i = 0; ( i < m_inputInfoList.num ) && ( RIDEHAL_ERROR_NONE == ret ); i++ )
+        for ( size_t i = 0; ( i < m_inputInfoList.num ) && ( QC_STATUS_OK == ret ); i++ )
         {
             auto &info = m_inputInfoList.pInfo[i];
             printf( "[%s] input %" PRIu64 " name=%s %s\n", name.c_str(), i, info.pName,
                     GetTensorInfoStr( info ).c_str() );
-            RideHal_TensorProps_t tensorProperties = info.properties;
+            QCTensorProps_t tensorProperties = info.properties;
             tensorProperties.dims[0] = tensorProperties.dims[0] * batchMultiplier;
             ret = m_inputBuffers[i].Allocate( &tensorProperties );
-            if ( RIDEHAL_ERROR_NONE == ret )
+            if ( QC_STATUS_OK == ret )
             {
                 if ( i < inputs.size() )
                 {
@@ -217,39 +217,39 @@ public:
                     else
                     {
                         printf( "input size not correct, abort test\n" );
-                        ret = RIDEHAL_ERROR_FAIL;
+                        ret = QC_STATUS_FAIL;
                     }
                 }
             }
             else
             {
                 printf( "[%s] Failed to allocate buffer for input %" PRIu64 "\n", name.c_str(), i );
-                ret = RIDEHAL_ERROR_NOMEM;
+                ret = QC_STATUS_NOMEM;
             }
         }
 
-        for ( size_t i = 0; ( i < m_outputInfoList.num ) && ( RIDEHAL_ERROR_NONE == ret ); i++ )
+        for ( size_t i = 0; ( i < m_outputInfoList.num ) && ( QC_STATUS_OK == ret ); i++ )
         {
             auto &info = m_outputInfoList.pInfo[i];
             printf( "[%s] output %" PRIu64 " name=%s %s\n", name.c_str(), i, info.pName,
                     GetTensorInfoStr( info ).c_str() );
-            RideHal_TensorProps_t tensorProperties = info.properties;
+            QCTensorProps_t tensorProperties = info.properties;
             tensorProperties.dims[0] = tensorProperties.dims[0] * batchMultiplier;
             ret = m_outputBuffers[i].Allocate( &tensorProperties );
-            if ( RIDEHAL_ERROR_NONE != ret )
+            if ( QC_STATUS_OK != ret )
             {
                 printf( "[%s] Failed to allocate buffer for output %" PRIu64 "\n", name.c_str(),
                         i );
-                ret = RIDEHAL_ERROR_NOMEM;
+                ret = QC_STATUS_NOMEM;
             }
         }
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             ret = m_qnn.Start();
         }
 
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             ret = m_qnn.EnablePerf();
         }
@@ -257,9 +257,9 @@ public:
         return ret;
     }
 
-    RideHalError_e Run()
+    QCStatus_e Run()
     {
-        RideHalError_e ret = RIDEHAL_ERROR_NONE;
+        QCStatus_e ret = QC_STATUS_OK;
         auto &name = m_params.name;
         auto processor = m_params.processor;
         auto &inputs = m_params.inputs;
@@ -273,17 +273,17 @@ public:
         auto begin = std::chrono::high_resolution_clock::now();
         ret = m_qnn.Execute( m_inputBuffers.data(), m_inputBuffers.size(), m_outputBuffers.data(),
                              m_outputBuffers.size() );
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
             printf( "[%s] Failed to run, error is %d\n", name.c_str(), ret );
         }
         auto end = std::chrono::high_resolution_clock::now();
         auto cost = std::chrono::duration_cast<std::chrono::microseconds>( end - begin ).count();
-        if ( RIDEHAL_ERROR_NONE == ret )
+        if ( QC_STATUS_OK == ret )
         {
             ret = m_qnn.GetPerf( &perf );
             m_total += cost;
-            if ( RIDEHAL_ERROR_NONE == ret )
+            if ( QC_STATUS_OK == ret )
             {
                 m_totalQnn += perf.entireExecTime;
                 m_totalRpc += perf.rpcExecTimeCPU;
@@ -367,8 +367,8 @@ private:
     QnnRuntime m_qnn;
     QnnRuntime_TensorInfoList_t m_inputInfoList;
     QnnRuntime_TensorInfoList_t m_outputInfoList;
-    std::vector<RideHal_SharedBuffer_t> m_inputBuffers;
-    std::vector<RideHal_SharedBuffer_t> m_outputBuffers;
+    std::vector<QCSharedBuffer_t> m_inputBuffers;
+    std::vector<QCSharedBuffer_t> m_outputBuffers;
     uint64_t m_total = 0;
     uint64_t m_totalQnn = 0;
     uint64_t m_totalRpc = 0;
@@ -412,7 +412,7 @@ bool ThreadMain( int nLoops, std::vector<std::shared_ptr<QnnTestRunner>> runners
         printf( "[%d] avg cost %.2f ms\n", tid, (float) total / nLoops / 1000.0 );
     }
 
-    return RIDEHAL_ERROR_NONE;
+    return QC_STATUS_OK;
 }
 
 int Usage( char *prog, int error )
@@ -471,9 +471,9 @@ int main( int argc, char *argv[] )
             case 'p':
             {
                 QnnTest_Parameters_t &params = paramsList.back();
-                params.processor = (RideHal_ProcessorType_e) atoi( optarg );
-                if ( ( params.processor >= RIDEHAL_PROCESSOR_MAX ) ||
-                     ( params.processor < RIDEHAL_PROCESSOR_HTP0 ) )
+                params.processor = (QCProcessorType_e) atoi( optarg );
+                if ( ( params.processor >= QC_PROCESSOR_MAX ) ||
+                     ( params.processor < QC_PROCESSOR_HTP0 ) )
                 {
                     printf( "invalid processor %s for %s\n", optarg, params.name.c_str() );
                     return -1;
@@ -566,7 +566,7 @@ int main( int argc, char *argv[] )
                 params.delayMs, params.periodMs );
         auto runner = std::make_shared<QnnTestRunner>();
         auto ret = runner->Init( params );
-        if ( RIDEHAL_ERROR_NONE != ret )
+        if ( QC_STATUS_OK != ret )
         {
             return -1;
         }

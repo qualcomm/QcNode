@@ -1,48 +1,48 @@
 *Menu*:
-- [RideHal Sample Application](#ridehal-sample-application)
-  - [1. RideHal Sample Application command line arguments](#1-ridehal-sample-application-command-line-arguments)
-  - [2. RideHal Samples](#2-ridehal-samples)
-    - [2.1 RideHal DataReader Sample](#21-ridehal-datareader-sample)
-    - [2.2 RideHal Camera Sample](#22-ridehal-camera-sample)
-    - [2.3 RideHal C2D Sample](#23-ridehal-c2d-sample)
-    - [2.4 RideHal Remap Sample](#24-ridehal-remap-sample)
-    - [2.5 RideHal Qnn Sample](#25-ridehal-qnn-sample)
-    - [2.6 RideHal PostProcCenternet Sample](#26-ridehal-postproccenternet-sample)
-    - [2.7 RideHal TinyViz Sample](#27-ridehal-tinyviz-sample)
-    - [2.8 RideHal VideoEncoder Sample](#28-ridehal-videoencoder-sample)
-    - [2.9 RideHal Recorder Sample](#29-ridehal-recorder-sample)
-    - [2.10 RideHal PlrPre Sample](#210-ridehal-plrpre-sample)
-    - [2.11 RideHal PlrPost Sample](#211-ridehal-plrpost-sample)
-    - [2.12 RideHal DataOnline Sample](#212-ridehal-dataonline-sample)
-    - [2.13 RideHal CL2DFlex Sample](#213-ridehal-cl2dflex-sample)
-    - [2.14 RideHal GL2DFlex Sample](#214-ridehal-gl2dflex-sample)
-    - [2.15 RideHal Shared Ring Sample](#215-ridehal-shared-ring-sample)
-    - [2.16 RideHal FpsAdapter Sample](#216-ridehal-fpsadapter-sample)
-    - [2.17 RideHal VideoDecoder Sample](#217-ridehal-videodecoder-sample)
-    - [2.18 RideHal OpticalFlow Sample](#218-ridehal-opticalflow-sample)
-    - [2.19 RideHal OpticalFlowViz Sample](#219-ridehal-opticalflowviz-sample)
-    - [2.20 RideHal FrameSync Sample](#220-ridehal-framesync-sample)
-    - [2.21 RideHal DepthFromStereo Sample](#221-ridehal-depthfromstereo-sample)
-    - [2.22 RideHal DepthFromStereoViz Sample](#222-ridehal-depthfromstereoviz-sample)
-    - [2.23 RideHal VideoDemuxer Sample](#223-ridehal-videodemuxer-sample)
-  - [3. Typical RideHal Sample Application pipelines](#3-typical-ridehal-sample-application-pipelines)
+- [QC Sample Application](#qc-sample-application)
+  - [1. QC Sample Application command line arguments](#1-qc-sample-application-command-line-arguments)
+  - [2. QC Samples](#2-qc-samples)
+    - [2.1 QC DataReader Sample](#21-qc-datareader-sample)
+    - [2.2 QC Camera Sample](#22-qc-camera-sample)
+    - [2.3 QC C2D Sample](#23-qc-c2d-sample)
+    - [2.4 QC Remap Sample](#24-qc-remap-sample)
+    - [2.5 QC Qnn Sample](#25-qc-qnn-sample)
+    - [2.6 QC PostProcCenternet Sample](#26-qc-postproccenternet-sample)
+    - [2.7 QC TinyViz Sample](#27-qc-tinyviz-sample)
+    - [2.8 QC VideoEncoder Sample](#28-qc-videoencoder-sample)
+    - [2.9 QC Recorder Sample](#29-qc-recorder-sample)
+    - [2.10 QC PlrPre Sample](#210-qc-plrpre-sample)
+    - [2.11 QC PlrPost Sample](#211-qc-plrpost-sample)
+    - [2.12 QC DataOnline Sample](#212-qc-dataonline-sample)
+    - [2.13 QC CL2DFlex Sample](#213-qc-cl2dflex-sample)
+    - [2.14 QC GL2DFlex Sample](#214-qc-gl2dflex-sample)
+    - [2.15 QC Shared Ring Sample](#215-qc-shared-ring-sample)
+    - [2.16 QC FpsAdapter Sample](#216-qc-fpsadapter-sample)
+    - [2.17 QC VideoDecoder Sample](#217-qc-videodecoder-sample)
+    - [2.18 QC OpticalFlow Sample](#218-qc-opticalflow-sample)
+    - [2.19 QC OpticalFlowViz Sample](#219-qc-opticalflowviz-sample)
+    - [2.20 QC FrameSync Sample](#220-qc-framesync-sample)
+    - [2.21 QC DepthFromStereo Sample](#221-qc-depthfromstereo-sample)
+    - [2.22 QC DepthFromStereoViz Sample](#222-qc-depthfromstereoviz-sample)
+    - [2.23 QC VideoDemuxer Sample](#223-qc-videodemuxer-sample)
+  - [3. Typical QC Sample Application pipelines](#3-typical-qc-sample-application-pipelines)
     - [3.1 4 DataReader based QNN perception pipelines](#31-4-datareader-based-qnn-perception-pipelines)
     - [3.2 1 DataReader and 1 Camera AR231 based QNN perception pipelines](#32-1-datareader-and-1-camera-ar231-based-qnn-perception-pipelines)
     - [3.3 1 DataReader based Pointpillar QNN perception pipelines](#33-1-datareader-based-pointpillar-qnn-perception-pipelines)
     - [3.4 1 QNN model data online inference pipeline](#34-1-qnn-model-data-online-inference-pipeline)
     - [3.5 1 QNN model data online shared memory between process pipeline](#35-1-qnn-model-data-online-shared-memory-between-process-pipeline)
 
-# RideHal Sample Application
+# QC Sample Application
 
-This RideHal sample is an application to demonstrate how to use the RideHal components.
+This QC sample is an application to demonstrate how to use the QC components.
 
-## 1. RideHal Sample Application command line arguments
+## 1. QC Sample Application command line arguments
 
-Below is a sample that how to use command line arguments to tell the RideHal sample application to create the component with the specified arguments.
+Below is a sample that how to use command line arguments to tell the QC sample application to create the component with the specified arguments.
 
 ```sh
-export RIDEHAL_LOG_LEVEL=INFO
-./bin/rhrun ./bin/RideHalSampleApp \
+export QC_LOG_LEVEL=INFO
+./bin/qcrun ./bin/QCNodeSampleApp \
   -n component0_name -t component0_type \
     -k component0_attr1_name -v component0_attr1_value \
     -k component0_attr2_name -v component0_attr2_value \
@@ -60,12 +60,12 @@ Note: the "-n componentX_name -t componentX_type" must be in the begin for each 
 | -t        | true     | string    | The component type name, options from [DataReader, Camera, Remap, Qnn, C2D, PostProcCenternet, TinyViz, VideoEncoder, VideoDecoder, Recorder, PlrPre, PlrPost, DataOnline, CL2DFlex, GL2DFlex, SharedRing, FpsAdapter, OpticalFlow, OpticalFlowViz, FrameSync, DepthFromStereo, DepthFromStereoViz] |
 | -k        | true     | string    | The unique component attribute name |
 | -v        | true     | string    | The attribute value for the previous attribute name |
-| -d        | false    |   -       | Direct the RideHal log to stdout |
-| -T        | false    | int       | Specify the time in seconds that the RideHalSampleApp runs, if not specified or value 0, it means that the RideHalSampleApp will run forever until stop signal(Ctrl + C).  |
+| -d        | false    |   -       | Direct the QC log to stdout |
+| -T        | false    | int       | Specify the time in seconds that the QCNodeSampleApp runs, if not specified or value 0, it means that the QCNodeSampleApp will run forever until stop signal(Ctrl + C).  |
 
-## 2. RideHal Samples
+## 2. QC Samples
 
-### 2.1 RideHal DataReader Sample
+### 2.1 QC DataReader Sample
 
 | attribute | required | type      | default | comments |
 |-----------|----------|-----------|---------|----------|
@@ -112,7 +112,7 @@ Please note that for lidar pipeline, TinyViz was used to visualize the pointcoul
 
 Refer [DataReader Utils](../../scripts/utils/data_reader/README.md#L38) for how to generate a data reader inputs point cloud files.
 
-### 2.2 RideHal Camera Sample
+### 2.2 QC Camera Sample
 
 | attribute | required | type      | default | comments |
 |-----------|----------|-----------|---------|----------|
@@ -167,7 +167,7 @@ The command line template example:
     -k topic1 -v /sensor/camera/IMX728_0_S1/raw \
 ```
 
-### 2.3 RideHal C2D Sample
+### 2.3 QC C2D Sample
 
 | attribute     | required | type      | default | comments |
 |---------------|----------|-----------|---------|----------|
@@ -201,7 +201,7 @@ The command line template example:
     -k cache -v false
 ```
 
-### 2.4 RideHal Remap Sample
+### 2.4 QC Remap Sample
 
 | attribute     | required | type      | default | comments |
 |---------------|----------|-----------|---------|----------|
@@ -250,7 +250,7 @@ The command line template example:
     -k output_topic -v /sensor/camera/CAM0/remap \
 ```
 
-### 2.5 RideHal Qnn Sample
+### 2.5 QC Qnn Sample
 
 | attribute     | required | type      | default | comments |
 |---------------|----------|-----------|---------|----------|
@@ -262,7 +262,7 @@ The command line template example:
 | input_topic   | true     | string    | -       | the input topic name |
 | output_topic  | true     | string    | -       | the output topic name |
 | udo           | false    | string    | -       | udo lib path and interface provider name. e.g. libQnnAutoAiswOpPackage.so:AutoAiswOpPackageInterfaceProvider |
-| model_io_info_topic | false    | string    | ""       | if configured, this topic will be used to publish the input/output tensor informatin of the model, generally used by the RideHal DataOnline Sample for the QNN online inference.  |
+| model_io_info_topic | false    | string    | ""       | if configured, this topic will be used to publish the input/output tensor informatin of the model, generally used by the QC DataOnline Sample for the QNN online inference.  |
 
 The command line template example:
 
@@ -273,7 +273,7 @@ The command line template example:
     -k output_topic -v /sensor/camera/CAM0/qnn \
 ```
 
-### 2.6 RideHal PostProcCenternet Sample
+### 2.6 QC PostProcCenternet Sample
 
 | attribute     | required | type      | default | comments |
 |---------------|----------|-----------|---------|----------|
@@ -298,7 +298,7 @@ The command line template example:
     -k output_topic -v /sensor/camera/CAM0/objs \
 ```
 
-### 2.7 RideHal TinyViz Sample
+### 2.7 QC TinyViz Sample
 
 | attribute     | required | type        | default | comments |
 |---------------|----------|-------------|---------|----------|
@@ -325,7 +325,7 @@ The command line template example for Lidar pipeline:
 ```
 
 
-### 2.8 RideHal VideoEncoder Sample
+### 2.8 QC VideoEncoder Sample
 
 | attribute     | required | type      | default | comments |
 |---------------|----------|-----------|---------|----------|
@@ -347,7 +347,7 @@ The command line template example:
     -k output_topic -v /sensor/camera/CAM0/hevc \
 ```
 
-### 2.9 RideHal Recorder Sample
+### 2.9 QC Recorder Sample
 
 | attribute     | required | type      | default | comments |
 |---------------|----------|-----------|---------|----------|
@@ -374,7 +374,7 @@ The command line template example:
   -n REC0 -t Recorder -k max -v 100 -k topic -v /sensor/camera/CAM0/hevc \
 ```
 
-### 2.10 RideHal PlrPre Sample
+### 2.10 QC PlrPre Sample
 
 | attribute     | required | type      | default | comments |
 |---------------|----------|-----------|---------|----------|
@@ -406,7 +406,7 @@ The command line template example:
     -k output_topic -v /sensor/lidar/LIDAR0/plrpre \
 ```
 
-### 2.11 RideHal PlrPost Sample
+### 2.11 QC PlrPost Sample
 
 | attribute     | required | type      | default | comments |
 |---------------|----------|-----------|---------|----------|
@@ -441,7 +441,7 @@ The command line template example:
     -k output_topic -v /sensor/lidar/LIDAR0/objs
 ```
 
-### 2.12 RideHal DataOnline Sample
+### 2.12 QC DataOnline Sample
 
 | attribute     | required | type      | default | comments |
 |---------------|----------|-----------|---------|----------|
@@ -461,7 +461,7 @@ The command line template example:
     -k output_topic -v /data/online/DO0/output \
     -k model_io_info_topic -v /data/online/DO0/model/info \
 ```
-### 2.13 RideHal CL2DFlex Sample
+### 2.13 QC CL2DFlex Sample
 
 | attribute     | required | type      | default | comments |
 |---------------|----------|-----------|---------|----------|
@@ -498,7 +498,7 @@ The command line template example:
     -k output_topic -v /sensor/camera/CAM0/cl2d \
 ```
 
-### 2.14 RideHal GL2DFlex Sample
+### 2.14 QC GL2DFlex Sample
 
 | attribute     | required | type      | default | comments |
 |---------------|----------|-----------|---------|----------|
@@ -525,7 +525,7 @@ The command line template example:
     -k output_topic -v /sensor/camera/CAM1/raw
 ```
 
-### 2.15 RideHal Shared Ring Sample
+### 2.15 QC Shared Ring Sample
 
 | attribute| required | type      | default | comments |
 |----------|----------|-----------|---------|----------|
@@ -545,7 +545,7 @@ The command line template example:
     -k topic -v /sensor/camera/CAM0/raw \
 ```
 
-### 2.16 RideHal FpsAdapter Sample
+### 2.16 QC FpsAdapter Sample
 
 | attribute     | required | type      | default | comments |
 |---------------|----------|-----------|---------|----------|
@@ -561,7 +561,7 @@ The command line template example:
     -k output_topic -v /sensor/camera/CAM0/raw_10fps
 ```
 
-### 2.17 RideHal VideoDecoder Sample
+### 2.17 QC VideoDecoder Sample
 
 | attribute     | required | type      | default | comments |
 |---------------|----------|-----------|---------|----------|
@@ -584,7 +584,7 @@ The command line template example:
     -k output_topic -v /sensor/camera/CAM0_DEC/raw \
 ```
 
-### 2.18 RideHal OpticalFlow Sample
+### 2.18 QC OpticalFlow Sample
 
 | attribute     | required | type      | default | comments |
 |---------------|----------|-----------|---------|----------|
@@ -609,7 +609,7 @@ The command line template example:
     -k output_topic -v /sensor/camera/CAM0/mv \
 ```
 
-### 2.19 RideHal OpticalFlowViz Sample
+### 2.19 QC OpticalFlowViz Sample
 
 The Sample OpticalFlowViz converts the motion vection output from the Sample OpticalFlow to RGB image.
 
@@ -631,7 +631,7 @@ The command line template example:
     -k output_topic -v /sensor/camera/CAM1/raw \
 ```
 
-### 2.20 RideHal FrameSync Sample
+### 2.20 QC FrameSync Sample
 
 | attribute     | required | type      | default | comments |
 |---------------|----------|-----------|---------|----------|
@@ -653,7 +653,7 @@ The command line template example:
     -k output_topic -v /sensor/camera/FS0/raw \
 ```
 
-### 2.21 RideHal DepthFromStereo Sample
+### 2.21 QC DepthFromStereo Sample
 
 | attribute     | required | type      | default | comments |
 |---------------|----------|-----------|---------|----------|
@@ -677,7 +677,7 @@ The command line template example:
     -k output_topic -v /sensor/camera/DFS0/dfs \
 ```
 
-### 2.22 RideHal DepthFromStereoViz Sample
+### 2.22 QC DepthFromStereoViz Sample
 
 The Sample DepthFromStereoViz converts the disparity and confidence map output from the Sample DepthFromStereo to RGB image.
 
@@ -701,7 +701,7 @@ The command line template example:
     -k output_topic -v /sensor/camera/CAM2/raw \
 ```
 
-### 2.23 RideHal VideoDemuxer Sample
+### 2.23 QC VideoDemuxer Sample
 
 | attribute      | required | type      | default | comments |
 |----------------|----------|-----------|---------|----------|
@@ -722,13 +722,13 @@ The command line template example:
     -k topic  -v /sensor/camera/CAM0/hevc
 ```
 
-## 3. Typical RideHal Sample Application pipelines
+## 3. Typical QC Sample Application pipelines
 
 ### 3.1 4 DataReader based QNN perception pipelines
 
 ```sh
-export RIDEHAL_LOG_LEVEL=INFO
-./bin/rhrun ./bin/RideHalSampleApp -n CAM0 -t DataReader -k width0 -v 1920 -k height0 -v 1024 \
+export QC_LOG_LEVEL=INFO
+./bin/qcrun ./bin/QCNodeSampleApp -n CAM0 -t DataReader -k width0 -v 1920 -k height0 -v 1024 \
     -k data_path0 -v /data/4K_street_1000_500_1920_1024_uyvy \
     -k format0 -v uyvy -k topic -v /sensor/camera/CAM0/raw \
   -n REMAP0 -t Remap -k batch_size -v 1 \
@@ -802,8 +802,8 @@ export RIDEHAL_LOG_LEVEL=INFO
 ### 3.2 1 DataReader and 1 Camera AR231 based QNN perception pipelines
 
 ```sh
-export RIDEHAL_LOG_LEVEL=INFO
-./bin/rhrun ./bin/RideHalSampleApp -n CAM0 -t Camera -k input_id -v 0 \
+export QC_LOG_LEVEL=INFO
+./bin/qcrun ./bin/QCNodeSampleApp -n CAM0 -t Camera -k input_id -v 0 \
     -k width -v 1928 -k height -v 1208 \
     -k topic -v /sensor/camera/CAM0/raw \
   -n C2D0 -t C2D -k batch_size -v 1 \
@@ -849,7 +849,7 @@ export RIDEHAL_LOG_LEVEL=INFO
 ### 3.3 1 DataReader based Pointpillar QNN perception pipelines
 
 ```sh
-./bin/rhrun ./bin/RideHalSampleApp \
+./bin/qcrun ./bin/QCNodeSampleApp \
   -n LIDAR0 -t DataReader -k number -v 2 \
     -k type0 -v tensor -k tensor_type0 -v float32 -k dims0 -v "300000,4"  \
     -k data_path0 -v /data/LIDAR0 \
@@ -877,7 +877,7 @@ export RIDEHAL_LOG_LEVEL=INFO
 ### 3.4 1 QNN model data online inference pipeline
 
 ```sh
-./bin/rhrun ./bin/RideHalSampleApp \
+./bin/qcrun ./bin/QCNodeSampleApp \
   -n DO0 -t DataOnline -k port -v 6666 \
     -k input_topic -v /data/online/DO0/input \
     -k output_topic -v /data/online/DO0/output \
@@ -892,14 +892,14 @@ export RIDEHAL_LOG_LEVEL=INFO
 ### 3.5 1 QNN model data online shared memory between process pipeline
 
 ```sh
-./bin/rhrun ./bin/RideHalSampleApp \
+./bin/qcrun ./bin/QCNodeSampleApp \
   -n CAM0 -t DataReader -k width0 -v 1920 -k height0 -v 1024 \
     -k data_path0 -v /data/4K_street_1000_500_1920_1024_uyvy \
     -k format0 -v uyvy -k topic -v /sensor/camera/CAM0/raw \
   -n CAM0_P -t SharedRing -k type -v pub \
     -k topic -v /sensor/camera/CAM0/raw -d &
 
-./bin/rhrun ./bin/RideHalSampleApp \
+./bin/qcrun ./bin/QCNodeSampleApp \
   -n CAM0_S0 -t SharedRing -k type -v sub \
     -k topic -v /sensor/camera/CAM0/raw \
   -n REMAP0 -t Remap -k batch_size -v 1 \
@@ -910,7 +910,7 @@ export RIDEHAL_LOG_LEVEL=INFO
   -n REMAP0_P -t SharedRing -k type -v pub \
     -k topic -v /sensor/camera/CAM0/remap -d &
 
-./bin/rhrun ./bin/RideHalSampleApp \
+./bin/qcrun ./bin/QCNodeSampleApp \
   -n REMAP0_S0 -t SharedRing -k type -v sub \
     -k topic -v /sensor/camera/CAM0/remap \
   -n CNT0 -t Qnn -k processor -v htp0 \
@@ -920,7 +920,7 @@ export RIDEHAL_LOG_LEVEL=INFO
   -n CNT0_P -t SharedRing -k type -v pub \
     -k topic -v /sensor/camera/CAM0/qnn -d &
 
-./bin/rhrun ./bin/RideHalSampleApp \
+./bin/qcrun ./bin/QCNodeSampleApp \
   -n CAM0_S1 -t SharedRing -k type -v sub \
     -k topic -v /sensor/camera/CAM0/raw \
   -n CNT0_S0 -t SharedRing -k type -v sub \

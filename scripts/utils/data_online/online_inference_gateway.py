@@ -52,7 +52,7 @@ class OnlineInferenceGateWay(Thread):
 
 if __name__ == '__main__':
     import argparse
-    parser = argparse.ArgumentParser(description='RideHal online inference gateway')
+    parser = argparse.ArgumentParser(description='QC online inference gateway')
     parser.add_argument('--target', type=str, default='192.168.1.1:6666', help='the target device ip address')
     parser.add_argument('--gateway', type=int, default=6666, help='the gateway port')
     args = parser.parse_args()

@@ -21,10 +21,10 @@
 
 
 # 1. Introduction
-This document describes Ridehal Camera APIs, and it provides the corresponding code samples that show how to use them.
+This document describes QC Camera APIs, and it provides the corresponding code samples that show how to use them.
 
 ## 1.1 Functional overview
-Ridehal Camera is a Ridehal component. It's a warpper of Qcarcam which provides user friendly APIs for easy integration of camera on ADAS use case. 
+QC Camera is a QC component. It's a warpper of Qcarcam which provides user friendly APIs for easy integration of camera on ADAS use case. 
 
 ![camera SW arch](./images/camera-arch.png)
 
@@ -41,13 +41,13 @@ stop the streaming at any time when camera is running. At the end we need to cal
 ## 2.1 Type definitions
 ### 2.1.1 Camera frame structure
 
-- [CameraFrame_t](../include/ridehal/component/Camera.hpp#L33)
+- [CameraFrame_t](../include/QC/component/Camera.hpp#L33)
 
 ```c
 /** @brief Camera frame structure */
 typedef struct
 {
-    RideHal_SharedBuffer_t sharedBuffer; /**< Shared buffer associated with the image */
+    QCSharedBuffer_t sharedBuffer; /**< Shared buffer associated with the image */
     uint64_t timestamp;                  /**< Hardware timestamp (in nanoseconds) */
     uint64_t timestampQGPTP; /**< Generic Precision Time Protocol (GPTP) timestamp in nanoseconds */
     uint32_t frameIndex;     /**< Index of the camera frame */
@@ -58,7 +58,7 @@ typedef struct
 
 ### 2.1.2 Camera input structure
 
-- [CameraInputs_t](../include/ridehal/component/Camera.hpp#L42)
+- [CameraInputs_t](../include/QC/component/Camera.hpp#L42)
 
 ```c
 /** @brief Camera input structure */
@@ -73,7 +73,7 @@ typedef struct
 
 ### 2.1.3 Camera configuration
 
-- [CameraStreamConfig_t](../include/ridehal/component/Camera.hpp#L60)
+- [CameraStreamConfig_t](../include/QC/component/Camera.hpp#L60)
 
 ```c
 /** @brief Camera stream config */
@@ -84,11 +84,11 @@ typedef struct
     uint32_t height;               /**< Frame height */
     uint32_t bufCnt;               /**< Buffer count set to camera */
     uint32_t submitRequestPattern; /**< Buffer submit request pattern */
-    RideHal_ImageFormat_e format;  /**< Camera frame format */
+    QCImageFormat_e format;  /**< Camera frame format */
 } CameraStreamConfig_t;
 ```
 
-- [Camera_Config_t](../include/ridehal/component/Camera.hpp#L80)
+- [Camera_Config_t](../include/QC/component/Camera.hpp#L80)
 
 ```c
 typedef struct Camera_Config
@@ -115,29 +115,29 @@ typedef struct Camera_Config
 ### 2.1.4 Callback function for frame done
 
 ```c
-typedef void ( *RideHal_CamFrameCallback_t )( CameraFrame_t *pFrame, void *pPrivData );
+typedef void ( *QCCamFrameCallback_t )( CameraFrame_t *pFrame, void *pPrivData );
 ```
 
 ### 2.1.5 Callback function for camera event
 
 ```c
-typedef void ( *RideHal_CamEventCallback_t )( const uint32_t eventId, const void *pPayload, void *pPrivData );
+typedef void ( *QCCamEventCallback_t )( const uint32_t eventId, const void *pPayload, void *pPrivData );
 ```
 ## 2.2 APIs
 
-- [GetInputsInfo](../include/ridehal/component/Camera.hpp#L104)
+- [GetInputsInfo](../include/QC/component/Camera.hpp#L104)
 ```c
     /**
      * @brief get camera inputs info
      *
      * @param[out] pCamInputs Input info queried from Camera
      *
-     * @return RIDEHAL_ERROR_NONE on success, others on failure
+     * @return QC_STATUS_OK on success, others on failure
      */
-    RideHalError_e GetInputsInfo( CameraInputs_t *pCamInputs );
+    QCStatus_e GetInputsInfo( CameraInputs_t *pCamInputs );
 ```
 
-- [Init](../include/ridehal/component/Camera.hpp#L115)
+- [Init](../include/QC/component/Camera.hpp#L115)
 ```c
     /**
      * @brief init the Camera object
@@ -146,13 +146,13 @@ typedef void ( *RideHal_CamEventCallback_t )( const uint32_t eventId, const void
      * @param[in] pConfig Camera configurations
      * @param[in] level   Logging level
      *
-     * @return RIDEHAL_ERROR_NONE on success, others on failure
+     * @return QC_STATUS_OK on success, others on failure
      */
-    RideHalError_e Init( char *pName, const Camera_Config_t *pConfig,
+    QCStatus_e Init( char *pName, const Camera_Config_t *pConfig,
                          Logger_Level_e level = LOGGER_LEVEL_ERROR );
 ```
 
-- [SetBuffers](../include/ridehal/component/Camera.hpp#L127)
+- [SetBuffers](../include/QC/component/Camera.hpp#L127)
 ```c
     /**
      * @brief set a list of shared buffers to camera
@@ -161,13 +161,13 @@ typedef void ( *RideHal_CamEventCallback_t )( const uint32_t eventId, const void
      * @param[in] numBuffers Number of buffers in the list
      * @param[in] streamId Buffer list id
      *
-     * @return RIDEHAL_ERROR_NONE on success, others on failure
+     * @return QC_STATUS_OK on success, others on failure
      */
-    RideHalError_e SetBuffers( const RideHal_SharedBuffer_t *pBuffer, uint32_t numBuffers,
+    QCStatus_e SetBuffers( const QCSharedBuffer_t *pBuffer, uint32_t numBuffers,
                                uint32_t streamId );
 ```
 
-- [GetBuffers](../include/ridehal/component/Camera.hpp#L140)
+- [GetBuffers](../include/QC/component/Camera.hpp#L140)
 ```c
     /**
      * @brief get a list of shared buffers use by the camera
@@ -176,13 +176,13 @@ typedef void ( *RideHal_CamEventCallback_t )( const uint32_t eventId, const void
      * @param[in] numBuffers Number of buffers in the list
      * @param[in] streamId Buffer list id
      *
-     * @return RIDEHAL_ERROR_NONE on success, others on failure
+     * @return QC_STATUS_OK on success, others on failure
      */
-    RideHalError_e GetBuffers( RideHal_SharedBuffer_t *pBuffers, uint32_t numBuffers,
+    QCStatus_e GetBuffers( QCSharedBuffer_t *pBuffers, uint32_t numBuffers,
                                uint32_t streamId );
 ```
 
-- [RegisterCallback](../include/ridehal/component/Camera.hpp#L152)
+- [RegisterCallback](../include/QC/component/Camera.hpp#L152)
 ```c
     /**
      * @brief register callbacks to camera
@@ -191,84 +191,84 @@ typedef void ( *RideHal_CamEventCallback_t )( const uint32_t eventId, const void
      * @param[in] eventCallback Event callback function
      * @param[in] pAppPriv App private data
      *
-     * @return RIDEHAL_ERROR_NONE on success, others on failure
+     * @return QC_STATUS_OK on success, others on failure
      */
-    RideHalError_e RegisterCallback( RideHal_CamFrameCallback_t frameCallback,
-                                     RideHal_CamEventCallback_t eventCallback, void *pAppPriv );
+    QCStatus_e RegisterCallback( QCCamFrameCallback_t frameCallback,
+                                     QCCamEventCallback_t eventCallback, void *pAppPriv );
 ```
 
-- [Start](../include/ridehal/component/Camera.hpp#L160)
+- [Start](../include/QC/component/Camera.hpp#L160)
 ```c
     /**
      * @brief Start the Camera object
      *
-     * @return RIDEHAL_ERROR_NONE on success, others on failure
+     * @return QC_STATUS_OK on success, others on failure
      */
-    RideHalError_e Start() final;
+    QCStatus_e Start() final;
 ```
 
-- [Pause](../include/ridehal/component/Camera.hpp#L167)
+- [Pause](../include/QC/component/Camera.hpp#L167)
 ```c
     /**
      * @brief Pause the Camera object
      *
-     * @return RIDEHAL_ERROR_NONE on success, others on failure
+     * @return QC_STATUS_OK on success, others on failure
      */
-    RideHalError_e Pause();
+    QCStatus_e Pause();
 ```
 
-- [Resume](../include/ridehal/component/Camera.hpp#L174)
+- [Resume](../include/QC/component/Camera.hpp#L174)
 ```c
     /**
      * @brief Resume the Camera object
      *
-     * @return RIDEHAL_ERROR_NONE on success, others on failure
+     * @return QC_STATUS_OK on success, others on failure
      */
-    RideHalError_e Resume();
+    QCStatus_e Resume();
 ```
 
-- [ReleaseFrame](../include/ridehal/component/Camera.hpp#L183)
+- [ReleaseFrame](../include/QC/component/Camera.hpp#L183)
 ```c
     /**
      * @brief release a camera frame
      *
      * @param[in] pFrame the camera frame to be released
      *
-     * @return RIDEHAL_ERROR_NONE on success, others on failure
+     * @return QC_STATUS_OK on success, others on failure
      */
-    RideHalError_e ReleaseFrame( CameraFrame_t *pFrame );
+    QCStatus_e ReleaseFrame( CameraFrame_t *pFrame );
 ```
 
-- [RequestFrame](../include/ridehal/component/Camera.hpp#L192)
+- [RequestFrame](../include/QC/component/Camera.hpp#L192)
 ```c
     /**
      * @brief request a frame from camera
      *
      * @param[in] pFrame the frame to request from camera
      *
-     * @return RIDEHAL_ERROR_NONE on success, others on failure
+     * @return QC_STATUS_OK on success, others on failure
      */
-    RideHalError_e RequestFrame( CameraFrame_t *pFrame );
+    QCStatus_e RequestFrame( CameraFrame_t *pFrame );
 ```
 
-- [Stop](../include/ridehal/component/Camera.hpp#L199)
+- [Stop](../include/QC/component/Camera.hpp#L199)
 ```c
     /**
      * @brief Stop the Camera object
      *
-     * @return RIDEHAL_ERROR_NONE on success, others on failure
+     * @return QC_STATUS_OK on success, others on failure
      */
-    RideHalError_e Stop() final;
+    QCStatus_e Stop() final;
 ```
 
-- [Deinit](../include/ridehal/component/Camera.hpp#L206)
+- [Deinit](../include/QC/component/Camera.hpp#L206)
 ```c
     /**
      * @brief Deinit the Camera object
      *
-     * @return RIDEHAL_ERROR_NONE on success, others on failure
+     * @return QC_STATUS_OK on success, others on failure
      */
-    RideHalError_e Deinit() final;
+    QCStatus_e Deinit() final;
 ```
 
 # 3. Typical use case and sample codes
@@ -282,7 +282,7 @@ camConfig.bRequestMode = false;
 
 static void FrameCallBack( CameraFrame_t *pFrame, void *pPrivData )
 {
-    RideHalError_e ret;
+    QCStatus_e ret;
     
     /* Do something to process the camera frame */
 
@@ -299,7 +299,7 @@ camConfig.bRequestMode = true;
 
 static void FrameCallBack( CameraFrame_t *pFrame, void *pPrivData )
 {
-    RideHalError_e ret;
+    QCStatus_e ret;
     
     /* Do something to process the camera frame */
 
@@ -314,7 +314,7 @@ Camera_Config_t camConfig;
 camConfig.bRequestMode = false;
 
 Camera *pCamera = new Camera;
-RideHal_SharedBuffer_t *pSharedBuffer = new RideHal_SharedBuffer_t[BUFFFER_COUNT];
+QCSharedBuffer_t *pSharedBuffer = new QCSharedBuffer_t[BUFFFER_COUNT];
 
 for ( int i = 0; i < BUFFFER_COUNT; i++ )
 {
@@ -330,7 +330,7 @@ pCamera->SetBuffers( pSharedBuffer, BUFFFER_COUNT, 0 );
 
 ## 3.4 qcarcam multi-client feature
 
-The qcarcam supports a multi-client feature, allowing two or more processes to open and stream from the same camera sensor simultaneously. RideHal facilitates this through the configuration options `clientId` and `bPrimary`. Note that if `clientId` is set to 0, it defaults to single-client mode, permitting only one process to open and stream from the camera sensor.
+The qcarcam supports a multi-client feature, allowing two or more processes to open and stream from the same camera sensor simultaneously. QC facilitates this through the configuration options `clientId` and `bPrimary`. Note that if `clientId` is set to 0, it defaults to single-client mode, permitting only one process to open and stream from the camera sensor.
 
 ```c
 // this is a demo config for the primary session
@@ -341,7 +341,7 @@ camConfig.bRequestMode = true;
 ...
 static void FrameCallBack( CameraFrame_t *pFrame, void *pPrivData )
 {
-    RideHalError_e ret;
+    QCStatus_e ret;
     
     /* Do something to process the camera frame */
 
@@ -358,7 +358,7 @@ camConfig.bRequestMode = true;
 ...
 static void FrameCallBack( CameraFrame_t *pFrame, void *pPrivData )
 {
-    RideHalError_e ret;
+    QCStatus_e ret;
     
     /* Do something to process the camera frame */
 

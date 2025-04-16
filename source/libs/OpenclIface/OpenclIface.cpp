@@ -5,32 +5,31 @@
 
 #include "OpenclIface.hpp"
 
-namespace ridehal
+namespace QC
 {
 namespace libs
 {
 namespace OpenclIface
 {
 
-RideHalError_e OpenclSrv::Init( const char *pName, Logger_Level_e level,
-                                OpenclIfcae_Perf_e priority )
+QCStatus_e OpenclSrv::Init( const char *pName, Logger_Level_e level, OpenclIfcae_Perf_e priority )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     cl_int retCL = CL_SUCCESS;
 
-    ret = RIDEHAL_LOGGER_INIT( pName, level );
-    if ( RIDEHAL_ERROR_NONE != ret )
+    ret = QC_LOGGER_INIT( pName, level );
+    if ( QC_STATUS_OK != ret )
     {
         (void) fprintf( stderr, "WARINING: failed to create logger for OpenclSrv %s: ret = %d\n",
                         pName, ret );
-        ret = RIDEHAL_ERROR_NONE; /* ignore logger init error */
+        ret = QC_STATUS_OK; /* ignore logger init error */
     }
 
     retCL = clGetPlatformIDs( 1, &m_platformID, NULL );
     if ( CL_SUCCESS != retCL )
     {
-        RIDEHAL_ERROR( "Unable to get Platforms, retCL = %d", retCL );
-        ret = RIDEHAL_ERROR_FAIL;
+        QC_ERROR( "Unable to get Platforms, retCL = %d", retCL );
+        ret = QC_STATUS_FAIL;
     }
 
     if ( CL_SUCCESS == retCL )
@@ -38,8 +37,8 @@ RideHalError_e OpenclSrv::Init( const char *pName, Logger_Level_e level,
         retCL = clGetDeviceIDs( m_platformID, CL_DEVICE_TYPE_GPU, 1, &m_deviceID, NULL );
         if ( CL_SUCCESS != retCL )
         {
-            RIDEHAL_ERROR( "Unable to get OpenCL compatible GPU device, retCL = %d", retCL );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Unable to get OpenCL compatible GPU device, retCL = %d", retCL );
+            ret = QC_STATUS_FAIL;
         }
     }
 
@@ -61,14 +60,14 @@ RideHalError_e OpenclSrv::Init( const char *pName, Logger_Level_e level,
         }
         else
         {
-            RIDEHAL_ERROR( "Invalid performance priority argument setting" );
-            ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+            QC_ERROR( "Invalid performance priority argument setting" );
+            ret = QC_STATUS_BAD_ARGUMENTS;
         }
         m_context = clCreateContext( properties, 1, &m_deviceID, NULL, NULL, &retCL );
         if ( CL_SUCCESS != retCL )
         {
-            RIDEHAL_ERROR( "Unable to create context, retCL = %d", retCL );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Unable to create context, retCL = %d", retCL );
+            ret = QC_STATUS_FAIL;
         }
     }
 
@@ -77,8 +76,8 @@ RideHalError_e OpenclSrv::Init( const char *pName, Logger_Level_e level,
         m_commandQueue = clCreateCommandQueueWithProperties( m_context, m_deviceID, NULL, &retCL );
         if ( CL_SUCCESS != retCL )
         {
-            RIDEHAL_ERROR( "Unable to create command queue, retCL = %d", retCL );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Unable to create command queue, retCL = %d", retCL );
+            ret = QC_STATUS_FAIL;
         }
     }
 
@@ -90,11 +89,11 @@ RideHalError_e OpenclSrv::Init( const char *pName, Logger_Level_e level,
         retCL = clGetDeviceInfo( m_deviceID, CL_DEVICE_VERSION, versionSize, version.data(), NULL );
         if ( CL_SUCCESS == retCL )
         {
-            RIDEHAL_INFO( "CL version is %s", version.data() );
+            QC_INFO( "CL version is %s", version.data() );
         }
         else
         {
-            RIDEHAL_ERROR( "Unable to get device version info, retCL = %d", retCL );
+            QC_ERROR( "Unable to get device version info, retCL = %d", retCL );
         }
 
         size_t extensionSize = 0;
@@ -104,11 +103,11 @@ RideHalError_e OpenclSrv::Init( const char *pName, Logger_Level_e level,
                                  NULL );
         if ( CL_SUCCESS == retCL )
         {
-            RIDEHAL_INFO( "CL extension is %s", extensions.data() );
+            QC_INFO( "CL extension is %s", extensions.data() );
         }
         else
         {
-            RIDEHAL_ERROR( "Unable to get device extensions info, retCL = %d", retCL );
+            QC_ERROR( "Unable to get device extensions info, retCL = %d", retCL );
         }
 
         cl_uint unit;
@@ -116,11 +115,11 @@ RideHalError_e OpenclSrv::Init( const char *pName, Logger_Level_e level,
                                  NULL );
         if ( CL_SUCCESS == retCL )
         {
-            RIDEHAL_INFO( "CL max compute unit is %d\n", unit );
+            QC_INFO( "CL max compute unit is %d\n", unit );
         }
         else
         {
-            RIDEHAL_ERROR( "Unable to get device max compute units info, retCL = %d", retCL );
+            QC_ERROR( "Unable to get device max compute units info, retCL = %d", retCL );
         }
 
         size_t workSizes[3];
@@ -128,12 +127,12 @@ RideHalError_e OpenclSrv::Init( const char *pName, Logger_Level_e level,
                                  workSizes, NULL );
         if ( CL_SUCCESS == retCL )
         {
-            RIDEHAL_INFO( "CL max work item sizes is {%d, %d, %d}", workSizes[0], workSizes[1],
-                          workSizes[2] );
+            QC_INFO( "CL max work item sizes is {%d, %d, %d}", workSizes[0], workSizes[1],
+                     workSizes[2] );
         }
         else
         {
-            RIDEHAL_ERROR( "Unable to get device max work item sizes info, retCL = %d", retCL );
+            QC_ERROR( "Unable to get device max work item sizes info, retCL = %d", retCL );
         }
     }
 
@@ -149,33 +148,33 @@ RideHalError_e OpenclSrv::Init( const char *pName, Logger_Level_e level,
         m_sampler = clCreateSamplerWithProperties( m_context, samplerProperties, &retCL );
         if ( CL_SUCCESS != retCL )
         {
-            RIDEHAL_ERROR( "Unable to create sampler, retCL = %d", retCL );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Unable to create sampler, retCL = %d", retCL );
+            ret = QC_STATUS_FAIL;
         }
     }
 
     return ret;
 }
 
-RideHalError_e OpenclSrv::LoadFromSource( const char *pSourceFile )
+QCStatus_e OpenclSrv::LoadFromSource( const char *pSourceFile )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     cl_int retCL = CL_SUCCESS;
 
     m_program =
             clCreateProgramWithSource( m_context, 1, (const char **) &pSourceFile, NULL, &retCL );
     if ( retCL != CL_SUCCESS )
     {
-        RIDEHAL_ERROR( "Unable to create program with source, retCL = %d", retCL );
-        ret = RIDEHAL_ERROR_FAIL;
+        QC_ERROR( "Unable to create program with source, retCL = %d", retCL );
+        ret = QC_STATUS_FAIL;
     }
     else
     {
         retCL = clBuildProgram( m_program, 1, &m_deviceID, "-cl-fast-relaxed-math", NULL, NULL );
         if ( CL_SUCCESS != retCL )
         {
-            RIDEHAL_ERROR( "Unable to build program, retCL = %d", retCL );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Unable to build program, retCL = %d", retCL );
+            ret = QC_STATUS_FAIL;
             size_t len;
             (void) clGetProgramBuildInfo( m_program, m_deviceID, CL_PROGRAM_BUILD_LOG, 0, NULL,
                                           &len );
@@ -186,11 +185,11 @@ RideHalError_e OpenclSrv::LoadFromSource( const char *pSourceFile )
             {
                 (void) clGetProgramBuildInfo( m_program, m_deviceID, CL_PROGRAM_BUILD_LOG, len,
                                               pBuffer, NULL );
-                RIDEHAL_ERROR( "error build log:\n %s\n", pBuffer );
+                QC_ERROR( "error build log:\n %s\n", pBuffer );
             }
             else
             {
-                RIDEHAL_ERROR( "Unable to get build log!" );
+                QC_ERROR( "Unable to get build log!" );
             }
             logs.clear();
         }
@@ -199,25 +198,25 @@ RideHalError_e OpenclSrv::LoadFromSource( const char *pSourceFile )
     return ret;
 }
 
-RideHalError_e OpenclSrv::LoadFromBinary( const unsigned char *pBinaryFile )
+QCStatus_e OpenclSrv::LoadFromBinary( const unsigned char *pBinaryFile )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     cl_int retCL = CL_SUCCESS;
 
     m_program = clCreateProgramWithBinary( m_context, 1, &m_deviceID, NULL, &pBinaryFile, NULL,
                                            &retCL );
     if ( retCL != CL_SUCCESS )
     {
-        RIDEHAL_ERROR( "Unable to create program with binary, retCL = %d", retCL );
-        ret = RIDEHAL_ERROR_FAIL;
+        QC_ERROR( "Unable to create program with binary, retCL = %d", retCL );
+        ret = QC_STATUS_FAIL;
     }
 
     return ret;
 }
 
-RideHalError_e OpenclSrv::CreateKernel( cl_kernel *pKernel, const char *pKernelName )
+QCStatus_e OpenclSrv::CreateKernel( cl_kernel *pKernel, const char *pKernelName )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     cl_int retCL = CL_SUCCESS;
 
     std::string kernelString = pKernelName;
@@ -227,8 +226,8 @@ RideHalError_e OpenclSrv::CreateKernel( cl_kernel *pKernel, const char *pKernelN
         *pKernel = clCreateKernel( m_program, pKernelName, &retCL );
         if ( CL_SUCCESS != retCL )
         {
-            RIDEHAL_ERROR( "Unable to create kernel, retCL = %d", retCL );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Unable to create kernel, retCL = %d", retCL );
+            ret = QC_STATUS_FAIL;
         }
         else
         {
@@ -243,9 +242,9 @@ RideHalError_e OpenclSrv::CreateKernel( cl_kernel *pKernel, const char *pKernelN
     return ret;
 }
 
-RideHalError_e OpenclSrv::Deinit()
+QCStatus_e OpenclSrv::Deinit()
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     cl_int retCL = CL_SUCCESS;
 
     for ( auto &it : m_kernelMap )
@@ -253,8 +252,8 @@ RideHalError_e OpenclSrv::Deinit()
         retCL = clReleaseKernel( it.second );
         if ( CL_SUCCESS != retCL )
         {
-            RIDEHAL_ERROR( "Unable to release kernel, retCL = %d", retCL );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Unable to release kernel, retCL = %d", retCL );
+            ret = QC_STATUS_FAIL;
         }
     }
     m_kernelMap.clear();
@@ -262,22 +261,22 @@ RideHalError_e OpenclSrv::Deinit()
     retCL = clReleaseProgram( m_program );
     if ( CL_SUCCESS != retCL )
     {
-        RIDEHAL_ERROR( "Unable to release program, retCL = %d", retCL );
-        ret = RIDEHAL_ERROR_FAIL;
+        QC_ERROR( "Unable to release program, retCL = %d", retCL );
+        ret = QC_STATUS_FAIL;
     }
 
     retCL = clReleaseCommandQueue( m_commandQueue );
     if ( CL_SUCCESS != retCL )
     {
-        RIDEHAL_ERROR( "Unable to release command queue, retCL = %d", retCL );
-        ret = RIDEHAL_ERROR_FAIL;
+        QC_ERROR( "Unable to release command queue, retCL = %d", retCL );
+        ret = QC_STATUS_FAIL;
     }
 
     retCL = clReleaseContext( m_context );
     if ( CL_SUCCESS != retCL )
     {
-        RIDEHAL_ERROR( "Unable to release context, retCL = %d", retCL );
-        ret = RIDEHAL_ERROR_FAIL;
+        QC_ERROR( "Unable to release context, retCL = %d", retCL );
+        ret = QC_STATUS_FAIL;
     }
 
     for ( auto &it : m_bufferMap )
@@ -285,7 +284,7 @@ RideHalError_e OpenclSrv::Deinit()
         retCL = clReleaseMemObject( it.second.clMem );
         if ( CL_SUCCESS != retCL )
         {
-            RIDEHAL_ERROR( "Unable to deregister buffer %d", it.first );
+            QC_ERROR( "Unable to deregister buffer %d", it.first );
         }
     }
     m_bufferMap.clear();
@@ -295,7 +294,7 @@ RideHalError_e OpenclSrv::Deinit()
         retCL = clReleaseMemObject( it.second.clMem );
         if ( CL_SUCCESS != retCL )
         {
-            RIDEHAL_ERROR( "Unable to deregister image %d", it.first );
+            QC_ERROR( "Unable to deregister image %d", it.first );
         }
     }
     m_imageMap.clear();
@@ -305,7 +304,7 @@ RideHalError_e OpenclSrv::Deinit()
         retCL = clReleaseMemObject( it.second.clMem );
         if ( CL_SUCCESS != retCL )
         {
-            RIDEHAL_ERROR( "Unable to deregister plane %d", it.first );
+            QC_ERROR( "Unable to deregister plane %d", it.first );
         }
     }
     m_planeMap.clear();
@@ -313,31 +312,31 @@ RideHalError_e OpenclSrv::Deinit()
     retCL = clReleaseSampler( m_sampler );
     if ( CL_SUCCESS != retCL )
     {
-        RIDEHAL_ERROR( "Unable to release sampler, retCL = %d", retCL );
-        ret = RIDEHAL_ERROR_FAIL;
+        QC_ERROR( "Unable to release sampler, retCL = %d", retCL );
+        ret = QC_STATUS_FAIL;
     }
 
 
-    ret = RIDEHAL_LOGGER_DEINIT();
-    if ( RIDEHAL_ERROR_NONE != ret )
+    ret = QC_LOGGER_DEINIT();
+    if ( QC_STATUS_OK != ret )
     {
         (void) fprintf( stderr, "WARINING: failed to deinit logger for OpenclSrv: ret = %d\n",
                         ret );
-        ret = RIDEHAL_ERROR_NONE; /* ignore logger deinit error */
+        ret = QC_STATUS_OK; /* ignore logger deinit error */
     }
 
     return ret;
 }
 
-RideHalError_e OpenclSrv::RegBuf( const RideHal_Buffer_t *pBuffer, cl_mem *pBufferCL )
+QCStatus_e OpenclSrv::RegBuf( const QCBuffer_t *pBuffer, cl_mem *pBufferCL )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     cl_int retCL = CL_SUCCESS;
 
     if ( nullptr == pBuffer )
     {
-        RIDEHAL_ERROR( "null host buffer!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "null host buffer!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
@@ -366,8 +365,8 @@ RideHalError_e OpenclSrv::RegBuf( const RideHal_Buffer_t *pBuffer, cl_mem *pBuff
 
             if ( CL_SUCCESS != retCL )
             {
-                RIDEHAL_ERROR( "Unable to create CL buffer, retCL = %d", retCL );
-                ret = RIDEHAL_ERROR_FAIL;
+                QC_ERROR( "Unable to create CL buffer, retCL = %d", retCL );
+                ret = QC_STATUS_FAIL;
             }
             else
             {
@@ -384,16 +383,16 @@ RideHalError_e OpenclSrv::RegBuf( const RideHal_Buffer_t *pBuffer, cl_mem *pBuff
     return ret;
 }
 
-RideHalError_e OpenclSrv::RegImage( void *pData, uint64_t dmaHandle, cl_mem *pBufferCL,
-                                    cl_image_format *pFormat, cl_image_desc *pDesc )
+QCStatus_e OpenclSrv::RegImage( void *pData, uint64_t dmaHandle, cl_mem *pBufferCL,
+                                cl_image_format *pFormat, cl_image_desc *pDesc )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     cl_int retCL = CL_SUCCESS;
 
     if ( nullptr == pData )
     {
-        RIDEHAL_ERROR( "null data pointer!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "null data pointer!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
@@ -422,8 +421,8 @@ RideHalError_e OpenclSrv::RegImage( void *pData, uint64_t dmaHandle, cl_mem *pBu
 
             if ( CL_SUCCESS != retCL )
             {
-                RIDEHAL_ERROR( "Unable to create CL image, retCL = %d", retCL );
-                ret = RIDEHAL_ERROR_FAIL;
+                QC_ERROR( "Unable to create CL image, retCL = %d", retCL );
+                ret = QC_STATUS_FAIL;
             }
             else
             {
@@ -440,18 +439,18 @@ RideHalError_e OpenclSrv::RegImage( void *pData, uint64_t dmaHandle, cl_mem *pBu
     return ret;
 }
 
-RideHalError_e OpenclSrv::RegPlane( void *pData, cl_mem *pBufferCL, cl_image_format *pFormat,
-                                    cl_image_desc *pDesc )
+QCStatus_e OpenclSrv::RegPlane( void *pData, cl_mem *pBufferCL, cl_image_format *pFormat,
+                                cl_image_desc *pDesc )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     cl_int retCL = CL_SUCCESS;
 
     std::pair<void *, uint32_t> key;
     key.first = pData;
     if ( nullptr == key.first )
     {
-        RIDEHAL_ERROR( "null image CL data pointer!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "null image CL data pointer!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
@@ -464,8 +463,8 @@ RideHalError_e OpenclSrv::RegPlane( void *pData, cl_mem *pBufferCL, cl_image_for
 
             if ( CL_SUCCESS != retCL )
             {
-                RIDEHAL_ERROR( "Unable to create CL image, retCL = %d", retCL );
-                ret = RIDEHAL_ERROR_FAIL;
+                QC_ERROR( "Unable to create CL image, retCL = %d", retCL );
+                ret = QC_STATUS_FAIL;
             }
             else
             {
@@ -482,15 +481,15 @@ RideHalError_e OpenclSrv::RegPlane( void *pData, cl_mem *pBufferCL, cl_image_for
     return ret;
 }
 
-RideHalError_e OpenclSrv::DeregBuf( const RideHal_Buffer_t *pBuffer )
+QCStatus_e OpenclSrv::DeregBuf( const QCBuffer_t *pBuffer )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     cl_int retCL = CL_SUCCESS;
 
     if ( nullptr == pBuffer )
     {
-        RIDEHAL_ERROR( "null host buffer!" );
-        ret = RIDEHAL_ERROR_BAD_ARGUMENTS;
+        QC_ERROR( "null host buffer!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
@@ -500,8 +499,8 @@ RideHalError_e OpenclSrv::DeregBuf( const RideHal_Buffer_t *pBuffer )
             retCL = clReleaseMemObject( it->second.clMem );
             if ( CL_SUCCESS != retCL )
             {
-                RIDEHAL_ERROR( "Unable to release CL buffer, retCL = %d", retCL );
-                ret = RIDEHAL_ERROR_FAIL;
+                QC_ERROR( "Unable to release CL buffer, retCL = %d", retCL );
+                ret = QC_STATUS_FAIL;
             }
             else
             {
@@ -513,9 +512,9 @@ RideHalError_e OpenclSrv::DeregBuf( const RideHal_Buffer_t *pBuffer )
     return ret;
 }
 
-RideHalError_e OpenclSrv::DeregImage( void *pData )
+QCStatus_e OpenclSrv::DeregImage( void *pData )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     cl_int retCL = CL_SUCCESS;
 
     auto it = m_imageMap.find( pData );
@@ -524,8 +523,8 @@ RideHalError_e OpenclSrv::DeregImage( void *pData )
         retCL = clReleaseMemObject( it->second.clMem );
         if ( CL_SUCCESS != retCL )
         {
-            RIDEHAL_ERROR( "Unable to release CL image, retCL = %d", retCL );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Unable to release CL image, retCL = %d", retCL );
+            ret = QC_STATUS_FAIL;
         }
         else
         {
@@ -536,9 +535,9 @@ RideHalError_e OpenclSrv::DeregImage( void *pData )
     return ret;
 }
 
-RideHalError_e OpenclSrv::DeregPlane( void *pData, cl_image_format *pFormat )
+QCStatus_e OpenclSrv::DeregPlane( void *pData, cl_image_format *pFormat )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     cl_int retCL = CL_SUCCESS;
 
     std::pair<void *, uint32_t> key;
@@ -550,8 +549,8 @@ RideHalError_e OpenclSrv::DeregPlane( void *pData, cl_image_format *pFormat )
         retCL = clReleaseMemObject( it->second.clMem );
         if ( CL_SUCCESS != retCL )
         {
-            RIDEHAL_ERROR( "Unable to release CL plane, retCL = %d", retCL );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Unable to release CL plane, retCL = %d", retCL );
+            ret = QC_STATUS_FAIL;
         }
         else
         {
@@ -562,10 +561,10 @@ RideHalError_e OpenclSrv::DeregPlane( void *pData, cl_image_format *pFormat )
     return ret;
 }
 
-RideHalError_e OpenclSrv::Execute( const cl_kernel *pKernel, const OpenclIfcae_Arg_t *pArgs,
-                                   size_t numOfArgs, const OpenclIface_WorkParams_t *pWorkParam )
+QCStatus_e OpenclSrv::Execute( const cl_kernel *pKernel, const OpenclIfcae_Arg_t *pArgs,
+                               size_t numOfArgs, const OpenclIface_WorkParams_t *pWorkParam )
 {
-    RideHalError_e ret = RIDEHAL_ERROR_NONE;
+    QCStatus_e ret = QC_STATUS_OK;
     cl_int retCL = CL_SUCCESS;
 
     for ( int i = 0; i < numOfArgs; i++ )
@@ -573,28 +572,28 @@ RideHalError_e OpenclSrv::Execute( const cl_kernel *pKernel, const OpenclIfcae_A
         retCL = clSetKernelArg( *pKernel, i, pArgs[i].argSize, pArgs[i].pArg );
         if ( CL_SUCCESS != retCL )
         {
-            RIDEHAL_ERROR( "Unable to set number %d argument, retCL = %d", i, retCL );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Unable to set number %d argument, retCL = %d", i, retCL );
+            ret = QC_STATUS_FAIL;
         }
     }
 
-    if ( RIDEHAL_ERROR_NONE == ret )
+    if ( QC_STATUS_OK == ret )
     {
         retCL = clEnqueueNDRangeKernel( m_commandQueue, *pKernel, pWorkParam->workDim,
                                         pWorkParam->pGlobalWorkOffset, pWorkParam->pGlobalWorkSize,
                                         pWorkParam->pLocalWorkSize, 0, NULL, NULL );
         if ( CL_SUCCESS != retCL )
         {
-            RIDEHAL_ERROR( "Unable to enqueue range kernel, retCL = %d", retCL );
-            ret = RIDEHAL_ERROR_FAIL;
+            QC_ERROR( "Unable to enqueue range kernel, retCL = %d", retCL );
+            ret = QC_STATUS_FAIL;
         }
         else
         {
             retCL = clFinish( m_commandQueue );
             if ( CL_SUCCESS != retCL )
             {
-                RIDEHAL_ERROR( "Unable to finish command queue, retCL = %d", retCL );
-                ret = RIDEHAL_ERROR_FAIL;
+                QC_ERROR( "Unable to finish command queue, retCL = %d", retCL );
+                ret = QC_STATUS_FAIL;
             }
         }
     }
@@ -604,4 +603,4 @@ RideHalError_e OpenclSrv::Execute( const cl_kernel *pKernel, const OpenclIfcae_A
 
 }   // namespace OpenclIface
 }   // namespace libs
-}   // namespace ridehal
+}   // namespace QC

@@ -11,12 +11,12 @@
 - [4. Verified Platforms](#4-verified-platforms)
 
 # 1. Overview
-The RideHal is Qualcomm ADAS hardware abstraction layer that provides user friendly APIs to access the Qualcomm ADAS hardware accelerator. It is ADAS service oriented to provide user friendly component and utils to cover the perception and compute vision related task.
-- The RideHal Component with high quality that can be directly used by customer, and it is easy to be used.
-- The RideHal Sample is a very good demo about how to use the RideHal Component and it clearly demonstrates about how to do memory zero copy and do the buffer life cycle management.
-- The RideHal Sample with multi-threading to demonstrate that how to improve the FPS throughputs.
-- The RideHal Component each provides necessary logs(especially for ERROR) for easy issue debug.
-- The RideHal Logger can be customized and easily integrated with customer ADAS application log system.
+The QC is Qualcomm ADAS hardware abstraction layer that provides user friendly APIs to access the Qualcomm ADAS hardware accelerator. It is ADAS service oriented to provide user friendly component and utils to cover the perception and compute vision related task.
+- The QC Component with high quality that can be directly used by customer, and it is easy to be used.
+- The QC Sample is a very good demo about how to use the QC Component and it clearly demonstrates about how to do memory zero copy and do the buffer life cycle management.
+- The QC Sample with multi-threading to demonstrate that how to improve the FPS throughputs.
+- The QC Component each provides necessary logs(especially for ERROR) for easy issue debug.
+- The QC Logger can be customized and easily integrated with customer ADAS application log system.
 
 # 2. Feature Changes
 ## 2.1 Version 1.9.0
@@ -43,7 +43,7 @@ The RideHal is Qualcomm ADAS hardware abstraction layer that provides user frien
 ## 3.1 Version 1.9.0
 - Camera: add xml2 as a depend library
 - TinyViz: unset DISPLAY to avoid SDL from using X11
-- Build: Fix RideHal package not found warnings
+- Build: Fix QCNode package not found warnings
 - Sample: Fix QNN udo path string that use after free issue
 ## 3.2 Version 1.8.0
 - CL2DFlex: Fix priority setting parameter issue for OpenCL Iface
@@ -84,10 +84,10 @@ The RideHal is Qualcomm ADAS hardware abstraction layer that provides user frien
 - CL2DFlex: Add UBWC test cases for CL2DFlex gtest
 - Sample: Video Demuxer to support read frames from video file
 - Sample: Add simple user guide for DepthFromStereo
-- Sample: Update docs to enable RideHal building with Video Demuxer
+- Sample: Update docs to enable QC building with Video Demuxer
 
 # 4. Verified Platforms
-RideHal is verified on Lemans device with the following meta build:
+QC is verified on Lemans device with the following meta build:
 - HQX QNX Snapdragon_Auto.HQX.4.5.6.0.1.r1
 - HGY Ubuntu Snapdragon_Auto.HGY.4.1.6.0.r1
 - HGY Linux Snapdragon_Auto.HGY.4.1.6.0.1.r1
