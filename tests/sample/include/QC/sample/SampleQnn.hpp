@@ -6,40 +6,39 @@
 #ifndef QC_SAMPLE_QNN_HPP
 #define QC_SAMPLE_QNN_HPP
 
-#include "QC/component/QnnRuntime.hpp"
+#include "QC/node/QNN.hpp"
 #include "QC/sample/SampleIF.hpp"
-using namespace QC;
-using namespace QC::component;
 
 namespace QC
 {
 namespace sample
 {
+using namespace QC::node;
 
 /// @brief qcnode::sample::SampleQnn
 ///
-/// SampleQnn that to demonstate how to use the QC component QnnRuntime
+/// SampleQnn that to demonstate how to use the QC Node Qnn
 class SampleQnn : public SampleIF
 {
 public:
     SampleQnn();
     ~SampleQnn();
 
-    /// @brief Initialize the QnnRuntime
+    /// @brief Initialize the QC Node Qnn
     /// @param name the sample unique instance name
     /// @param config the sample config key value map
     /// @return QC_STATUS_OK on success, others on failure
     QCStatus_e Init( std::string name, SampleConfig_t &config );
 
-    /// @brief Start the QnnRuntime
+    /// @brief Start the QC Node Qnn
     /// @return QC_STATUS_OK on success, others on failure
     QCStatus_e Start();
 
-    /// @brief Stop the QnnRuntime
+    /// @brief Stop the QC Node Qnn
     /// @return QC_STATUS_OK on success, others on failure
     QCStatus_e Stop();
 
-    /// @brief deinitialize the QnnRuntime
+    /// @brief deinitialize the QC Node Qnn
     /// @return QC_STATUS_OK on success, others on failure
     QCStatus_e Deinit();
 
@@ -47,23 +46,20 @@ private:
     QCStatus_e ParseConfig( SampleConfig_t &config );
     void ThreadMain();
 
+    QCStatus_e ConvertDtToInfo( DataTree &dt, TensorInfo_t &info );
+
+    void EventCallback( const QCNodeEventInfo_t &info );
+
 private:
     typedef enum
     {
         SAMPLE_QNN_IMAGE_CONVERT_DEFAULT,
         SAMPLE_QNN_IMAGE_CONVERT_GRAY,
         SAMPLE_QNN_IMAGE_CONVERT_CHROMA_FIRST,
-    } SampleQnn_ImageConvertType_e;
-
-    typedef struct
-    {
-        std::string interfaceProvider; /**<name of interface provider*/
-        std::string udoLibPath;        /**<uod library path*/
-    } UdoPackage_t;
+    } SampleQnnImageConvertType_e;
 
 private:
-    QnnRuntime_Config_t m_config;
-    SampleQnn_ImageConvertType_e m_imageConvertType = SAMPLE_QNN_IMAGE_CONVERT_DEFAULT;
+    SampleQnnImageConvertType_e m_imageConvertType = SAMPLE_QNN_IMAGE_CONVERT_DEFAULT;
     uint32_t m_poolSize = 4;
     bool m_bAsync = false;
     std::condition_variable m_condVar;
@@ -73,13 +69,12 @@ private:
     std::string m_modelInOutInfoTopicName;
 
     std::string m_modelPath;
-    std::vector<UdoPackage_t> m_udoPkgs;
     std::vector<QnnRuntime_UdoPackage_t> m_opPackagePaths;
     std::thread m_thread;
     bool m_stop;
 
-    QnnRuntime_TensorInfoList_t m_inputInfoList;
-    QnnRuntime_TensorInfoList_t m_outputInfoList;
+    std::vector<TensorInfo_t> m_inputsInfo;
+    std::vector<TensorInfo_t> m_ouputsInfo;
 
     std::vector<SharedBufferPool> m_tensorPools;
 
@@ -87,7 +82,10 @@ private:
     DataPublisher<DataFrames_t> m_pub;
     DataPublisher<ModelInOutInfo_t> m_modelInOutInfoPub;
 
-    QnnRuntime m_qnn;
+    DataTree m_dataTree;
+    Qnn m_qnn;
+    uint64_t m_asyncResult;
+    QCProcessorType_e m_processor;
 };   // class SampleQnn
 
 }   // namespace sample

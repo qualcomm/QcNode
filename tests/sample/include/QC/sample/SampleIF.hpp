@@ -23,8 +23,6 @@
 #include <rsm_client_v2.h>
 #endif
 
-using namespace QC;
-
 namespace QC
 {
 namespace sample

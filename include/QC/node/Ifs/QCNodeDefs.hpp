@@ -6,6 +6,7 @@
 #define QC_NODE_DEFS_HPP
 
 #include "QC/common/QCDefs.hpp"
+#include <string>
 
 namespace QC
 {

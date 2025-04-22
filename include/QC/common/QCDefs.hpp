@@ -10,6 +10,7 @@
 namespace QC
 {
 
+/** @brief QC Status */
 typedef enum
 {
     QC_STATUS_OK = 0,        /**< No error. */
@@ -25,7 +26,7 @@ typedef enum
     QC_STATUS_LAST = -1
 } QCStatus_e;
 
-/** @brief QC Component state */
+/** @brief QC Object state */
 typedef enum
 {
     QC_OBJECT_STATE_INITIAL = 0,    /**< the initial state */

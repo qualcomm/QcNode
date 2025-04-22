@@ -2,6 +2,7 @@
 add_subdirectory(common)
 add_subdirectory(components)
 add_subdirectory(libs)
+add_subdirectory(nodes)
 
 set( HEADERS_DIR ${PROJECT_SOURCE_DIR}/include )
 
@@ -19,6 +20,7 @@ set( TARGET_LIBRARIES
     QCNodePostCenterPoint
     QCNodeCL2DFlex
     QCNodeGL2DFlex
+    QCNodeNodeBase
 )
 
 if ( ENABLE_C2D )
@@ -32,7 +34,7 @@ endif()
 if( NOT TARGET QCNodeQnnRuntime )
   message(STATUS "build QCNode without QNN")
 else()
-  list( APPEND TARGET_LIBRARIES QCNodeQnnRuntime )
+  list( APPEND TARGET_LIBRARIES QCNodeQnnRuntime QCNodeNodeQNN )
 endif()
 
 add_library( QCNode SHARED ${QCNODE_SOURCES} )
