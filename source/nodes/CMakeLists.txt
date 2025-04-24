@@ -14,15 +14,6 @@ add_library( QCNodeNodeBase STATIC ${NODEIF_SOURCES} )
 set_property( TARGET QCNodeNodeBase PROPERTY LINKER_LANGUAGE CXX )
 set_property( TARGET QCNodeNodeBase PROPERTY POSITION_INDEPENDENT_CODE ON )
 
-target_include_directories( QCNodeNodeBase PUBLIC 
-    ${HEADERS_DIR}
-    ${HEADERS_DIR}/QC/Common
-    ${HEADERS_DIR}/QC/Framework
-    ${HEADERS_DIR}/QC/Framework/Memory
-    ${HEADERS_DIR}/QC/Framework/Memory/Ifs
-    ${HEADERS_DIR}/QC/Nodes
-)
-
 find_package(nlohmann_json 3.2.0 REQUIRED)
 list( APPEND TARGET_LIBRARIES nlohmann_json::nlohmann_json)
 
