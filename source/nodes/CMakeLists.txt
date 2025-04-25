@@ -39,3 +39,4 @@ install( FILES  ${HEADERS_DIR}/QC/node/Ifs/QCFrameDescriptorNodeIfs.hpp
 
 add_subdirectory(QNN)
 add_subdirectory(CL2DFlex)
+add_subdirectory(Camera)
