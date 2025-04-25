@@ -13,11 +13,8 @@ set( QCNODE_SOURCES ${CMAKE_BINARY_DIR}/null.cpp )
 set( TARGET_LIBRARIES
     QCNodeCommon
     QCNodeCamera
-    QCNodeRemap
     QCNodeVideoEncoder
     QCNodeVideoDecoder
-    QCNodeVoxelization
-    QCNodePostCenterPoint
     QCNodeCL2DFlex
     QCNodeGL2DFlex
     QCNodeNodeBase
@@ -28,7 +25,18 @@ if ( ENABLE_C2D )
 endif()
 
 if ( ENABLE_EVA )
-  list( APPEND TARGET_LIBRARIES QCNodeOpticalFlow QCNodeDepthFromStereo )
+  list( APPEND TARGET_LIBRARIES
+            QCNodeOpticalFlow
+            QCNodeDepthFromStereo
+  )
+endif()
+
+if ( ENABLE_FADAS )
+  list( APPEND TARGET_LIBRARIES
+            QCNodeRemap
+            QCNodePostCenterPoint
+            QCNodeVoxelization
+  )
 endif()
 
 if( NOT TARGET QCNodeQnnRuntime )

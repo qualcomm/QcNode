@@ -7,6 +7,7 @@ option(ENABLE_GCOV "Enable GCC Code Coverage" OFF)
 option(ENABLE_DEMUXER "Enable Demuxer building" OFF)
 option(ENABLE_C2D "Enable C2D building" OFF)
 option(ENABLE_EVA "Enable EVA building" OFF)
+option(ENABLE_FADAS "Enable FADAS building" OFF)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE RelWithDebInfo)

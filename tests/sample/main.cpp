@@ -3,12 +3,7 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#include "QC/sample/SampleCamera.hpp"
-#include "QC/sample/SampleDataReader.hpp"
-#include "QC/sample/SampleRemap.hpp"
-#ifdef WITH_TINYVIZ
-#include "QC/sample/SampleTinyViz.hpp"
-#endif
+#include "QC/sample/SampleIF.hpp"
 
 #include <chrono>
 #include <iostream>

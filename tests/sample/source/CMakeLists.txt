@@ -7,13 +7,10 @@ set( HEADERS_DIR
 
 set( QCNODE_SAMPLE_SOURCES
     SampleIF.cpp
-    SamplePlrPost.cpp
-    SamplePlrPre.cpp
     SamplePostProcCenternet.cpp
     SampleCamera.cpp
     SampleDataReader.cpp
     SampleRecorder.cpp
-    SampleRemap.cpp
     SampleVideoDecoder.cpp
     SampleVideoEncoder.cpp
     SharedBufferPool.cpp
@@ -36,6 +33,13 @@ if ( ENABLE_EVA )
             SampleOpticalFlowViz.cpp
             SampleDepthFromStereo.cpp
             SampleDepthFromStereoViz.cpp )
+endif()
+
+if ( ENABLE_FADAS )
+  list( APPEND QCNODE_SAMPLE_SOURCES
+            SamplePlrPost.cpp
+            SamplePlrPre.cpp
+            SampleRemap.cpp )
 endif()
 
 set( QCNODE_SAMPLE_DEFINITIONS )
