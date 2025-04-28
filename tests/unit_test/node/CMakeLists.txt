@@ -1,6 +1,7 @@
 
 add_subdirectory(NodeBase)
 add_subdirectory(QNN)
+add_subdirectory(CL2DFlex)
 
 set( GTEST_QCNODE_SOURCES ${GTEST_QCNODE_SOURCES} PARENT_SCOPE )
 set( GTEST_QCNODE_INCLUDES ${GTEST_QCNODE_INCLUDES} PARENT_SCOPE )

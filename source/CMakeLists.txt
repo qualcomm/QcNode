@@ -18,6 +18,7 @@ set( TARGET_LIBRARIES
     QCNodeCL2DFlex
     QCNodeGL2DFlex
     QCNodeNodeBase
+    QCNodeNodeCL2DFlex
 )
 
 if ( ENABLE_C2D )

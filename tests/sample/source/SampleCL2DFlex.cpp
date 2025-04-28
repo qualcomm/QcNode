@@ -2,9 +2,7 @@
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
-
 #include "QC/sample/SampleCL2DFlex.hpp"
-
 
 namespace QC
 {
@@ -70,110 +68,131 @@ QCStatus_e SampleCL2DFlex::ParseConfig( SampleConfig_t &config )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
+    CL2DFlex_Work_Mode_e workModes[QC_MAX_INPUTS];
+    QCImageFormat_e inputFormats[QC_MAX_INPUTS];
+    uint32_t inputWidths[QC_MAX_INPUTS];
+    uint32_t inputHeights[QC_MAX_INPUTS];
+    CL2DFlex_ROIConfig_t ROIs[QC_MAX_INPUTS];
+
+    m_dataTree.Set<std::string>( "static.name", m_name );
+    m_dataTree.Set<uint32_t>( "static.id", 0 );
+
     m_bNoPadding = Get( config, "no_padding", false );
 
-    m_config.outputWidth = Get( config, "output_width", 1920 );
-    if ( 0 == m_config.outputWidth )
+    m_outputWidth = Get( config, "output_width", 1920 );
+    if ( 0 == m_outputWidth )
     {
         QC_ERROR( "invalid output_width\n" );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
+    m_dataTree.Set<uint32_t>( "static.outputWidth", m_outputWidth );
 
-    m_config.outputHeight = Get( config, "output_height", 1024 );
-    if ( 0 == m_config.outputHeight )
+    m_outputHeight = Get( config, "output_height", 1024 );
+    if ( 0 == m_outputHeight )
     {
         QC_ERROR( "invalid output_height\n" );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
+    m_dataTree.Set<uint32_t>( "static.outputHeight", m_outputHeight );
 
-    m_config.outputFormat = Get( config, "output_format", QC_IMAGE_FORMAT_RGB888 );
-    if ( QC_IMAGE_FORMAT_MAX == m_config.outputFormat )
+    m_outputFormat = Get( config, "output_format", QC_IMAGE_FORMAT_RGB888 );
+    if ( QC_IMAGE_FORMAT_MAX == m_outputFormat )
     {
         QC_ERROR( "invalid output_format\n" );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
+    m_dataTree.SetImageFormat( "static.outputFormat", m_outputFormat );
 
-    m_config.numOfInputs = Get( config, "batch_size", 1 );
-    if ( 0 == m_config.numOfInputs )
+    m_numOfInputs = Get( config, "batch_size", 1 );
+    if ( 0 == m_numOfInputs )
     {
         QC_ERROR( "invalid batch_size\n" );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
-    bool bEnableUndistortion = Get( config, "map_table", false );
+    m_bEnableUndistortion = Get( config, "map_table", false );
 
-    for ( uint32_t i = 0; i < m_config.numOfInputs; i++ )
+    std::vector<DataTree> inputDts;
+    for ( uint32_t i = 0; i < m_numOfInputs; i++ )
     {
-        m_config.inputWidths[i] = Get( config, "input_width" + std::to_string( i ), 1920 );
-        if ( 0 == m_config.inputWidths[i] )
+        DataTree inputDt;
+
+        inputWidths[i] = Get( config, "input_width" + std::to_string( i ), 1920 );
+        if ( 0 == inputWidths[i] )
         {
             QC_ERROR( "invalid input_width%u\n", i );
             ret = QC_STATUS_BAD_ARGUMENTS;
         }
+        inputDt.Set<uint32_t>( "inputWidth", inputWidths[i] );
 
-        m_config.inputHeights[i] = Get( config, "input_height" + std::to_string( i ), 1024 );
-        if ( 0 == m_config.inputHeights[i] )
+        inputHeights[i] = Get( config, "input_height" + std::to_string( i ), 1024 );
+        if ( 0 == inputHeights[i] )
         {
             QC_ERROR( "invalid input_height%u\n", i );
             ret = QC_STATUS_BAD_ARGUMENTS;
         }
+        inputDt.Set<uint32_t>( "inputHeight", inputHeights[i] );
 
-        m_config.inputFormats[i] =
-                Get( config, "input_format" + std::to_string( i ), QC_IMAGE_FORMAT_NV12 );
-        if ( QC_IMAGE_FORMAT_MAX == m_config.inputFormats[i] )
+        inputFormats[i] = Get( config, "input_format" + std::to_string( i ), QC_IMAGE_FORMAT_NV12 );
+        if ( QC_IMAGE_FORMAT_MAX == inputFormats[i] )
         {
             QC_ERROR( "invalid input_format%u\n", i );
             ret = QC_STATUS_BAD_ARGUMENTS;
         }
+        inputDt.SetImageFormat( "inputFormat", inputFormats[i] );
 
-        m_config.workModes[i] = GetMode( config, "work_mode" + std::to_string( i ),
-                                         CL2DFLEX_WORK_MODE_RESIZE_NEAREST );
-        if ( CL2DFLEX_WORK_MODE_MAX == m_config.workModes[i] )
+        workModes[i] = GetMode( config, "work_mode" + std::to_string( i ),
+                                CL2DFLEX_WORK_MODE_RESIZE_NEAREST );
+        if ( CL2DFLEX_WORK_MODE_MAX == workModes[i] )
         {
             QC_ERROR( "invalid work_mode%u\n", i );
             ret = QC_STATUS_BAD_ARGUMENTS;
         }
+        std::string workMode = Get( config, "work_mode" + std::to_string( i ), "resize_nearest" );
+        inputDt.Set<std::string>( "workMode", workMode );
 
-        m_config.ROIs[i].x = Get( config, "roi_x" + std::to_string( i ), 0 );
-        if ( m_config.ROIs[i].x >= m_config.inputWidths[i] )
+        ROIs[i].x = Get( config, "roi_x" + std::to_string( i ), 0 );
+        if ( ROIs[i].x >= inputWidths[i] )
         {
             QC_ERROR( "invalid roi_x%u\n", i );
             ret = QC_STATUS_BAD_ARGUMENTS;
         }
+        inputDt.Set<uint32_t>( "roiX", ROIs[i].x );
 
-        m_config.ROIs[i].y = Get( config, "roi_y" + std::to_string( i ), 0 );
-        if ( m_config.ROIs[i].y >= m_config.inputHeights[i] )
+        ROIs[i].y = Get( config, "roi_y" + std::to_string( i ), 0 );
+        if ( ROIs[i].y >= inputHeights[i] )
         {
             QC_ERROR( "invalid roi_y%u\n", i );
             ret = QC_STATUS_BAD_ARGUMENTS;
         }
+        inputDt.Set<uint32_t>( "roiY", ROIs[i].y );
 
-        m_config.ROIs[i].width =
-                Get( config, "roi_width" + std::to_string( i ), m_config.inputWidths[i] );
-        if ( 0 == m_config.ROIs[i].width )
+        ROIs[i].width = Get( config, "roi_width" + std::to_string( i ), inputWidths[i] );
+        if ( 0 == ROIs[i].width )
         {
             QC_ERROR( "invalid roi_width%u\n", i );
             ret = QC_STATUS_BAD_ARGUMENTS;
         }
+        inputDt.Set<uint32_t>( "roiWidth", ROIs[i].width );
 
-        m_config.ROIs[i].height =
-                Get( config, "roi_height" + std::to_string( i ), m_config.inputHeights[i] );
-        if ( 0 == m_config.ROIs[i].height )
+        ROIs[i].height = Get( config, "roi_height" + std::to_string( i ), inputHeights[i] );
+        if ( 0 == ROIs[i].height )
         {
             QC_ERROR( "invalid roi_height%u\n", i );
             ret = QC_STATUS_BAD_ARGUMENTS;
         }
+        inputDt.Set<uint32_t>( "roiHeight", ROIs[i].height );
 
-        if ( true == bEnableUndistortion )
+        if ( true == m_bEnableUndistortion )
         {
             bool bAllocateOK = true;
             QCTensorProps_t mapXProp;
             mapXProp = {
                     QC_TENSOR_TYPE_FLOAT_32,
-                    { m_config.outputHeight * m_config.outputWidth, 0 },
+                    { m_outputHeight * m_outputWidth, 0 },
                     1,
             };
-            ret = m_mapXBuffer[i].Allocate( &mapXProp );
+            ret = m_mapXBufferDesc[i].buffer.Allocate( &mapXProp );
             if ( QC_STATUS_OK != ret )
             {
                 bAllocateOK = false;
@@ -182,15 +201,16 @@ QCStatus_e SampleCL2DFlex::ParseConfig( SampleConfig_t &config )
             QCTensorProps_t mapYProp;
             mapYProp = {
                     QC_TENSOR_TYPE_FLOAT_32,
-                    { m_config.outputHeight * m_config.outputWidth, 0 },
+                    { m_outputHeight * m_outputWidth, 0 },
                     1,
             };
-            ret = m_mapYBuffer[i].Allocate( &mapYProp );
+            ret = m_mapYBufferDesc[i].buffer.Allocate( &mapYProp );
             if ( QC_STATUS_OK != ret )
             {
                 bAllocateOK = false;
                 QC_ERROR( "failed to allocate mapY%u!\n", i );
             }
+
             if ( true == bAllocateOK )
             {
                 bool bReadOK = true;
@@ -198,22 +218,14 @@ QCStatus_e SampleCL2DFlex::ParseConfig( SampleConfig_t &config )
                                             "./data/test/CL2DFlex/mapX.raw" );
                 std::string mapYPath = Get( config, "mapY_path" + std::to_string( i ),
                                             "./data/test/CL2DFlex/mapY.raw" );
-                ret = LoadFile( m_mapXBuffer[i], mapXPath );
-                if ( QC_STATUS_OK == ret )
-                {
-                    m_config.remapTable[i].pMapX = &m_mapXBuffer[i];
-                }
-                else
+                ret = LoadFile( m_mapXBufferDesc[i].buffer, mapXPath );
+                if ( QC_STATUS_OK != ret )
                 {
                     QC_ERROR( "failed to read mapX table for input %u!\n", i );
                     bReadOK = false;
                 }
-                ret = LoadFile( m_mapYBuffer[i], mapYPath );
-                if ( QC_STATUS_OK == ret )
-                {
-                    m_config.remapTable[i].pMapY = &m_mapYBuffer[i];
-                }
-                else
+                ret = LoadFile( m_mapYBufferDesc[i].buffer, mapYPath );
+                if ( QC_STATUS_OK != ret )
                 {
                     QC_ERROR( "failed to read mapY table for input %u!\n", i );
                     bReadOK = false;
@@ -222,16 +234,22 @@ QCStatus_e SampleCL2DFlex::ParseConfig( SampleConfig_t &config )
                 {
                     ret = QC_STATUS_BAD_ARGUMENTS;
                 }
+                else
+                {
+                    inputDt.Set<uint32_t>( "mapX", i * 2 );
+                    inputDt.Set<uint32_t>( "mapY", i * 2 + 1 );
+                }
             }
         }
+        inputDts.push_back( inputDt );
     }
+    m_dataTree.Set( "static.inputs", inputDts );
 
-    if ( ( 1 == m_config.numOfInputs ) &&
-         ( ( CL2DFLEX_WORK_MODE_LETTERBOX_NEAREST_MULTIPLE == m_config.workModes[0] ) ||
-           ( CL2DFLEX_WORK_MODE_RESIZE_NEAREST_MULTIPLE == m_config.workModes[0] ) ) )
+    if ( ( 1 == m_numOfInputs ) &&
+         ( ( CL2DFLEX_WORK_MODE_LETTERBOX_NEAREST_MULTIPLE == workModes[0] ) ||
+           ( CL2DFLEX_WORK_MODE_RESIZE_NEAREST_MULTIPLE == workModes[0] ) ) )
     {
-        m_executeWithROIs = true;
-
+        m_bExecuteWithROIs = true;
         m_roiNumber = Get( config, "roi_number", 1 );
         if ( 0 == m_roiNumber )
         {
@@ -242,29 +260,27 @@ QCStatus_e SampleCL2DFlex::ParseConfig( SampleConfig_t &config )
         for ( uint32_t i = 0; i < m_roiNumber; i++ )
         {
             m_ROIs[i].x = Get( config, "roi_x" + std::to_string( i ), 0 );
-            if ( m_ROIs[i].x >= m_config.inputWidths[0] )
+            if ( m_ROIs[i].x >= inputWidths[0] )
             {
                 QC_ERROR( "invalid roi_x%u\n", i );
                 ret = QC_STATUS_BAD_ARGUMENTS;
             }
 
             m_ROIs[i].y = Get( config, "roi_y" + std::to_string( i ), 0 );
-            if ( m_ROIs[i].y >= m_config.inputHeights[0] )
+            if ( m_ROIs[i].y >= inputHeights[0] )
             {
                 QC_ERROR( "invalid roi_y%u\n", i );
                 ret = QC_STATUS_BAD_ARGUMENTS;
             }
 
-            m_ROIs[i].width =
-                    Get( config, "roi_width" + std::to_string( i ), m_config.inputWidths[0] );
+            m_ROIs[i].width = Get( config, "roi_width" + std::to_string( i ), inputWidths[0] );
             if ( 0 == m_ROIs[i].width )
             {
                 QC_ERROR( "invalid roi_width%u\n", i );
                 ret = QC_STATUS_BAD_ARGUMENTS;
             }
 
-            m_ROIs[i].height =
-                    Get( config, "roi_height" + std::to_string( i ), m_config.inputHeights[0] );
+            m_ROIs[i].height = Get( config, "roi_height" + std::to_string( i ), inputHeights[0] );
             if ( 0 == m_ROIs[i].height )
             {
                 QC_ERROR( "invalid roi_height%u\n", i );
@@ -272,6 +288,24 @@ QCStatus_e SampleCL2DFlex::ParseConfig( SampleConfig_t &config )
             }
         }
     }
+
+    if ( true == m_bExecuteWithROIs )
+    {
+        std::vector<DataTree> roiDts;
+        for ( int i = 0; i < m_roiNumber; i++ )
+        {
+            DataTree roiDt;
+            roiDt.Set<uint32_t>( "roiX", m_ROIs[i].x );
+            roiDt.Set<uint32_t>( "roiY", m_ROIs[i].y );
+            roiDt.Set<uint32_t>( "roiWidth", m_ROIs[i].width );
+            roiDt.Set<uint32_t>( "roiHeight", m_ROIs[i].height );
+            roiDts.push_back( roiDt );
+        }
+        m_dataTree.Set( "static.ROIs", roiDts );
+    }
+
+    QCNodeInit_t data = { m_dataTree.Dump() };
+    printf( "config data: %s\n", data.config.c_str() );
 
     m_poolSize = Get( config, "pool_size", 4 );
     if ( 0 == m_poolSize )
@@ -309,6 +343,7 @@ QCStatus_e SampleCL2DFlex::ParseConfig( SampleConfig_t &config )
 
 QCStatus_e SampleCL2DFlex::Init( std::string name, SampleConfig_t &config )
 {
+    QCNodeInit_t nodeCfg;
     QCStatus_e ret = QC_STATUS_OK;
 
     ret = SampleIF::Init( name );
@@ -317,27 +352,26 @@ QCStatus_e SampleCL2DFlex::Init( std::string name, SampleConfig_t &config )
         TRACE_ON( GPU );
         ret = ParseConfig( config );
     }
-
     if ( QC_STATUS_OK == ret )
     {
         QCImageProps_t imgProp;
-        if ( m_executeWithROIs == true )
+        if ( m_bExecuteWithROIs == true )
         {
             imgProp.batchSize = m_roiNumber;
         }
         else
         {
-            imgProp.batchSize = m_config.numOfInputs;
+            imgProp.batchSize = m_numOfInputs;
         }
-        imgProp.width = m_config.outputWidth;
-        imgProp.height = m_config.outputHeight;
-        if ( ( QC_IMAGE_FORMAT_RGB888 == m_config.outputFormat ) ||
-             ( QC_IMAGE_FORMAT_BGR888 == m_config.outputFormat ) )
+        imgProp.width = m_outputWidth;
+        imgProp.height = m_outputHeight;
+        if ( ( QC_IMAGE_FORMAT_RGB888 == m_outputFormat ) ||
+             ( QC_IMAGE_FORMAT_BGR888 == m_outputFormat ) )
         {
             imgProp.numPlanes = 1;
-            imgProp.format = m_config.outputFormat;
-            imgProp.stride[0] = m_config.outputWidth * 3;
-            imgProp.actualHeight[0] = m_config.outputHeight;
+            imgProp.format = m_outputFormat;
+            imgProp.stride[0] = m_outputWidth * 3;
+            imgProp.actualHeight[0] = m_outputHeight;
             imgProp.planeBufSize[0] = 0;
             ret = m_imagePool.Init( name, LOGGER_LEVEL_INFO, m_poolSize, imgProp,
                                     QC_BUFFER_USAGE_GPU, m_bufferFlags );
@@ -346,46 +380,46 @@ QCStatus_e SampleCL2DFlex::Init( std::string name, SampleConfig_t &config )
         {
             if ( true == m_bNoPadding )
             {
-                if ( ( QC_IMAGE_FORMAT_NV12 == m_config.outputFormat ) ||
-                     ( QC_IMAGE_FORMAT_P010 == m_config.outputFormat ) )
+                if ( ( QC_IMAGE_FORMAT_NV12 == m_outputFormat ) ||
+                     ( QC_IMAGE_FORMAT_P010 == m_outputFormat ) )
                 {
                     uint32_t bpp = 1;
-                    if ( QC_IMAGE_FORMAT_P010 == m_config.outputFormat )
+                    if ( QC_IMAGE_FORMAT_P010 == m_outputFormat )
                     {
                         bpp = 2;
                     }
                     imgProp.numPlanes = 2;
-                    imgProp.format = m_config.outputFormat;
-                    imgProp.stride[0] = m_config.outputWidth * bpp;
-                    imgProp.actualHeight[0] = m_config.outputHeight;
+                    imgProp.format = m_outputFormat;
+                    imgProp.stride[0] = m_outputWidth * bpp;
+                    imgProp.actualHeight[0] = m_outputHeight;
                     imgProp.planeBufSize[0] = 0;
-                    imgProp.stride[1] = m_config.outputWidth * bpp;
-                    imgProp.actualHeight[1] = m_config.outputHeight / 2;
+                    imgProp.stride[1] = m_outputWidth * bpp;
+                    imgProp.actualHeight[1] = m_outputHeight / 2;
                     imgProp.planeBufSize[1] = 0;
                     ret = m_imagePool.Init( name, LOGGER_LEVEL_INFO, m_poolSize, imgProp,
                                             QC_BUFFER_USAGE_GPU, m_bufferFlags );
                 }
-                else if ( QC_IMAGE_FORMAT_UYVY == m_config.outputFormat )
+                else if ( QC_IMAGE_FORMAT_UYVY == m_outputFormat )
                 {
                     imgProp.numPlanes = 1;
-                    imgProp.format = m_config.outputFormat;
-                    imgProp.stride[0] = m_config.outputWidth * 2;
-                    imgProp.actualHeight[0] = m_config.outputHeight;
+                    imgProp.format = m_outputFormat;
+                    imgProp.stride[0] = m_outputWidth * 2;
+                    imgProp.actualHeight[0] = m_outputHeight;
                     imgProp.planeBufSize[0] = 0;
                     ret = m_imagePool.Init( name, LOGGER_LEVEL_INFO, m_poolSize, imgProp,
                                             QC_BUFFER_USAGE_GPU, m_bufferFlags );
                 }
                 else
                 {
-                    QC_ERROR( "no padding for format %d is not supported", m_config.outputFormat );
+                    QC_ERROR( "no padding for format %d is not supported", m_outputFormat );
                     ret = QC_STATUS_FAIL;
                 }
             }
             else
             {
                 ret = m_imagePool.Init( name, LOGGER_LEVEL_INFO, m_poolSize, imgProp.batchSize,
-                                        m_config.outputWidth, m_config.outputHeight,
-                                        m_config.outputFormat, QC_BUFFER_USAGE_GPU, m_bufferFlags );
+                                        m_outputWidth, m_outputHeight, m_outputFormat,
+                                        QC_BUFFER_USAGE_GPU, m_bufferFlags );
             }
         }
     }
@@ -393,7 +427,30 @@ QCStatus_e SampleCL2DFlex::Init( std::string name, SampleConfig_t &config )
     if ( QC_STATUS_OK == ret )
     {
         TRACE_BEGIN( SYSTRACE_TASK_INIT );
-        ret = m_CL2DFlex.Init( name.c_str(), &m_config );
+        nodeCfg.config = m_dataTree.Dump();
+        for ( uint32_t i = 0; i < m_numOfInputs; i++ )
+        {
+            if ( true == m_bEnableUndistortion )
+            {
+                if ( nullptr != m_mapXBufferDesc[i].buffer.data() )
+                {
+                    nodeCfg.buffers.push_back( std::ref( m_mapXBufferDesc[i] ) );
+                }
+                else
+                {
+                    printf( "m_mapXBufferDesc[%d] is nullptr\n", i );
+                }
+                if ( nullptr != m_mapYBufferDesc[i].buffer.data() )
+                {
+                    nodeCfg.buffers.push_back( std::ref( m_mapYBufferDesc[i] ) );
+                }
+                else
+                {
+                    printf( "m_mapYBufferDesc[%d] is nullptr\n", i );
+                }
+            }
+        }
+        ret = m_cl2d.Initialize( nodeCfg );
         TRACE_END( SYSTRACE_TASK_INIT );
     }
 
@@ -415,7 +472,7 @@ QCStatus_e SampleCL2DFlex::Start()
     QCStatus_e ret = QC_STATUS_OK;
 
     TRACE_BEGIN( SYSTRACE_TASK_START );
-    ret = m_CL2DFlex.Start();
+    ret = m_cl2d.Start();
     TRACE_END( SYSTRACE_TASK_START );
     if ( QC_STATUS_OK == ret )
     {
@@ -429,6 +486,7 @@ QCStatus_e SampleCL2DFlex::Start()
 void SampleCL2DFlex::ThreadMain()
 {
     QCStatus_e ret;
+    QCSharedFrameDescriptorNode frameDesc( m_numOfInputs + 1 );
     while ( false == m_stop )
     {
         DataFrames_t frames;
@@ -437,8 +495,8 @@ void SampleCL2DFlex::ThreadMain()
         {
             QC_DEBUG( "receive frameId %" PRIu64 ", timestamp %" PRIu64 "\n", frames.FrameId( 0 ),
                       frames.Timestamp( 0 ) );
-            std::shared_ptr<SharedBuffer_t> buffer = m_imagePool.Get();
-            if ( nullptr != buffer )
+            std::shared_ptr<SharedBuffer_t> bufferOutput = m_imagePool.Get();
+            if ( nullptr != bufferOutput )
             {
                 std::vector<QCSharedBuffer_t> inputs;
                 for ( auto &frame : frames.frames )
@@ -448,22 +506,49 @@ void SampleCL2DFlex::ThreadMain()
 
                 PROFILER_BEGIN();
                 TRACE_BEGIN( frames.FrameId( 0 ) );
-                if ( m_executeWithROIs == true )
+
+                std::vector<QCSharedBufferDescriptor_t> bufferDescs;
+                bufferDescs.resize( inputs.size() + 1 );
+                frameDesc.Clear();
+                uint32_t globalIdx = 0;
+
+                if ( QC_STATUS_OK == ret )
                 {
-                    ret = m_CL2DFlex.ExecuteWithROI( inputs.data(), &buffer->sharedBuffer, m_ROIs,
-                                                     m_roiNumber );
+                    for ( auto &buffer : inputs )
+                    {
+                        bufferDescs[globalIdx].buffer = buffer;
+                        ret = frameDesc.SetBuffer( globalIdx, bufferDescs[globalIdx] );
+                        if ( QC_STATUS_OK != ret )
+                        {
+                            break;
+                        }
+                        globalIdx++;
+                    }
                 }
-                else
+
+                if ( QC_STATUS_OK == ret )
                 {
-                    ret = m_CL2DFlex.Execute( inputs.data(), inputs.size(), &buffer->sharedBuffer );
+                    bufferDescs[globalIdx].buffer = bufferOutput->sharedBuffer;
+                    ret = frameDesc.SetBuffer( globalIdx, bufferDescs[globalIdx] );
+                    if ( QC_STATUS_OK != ret )
+                    {
+                        break;
+                    }
+                    globalIdx++;
                 }
+
+                if ( QC_STATUS_OK == ret )
+                {
+                    ret = m_cl2d.ProcessFrameDescriptor( frameDesc );
+                }
+
                 if ( QC_STATUS_OK == ret )
                 {
                     PROFILER_END();
                     TRACE_END( frames.FrameId( 0 ) );
                     DataFrames_t outFrames;
                     DataFrame_t frame;
-                    frame.buffer = buffer;
+                    frame.buffer = bufferOutput;
                     frame.frameId = frames.FrameId( 0 );
                     frame.timestamp = frames.Timestamp( 0 );
                     outFrames.Add( frame );
@@ -490,7 +575,7 @@ QCStatus_e SampleCL2DFlex::Stop()
     }
 
     TRACE_BEGIN( SYSTRACE_TASK_STOP );
-    ret = m_CL2DFlex.Stop();
+    ret = m_cl2d.Stop();
     TRACE_END( SYSTRACE_TASK_STOP );
     PROFILER_SHOW();
 
@@ -502,7 +587,7 @@ QCStatus_e SampleCL2DFlex::Deinit()
     QCStatus_e ret = QC_STATUS_OK;
 
     TRACE_BEGIN( SYSTRACE_TASK_DEINIT );
-    ret = m_CL2DFlex.Deinit();
+    ret = m_cl2d.DeInitialize();
     TRACE_END( SYSTRACE_TASK_DEINIT );
 
     return ret;

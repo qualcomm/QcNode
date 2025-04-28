@@ -6,15 +6,15 @@
 #ifndef QC_SAMPLE_CL2DFLEX_HPP
 #define QC_SAMPLE_CL2DFLEX_HPP
 
-#include "QC/component/CL2DFlex.hpp"
+#include "QC/node/CL2DFlex.hpp"
 #include "QC/sample/SampleIF.hpp"
-
-using namespace QC::component;
 
 namespace QC
 {
 namespace sample
 {
+
+using namespace QC::node;
 
 /// @brief qcnode::sample::SampleCL2DFlex
 ///
@@ -51,7 +51,6 @@ private:
     void ThreadMain();
 
 private:
-    CL2DFlex_Config_t m_config;
     uint32_t m_poolSize = 4;
     QCBufferFlags_t m_bufferFlags = QC_BUFFER_FLAGS_CACHE_WB_WA;
     bool m_bNoPadding = false;
@@ -66,13 +65,19 @@ private:
     DataSubscriber<DataFrames_t> m_sub;
     DataPublisher<DataFrames_t> m_pub;
 
-    CL2DFlex m_CL2DFlex;
-    bool m_executeWithROIs = false;
+    uint32_t m_numOfInputs;
+    uint32_t m_outputWidth;
+    uint32_t m_outputHeight;
+    QCImageFormat_e m_outputFormat;
+    DataTree m_dataTree;
+    QC::node::CL2DFlex m_cl2d;
+    bool m_bEnableUndistortion = false;
+    bool m_bExecuteWithROIs = false;
     uint32_t m_roiNumber = 1;
     CL2DFlex_ROIConfig_t m_ROIs[QC_MAX_INPUTS];
 
-    QCSharedBuffer_t m_mapXBuffer[QC_MAX_INPUTS];
-    QCSharedBuffer_t m_mapYBuffer[QC_MAX_INPUTS];
+    QCSharedBufferDescriptor_t m_mapXBufferDesc[QC_MAX_INPUTS];
+    QCSharedBufferDescriptor_t m_mapYBufferDesc[QC_MAX_INPUTS];
 };   // class SampleCL2DFlex
 
 }   // namespace sample
