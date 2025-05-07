@@ -20,6 +20,7 @@ set( TARGET_LIBRARIES
     QCNodeNodeBase
     QCNodeNodeCL2DFlex
     QCNodeNodeCamera
+    QCNodeNodeVideoEncoder
 )
 
 if ( ENABLE_C2D )
