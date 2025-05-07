@@ -3,30 +3,30 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#ifndef _QC_SAMPLE_VIDEO_ENCODER_HPP_
-#define _QC_SAMPLE_VIDEO_ENCODER_HPP_
+#ifndef QC_SAMPLE_NODE_VIDEO_ENCODER_HPP
+#define QC_SAMPLE_NODE_VIDEO_ENCODER_HPP
 
-#include "QC/component/VideoEncoder.hpp"
+#include "QC/node/VideoEncoder.hpp"
 #include "QC/sample/SampleIF.hpp"
 #include <map>
 #include <mutex>
-
-using namespace QC;
-using namespace QC::component;
 
 namespace QC
 {
 namespace sample
 {
 
+using namespace QC;
+using namespace QC::node;
+
 /// @brief qcnode::sample::SampleVideoEncoder
 ///
-/// SampleVideoEncoder that to demonstate how to use the QC component VideoEncoder
+/// SampleVideoEncoder that to demonstrate how to use the QC component VideoEncoder
 class SampleVideoEncoder : public SampleIF
 {
 public:
-    SampleVideoEncoder();
-    ~SampleVideoEncoder();
+    SampleVideoEncoder() = default;
+    virtual ~SampleVideoEncoder() = default;
 
     /// @brief Initialize the VideoEncoder
     /// @param name the sample unique instance name
@@ -51,17 +51,6 @@ private:
     void ThreadMain();
     void ThreadReleaseMain();
 
-private:
-    void InFrameCallback( const VideoEncoder_InputFrame_t *pInputFrame );
-    void OutFrameCallback( const VideoEncoder_OutputFrame_t *pOutputFrame );
-    void EventCallback( const VideoEncoder_EventType_e eventId, const void *pPayload );
-
-    static void InFrameCallback( const VideoEncoder_InputFrame_t *pInputFrame, void *pPrivData );
-    static void OutFrameCallback( const VideoEncoder_OutputFrame_t *pOutputFrame, void *pPrivData );
-    static void EventCallback( const VideoEncoder_EventType_e eventId, const void *pPayload,
-                               void *pPrivData );
-
-private:
     struct FrameInfo
     {
         uint64_t frameId;
@@ -69,27 +58,36 @@ private:
     };
 
 private:
-    VideoEncoder m_encoder;
-    VideoEncoder_Config_t m_config;
-
-    std::string m_inputTopicName;
-    std::string m_outputTopicName;
+    QC::node::VideoEncoder m_encoder;
+    DataTree m_config;
+    DataTree m_dataTree;
 
     std::thread m_thread;
     std::thread m_threadRelease;
-    bool m_stop;
+    bool m_stop = false;
 
     DataSubscriber<DataFrames_t> m_sub;
     DataPublisher<DataFrames_t> m_pub;
+
+    std::string m_inputTopicName;
+    std::string m_outputTopicName;
 
     std::mutex m_lock;
     std::map<uint64_t, DataFrame_t> m_camFrameMap;
     std::queue<FrameInfo> m_frameInfoQueue;
     std::queue<uint64_t> m_frameReleaseQueue;
     std::condition_variable m_condVar;
+
+    void OnDoneCb( const QCNodeEventInfo_t &eventInfo );
+
+    void InFrameCallback( QCSharedVideoFrameDescriptor_t &inFrame,
+                          const QCNodeEventInfo_t &eventInfo );
+    void OutFrameCallback( QCSharedVideoFrameDescriptor_t &outFrame,
+                           const QCNodeEventInfo_t &eventInfo );
+
 };   // class SampleVideoEncoder
 
 }   // namespace sample
 }   // namespace QC
 
-#endif   // _QC_SAMPLE_VIDEO_ENCODER_HPP_
+#endif   // QC_SAMPLE_NODE_VIDEO_ENCODER_HPP
