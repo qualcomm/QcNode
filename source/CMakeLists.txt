@@ -19,6 +19,7 @@ set( TARGET_LIBRARIES
     QCNodeGL2DFlex
     QCNodeNodeBase
     QCNodeNodeCL2DFlex
+    QCNodeNodeCamera
 )
 
 if ( ENABLE_C2D )
