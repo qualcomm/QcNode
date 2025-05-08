@@ -3,23 +3,28 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#ifndef _QC_SAMPLE_CAMERA_HPP_
-#define _QC_SAMPLE_CAMERA_HPP_
+#ifndef QC_SAMPLE_CAMERA_HPP
+#define QC_SAMPLE_CAMERA_HPP
 
-#include "QC/component/Camera.hpp"
+#include "QC/node/Camera.hpp"
 #include "QC/sample/SampleIF.hpp"
 
-using namespace QC;
-using namespace QC::component;
+#include <condition_variable>
+#include <mutex>
+#include <queue>
+#include <string>
+
 
 namespace QC
 {
 namespace sample
 {
 
+using namespace QC::node;
+
 /// @brief qcnode::sample::SampleCamera
 ///
-/// SampleCamera that to demonstate how to use the QC component Camera
+/// SampleCamera that to demonstate how to use the QCNodeCamera
 class SampleCamera : public SampleIF
 {
 public:
@@ -45,37 +50,34 @@ public:
     QCStatus_e Deinit();
 
 private:
-    void FrameCallBack( CameraFrame_t *pFrame );
-    void EventCallBack( const uint32_t eventId, const void *pPayload );
-    static void FrameCallBack( CameraFrame_t *pFrame, void *pPrivData );
-    static void EventCallBack( const uint32_t eventId, const void *pPayload, void *pPrivData );
-
+    QCStatus_e ParseConfig( SampleConfig_t &config );
+    void ProcessFrame( QCSharedCameraFrameDescriptor_t *pFrameDesc );
     void ThreadMain();
-    void ProcessFrame( CameraFrame_t *pFrame );
+
+    void ProcessDoneCb( const QCNodeEventInfo_t &eventInfo );
 
 private:
-    Camera m_camera;
-    Camera_Config_t m_camConfig = { 0 };
+    QC::node::Camera m_camera;
+    DataTree m_config;
+    DataTree m_dataTree;
 
     std::map<uint32_t, std::string> m_topicNameMap;
-
     std::map<uint32_t, std::shared_ptr<DataPublisher<DataFrames_t>>> m_pubMap;
     uint64_t m_frameId[MAX_CAMERA_STREAM] = { 0 };
 
     bool m_bImmediateRelease = false;
-
-    /* if true, ignore any camera Init or Start error */
     bool m_bIgnoreError = false;
 
     bool m_stop;
-    std::mutex m_lock;
+    std::mutex m_mutex;
     std::thread m_thread;
     std::condition_variable m_condVar;
-    std::queue<CameraFrame_t> m_camFrameQueue;
+    std::queue<QCSharedCameraFrameDescriptor_t> m_camFrameQueue;
 
 };   // class SampleCamera
 
 }   // namespace sample
 }   // namespace QC
 
-#endif   // _QC_SAMPLE_CAMERA_HPP_
+#endif   // QC_SAMPLE_CAMERA_HPP
+
