@@ -3,30 +3,30 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#ifndef _QC_SAMPLE_VIDEO_DECODER_HPP_
-#define _QC_SAMPLE_VIDEO_DECODER_HPP_
+#ifndef _QC_SAMPLE_NODE_VIDEO_DECODER_HPP_
+#define _QC_SAMPLE_NODE_VIDEO_DECODER_HPP_
 
-#include "QC/component/VideoDecoder.hpp"
+#include "QC/node/VideoDecoder.hpp"
 #include "QC/sample/SampleIF.hpp"
 #include <map>
 #include <mutex>
-
-using namespace QC;
-using namespace QC::component;
 
 namespace QC
 {
 namespace sample
 {
 
+using namespace QC;
+using namespace QC::node;
+
 /// @brief qcnode::sample::SampleVideoDecoder
 ///
-/// SampleVideoDecoder that to demonstate how to use the QC component VideoDecoder
+/// SampleVideoDecoder that to demonstrate how to use the QC component VideoDecoder
 class SampleVideoDecoder : public SampleIF
 {
 public:
-    SampleVideoDecoder();
-    ~SampleVideoDecoder();
+    SampleVideoDecoder() = default;
+    virtual ~SampleVideoDecoder() = default;
 
     /// @brief Initialize the VideoDecoder
     /// @param name the sample unique instance name
@@ -49,18 +49,8 @@ public:
 private:
     QCStatus_e ParseConfig( SampleConfig_t &config );
     void ThreadMain();
+    void ThreadReleaseMain();
 
-private:
-    void InFrameCallback( const VideoDecoder_InputFrame_t *pInputFrame );
-    void OutFrameCallback( const VideoDecoder_OutputFrame_t *pOutputFrame );
-    void EventCallback( const VideoCodec_EventType_e eventId, const void *pPayload );
-
-    static void InFrameCallback( const VideoDecoder_InputFrame_t *pInputFrame, void *pPrivData );
-    static void OutFrameCallback( const VideoDecoder_OutputFrame_t *pOutputFrame, void *pPrivData );
-    static void EventCallback( const VideoCodec_EventType_e eventId, const void *pPayload,
-                               void *pPrivData );
-
-private:
     struct FrameInfo
     {
         uint64_t frameId;
@@ -68,24 +58,39 @@ private:
     };
 
 private:
-    VideoDecoder m_decoder;
-    VideoDecoder_Config_t m_config;
+    QC::node::VideoDecoder m_encoder;
+    QC::node::VideoDecoder_Config_t m_config;
 
-    std::string m_inputTopicName;
-    std::string m_outputTopicName;
+    std::vector<TensorInfo_t> m_inputsInfo;
+    std::vector<TensorInfo_t> m_ouputsInfo;
 
     std::thread m_thread;
-    bool m_stop;
+    std::thread m_threadRelease;
+    bool m_stop = false;
 
     DataSubscriber<DataFrames_t> m_sub;
     DataPublisher<DataFrames_t> m_pub;
 
+    std::string m_inputTopicName;
+    std::string m_outputTopicName;
+    std::string m_modelInOutInfoTopicName;
+
     std::mutex m_lock;
-    std::map<uint64_t, DataFrame_t> m_inFrameMap;
+    std::map<uint64_t, DataFrame_t> m_camFrameMap;
     std::queue<FrameInfo> m_frameInfoQueue;
+    std::queue<uint64_t> m_frameReleaseQueue;
+    std::condition_variable m_condVar;
+
+    void OnDoneCb( const QCNodeEventInfo_t &eventInfo );
+
+    void InFrameCallback( QCSharedVideoFrameDescriptor_t &inFrame,
+                          const QCNodeEventInfo_t &eventInfo );
+    void OutFrameCallback( QCSharedVideoFrameDescriptor_t &outFrame,
+                           const QCNodeEventInfo_t &eventInfo );
+
 };   // class SampleVideoDecoder
 
 }   // namespace sample
 }   // namespace QC
 
-#endif   // _QC_SAMPLE_VIDEO_DECODER_HPP_
+#endif   // _QC_SAMPLE_NODE_VIDEO_DECODER_HPP_
