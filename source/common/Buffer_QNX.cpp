@@ -2,7 +2,7 @@
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
-
+#if defined( __QNXNTO__ )
 #include "QC/infras/memory/BufferManager.hpp"
 #include "QC/infras/memory/SharedBuffer.hpp"
 #include <pmem.h>
@@ -186,3 +186,5 @@ QCStatus_e QCDmaUnImport( void *pData, uint64_t dmaHandle, size_t size )
     return ret;
 }
 }   // namespace QC
+
+#endif /*  __QNXNTO__ */

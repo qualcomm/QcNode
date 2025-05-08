@@ -2,7 +2,7 @@
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
-
+#if defined( __QNXNTO__ )
 #include "QC/infras/logger/Logger.hpp"
 #include <map>
 #include <mutex>
@@ -109,3 +109,5 @@ void Logger::DefaultDestory( Logger_Handle_t hHandle ) {}
 
 
 }   // namespace QC
+
+#endif /*  __QNXNTO__ */
