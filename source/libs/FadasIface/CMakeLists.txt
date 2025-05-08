@@ -1,5 +1,3 @@
-# FastADAS interface is supported only on aarch64 QNX targets
-
 list( APPEND HEADERS_DIR ${PROJECT_SOURCE_DIR}/include )
 list( APPEND HEADERS_DIR ${PROJECT_SOURCE_DIR}/source/libs/FadasIface )
 if( "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" )
