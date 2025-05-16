@@ -4,6 +4,7 @@ add_subdirectory(QNN)
 add_subdirectory(CL2DFlex)
 add_subdirectory(Camera)
 add_subdirectory(VideoEncoder)
+add_subdirectory(PointPillar)
 
 set( GTEST_QCNODE_SOURCES ${GTEST_QCNODE_SOURCES} PARENT_SCOPE )
 set( GTEST_QCNODE_INCLUDES ${GTEST_QCNODE_INCLUDES} PARENT_SCOPE )
