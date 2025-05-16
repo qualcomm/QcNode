@@ -2,9 +2,7 @@
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
-
 #include "QC/sample/SamplePlrPre.hpp"
-
 
 namespace QC
 {
@@ -18,41 +16,25 @@ QCStatus_e SamplePlrPre::ParseConfig( SampleConfig_t &config )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
-    m_config.processor = Get( config, "processor", QC_PROCESSOR_HTP0 );
-    if ( QC_PROCESSOR_MAX == m_config.processor )
-    {
-        QC_ERROR( "invalid processor %s\n", Get( config, "processor", "" ).c_str() );
-        ret = QC_STATUS_BAD_ARGUMENTS;
-    }
-
-    m_config.pillarXSize = Get( config, "pillar_size_x", 0.16f );
-    m_config.pillarYSize = Get( config, "pillar_size_y", 0.16f );
-    m_config.pillarZSize = Get( config, "pillar_size_z", 4.0f );
-    m_config.minXRange = Get( config, "min_x", 0.0f );
-    m_config.minYRange = Get( config, "min_y", -39.68f );
-    m_config.minZRange = Get( config, "min_z", -3.0f );
-    m_config.maxXRange = Get( config, "max_x", 69.12f );
-    m_config.maxYRange = Get( config, "max_y", 39.68f );
-    m_config.maxZRange = Get( config, "max_z", 1.0f );
-    m_config.maxNumInPts = Get( config, "max_points", 300000 );
-    m_config.numInFeatureDim = Get( config, "in_feature_dim", 4 );
-    m_config.maxNumPlrs = Get( config, "max_pillars", 12000 );
-    m_config.maxNumPtsPerPlr = Get( config, "max_points_per_pillar", 32 );
-    m_config.numOutFeatureDim = Get( config, "out_feature_dim", 10 );
-    std::string inputMode = Get( config, "input_mode", "xyzr" );
-    if ( "xyzr" == inputMode )
-    {
-        m_config.inputMode = VOXELIZATION_INPUT_XYZR;
-    }
-    else if ( "xyzrt" == inputMode )
-    {
-        m_config.inputMode = VOXELIZATION_INPUT_XYZRT;
-    }
-    else
-    {
-        QC_ERROR( "invalid input_mode\n" );
-        ret = QC_STATUS_BAD_ARGUMENTS;
-    }
+    m_config.Set<std::string>( "name", m_name );
+    m_config.Set<uint32_t>( "id", 0 );
+    m_config.Set<std::string>( "processorType", Get( config, "processor", "cpu" ) );
+    m_config.Set<float>( "Xsize", Get( config, "pillar_size_x", 0.16f ) );
+    m_config.Set<float>( "Ysize", Get( config, "pillar_size_y", 0.16f ) );
+    m_config.Set<float>( "Zsize", Get( config, "pillar_size_z", 4.0f ) );
+    m_config.Set<float>( "Xmin", Get( config, "min_x", 0.0f ) );
+    m_config.Set<float>( "Ymin", Get( config, "min_y", -39.68f ) );
+    m_config.Set<float>( "Zmin", Get( config, "min_z", -3.0f ) );
+    m_config.Set<float>( "Xmax", Get( config, "max_x", 69.12f ) );
+    m_config.Set<float>( "Ymax", Get( config, "max_y", 39.68f ) );
+    m_config.Set<float>( "Zmax", Get( config, "max_z", 1.0f ) );
+    m_config.Set<uint32_t>( "maxPointNum", Get( config, "max_points", 300000 ) );
+    m_config.Set<uint32_t>( "maxPlrNum", Get( config, "max_pillars", 12000 ) );
+    m_config.Set<uint32_t>( "maxPointNumPerPlr", Get( config, "max_points_per_pillar", 32 ) );
+    m_config.Set<std::string>( "inputMode", Get( config, "input_mode", "xyzr" ) );
+    m_config.Set<uint32_t>( "outputFeatureDimNum", Get( config, "out_feature_dim", 10 ) );
+    m_config.Set<bool>( "deRegisterAllBuffersWhenStop",
+                        Get( config, "deRegisterAllBuffersWhenStop", false ) );
 
     m_poolSize = Get( config, "pool_size", 4 );
     if ( 0 == m_poolSize )
@@ -60,6 +42,8 @@ QCStatus_e SamplePlrPre::ParseConfig( SampleConfig_t &config )
         QC_ERROR( "invalid pool_size = %d\n", m_poolSize );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
+
+    m_dataTree.Set( "static", m_config );
 
     m_inputTopicName = Get( config, "input_topic", "" );
     if ( "" == m_inputTopicName )
@@ -75,14 +59,21 @@ QCStatus_e SamplePlrPre::ParseConfig( SampleConfig_t &config )
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
+    m_processor = m_config.GetProcessorType( "processorType", QC_PROCESSOR_HTP0 );
+    m_rsmPriority = Get( config, "rsm_priority", 0 );
+
     return ret;
 }
 
 QCStatus_e SamplePlrPre::Init( std::string name, SampleConfig_t &config )
 {
-    QCStatus_e ret = QC_STATUS_OK;
+    QCStatus_e ret = SampleIF::Init( name );
 
-    ret = SampleIF::Init( name );
+    uint32_t maxPlrNum;
+    uint32_t maxPointNumPerPlr;
+    uint32_t outputFeatureDimNum;
+    std::string inputMode;
+
     if ( QC_STATUS_OK == ret )
     {
         ret = ParseConfig( config );
@@ -90,29 +81,54 @@ QCStatus_e SamplePlrPre::Init( std::string name, SampleConfig_t &config )
 
     if ( QC_STATUS_OK == ret )
     {
-        QCTensorProps_t outPlrsTsProp;
-        if ( VOXELIZATION_INPUT_XYZR == m_config.inputMode )
+        maxPlrNum = m_config.Get<uint32_t>( "maxPlrNum", 0 );
+        if ( 0 == maxPlrNum )
         {
-            outPlrsTsProp = {
-                    QC_TENSOR_TYPE_FLOAT_32,
-                    { m_config.maxNumPlrs, VOXELIZATION_PILLAR_COORDS_DIM, 0 },
-                    2,
-            };
-        }
-        else if ( VOXELIZATION_INPUT_XYZRT == m_config.inputMode )
-        {
-            outPlrsTsProp = {
-                    QC_TENSOR_TYPE_INT_32,
-                    { m_config.maxNumPlrs, 2, 0 },
-                    2,
-            };
-        }
-        else
-        {
-            QC_ERROR( "invalid input_mode\n" );
+            QC_ERROR( "invalid maxPlrNum" );
             ret = QC_STATUS_BAD_ARGUMENTS;
         }
 
+        maxPointNumPerPlr = m_config.Get<uint32_t>( "maxPointNumPerPlr", 0 );
+        if ( 0 == maxPointNumPerPlr )
+        {
+            QC_ERROR( "invalid maxPointNumPerPlr" );
+            ret = QC_STATUS_BAD_ARGUMENTS;
+        }
+
+        outputFeatureDimNum = m_config.Get<uint32_t>( "outputFeatureDimNum", 0 );
+        if ( 0 == outputFeatureDimNum )
+        {
+            QC_ERROR( "invalid outputFeatureDimNum" );
+            ret = QC_STATUS_BAD_ARGUMENTS;
+        }
+
+        inputMode = m_config.Get<std::string>( "inputMode", "" );
+        if ( ( "xyzr" != inputMode ) && ( "xyzrt" != inputMode ) )
+        {
+            QC_ERROR( "invalid inputMode" );
+            ret = QC_STATUS_BAD_ARGUMENTS;
+        }
+    }
+
+    if ( QC_STATUS_OK == ret )
+    {
+        QCTensorProps_t outPlrsTsProp;
+        if ( inputMode == "xyzr" )
+        {
+            outPlrsTsProp = {
+                    QC_TENSOR_TYPE_FLOAT_32,
+                    { maxPlrNum, VOXELIZATION_PILLAR_COORDS_DIM, 0 },
+                    2,
+            };
+        }
+        else if ( inputMode == "xyzrt" )
+        {
+            outPlrsTsProp = {
+                    QC_TENSOR_TYPE_INT_32,
+                    { maxPlrNum, 2, 0 },
+                    2,
+            };
+        }
         ret = m_coordsPool.Init( name + ".coords", LOGGER_LEVEL_INFO, m_poolSize, outPlrsTsProp,
                                  QC_BUFFER_USAGE_HTP );
     }
@@ -121,23 +137,25 @@ QCStatus_e SamplePlrPre::Init( std::string name, SampleConfig_t &config )
     {
         QCTensorProps_t outFeatureTsProp = {
                 QC_TENSOR_TYPE_FLOAT_32,
-                { m_config.maxNumPlrs, m_config.maxNumPtsPerPlr, m_config.numOutFeatureDim, 0 },
+                { maxPlrNum, maxPointNumPerPlr, outputFeatureDimNum, 0 },
                 3,
         };
-
         ret = m_featuresPool.Init( name + ".features", LOGGER_LEVEL_INFO, m_poolSize,
                                    outFeatureTsProp, QC_BUFFER_USAGE_HTP );
     }
 
     if ( QC_STATUS_OK == ret )
     {
-        ret = SampleIF::Init( m_config.processor );
+        ret = SampleIF::Init( m_processor, m_rsmPriority );
     }
 
     if ( QC_STATUS_OK == ret )
     {
+        QCNodeInit_t nodeConfig = { .config = m_dataTree.Dump() };
+        std::cout << "config: " << nodeConfig.config << std::endl;
+
         TRACE_BEGIN( SYSTRACE_TASK_INIT );
-        ret = m_plrPre.Init( name.c_str(), &m_config );
+        ret = m_voxel.Initialize( nodeConfig );
         TRACE_END( SYSTRACE_TASK_INIT );
     }
 
@@ -159,8 +177,9 @@ QCStatus_e SamplePlrPre::Start()
     QCStatus_e ret = QC_STATUS_OK;
 
     TRACE_BEGIN( SYSTRACE_TASK_START );
-    ret = m_plrPre.Start();
+    ret = m_voxel.Start();
     TRACE_END( SYSTRACE_TASK_START );
+
     if ( QC_STATUS_OK == ret )
     {
         m_stop = false;
@@ -172,7 +191,12 @@ QCStatus_e SamplePlrPre::Start()
 
 void SamplePlrPre::ThreadMain()
 {
-    QCStatus_e ret;
+    QCStatus_e ret = QC_STATUS_OK;
+    QCSharedFrameDescriptorNode frameDesc( 3 );
+    QCSharedBufferDescriptor_t inputBuffer;
+    QCSharedBufferDescriptor_t outputPlrBuffer;
+    QCSharedBufferDescriptor_t outputFeatureBuffer;
+
     while ( false == m_stop )
     {
         DataFrames_t frames;
@@ -185,36 +209,53 @@ void SamplePlrPre::ThreadMain()
             std::shared_ptr<SharedBuffer_t> features = m_featuresPool.Get();
             if ( ( nullptr != coords ) && ( nullptr != features ) )
             {
-                QCSharedBuffer_t &inPts = frames.SharedBuffer( 0 );
+                inputBuffer.buffer = frames.SharedBuffer( 0 );
+                outputPlrBuffer.buffer = coords->sharedBuffer;
+                outputFeatureBuffer.buffer = features->sharedBuffer;
 
-                ret = SampleIF::Lock();
+                ret = frameDesc.SetBuffer( 0, inputBuffer );
+
+                if ( QC_STATUS_OK == ret )
+                {
+                    ret = frameDesc.SetBuffer( 1, outputPlrBuffer );
+                }
+
+                if ( QC_STATUS_OK == ret )
+                {
+                    ret = frameDesc.SetBuffer( 2, outputFeatureBuffer );
+                }
+
+                if ( QC_STATUS_OK == ret )
+                {
+                    ret = SampleIF::Lock();
+                }
+
                 if ( QC_STATUS_OK == ret )
                 {
                     PROFILER_BEGIN();
                     TRACE_BEGIN( frames.FrameId( 0 ) );
-                    ret = m_plrPre.Execute( &inPts, &coords->sharedBuffer,
-                                            &features->sharedBuffer );
-                    if ( QC_STATUS_OK == ret )
-                    {
-                        PROFILER_END();
-                        TRACE_END( frames.FrameId( 0 ) );
-                        DataFrames_t outFrames;
-                        DataFrame_t frame;
-                        frame.buffer = coords;
-                        frame.frameId = frames.FrameId( 0 );
-                        frame.timestamp = frames.Timestamp( 0 );
-                        outFrames.Add( frame );
-                        frame.buffer = features;
-                        outFrames.Add( frame );
-                        m_pub.Publish( outFrames );
-                    }
-                    else
-                    {
-                        QC_ERROR( "Pillarize failed for %" PRIu64 " : %d", frames.FrameId( 0 ),
-                                  ret );
-                    }
-                    (void) SampleIF::Unlock();
+                    ret = m_voxel.ProcessFrameDescriptor( frameDesc );
                 }
+
+                if ( QC_STATUS_OK == ret )
+                {
+                    PROFILER_END();
+                    TRACE_END( frames.FrameId( 0 ) );
+                    DataFrames_t outFrames;
+                    DataFrame_t frame;
+                    frame.buffer = coords;
+                    frame.frameId = frames.FrameId( 0 );
+                    frame.timestamp = frames.Timestamp( 0 );
+                    outFrames.Add( frame );
+                    frame.buffer = features;
+                    outFrames.Add( frame );
+                    m_pub.Publish( outFrames );
+                }
+                else
+                {
+                    QC_ERROR( "Pillarize failed for %" PRIu64 " : %d", frames.FrameId( 0 ), ret );
+                }
+                (void) SampleIF::Unlock();
             }
         }
     }
@@ -229,13 +270,10 @@ QCStatus_e SamplePlrPre::Stop()
     {
         m_thread.join();
     }
-
     PROFILER_SHOW();
-
     TRACE_BEGIN( SYSTRACE_TASK_STOP );
-    ret = m_plrPre.Stop();
+    ret = m_voxel.Stop();
     TRACE_END( SYSTRACE_TASK_STOP );
-
 
     return ret;
 }
@@ -245,7 +283,7 @@ QCStatus_e SamplePlrPre::Deinit()
     QCStatus_e ret = QC_STATUS_OK;
 
     TRACE_BEGIN( SYSTRACE_TASK_DEINIT );
-    ret = m_plrPre.Deinit();
+    ret = m_voxel.DeInitialize();
     TRACE_END( SYSTRACE_TASK_DEINIT );
 
     return ret;
@@ -255,3 +293,4 @@ REGISTER_SAMPLE( PlrPre, SamplePlrPre );
 
 }   // namespace sample
 }   // namespace QC
+
