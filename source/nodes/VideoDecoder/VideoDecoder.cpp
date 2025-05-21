@@ -125,29 +125,37 @@ QCObjectState_e VideoDecoder::GetState()
 
 QCStatus_e VideoDecoder::ProcessFrameDescriptor( QCFrameDescriptorNodeIfs &frameDesc )
 {
-    QCStatus_e status = QC_STATUS_INVALID_BUF;
+    QCStatus_e status = QC_STATUS_OK;
 
     // INPUT:
     QCBufferDescriptorBase_t &inBufDesc =
-            frameDesc.GetBuffer( QC_NODE_VIDEO_DECODER_INPUT_BUFF_ID );
+                    frameDesc.GetBuffer( QC_NODE_VIDEO_DECODER_INPUT_BUFF_ID );
     const QCSharedVideoFrameDescriptor_t *pInSharedBuffer =
-            dynamic_cast<QCSharedVideoFrameDescriptor_t *>( &inBufDesc );
+                    dynamic_cast<QCSharedVideoFrameDescriptor_t*>( &inBufDesc );
 
-    if ( nullptr != pInSharedBuffer )
+    // OUTPUT:
+    QCBufferDescriptorBase_t &outBufDesc =
+                    frameDesc.GetBuffer( QC_NODE_VIDEO_DECODER_OUTPUT_BUFF_ID );
+    const QCSharedVideoFrameDescriptor_t *pOutSharedBuffer =
+                    dynamic_cast<QCSharedVideoFrameDescriptor_t*>( &outBufDesc );
+
+    if ((nullptr == pInSharedBuffer) && (nullptr == pOutSharedBuffer))
     {
-        status = SubmitInputFrame( pInSharedBuffer );
-        QC_DEBUG( "submit input frame done: status=%d", status );
+        status = QC_STATUS_INVALID_BUF;
     }
 
-    if ( QC_STATUS_OK == status )
+    if (QC_STATUS_OK == status)
     {
-        // OUTPUT:
-        QCBufferDescriptorBase_t &outBufDesc =
-                frameDesc.GetBuffer( QC_NODE_VIDEO_DECODER_OUTPUT_BUFF_ID );
-        const QCSharedVideoFrameDescriptor_t *pOutSharedBuffer =
-                dynamic_cast<QCSharedVideoFrameDescriptor_t *>( &outBufDesc );
+        if (nullptr != pInSharedBuffer)
+        {
+            status = SubmitInputFrame( pInSharedBuffer );
+            QC_DEBUG( "submit input frame done: status=%d", status );
+        }
+    }
 
-        if ( nullptr != pOutSharedBuffer )
+    if (QC_STATUS_OK == status)
+    {
+        if (nullptr != pOutSharedBuffer)
         {
             status = SubmitOutputFrame( pOutSharedBuffer );
             QC_DEBUG( "submit output frame done: status=%d", status );
@@ -234,23 +242,32 @@ QCStatus_e VideoDecoderConfigIfs::ParseStaticConfig( DataTree &dt, std::string &
 
     if ( QC_STATUS_OK == status )
     {
-        m_config.nodeId.name = m_dataTree.Get<std::string>( "name", "unnamed" );
-        m_config.nodeId.id = m_dataTree.Get<uint32_t>( "id", 0 );
-        m_config.params.width = m_dataTree.Get<uint32_t>( "width", 0 );
-        m_config.params.height = m_dataTree.Get<uint32_t>( "height", 0 );
-        m_config.params.frameRate = m_dataTree.Get<uint32_t>( "frameRate", 0 );
+        m_config.nodeId.name = dt.Get<std::string>( "name", "unnamed" );
+        m_config.nodeId.id = dt.Get<uint32_t>( "id", 0 );
+        m_config.params.width = dt.Get<uint32_t>( "width", 0 );
+        m_config.params.height = dt.Get<uint32_t>( "height", 0 );
+        m_config.params.frameRate = dt.Get<uint32_t>( "frameRate", 0 );
 
-        m_config.params.bInputDynamicMode = m_dataTree.Get<bool>( "inputDynamicMode", true );
-        m_config.params.bOutputDynamicMode = m_dataTree.Get<bool>( "outputDynamicMode", true );
-        m_config.params.numInputBuffer = m_dataTree.Get<uint32_t>( "numInputBuffer", 0 );
-        m_config.params.numOutputBuffer = m_dataTree.Get<uint32_t>( "numOutputBuffer", 0 );
+        m_config.params.bInputDynamicMode = dt.Get<bool>( "inputDynamicMode", true );
+        m_config.params.bOutputDynamicMode = dt.Get<bool>( "outputDynamicMode", false );
+        m_config.params.numInputBuffer = dt.Get<uint32_t>( "numInputBuffer", 0 );
+        m_config.params.numOutputBuffer = dt.Get<uint32_t>( "numOutputBuffer", 0 );
 
         m_config.params.inFormat =
-                        m_dataTree.Get<QCImageFormat_e>( "inputImageFormat",
-                                                         QC_IMAGE_FORMAT_RGB888 );
+                dt.GetImageFormat( "inputImageFormat", QC_IMAGE_FORMAT_COMPRESSED_H265 );
+
+        if (QC_IMAGE_FORMAT_MAX == m_config.params.inFormat)
+        {
+            status = QC_STATUS_BAD_ARGUMENTS;
+        }
+
         m_config.params.outFormat =
-                        m_dataTree.Get<QCImageFormat_e>( "outputImageFormat",
-                                                         QC_IMAGE_FORMAT_RGB888 );
+                dt.GetImageFormat( "outputImageFormat", QC_IMAGE_FORMAT_NV12 );
+
+        if (QC_IMAGE_FORMAT_MAX == m_config.params.outFormat)
+        {
+            status = QC_STATUS_BAD_ARGUMENTS;
+        }
     }
 
     return status;
@@ -265,7 +282,6 @@ QCStatus_e VideoDecoderConfigIfs::ApplyDynamicConfig( DataTree &dt, std::string 
 
 QCStatus_e VideoDecoderConfigIfs::VerifyAndSet( const std::string config, std::string &errors )
 {
-
     QCStatus_e status = NodeConfigIfs::VerifyAndSet( config, errors );
 
     if ( QC_STATUS_OK == status )
@@ -294,7 +310,7 @@ QCStatus_e VideoDecoderConfigIfs::VerifyStaticConfig( DataTree &dt, std::string 
     QCStatus_e status = QC_STATUS_OK;
 
     bool inDyn = dt.Get<bool>( "inputDynamicMode", true );
-    bool outDyn = dt.Get<bool>( "outputDynamicMode", true );
+    bool outDyn = dt.Get<bool>( "outputDynamicMode", false );
 
     if ( false == inDyn && dt.Get<uint32_t>( "numInputBuffer", 0 ) == 0 )
     {
@@ -336,45 +352,16 @@ QCStatus_e VideoDecoderConfigIfs::VerifyStaticConfig( DataTree &dt, std::string 
 
     }
 
-    QCImageFormat_e inputImageFormat =
-                    m_dataTree.Get<QCImageFormat_e>( "inputImageFormat", QC_IMAGE_FORMAT_RGB888 );
-
-    switch ( inputImageFormat )
+    if ( QC_IMAGE_FORMAT_MAX ==
+         m_dataTree.GetImageFormat( "inputImageFormat", QC_IMAGE_FORMAT_NV12 ) )
     {
-    case QC_IMAGE_FORMAT_RGB888:
-    case QC_IMAGE_FORMAT_BGR888:
-    case QC_IMAGE_FORMAT_UYVY:
-    case QC_IMAGE_FORMAT_NV12:
-    case QC_IMAGE_FORMAT_P010:
-    case QC_IMAGE_FORMAT_NV12_UBWC:
-    case QC_IMAGE_FORMAT_TP10_UBWC:
-    case QC_IMAGE_FORMAT_COMPRESSED_H264:
-    case QC_IMAGE_FORMAT_COMPRESSED_H265:
-        break;
-    case QC_IMAGE_FORMAT_MAX:
-    default:
         errors += "the input image format is invalid, ";
         status = QC_STATUS_BAD_ARGUMENTS;
     }
 
-    QCImageFormat_e outputImageFormat =
-                    m_dataTree.Get<QCImageFormat_e>( "outputImageFormat", QC_IMAGE_FORMAT_RGB888 );
-
-    switch ( outputImageFormat )
+    if ( QC_IMAGE_FORMAT_COMPRESSED_MAX ==
+         m_dataTree.GetImageFormat( "outputImageFormat", QC_IMAGE_FORMAT_COMPRESSED_H265 ) )
     {
-    case QC_IMAGE_FORMAT_RGB888:
-    case QC_IMAGE_FORMAT_BGR888:
-    case QC_IMAGE_FORMAT_UYVY:
-    case QC_IMAGE_FORMAT_NV12:
-    case QC_IMAGE_FORMAT_P010:
-    case QC_IMAGE_FORMAT_NV12_UBWC:
-    case QC_IMAGE_FORMAT_TP10_UBWC:
-    case QC_IMAGE_FORMAT_COMPRESSED_H264:
-    case QC_IMAGE_FORMAT_COMPRESSED_H265:
-        break;
-    case QC_IMAGE_FORMAT_COMPRESSED_MAX:
-    case QC_IMAGE_FORMAT_MAX:
-    default:
         errors += "the output image format is invalid, ";
         status = QC_STATUS_BAD_ARGUMENTS;
     }

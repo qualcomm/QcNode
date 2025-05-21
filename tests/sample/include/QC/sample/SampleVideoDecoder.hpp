@@ -59,10 +59,8 @@ private:
 
 private:
     QC::node::VideoDecoder m_encoder;
-    QC::node::VideoDecoder_Config_t m_config;
-
-    std::vector<TensorInfo_t> m_inputsInfo;
-    std::vector<TensorInfo_t> m_ouputsInfo;
+    DataTree m_config;
+    DataTree m_dataTree;
 
     std::thread m_thread;
     std::thread m_threadRelease;
