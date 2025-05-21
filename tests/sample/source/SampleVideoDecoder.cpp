@@ -117,31 +117,12 @@ QCStatus_e SampleVideoDecoder::Init( std::string name, SampleConfig_t &config )
 
     if ( QC_STATUS_OK == ret )
     {
-        DataTree dt;
-        dt.Set<std::string>( "name", "SampleVideoDecoder" );
-        dt.Set<std::string>( "logLevel", "ERROR" );
-        dt.Set<uint32_t>( "width", m_config.params.width );
-        dt.Set<uint32_t>( "height", m_config.params.height );
-        dt.Set<uint32_t>( "frameRate", m_config.params.frameRate );
-        dt.Set<uint32_t>( "numInputBuffer", m_config.params.numInputBuffer );
-        dt.Set<uint32_t>( "numOutputBuffer", m_config.params.numOutputBuffer );
-        dt.Set<bool>( "inputDynamicMode", m_config.params.bInputDynamicMode );
-        dt.Set<bool>( "outputDynamicMode", m_config.params.bOutputDynamicMode );
-        dt.Set<QCImageFormat_e>( "inputImageFormat", m_config.params.inFormat );
-        dt.Set<QCImageFormat_e>( "outputImageFormat", m_config.params.outFormat );
-
         using std::placeholders::_1;
 
-        QCNodeInit_t config = { .config = dt.Dump(),
+        QCNodeInit_t config = { .config = m_dataTree.Dump(),
                                 .callback = std::bind( &SampleVideoDecoder::OnDoneCb, this, _1 ) };
 
-        m_config.params.pInputBufferList = nullptr;
-        m_config.params.pOutputBufferList = nullptr;
-
-        if ( QC_STATUS_OK == ret )
-        {
-            ret = m_encoder.Initialize( config );
-        }
+        ret = m_encoder.Initialize( config );
     }
 
     if ( QC_STATUS_OK == ret )
@@ -295,34 +276,53 @@ QCStatus_e SampleVideoDecoder::ParseConfig( SampleConfig_t &config )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
-    m_config.params.width = Get( config, "width", 0 );
-    if ( 0 == m_config.params.width )
+    m_config.Set<std::string>( "name", m_name );
+
+    uint32 width = Get( config, "width", 0 );
+    if ( 0 == width )
     {
-        QC_ERROR( "invalid width = %u\n", m_config.params.width );
+        QC_ERROR( "invalid width = %u\n", width );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
-
-    m_config.params.height = Get( config, "height", 0 );
-    if ( 0 == m_config.params.height )
+    else
     {
-        QC_ERROR( "invalid height = %u\n", m_config.params.height );
-        ret = QC_STATUS_BAD_ARGUMENTS;
+        m_config.Set<uint32_t>( "width", width );
     }
 
-    m_config.params.numInputBuffer = Get( config, "pool_size", 4 );
-    if ( 0 == m_config.params.numInputBuffer )
+    uint32_t height = Get( config, "height", 0 );
+    if ( 0 == height )
     {
-        QC_ERROR( "invalid pool_size = %u\n", m_config.params.numInputBuffer );
+        QC_ERROR( "invalid height = %u\n", height );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
-
-    m_config.params.numOutputBuffer = m_config.params.numInputBuffer;
-
-    m_config.params.frameRate = Get( config, "fps", 30 );
-    if ( 0 == m_config.params.frameRate )
+    else
     {
-        QC_ERROR( "invalid fps = %u\n", m_config.params.frameRate );
+        m_config.Set<uint32_t>( "height", height );
+    }
+
+    uint32_t numInputBuffer = Get( config, "pool_size", 4 );
+    if ( 0 == numInputBuffer )
+    {
+        QC_ERROR( "invalid pool_size = %u\n", numInputBuffer );
         ret = QC_STATUS_BAD_ARGUMENTS;
+    }
+    else
+    {
+        m_config.Set<uint32_t>( "numInputBuffer", numInputBuffer );
+    }
+
+    uint32_t numOutputBuffer = Get( config, "numOutputBuffer", numInputBuffer );
+    m_config.Set<uint32_t>( "numOutputBuffer", numOutputBuffer );
+
+    uint32_t frameRate = Get( config, "fps", 30 );
+    if ( 0 == frameRate )
+    {
+        QC_ERROR( "invalid fps = %u\n", frameRate );
+        ret = QC_STATUS_BAD_ARGUMENTS;
+    }
+    else
+    {
+        m_config.Set<uint32_t>( "frameRate", frameRate );
     }
 
     m_inputTopicName = Get( config, "input_topic", "" );
@@ -331,6 +331,9 @@ QCStatus_e SampleVideoDecoder::ParseConfig( SampleConfig_t &config )
         QC_ERROR( "no input topic\n" );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
+    else
+    {
+    }
 
     m_outputTopicName = Get( config, "output_topic", "" );
     if ( "" == m_outputTopicName )
@@ -338,11 +341,16 @@ QCStatus_e SampleVideoDecoder::ParseConfig( SampleConfig_t &config )
         QC_ERROR( "no output topic\n" );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
+    else
+    {
+    }
 
-    m_config.params.inFormat = Get( config, "format", QC_IMAGE_FORMAT_NV12 );
-    m_config.params.outFormat = QC_IMAGE_FORMAT_COMPRESSED_H265;
-    m_config.params.bInputDynamicMode = true;
-    m_config.params.bOutputDynamicMode = false;
+    m_config.Set( "inputImageFormat", "h265" );
+    m_config.Set( "outputlImageFormat", "nv12" );
+    m_config.Set<bool>( "bInputDynamicMode", true );
+    m_config.Set<bool>( "bOutputDynamicMode", false );
+
+    m_dataTree.Set( "static", m_config );
 
     return ret;
 }
