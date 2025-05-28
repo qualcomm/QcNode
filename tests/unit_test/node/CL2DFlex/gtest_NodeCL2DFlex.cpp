@@ -326,7 +326,7 @@ void Accuracy( uint32_t inputNumberTest, CL2DFlex_Work_Mode_e modeTest,
         ASSERT_EQ( QC_STATUS_OK, ret );
         if ( nullptr != mapXBufferDesc.buffer.data() )
         {
-            config.buffers.push_back( std::ref( mapXBufferDesc ) );
+            config.buffers.push_back( mapXBufferDesc );
         }
         else
         {
@@ -334,7 +334,7 @@ void Accuracy( uint32_t inputNumberTest, CL2DFlex_Work_Mode_e modeTest,
         }
         if ( nullptr != mapYBufferDesc.buffer.data() )
         {
-            config.buffers.push_back( std::ref( mapYBufferDesc ) );
+            config.buffers.push_back( mapYBufferDesc );
         }
         else
         {
@@ -576,6 +576,10 @@ void Accuracy( uint32_t inputNumberTest, CL2DFlex_Work_Mode_e modeTest,
         ret = buffer.buffer.Free();
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
+
+    (void) mapXBufferDesc.buffer.Free();
+    (void) mapYBufferDesc.buffer.Free();
+    (void) golden.Free();
 
     reinterpret_cast<QC::node::CL2DFlex *>( pCL2DFlex )->~CL2DFlex();
 }
