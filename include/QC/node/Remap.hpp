@@ -2,10 +2,10 @@
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
-#ifndef QC_NODE_CL2DFLEX_HPP
-#define QC_NODE_CL2DFLEX_HPP
+#ifndef QC_NODE_REMAP_HPP
+#define QC_NODE_REMAP_HPP
 
-#include "QC/component/CL2DFlex.hpp"
+#include "QC/component/Remap.hpp"
 #include "QC/node/NodeBase.hpp"
 
 namespace QC
@@ -15,49 +15,49 @@ namespace node
 using namespace QC::component;
 
 /**
- * @brief CL2D Node Configuration Data Structure
- * @param params The QC component CL2D configuration data structure.
+ * @brief Remap Node Configuration Data Structure
+ * @param params The QC component Remap configuration data structure.
  * @param bufferIds The indices of buffers in QCNodeInit::buffers provided by the user application
- * for use by CL2D. These buffers will be registered into CL2D during the initialization stage.
+ * for use by Remap. These buffers will be registered into Remap during the initialization stage.
  * @note bufferIds are optional and can be empty, in which case the buffers will be registered into
- * CL2D when the API ProcessFrameDescriptor is called.
+ * Remap when the API ProcessFrameDescriptor is called.
  * @param globalBufferIdMap The global buffer index map used to identify which buffer in
- * QCFrameDescriptorNodeIfs is used for CL2D input(s) and output(s).
+ * QCFrameDescriptorNodeIfs is used for Remap input(s) and output(s).
  * @note globalBufferIdMap is optional and can be empty, in which case a default buffer index map
- * will be applied for CL2D input(s) and output(s). For now CL2D only support multiple inputs to
+ * will be applied for Remap input(s) and output(s). For now Remap only support multiple inputs to
  * single output
  * - The index 0 of QCFrameDescriptorNodeIfs will be input 0.
  * - The index 1 of QCFrameDescriptorNodeIfs will be input 1.
  * - ...
  * - The index N-1 of QCFrameDescriptorNodeIfs will be input N-1.
  * - The index N of QCFrameDescriptorNodeIfs will be output.
- * @param bDeRegisterAllBuffersWhenStop When the Stop API of the CL2DFlex node is called and
+ * @param bDeRegisterAllBuffersWhenStop When the Stop API of the Remap node is called and
  * bDeRegisterAllBuffersWhenStop is true, deregister all buffers.
  */
-typedef struct CL2DFlexConfig : public QCNodeConfigBase_t
+typedef struct RemapConfig : public QCNodeConfigBase_t
 {
-    CL2DFlex_Config_t params;
+    Remap_Config_t params;
     std::vector<uint32_t> bufferIds;
     std::vector<QCNodeBufferMapEntry_t> globalBufferIdMap;
     bool bDeRegisterAllBuffersWhenStop;
-} CL2DFlexConfig_t;
+} RemapConfig_t;
 
-class CL2DFlexConfigIfs : public NodeConfigIfs
+class RemapConfigIfs : public NodeConfigIfs
 {
 public:
     /**
-     * @brief CL2DFlexConfigIfs Constructor
-     * @param[in] logger A reference to the logger to be shared and used by CL2DFlexConfigIfs.
-     * @param[in] cl2d A reference to the QC CL2D component to be used by CL2DFlexConfigIfs.
+     * @brief RemapConfigIfs Constructor
+     * @param[in] logger A reference to the logger to be shared and used by RemapConfigIfs.
+     * @param[in] remap A reference to the QC Remap component to be used by RemapConfigIfs.
      * @return None
      */
-    CL2DFlexConfigIfs( Logger &logger, CL2DFlex &cl2d ) : NodeConfigIfs( logger ), m_cl2d( cl2d ) {}
+    RemapConfigIfs( Logger &logger, Remap &remap ) : NodeConfigIfs( logger ), m_remap( remap ) {}
 
     /**
-     * @brief CL2DFlexConfigIfs Destructor
+     * @brief RemapConfigIfs Destructor
      * @return None
      */
-    ~CL2DFlexConfigIfs() {}
+    ~RemapConfigIfs() {}
 
     /**
      * @brief Verify the configuration string and set the configuration structure.
@@ -69,33 +69,37 @@ public:
      *     "static": {
      *        "name": "The Node unique name, type: string",
      *        "id": "The Node unique ID, type: uint32_t",
+     *        "processorType": "The processor type, type: string",
+     *                      options: [cpu, gpu, htp0, htp1]",
      *        "outputWidth": "The output width, type: uint32_t",
      *        "outputHeight": "The output height, type: uint32_t",
      *        "outputFormat": "The output format, type: string,
-     *                         options: [rgb, bgr, uyvy, nv12, nv12_ubwc]",
+     *                         options: [rgb, bgr]",
+     *        "bEnableUndistortion": "Enable undistortion or not, type: bool",
+     *        "bEnableNormalize": "Enable normalization or not, type: bool",
+     *        "RAdd": "The normalize parameter for R channel add, type: float",
+     *        "RMul": "The normalize parameter for R channel mul, type: float",
+     *        "RSub": "The normalize parameter for R channel sub, type: float",
+     *        "GAdd": "The normalize parameter for G channel add, type: float",
+     *        "GMul": "The normalize parameter for G channel mul, type: float",
+     *        "GSub": "The normalize parameter for G channel sub, type: float",
+     *        "BAdd": "The normalize parameter for B channel add, type: float",
+     *        "BMul": "The normalize parameter for B channel mul, type: float",
+     *        "BSub": "The normalize parameter for B channel sub, type: float",
      *        "inputs": [
      *           {
      *              "inputWidth": "The input width, type: uint32_t",
      *              "inputHeight": "The input height, type: uint32_t",
      *              "inputFormat": "The input format, type: string,
-     *                  options: [rgb, bgr, uyvy, nv12, nv12_ubwc]",
+     *                  options: [rgb, uyvy, nv12, nv12_ubwc]",
+     *              "mapWidth": "The map width, type: uint32_t",
+     *              "mapHeight": "The map height, type: uint32_t",
      *              "roiX": "The input roiX, type: uint32_t",
      *              "roiY": "The input roiY, type: uint32_t",
      *              "roiWidth": "The input roiWidth, type: uint32_t",
      *              "roiHeight": "The input roiHeight, type: uint32_t",
-     *              "workMode": "The input work mode, type: string,
-     *                          options: [convert, resize_nearest, letterbox_nearest, convert_ubwc,
-     *                          letterbox_nearest_multiple, resize_nearest_multiple, remap_nearest]"
      *              "mapX": "The buffer id of X direction map table, type: uint32_t",
      *              "mapY": "The buffer id of Y direction map table, type: uint32_t"
-     *           }
-     *       ],
-     *        "ROIs": [
-     *           {
-     *              "roiX": "The input roiX, type: uint32_t",
-     *              "roiY": "The input roiY, type: uint32_t",
-     *              "roiWidth": "The input roiWidth, type: uint32_t",
-     *              "roiHeight": "The input roiHeight, type: uint32_t",
      *           }
      *       ],
      *        "bufferIds": [A list of uint32_t values representing the indices of buffers
@@ -110,9 +114,9 @@ public:
      *                   type: bool, default: false"
      *     }
      *   }
-     * @note: mapX and mapY are optional, only used for remap_nearest work mode.
-     *        ROIs configuration is optional, only used for resize_nearest_multiple and
-     *        letterbox_nearest_multiple work mode.
+     * @note: mapX and mapY are optional, only used when bEnableUndistortion is true.
+     *        The quantization and normalization parameters are optional,
+     *        only used when bEnableNormalize is true.
      * @return QC_STATUS_OK on success, other values on failure.
      */
     virtual QCStatus_e VerifyAndSet( const std::string config, std::string &errors );
@@ -136,30 +140,28 @@ private:
     QCStatus_e ParseStaticConfig( DataTree &dt, std::string &errors );
 
 private:
-    CL2DFlex &m_cl2d;
+    Remap &m_remap;
     std::string m_options;
 
 public:
-    CL2DFlexConfig_t m_config;
+    RemapConfig_t m_config;
     uint32_t m_mapXBufferIds[QC_MAX_INPUTS];
     uint32_t m_mapYBufferIds[QC_MAX_INPUTS];
-    CL2DFlex_ROIConfig_t m_ROIs[QC_CL2DFLEX_ROI_NUMBER_MAX];
     uint32_t m_numOfInputs;
-    uint32_t m_numOfROIs;
 };
 
-// TODO: how to handle CL2DFlexMonitorConfig
-typedef struct CL2DFlexMonitorConfig : public QCNodeMonitoringBase_t
+// TODO: how to handle RemapMonitorConfig
+typedef struct RemapMonitorConfig : public QCNodeMonitoringBase_t
 {
     bool bPerfEnabled;
-} CL2DFlexMonitorConfig_t;
+} RemapMonitorConfig_t;
 
-// TODO: how to handle CL2DFlexMonitoringIfs
-class CL2DFlexMonitoringIfs : public QCNodeMonitoringIfs
+// TODO: how to handle RemapMonitoringIfs
+class RemapMonitoringIfs : public QCNodeMonitoringIfs
 {
 public:
-    CL2DFlexMonitoringIfs() {}
-    ~CL2DFlexMonitoringIfs() {}
+    RemapMonitoringIfs() {}
+    ~RemapMonitoringIfs() {}
 
     virtual QCStatus_e VerifyAndSet( const std::string config, std::string &errors )
     {
@@ -177,28 +179,28 @@ public:
 
 private:
     std::string m_options;
-    CL2DFlexMonitorConfig_t m_config;
+    RemapMonitorConfig_t m_config;
 };
 
-class CL2DFlex : public NodeBase
+class Remap : public NodeBase
 {
 public:
     /**
-     * @brief CL2DFlex Constructor
+     * @brief Remap Constructor
      * @return None
      */
-    CL2DFlex() : m_configIfs( m_logger, m_cl2d ) {};
+    Remap() : m_configIfs( m_logger, m_remap ) {};
 
     /**
-     * @brief CL2DFlex Destructor
+     * @brief Remap Destructor
      * @return None
      */
-    ~CL2DFlex() {};
+    ~Remap() {};
 
     /**
-     * @brief Initializes Node CL2DFlex.
-     * @param[in] config The Node CL2DFlex configuration.
-     * @note QCNodeInit::config - Refer to the comments of the API CL2DFlexConfigIfs::VerifyAndSet.
+     * @brief Initializes Node Remap.
+     * @param[in] config The Node Remap configuration.
+     * @note QCNodeInit::config - Refer to the comments of the API RemapConfigIfs::VerifyAndSet.
      * @note QCNodeInit::buffers - Buffers provided by the user application. The buffers can be
      * provided for the following purposes:
      * - 1. A buffer provided to store the mapping tables for remap work mode.
@@ -207,19 +209,19 @@ public:
     virtual QCStatus_e Initialize( QCNodeInit_t &config );
 
     /**
-     * @brief Get the Node CL2DFlex configuration interface.
-     * @return A reference to the Node CL2DFlex configuration interface.
+     * @brief Get the Node Remap configuration interface.
+     * @return A reference to the Node Remap configuration interface.
      */
     virtual QCNodeConfigIfs &GetConfigurationIfs() { return m_configIfs; }
 
     /**
-     * @brief Get the Node CL2DFlex monitoring interface.
-     * @return A reference to the Node CL2DFlex monitoring interface.
+     * @brief Get the Node Remap monitoring interface.
+     * @return A reference to the Node Remap monitoring interface.
      */
     virtual QCNodeMonitoringIfs &GetMonitoringIfs() { return m_monitorIfs; }
 
     /**
-     * @brief Start the Node CL2DFlex
+     * @brief Start the Node Remap
      * @return QC_STATUS_OK on success, others on failure
      */
     virtual QCStatus_e Start();
@@ -229,7 +231,7 @@ public:
      * @param[in] frameDesc The frame descriptor containing a vector of input/output buffers.
      * @note The configuration globalBufferIdMap determines which buffers are input and which
      * are output.
-     * @example For a CL2DFlex pipeline with N inputs:
+     * @example For a Remap pipeline with N inputs:
      * - The globalBufferIdMap[0].globalBufferId of QCFrameDescriptorNodeIfs will be input 0.
      * - The globalBufferIdMap[1].globalBufferId of QCFrameDescriptorNodeIfs will be input 1.
      * - ...
@@ -240,30 +242,33 @@ public:
     virtual QCStatus_e ProcessFrameDescriptor( QCFrameDescriptorNodeIfs &frameDesc );
 
     /**
-     * @brief Stop the Node CL2DFlex
+     * @brief Stop the Node Remap
      * @return QC_STATUS_OK on success, others on failure
      */
     virtual QCStatus_e Stop();
 
     /**
-     * @brief De-initialize Node CL2DFlex
+     * @brief De-initialize Node Remap
      * @return QC_STATUS_OK on success, others on failure
      */
     virtual QCStatus_e DeInitialize();
 
     /**
-     * @brief Get the current state of the Node CL2DFlex
-     * @return The current state of the Node CL2DFlex
+     * @brief Get the current state of the Node Remap
+     * @return The current state of the Node Remap
      */
-    virtual QCObjectState_e GetState() { return static_cast<QCObjectState_e>( m_cl2d.GetState() ); }
+    virtual QCObjectState_e GetState()
+    {
+        return static_cast<QCObjectState_e>( m_remap.GetState() );
+    }
 
 private:
-    QCStatus_e SetupGlobalBufferIdMap( const CL2DFlexConfig_t &cfg );
+    QCStatus_e SetupGlobalBufferIdMap( const RemapConfig_t &cfg );
 
 private:
-    QC::component::CL2DFlex m_cl2d;
-    CL2DFlexConfigIfs m_configIfs;
-    CL2DFlexMonitoringIfs m_monitorIfs;
+    QC::component::Remap m_remap;
+    RemapConfigIfs m_configIfs;
+    RemapMonitoringIfs m_monitorIfs;
     bool m_bDeRegisterAllBuffersWhenStop = false;
 
     uint32_t m_inputNum;
@@ -275,4 +280,4 @@ private:
 }   // namespace node
 }   // namespace QC
 
-#endif   // QC_NODE_CL2DFLEX_HPP
+#endif   // QC_NODE_REMAP_HPP

@@ -3,19 +3,18 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#ifndef _QC_SAMPLE_REMAP_HPP_
-#define _QC_SAMPLE_REMAP_HPP_
+#ifndef QC_SAMPLE_REMAP_HPP
+#define QC_SAMPLE_REMAP_HPP
 
-#include "QC/component/Remap.hpp"
+#include "QC/node/Remap.hpp"
 #include "QC/sample/SampleIF.hpp"
-
-using namespace QC;
-using namespace QC::component;
 
 namespace QC
 {
 namespace sample
 {
+
+using namespace QC::node;
 
 /// @brief qcnode::sample::SampleRemap
 ///
@@ -26,21 +25,21 @@ public:
     SampleRemap();
     ~SampleRemap();
 
-    /// @brief Initialize the remap
+    /// @brief Initialize the Remap
     /// @param name the sample unique instance name
     /// @param config the sample config key value map
     /// @return QC_STATUS_OK on success, others on failure
     QCStatus_e Init( std::string name, SampleConfig_t &config );
 
-    /// @brief Start the remap
+    /// @brief Start the Remap
     /// @return QC_STATUS_OK on success, others on failure
     QCStatus_e Start();
 
-    /// @brief Stop the remap
+    /// @brief Stop the Remap
     /// @return QC_STATUS_OK on success, others on failure
     QCStatus_e Stop();
 
-    /// @brief deinitialize the remap
+    /// @brief deinitialize the Remap
     /// @return QC_STATUS_OK on success, others on failure
     QCStatus_e Deinit();
 
@@ -49,8 +48,9 @@ private:
     void ThreadMain();
 
 private:
-    Remap_Config_t m_config;
     uint32_t m_poolSize = 4;
+    QCBufferFlags_t m_bufferFlags = QC_BUFFER_FLAGS_CACHE_WB_WA;
+    bool m_bNoPadding = false;
 
     std::string m_inputTopicName;
     std::string m_outputTopicName;
@@ -62,13 +62,19 @@ private:
     DataSubscriber<DataFrames_t> m_sub;
     DataPublisher<DataFrames_t> m_pub;
 
-    Remap m_remap;
+    uint32_t m_numOfInputs;
+    uint32_t m_outputWidth;
+    uint32_t m_outputHeight;
+    QCImageFormat_e m_outputFormat;
+    DataTree m_dataTree;
+    QC::node::Remap m_remap;
+    bool m_bEnableUndistortion = false;
 
-    QCSharedBuffer_t m_mapXBuffer[QC_MAX_INPUTS];
-    QCSharedBuffer_t m_mapYBuffer[QC_MAX_INPUTS];
+    QCSharedBufferDescriptor_t m_mapXBufferDesc[QC_MAX_INPUTS];
+    QCSharedBufferDescriptor_t m_mapYBufferDesc[QC_MAX_INPUTS];
 };   // class SampleRemap
 
 }   // namespace sample
 }   // namespace QC
 
-#endif   // _QC_SAMPLE_REMAP_HPP_
+#endif   // QC_SAMPLE_REMAP_HPP

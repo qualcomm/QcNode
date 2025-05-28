@@ -305,7 +305,7 @@ QCStatus_e SampleCL2DFlex::ParseConfig( SampleConfig_t &config )
     }
 
     QCNodeInit_t data = { m_dataTree.Dump() };
-    printf( "config data: %s\n", data.config.c_str() );
+    QC_INFO( "config data: %s\n", data.config.c_str() );
 
     m_poolSize = Get( config, "pool_size", 4 );
     if ( 0 == m_poolSize )
@@ -434,19 +434,19 @@ QCStatus_e SampleCL2DFlex::Init( std::string name, SampleConfig_t &config )
             {
                 if ( nullptr != m_mapXBufferDesc[i].buffer.data() )
                 {
-                    nodeCfg.buffers.push_back( std::ref( m_mapXBufferDesc[i] ) );
+                    nodeCfg.buffers.push_back( m_mapXBufferDesc[i] );
                 }
                 else
                 {
-                    printf( "m_mapXBufferDesc[%d] is nullptr\n", i );
+                    QC_INFO( "m_mapXBufferDesc[%d] is nullptr\n", i );
                 }
                 if ( nullptr != m_mapYBufferDesc[i].buffer.data() )
                 {
-                    nodeCfg.buffers.push_back( std::ref( m_mapYBufferDesc[i] ) );
+                    nodeCfg.buffers.push_back( m_mapYBufferDesc[i] );
                 }
                 else
                 {
-                    printf( "m_mapYBufferDesc[%d] is nullptr\n", i );
+                    QC_INFO( "m_mapYBufferDesc[%d] is nullptr\n", i );
                 }
             }
         }
@@ -462,6 +462,18 @@ QCStatus_e SampleCL2DFlex::Init( std::string name, SampleConfig_t &config )
     if ( QC_STATUS_OK == ret )
     {
         ret = m_pub.Init( name, m_outputTopicName );
+    }
+
+    if ( QC_STATUS_OK == ret )
+    {
+        for ( uint32_t i = 0; i < m_numOfInputs; i++ )
+        {
+            if ( true == m_bEnableUndistortion )
+            {
+                (void) m_mapXBufferDesc[i].buffer.Free();
+                (void) m_mapYBufferDesc[i].buffer.Free();
+            }
+        }
     }
 
     return ret;
