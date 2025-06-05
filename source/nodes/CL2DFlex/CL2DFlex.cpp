@@ -62,6 +62,7 @@ QCStatus_e CL2DFlexConfigIfs::VerifyStaticConfig( DataTree &dt, std::string &err
         status = QC_STATUS_BAD_ARGUMENTS;
     }
 
+    m_numOfROIs = 0;
     std::vector<DataTree> roiDts;
     (void) dt.Get( "ROIs", roiDts );
     for ( DataTree &idt : roiDts )
@@ -204,6 +205,10 @@ QCStatus_e CL2DFlexConfigIfs::ParseStaticConfig( DataTree &dt, std::string &erro
 
         m_config.bDeRegisterAllBuffersWhenStop =
                 dt.Get<bool>( "deRegisterAllBuffersWhenStop", false );
+    }
+    else
+    {
+        QC_ERROR( "VerifyStaticConfig failed!" );
     }
 
     return status;
