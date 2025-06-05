@@ -3,14 +3,14 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#ifndef QC_SAMPLE_OPTICALFLOW_HPP
-#define QC_SAMPLE_OPTICALFLOW_HPP
+#ifndef QC_SAMPLE_NODE_OPTICALFLOW_HPP
+#define QC_SAMPLE_NODE_OPTICALFLOW_HPP
 
-#include "QC/component/OpticalFlow.hpp"
+#include "QC/node/OpticalFlow.hpp"
 #include "QC/sample/SampleIF.hpp"
 
 using namespace QC;
-using namespace QC::component;
+using namespace QC::node;
 
 namespace QC
 {
@@ -49,8 +49,14 @@ private:
     void ThreadMain();
 
 private:
-    OpticalFlow_Config_t m_config;
+    DataTree m_config;
+    DataTree m_dataTree;
+
     uint32_t m_poolSize = 4;
+
+    uint32_t m_nStepSize;
+    uint32_t m_width;
+    uint32_t m_height;
 
     std::string m_inputTopicName;
     std::string m_outputTopicName;
@@ -65,10 +71,12 @@ private:
 
     DataFrames_t m_LastFrames;
 
-    OpticalFlow m_ofl;
+    void OnDoneCb( const QCNodeEventInfo_t &eventInfo );
+
+    QC::node::OpticalFlow m_of;
 };   // class SampleOpticalFlow
 
 }   // namespace sample
 }   // namespace QC
 
-#endif   // QC_SAMPLE_OPTICALFLOW_HPP
+#endif   // QC_SAMPLE_NODE_OPTICALFLOW_HPP
