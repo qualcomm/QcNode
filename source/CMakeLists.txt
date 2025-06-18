@@ -40,6 +40,7 @@ if ( ENABLE_FADAS )
             QCNodeRemap
             QCNodePostCenterPoint
             QCNodeVoxelization
+            QCNodeNodeVoxelization
             QCNodeNodeRemap
   )
 endif()
