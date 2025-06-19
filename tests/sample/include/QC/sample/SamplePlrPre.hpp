@@ -61,7 +61,6 @@ private:
     SharedBufferPool m_coordsPool;
     SharedBufferPool m_featuresPool;
     bool m_stop;
-    int m_rsmPriority;
 
     DataSubscriber<DataFrames_t> m_sub;
     DataPublisher<DataFrames_t> m_pub;

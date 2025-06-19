@@ -60,7 +60,6 @@ QCStatus_e SamplePlrPre::ParseConfig( SampleConfig_t &config )
     }
 
     m_processor = m_config.GetProcessorType( "processorType", QC_PROCESSOR_HTP0 );
-    m_rsmPriority = Get( config, "rsm_priority", 0 );
 
     return ret;
 }
@@ -146,7 +145,7 @@ QCStatus_e SamplePlrPre::Init( std::string name, SampleConfig_t &config )
 
     if ( QC_STATUS_OK == ret )
     {
-        ret = SampleIF::Init( m_processor, m_rsmPriority );
+        ret = SampleIF::Init( m_processor );
     }
 
     if ( QC_STATUS_OK == ret )
