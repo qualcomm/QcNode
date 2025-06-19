@@ -23,18 +23,20 @@ void SampleCamera::ProcessDoneCb( const QCNodeEventInfo_t &eventInfo )
 
     if ( nullptr == pCamFrameDesc )
     {
-        std::cout << "Frame pointer is empty" << std::endl;
-    }
-
-    if ( !m_stop )
-    {
-        std::unique_lock<std::mutex> lck( m_mutex );
-        m_camFrameQueue.push( *pCamFrameDesc );
-        m_condVar.notify_one();
+	QC_ERROR( "Frame pointer is empty" );
     }
     else
     {
-        status = m_camera.ProcessFrameDescriptor( frameDesc );
+        if ( !m_stop )
+        {
+            std::unique_lock<std::mutex> lck( m_mutex );
+            m_camFrameQueue.push( *pCamFrameDesc );
+            m_condVar.notify_one();
+        }
+        else
+        {
+            status = m_camera.ProcessFrameDescriptor( frameDesc );
+        }
     }
 }
 
