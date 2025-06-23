@@ -4,7 +4,6 @@
 
 #include "QC/sample/SampleDepthFromStereo.hpp"
 
-
 namespace QC
 {
 namespace sample
@@ -15,29 +14,27 @@ namespace sample
 SampleDepthFromStereo::SampleDepthFromStereo() {}
 SampleDepthFromStereo::~SampleDepthFromStereo() {}
 
+void SampleDepthFromStereo::OnDoneCb( const QCNodeEventInfo_t &eventInfo )
+{
+}
+
 QCStatus_e SampleDepthFromStereo::ParseConfig( SampleConfig_t &config )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
-    std::string dirStr = Get( config, "direction", "l2r" );
-    if ( "l2r" == dirStr )
-    {
-        m_config.dfsSearchDir = EVA_DFS_SEARCH_L2R;
-    }
-    else if ( "r2l" == dirStr )
-    {
-        m_config.dfsSearchDir = EVA_DFS_SEARCH_R2L;
-    }
-    else
-    {
-        QC_ERROR( "invalid direction %s\n", dirStr.c_str() );
-        ret = QC_STATUS_BAD_ARGUMENTS;
-    }
+    m_config.Set<std::string>( "name", m_name );
 
-    m_config.width = Get( config, "width", 1280u );
-    m_config.height = Get( config, "height", 416u );
-    m_config.format = Get( config, "format", QC_IMAGE_FORMAT_NV12 );
-    m_config.frameRate = Get( config, "fps", 30u );
+    std::string dirStr = Get( config, "direction", "l2r" );
+    m_config.Set<std::string>("direction", dirStr);
+
+    m_width = Get( config, "width", 1280 );
+    m_config.Set<uint32_t>("width", m_width);
+
+    m_height = Get( config, "height", 416 );
+    m_config.Set<uint32_t>("height", m_height);
+
+    m_config.Set<std::string>("format", Get( config, "format", "nv12" ));
+    m_config.Set<uint32_t>("fps", Get( config, "fps", 30 ));
 
     bool bCache = Get( config, "cache", true );
     if ( false == bCache )
@@ -50,11 +47,7 @@ QCStatus_e SampleDepthFromStereo::ParseConfig( SampleConfig_t &config )
     }
 
     m_poolSize = Get( config, "pool_size", 4 );
-    if ( 0 == m_poolSize )
-    {
-        QC_ERROR( "invalid pool_size = %d\n", m_poolSize );
-        ret = QC_STATUS_BAD_ARGUMENTS;
-    }
+    m_config.Set<uint32_t>("pool_size", m_poolSize);
 
     m_inputTopicName = Get( config, "input_topic", "" );
     if ( "" == m_inputTopicName )
@@ -70,6 +63,8 @@ QCStatus_e SampleDepthFromStereo::ParseConfig( SampleConfig_t &config )
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
+    m_dataTree.Set( "static", m_config );
+
     return ret;
 }
 
@@ -83,8 +78,8 @@ QCStatus_e SampleDepthFromStereo::Init( std::string name, SampleConfig_t &config
         ret = ParseConfig( config );
     }
 
-    uint32_t width = m_config.width;
-    uint32_t height = m_config.height;
+    uint32_t width = m_width;
+    uint32_t height = m_height;
 
     if ( QC_STATUS_OK == ret )
     {
@@ -106,11 +101,15 @@ QCStatus_e SampleDepthFromStereo::Init( std::string name, SampleConfig_t &config
                                QC_BUFFER_USAGE_EVA, m_bufferFlags );
     }
 
-    if ( QC_STATUS_OK == ret )
+    if (QC_STATUS_OK == ret)
     {
-        TRACE_BEGIN( SYSTRACE_TASK_INIT );
-        ret = m_dfs.Init( name.c_str(), &m_config );
-        TRACE_END( SYSTRACE_TASK_INIT );
+        using std::placeholders::_1;
+
+        QCNodeInit_t config = { .config = m_dataTree.Dump(),
+                                .callback =
+                                        std::bind( &SampleDepthFromStereo::OnDoneCb, this, _1 ) };
+
+        ret = m_dfs.Initialize( config );
     }
 
     if ( QC_STATUS_OK == ret )
@@ -131,7 +130,7 @@ QCStatus_e SampleDepthFromStereo::Start()
     QCStatus_e ret = QC_STATUS_OK;
 
     TRACE_BEGIN( SYSTRACE_TASK_START );
-    ret = m_dfs.Start();
+    ret = static_cast<QCStatus_e>( m_dfs.Start() );
     TRACE_END( SYSTRACE_TASK_START );
     if ( QC_STATUS_OK == ret )
     {
@@ -145,6 +144,8 @@ QCStatus_e SampleDepthFromStereo::Start()
 void SampleDepthFromStereo::ThreadMain()
 {
     QCStatus_e ret;
+    QCFrameDescriptorNodeIfs *frameDescriptor =
+            new QCSharedFrameDescriptorNode( QC_NODE_DFS_LAST_BUFF_ID );
     while ( false == m_stop )
     {
         DataFrames_t frames;
@@ -162,14 +163,35 @@ void SampleDepthFromStereo::ThreadMain()
             std::shared_ptr<SharedBuffer_t> conf = m_confPool.Get();
             if ( ( nullptr != disp ) && ( nullptr != conf ) )
             {
-                QCSharedBuffer_t &priImg = frames.SharedBuffer( 0 );
-                QCSharedBuffer_t &auxImg = frames.SharedBuffer( 1 );
+                QCSharedBufferDescriptor_t buffPriImg;
+                QCSharedBufferDescriptor_t buffAuxImg;
+                QCSharedBufferDescriptor_t buffDisp;
+                QCSharedBufferDescriptor_t buffConf;
+
+                buffPriImg.buffer = frames.SharedBuffer( 0 );
+                buffAuxImg.buffer = frames.SharedBuffer( 1 );
+                buffDisp.buffer = disp->sharedBuffer;
+                buffConf.buffer = conf->sharedBuffer;
 
                 PROFILER_BEGIN();
                 TRACE_BEGIN( frames.FrameId( 0 ) );
-                memset( disp->sharedBuffer.data(), 0, disp->sharedBuffer.size );
-                memset( conf->sharedBuffer.data(), 0, conf->sharedBuffer.size );
-                ret = m_dfs.Execute( &priImg, &auxImg, &disp->sharedBuffer, &conf->sharedBuffer );
+                memset( buffDisp.buffer.data(), 0, disp->sharedBuffer.size );
+                memset( buffConf.buffer.data(), 0, conf->sharedBuffer.size );
+
+                // TODO
+                // Add check of error code below
+                QCStatus_e status = frameDescriptor->SetBuffer(
+                        static_cast<uint32_t>( QC_NODE_DFS_PRIMARY_IMAGE_BUFF_ID ), buffPriImg );
+                status = frameDescriptor->SetBuffer(
+                        static_cast<uint32_t>( QC_NODE_DFS_AUXILARY_IMAGE_BUFF_ID ), buffAuxImg );
+                status = frameDescriptor->SetBuffer(
+                        static_cast<uint32_t>( QC_NODE_DFS_DISPARITY_MAP_BUFF_ID ), buffDisp );
+                status = frameDescriptor->SetBuffer(
+                        static_cast<uint32_t>( QC_NODE_DFS_DISPARITY_CONFIDANCE_MAP_BUFF_ID ),
+                        buffConf );
+
+                ret = static_cast<QCStatus_e>( m_dfs.ProcessFrameDescriptor( *frameDescriptor ) );
+
                 if ( QC_STATUS_OK == ret )
                 {
                     PROFILER_END();
@@ -192,6 +214,8 @@ void SampleDepthFromStereo::ThreadMain()
             }
         }
     }
+    reinterpret_cast<QCSharedFrameDescriptorNode *>( frameDescriptor )
+            ->~QCSharedFrameDescriptorNode();
 }
 
 QCStatus_e SampleDepthFromStereo::Stop()
@@ -207,7 +231,7 @@ QCStatus_e SampleDepthFromStereo::Stop()
     PROFILER_SHOW();
 
     TRACE_BEGIN( SYSTRACE_TASK_STOP );
-    ret = m_dfs.Stop();
+    ret = static_cast<QCStatus_e>( m_dfs.Stop() );
     TRACE_END( SYSTRACE_TASK_STOP );
 
 
@@ -219,7 +243,7 @@ QCStatus_e SampleDepthFromStereo::Deinit()
     QCStatus_e ret = QC_STATUS_OK;
 
     TRACE_BEGIN( SYSTRACE_TASK_DEINIT );
-    ret = m_dfs.Deinit();
+    ret = static_cast<QCStatus_e>( m_dfs.DeInitialize() );
     TRACE_END( SYSTRACE_TASK_DEINIT );
 
     return ret;
