@@ -6,11 +6,11 @@
 #ifndef QC_SAMPLE_DEPTH_FROM_STEREO_HPP
 #define QC_SAMPLE_DEPTH_FROM_STEREO_HPP
 
-#include "QC/component/DepthFromStereo.hpp"
+#include "QC/node/DepthFromStereo.hpp"
 #include "QC/sample/SampleIF.hpp"
 
 using namespace QC;
-using namespace QC::component;
+using namespace QC::node;
 
 namespace QC
 {
@@ -49,8 +49,12 @@ private:
     void ThreadMain();
 
 private:
-    DepthFromStereo_Config_t m_config;
+    DataTree m_config;
+    DataTree m_dataTree;
     uint32_t m_poolSize = 4;
+
+    uint32_t m_width;
+    uint32_t m_height;
 
     std::string m_inputTopicName;
     std::string m_outputTopicName;
@@ -65,7 +69,9 @@ private:
     DataSubscriber<DataFrames_t> m_sub;
     DataPublisher<DataFrames_t> m_pub;
 
-    DepthFromStereo m_dfs;
+    void OnDoneCb( const QCNodeEventInfo_t &eventInfo );
+
+    QC::node::DepthFromStereo m_dfs;
 };   // class SampleDepthFromStereo
 
 }   // namespace sample

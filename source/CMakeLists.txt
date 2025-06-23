@@ -31,7 +31,9 @@ endif()
 if ( ENABLE_EVA )
   list( APPEND TARGET_LIBRARIES
             QCNodeOpticalFlow
+            QCNodeNodeOpticalFlow
             QCNodeDepthFromStereo
+            QCNodeNodeDepthFromStereo
   )
 endif()
 
