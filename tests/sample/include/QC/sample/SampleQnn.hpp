@@ -6,14 +6,14 @@
 #ifndef QC_SAMPLE_QNN_HPP
 #define QC_SAMPLE_QNN_HPP
 
-#include "QC/node/QNN.hpp"
+#include "QC/Node/QNN.hpp"
 #include "QC/sample/SampleIF.hpp"
 
 namespace QC
 {
 namespace sample
 {
-using namespace QC::node;
+using namespace QC::Node;
 
 /// @brief qcnode::sample::SampleQnn
 ///

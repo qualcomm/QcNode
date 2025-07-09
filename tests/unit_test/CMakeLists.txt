@@ -5,8 +5,8 @@ set( GTEST_QCNODE_LIBS gtest QCNode QCNodeTestUtils QCNodeSample)
 
 add_subdirectory(buffer)
 add_subdirectory(components)
-add_subdirectory(logger)
-add_subdirectory(node)
+add_subdirectory(Infras)
+add_subdirectory(Node)
 
 add_executable( gtest_QCNode ${GTEST_QCNODE_SOURCES} )
 target_link_libraries( gtest_QCNode ${GTEST_QCNODE_LIBS} )

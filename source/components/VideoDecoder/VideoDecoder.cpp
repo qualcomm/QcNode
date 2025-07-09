@@ -16,9 +16,9 @@
 #include <vidc_client.h>
 #endif
 
-#include "QC/common/Types.hpp"
+#include "QC/Common/Types.hpp"
 #include "QC/component/VideoDecoder.hpp"
-#include "QC/infras/logger/Logger.hpp"
+#include "QC/Infras/Log/Logger.hpp"
 
 namespace QC
 {

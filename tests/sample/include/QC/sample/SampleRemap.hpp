@@ -6,7 +6,7 @@
 #ifndef QC_SAMPLE_REMAP_HPP
 #define QC_SAMPLE_REMAP_HPP
 
-#include "QC/node/Remap.hpp"
+#include "QC/Node/Remap.hpp"
 #include "QC/sample/SampleIF.hpp"
 
 namespace QC
@@ -14,7 +14,7 @@ namespace QC
 namespace sample
 {
 
-using namespace QC::node;
+using namespace QC::Node;
 
 /// @brief qcnode::sample::SampleRemap
 ///
@@ -67,7 +67,7 @@ private:
     uint32_t m_outputHeight;
     QCImageFormat_e m_outputFormat;
     DataTree m_dataTree;
-    QC::node::Remap m_remap;
+    QC::Node::Remap m_remap;
     bool m_bEnableUndistortion = false;
 
     QCSharedBufferDescriptor_t m_mapXBufferDesc[QC_MAX_INPUTS];

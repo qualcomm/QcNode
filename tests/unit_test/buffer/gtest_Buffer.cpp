@@ -1,8 +1,8 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
-#include "QC/infras/memory/BufferManager.hpp"
-#include "QC/infras/memory/SharedBuffer.hpp"
+#include "QC/Infras/Memory/BufferManager.hpp"
+#include "QC/Infras/Memory/SharedBuffer.hpp"
 #include "gtest/gtest.h"
 #include <algorithm>
 #include <chrono>

@@ -1,4 +1,4 @@
-add_subdirectory(libs)
+add_subdirectory(Library)
 add_subdirectory(source)
 
 add_executable( QCNodeSampleApp main.cpp )

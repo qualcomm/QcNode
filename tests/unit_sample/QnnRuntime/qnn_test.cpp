@@ -18,7 +18,7 @@
 #include <vector>
 
 #include "QC/component/QnnRuntime.hpp"
-#include "QC/infras/memory/SharedBuffer.hpp"
+#include "QC/Infras/Memory/SharedBuffer.hpp"
 #include "QnnSampleAppUtils.hpp"
 
 using namespace QC::component;

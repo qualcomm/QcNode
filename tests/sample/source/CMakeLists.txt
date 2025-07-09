@@ -1,7 +1,7 @@
 
 set( HEADERS_DIR
     ${PROJECT_SOURCE_DIR}/include
-    ${PROJECT_SOURCE_DIR}/source/libs/OpenclIface
+    ${PROJECT_SOURCE_DIR}/source/Library/OpenclIface
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
 )
 

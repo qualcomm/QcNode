@@ -6,7 +6,7 @@
 #include <cmath>
 #include <malloc.h>
 
-#include "QC/common/Types.hpp"
+#include "QC/Common/Types.hpp"
 #include "QC/component/VideoEncoder.hpp"
 
 namespace QC

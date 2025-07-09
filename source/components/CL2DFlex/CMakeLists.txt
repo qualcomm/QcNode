@@ -18,7 +18,7 @@ set( CL2DFLEX_SOURCES
 )
 
 list( APPEND TARGET_LIBRARIES QCNodeComponentCommon OpenclIface)
-list( APPEND HEADERS_DIR ${PROJECT_SOURCE_DIR}/source/libs/OpenclIface )
+list( APPEND HEADERS_DIR ${PROJECT_SOURCE_DIR}/source/Library/OpenclIface )
 list( APPEND HEADERS_DIR ${PROJECT_SOURCE_DIR}/source/components/CL2DFlex )
 add_library( QCNodeCL2DFlex OBJECT ${CL2DFLEX_SOURCES} )
 

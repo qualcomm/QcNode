@@ -6,7 +6,7 @@
 #ifndef QC_SAMPLE_SPIN_LOCK_HPP
 #define QC_SAMPLE_SPIN_LOCK_HPP
 
-#include "QC/common/Types.hpp"
+#include "QC/Common/Types.hpp"
 #include <cinttypes>
 
 #include <pthread.h>

@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <thread>
 
-#include "QC/common/Types.hpp"
+#include "QC/Common/Types.hpp"
 #include "QC/component/VideoDecoder.hpp"
 #include "VidcDemuxer.hpp"
 #include "md5_utils.hpp"

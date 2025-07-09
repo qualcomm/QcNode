@@ -13,10 +13,10 @@
 
 # 1. QC Buffer Data Structures
 
-- [QCBuffer_t](../include/QC/common/Types.hpp#L86)
-- [QCImageProps_t](../include/QC/common/Types.hpp#L115)
-- [QCTensorProps_t](../include/QC/common/Types.hpp#L166)
-- [QCSharedBuffer_t](../include/QC/infras/memory/SharedBuffer.hpp#L15)
+- [QCBuffer_t](../include/QC/Common/Types.hpp#L86)
+- [QCImageProps_t](../include/QC/Common/Types.hpp#L115)
+- [QCTensorProps_t](../include/QC/Common/Types.hpp#L166)
+- [QCSharedBuffer_t](../include/QC/Infras/Memory/SharedBuffer.hpp#L15)
 
 ## 1.1 The details of image properties.
 
@@ -32,7 +32,7 @@ And the below picture shows a case what's the actual buffer looks like for an im
 
 ![Image format with 1 plane](./images/image-prop-1-plane.jpg)
 
-Thus now, it's easy to understand those members of the type [QCImageProps_t](../include/QC/common/Types.hpp#L118) except batchSize.
+Thus now, it's easy to understand those members of the type [QCImageProps_t](../include/QC/Common/Types.hpp#L118) except batchSize.
 
 For the batchSize, it was generally designed for the BEV kind of AI models, check below section [3.1](#31-a-qcnode_sharedbuffer_t-image-for-bev-kind-of-ai-model).
 
@@ -40,7 +40,7 @@ For or the compressed image with the format H264 or H265, and the code [SANITY_C
 
 # 1.2 The details of QCSharedBuffer_t.
 
-The QCSharedBuffer_t is a data structure to represent a DMA memory portion that can be shared between components for zero copy purpose. Please note that, its member ["buffer"](../include/QC/infras/memory/SharedBuffer.hpp#L17) represent a single continuous(from user space of view, physically it's maybe not continuous.) DMA memory, and with its member ["offset"](../include/QC/infras/memory/SharedBuffer.hpp#L19) and ["size"](../include/QC/infras/memory/SharedBuffer.hpp#L18) to represent the actual memory location and size in the single DMA memory. But general case is that the QCSharedBuffer_t will represent all the memory represent by its member ["buffer"](../include/QC/infras/memory/SharedBuffer.hpp#L17), but there is a typical use case for the BEV kind of AI model, please check section [3.1](#31-a-qcnode_sharedbuffer_t-image-for-bev-kind-of-ai-model) which the ShareBufferMiddle just represent the middle portion of the DMA memory.
+The QCSharedBuffer_t is a data structure to represent a DMA memory portion that can be shared between components for zero copy purpose. Please note that, its member ["buffer"](../include/QC/Infras/Memory/SharedBuffer.hpp#L17) represent a single continuous(from user space of view, physically it's maybe not continuous.) DMA memory, and with its member ["offset"](../include/QC/Infras/Memory/SharedBuffer.hpp#L19) and ["size"](../include/QC/Infras/Memory/SharedBuffer.hpp#L18) to represent the actual memory location and size in the single DMA memory. But general case is that the QCSharedBuffer_t will represent all the memory represent by its member ["buffer"](../include/QC/Infras/Memory/SharedBuffer.hpp#L17), but there is a typical use case for the BEV kind of AI model, please check section [3.1](#31-a-qcnode_sharedbuffer_t-image-for-bev-kind-of-ai-model) which the ShareBufferMiddle just represent the middle portion of the DMA memory.
 
 And it's strongly recommended that to use the APIs of QCSharedBuffer_t to do memory allocation and free, but it's also OK to use any kind of the platform DMA related APIs (PMEM for QNX, dma-buf for Linux), but in this case, the user application need to assign the right value to each member of the QCSharedBuffer_t.
 
@@ -88,27 +88,27 @@ And another thing, the QCSharedBuffer_t can be shared between components, but it
 
 # 2. QC buffer APIs
 
-- [Allocate an image with the best alignment that can be shared between CPU/GPU/VPU/HTP, etc](../include/QC/infras/memory/SharedBuffer.hpp#L63)
+- [Allocate an image with the best alignment that can be shared between CPU/GPU/VPU/HTP, etc](../include/QC/Infras/Memory/SharedBuffer.hpp#L63)
 
-- [Allocate a batched images with the best alignment that can be shared between CPU/GPU/VPU/HTP, etc](../include/QC/infras/memory/SharedBuffer.hpp#L78)
+- [Allocate a batched images with the best alignment that can be shared between CPU/GPU/VPU/HTP, etc](../include/QC/Infras/Memory/SharedBuffer.hpp#L78)
 
-- [Allocate an image(s) with specified image properties](../include/QC/infras/memory/SharedBuffer.hpp#L90)
+- [Allocate an image(s) with specified image properties](../include/QC/Infras/Memory/SharedBuffer.hpp#L90)
 
-- [Allocate a tensor with specified tensor properties](../include/QC/infras/memory/SharedBuffer.hpp#L101)
+- [Allocate a tensor with specified tensor properties](../include/QC/Infras/Memory/SharedBuffer.hpp#L101)
 
-- [Free](../include/QC/infras/memory/SharedBuffer.hpp#L109)
+- [Free](../include/QC/Infras/Memory/SharedBuffer.hpp#L109)
 
-- [GetSharedBuffer](../include/QC/infras/memory/SharedBuffer.hpp#L119): Get a shared buffer descriptor that represent the DMA memory portion specified by batchOffset and batchSize
+- [GetSharedBuffer](../include/QC/Infras/Memory/SharedBuffer.hpp#L119): Get a shared buffer descriptor that represent the DMA memory portion specified by batchOffset and batchSize
 
-- [data](../include/QC/infras/memory/SharedBuffer.hpp#L126): return the actual shared buffer virtual address
+- [data](../include/QC/Infras/Memory/SharedBuffer.hpp#L126): return the actual shared buffer virtual address
 
-- [ImageToTensor](../include/QC/infras/memory/SharedBuffer.hpp#L135): 1 plane image to tensor
+- [ImageToTensor](../include/QC/Infras/Memory/SharedBuffer.hpp#L135): 1 plane image to tensor
 
-- [ImageToTensor](../include/QC/infras/memory/SharedBuffer.hpp#L146): 2 plane yuv image to luma and chroma tensor
+- [ImageToTensor](../include/QC/Infras/Memory/SharedBuffer.hpp#L146): 2 plane yuv image to luma and chroma tensor
 
-- [Import](../include/QC/infras/memory/SharedBuffer.hpp#L157): Import a DMA memory allocated by the other process.
+- [Import](../include/QC/Infras/Memory/SharedBuffer.hpp#L157): Import a DMA memory allocated by the other process.
 
-- [UnImport](../include/QC/infras/memory/SharedBuffer.hpp#L163): Un-Import a DMA memory allocated by the other process.
+- [UnImport](../include/QC/Infras/Memory/SharedBuffer.hpp#L163): Un-Import a DMA memory allocated by the other process.
 
 # 3. QCSharedBuffer_t Examples
 
@@ -120,14 +120,14 @@ Generally, for the BEV kind of AI models, it was that multiple cameras’ frame 
 
 ![3-batch-rgb-image](./images/3-batch-rgb-image.jpg)
 
-The [SANITY_ImageAllocateRGBByProps](../tests/unit_test/buffer/gtest_Buffer.cpp#L168) demonstrate that how to allocate such a batched image(batchSize=3), the ShareBufferAll will represent the whole buffer that contain the 3 RGB images. And use the API [GetSharedBuffer](../include/QC/infras/memory/SharedBuffer.hpp#L101) to get a shared buffer descriptor ShareBufferMiddle to represent the middle front camera RGB image.
+The [SANITY_ImageAllocateRGBByProps](../tests/unit_test/buffer/gtest_Buffer.cpp#L168) demonstrate that how to allocate such a batched image(batchSize=3), the ShareBufferAll will represent the whole buffer that contain the 3 RGB images. And use the API [GetSharedBuffer](../include/QC/Infras/Memory/SharedBuffer.hpp#L101) to get a shared buffer descriptor ShareBufferMiddle to represent the middle front camera RGB image.
 
 Thus, the SharedBufferAll can be feed into the BEV kind of the AI models, and the ShareBufferMiddle can be feed into a traffic light detection AI model for example, thus for the traffic light detection AI model, it doesn't need another pre-processing to convert the front camera frame to RGB, just reused the middle portion of the SharedBufferAll to save computing resource.
 
 
 ## 3.2 Allocate buffers to hold images
 
-The [SANITY_ImageAllocateByWHF](../tests/unit_test/buffer/gtest_Buffer.cpp#L12) demonstrate that how to allocate 1 camera buffer for format UYVY or NV12, it was through using API "[Allocate](../include/QC/infras/memory/SharedBuffer.hpp#L63)" to allocate an image with the best alignment that can be shared between CPU/GPU/VPU/HTP, etc.
+The [SANITY_ImageAllocateByWHF](../tests/unit_test/buffer/gtest_Buffer.cpp#L12) demonstrate that how to allocate 1 camera buffer for format UYVY or NV12, it was through using API "[Allocate](../include/QC/Infras/Memory/SharedBuffer.hpp#L63)" to allocate an image with the best alignment that can be shared between CPU/GPU/VPU/HTP, etc.
 
 But if want to allocate a list of ping-pong buffers, the usage is generally as below.
 
@@ -185,7 +185,7 @@ And the QC Sample [SharedBufferPool](../tests/sample/include/QC/sample/SharedBuf
 
 ## 3.3 Allocate Tensor
 
-The [SANITY_TensorAllocate](../tests/unit_test/buffer/gtest_Buffer.cpp#L237) demonstrate that how to allocate buffer for Tensor, it was through using API "[Allocate](../include/QC/infras/memory/SharedBuffer.hpp#L99)".
+The [SANITY_TensorAllocate](../tests/unit_test/buffer/gtest_Buffer.cpp#L237) demonstrate that how to allocate buffer for Tensor, it was through using API "[Allocate](../include/QC/Infras/Memory/SharedBuffer.hpp#L99)".
 
 
 ## 3.4 Convert Image to Tensor
@@ -194,14 +194,14 @@ Here for the component QnnRuntime, the inputs/outputs of this component must be 
 
 ### 3.4.1 Convert the RGB Image to the Tensor
 
-For QnnRuntime with RGB or normalized RGB as input, here this API [ImageToTensor](../include/QC/infras/memory/SharedBuffer.hpp#L133) can be used to convert the RGB Image to a Tensor.
+For QnnRuntime with RGB or normalized RGB as input, here this API [ImageToTensor](../include/QC/Infras/Memory/SharedBuffer.hpp#L133) can be used to convert the RGB Image to a Tensor.
 
 - Refer [SampleQnn ThreadMain](../tests/sample/source/SampleQnn.cpp#L224).
 - Refer [gtest SANITY_ImageAllocateByWHF](../tests/unit_test/buffer/gtest_Buffer.cpp#L30).
 
 ### 3.4.2 Convert the NV12/P010 Image to the Luma and Chroma Tensor
 
-For QnnRuntime with NV12 or P010 as input, here this API [ImageToTensor](../include/QC/infras/memory/SharedBuffer.hpp#L144) can be used to convert the NV12/P010 Image to the Luma and Chroma Tensor.
+For QnnRuntime with NV12 or P010 as input, here this API [ImageToTensor](../include/QC/Infras/Memory/SharedBuffer.hpp#L144) can be used to convert the NV12/P010 Image to the Luma and Chroma Tensor.
 
 - Refer [gtest L2_Image2Tensor](../tests/unit_test/buffer/gtest_Buffer.cpp#L861).
 

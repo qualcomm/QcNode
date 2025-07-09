@@ -6,7 +6,7 @@
 #ifndef QC_SAMPLE_CL2DFLEX_HPP
 #define QC_SAMPLE_CL2DFLEX_HPP
 
-#include "QC/node/CL2DFlex.hpp"
+#include "QC/Node/CL2DFlex.hpp"
 #include "QC/sample/SampleIF.hpp"
 
 namespace QC
@@ -14,7 +14,7 @@ namespace QC
 namespace sample
 {
 
-using namespace QC::node;
+using namespace QC::Node;
 
 /// @brief qcnode::sample::SampleCL2DFlex
 ///
@@ -70,7 +70,7 @@ private:
     uint32_t m_outputHeight;
     QCImageFormat_e m_outputFormat;
     DataTree m_dataTree;
-    QC::node::CL2DFlex m_cl2d;
+    QC::Node::CL2DFlex m_cl2d;
     bool m_bEnableUndistortion = false;
     bool m_bExecuteWithROIs = false;
     uint32_t m_roiNumber = 1;

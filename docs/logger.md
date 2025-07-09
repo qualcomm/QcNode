@@ -20,31 +20,31 @@ The QC logger is designed to be used by the QC components or utils only, and wit
 
 # 1. QC Logger Types
 
-- [Logger_Level_e](../include/QC/infras/logger/Logger.hpp#L131)
-- [Logger_Handle_t](../include/QC/infras/logger/Logger.hpp#L142)
-- [Logger_Log_t](../include/QC/infras/logger/Logger.hpp#L152)
-- [Logger_Create_t](../include/QC/infras/logger/Logger.hpp#L162)
-- [Logger_Destroy_t](../include/QC/infras/logger/Logger.hpp#L170)
+- [Logger_Level_e](../include/QC/Infras/Log/Logger.hpp#L131)
+- [Logger_Handle_t](../include/QC/Infras/Log/Logger.hpp#L142)
+- [Logger_Log_t](../include/QC/Infras/Log/Logger.hpp#L152)
+- [Logger_Create_t](../include/QC/Infras/Log/Logger.hpp#L162)
+- [Logger_Destroy_t](../include/QC/Infras/Log/Logger.hpp#L170)
 
 
 # 2. QC Logger Macros
 
 Generally, the logger Macros are not suggested to be used by user application as it was design to be used by the QC components or utils only.
 
-- [QC_DECLARE_LOGGER](../include/QC/infras/logger/Logger.hpp#L34)
-- [QC_LOGGER_INIT](../include/QC/infras/logger/Logger.hpp#L46)
-- [QC_LOGGER_DEINIT](../include/QC/infras/logger/Logger.hpp#L49)
-- [QC_LOGGER_LOG](../include/QC/infras/logger/Logger.hpp#L62)
-- [QC_VERBOSE](../include/QC/infras/logger/Logger.hpp#L69)
-- [QC_DEBUG](../include/QC/infras/logger/Logger.hpp#L73)
-- [QC_INFO](../include/QC/infras/logger/Logger.hpp#L77)
-- [QC_WARN](../include/QC/infras/logger/Logger.hpp#L81)
-- [QC_ERROR](../include/QC/infras/logger/Logger.hpp#L85)
-- [QC_LOG_VERBOSE](../include/QC/infras/logger/Logger.hpp#L90)
-- [QC_LOG_DEBUG](../include/QC/infras/logger/Logger.hpp#L95)
-- [QC_LOG_INFO](../include/QC/infras/logger/Logger.hpp#L99)
-- [QC_LOG_WARN](../include/QC/infras/logger/Logger.hpp#L103)
-- [QC_LOG_ERROR](../include/QC/infras/logger/Logger.hpp#L107)
+- [QC_DECLARE_LOGGER](../include/QC/Infras/Log/Logger.hpp#L34)
+- [QC_LOGGER_INIT](../include/QC/Infras/Log/Logger.hpp#L46)
+- [QC_LOGGER_DEINIT](../include/QC/Infras/Log/Logger.hpp#L49)
+- [QC_LOGGER_LOG](../include/QC/Infras/Log/Logger.hpp#L62)
+- [QC_VERBOSE](../include/QC/Infras/Log/Logger.hpp#L69)
+- [QC_DEBUG](../include/QC/Infras/Log/Logger.hpp#L73)
+- [QC_INFO](../include/QC/Infras/Log/Logger.hpp#L77)
+- [QC_WARN](../include/QC/Infras/Log/Logger.hpp#L81)
+- [QC_ERROR](../include/QC/Infras/Log/Logger.hpp#L85)
+- [QC_LOG_VERBOSE](../include/QC/Infras/Log/Logger.hpp#L90)
+- [QC_LOG_DEBUG](../include/QC/Infras/Log/Logger.hpp#L95)
+- [QC_LOG_INFO](../include/QC/Infras/Log/Logger.hpp#L99)
+- [QC_LOG_WARN](../include/QC/Infras/Log/Logger.hpp#L103)
+- [QC_LOG_ERROR](../include/QC/Infras/Log/Logger.hpp#L107)
 
 And please note that if the macro "DISABLE_QC_LOG" was defined, all the QC log will be disabled.
 
@@ -71,7 +71,7 @@ void Logger::DefaultLog( Logger_Handle_t hHandle, Logger_Level_e level, const ch
 }
 ```
 
-So if change the logger member "[m_hHandle](../include/QC/infras/logger/Logger.hpp#L254)" as public and the macro QC_LOGGER_LOG as below, the performance can be improved (but as log messages are not that frequently, the improvement is not that much).
+So if change the logger member "[m_hHandle](../include/QC/Infras/Log/Logger.hpp#L254)" as public and the macro QC_LOGGER_LOG as below, the performance can be improved (but as log messages are not that frequently, the improvement is not that much).
 
 ```c++
 #define QC_LOGGER_LOG( logger, level, format, ... )                                           \

@@ -6,7 +6,7 @@
 #ifndef QC_SAMPLE_SYSTRACE_HPP
 #define QC_SAMPLE_SYSTRACE_HPP
 
-#include "QC/common/Types.hpp"
+#include "QC/Common/Types.hpp"
 
 using namespace QC;
 
