@@ -6,7 +6,7 @@
 #ifndef _QC_SAMPLE_NODE_VIDEO_DECODER_HPP_
 #define _QC_SAMPLE_NODE_VIDEO_DECODER_HPP_
 
-#include "QC/node/VideoDecoder.hpp"
+#include "QC/Node/VideoDecoder.hpp"
 #include "QC/sample/SampleIF.hpp"
 #include <map>
 #include <mutex>
@@ -17,7 +17,7 @@ namespace sample
 {
 
 using namespace QC;
-using namespace QC::node;
+using namespace QC::Node;
 
 /// @brief qcnode::sample::SampleVideoDecoder
 ///
@@ -58,7 +58,7 @@ private:
     };
 
 private:
-    QC::node::VideoDecoder m_encoder;
+    QC::Node::VideoDecoder m_encoder;
     DataTree m_config;
     DataTree m_dataTree;
 

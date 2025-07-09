@@ -10,7 +10,7 @@
 #include "QC/sample/shared_ring/SharedSemaphore.hpp"
 #include "QC/sample/shared_ring/SpinLock.hpp"
 
-#include "QC/infras/logger/Logger.hpp"
+#include "QC/Infras/Log/Logger.hpp"
 #include "QC/sample/DataTypes.hpp"
 
 #include <mutex>

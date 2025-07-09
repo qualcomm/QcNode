@@ -16,7 +16,7 @@
 #include <string>
 #include <vector>
 
-#include "QC/common/Types.hpp"
+#include "QC/Common/Types.hpp"
 
 using namespace QC;
 

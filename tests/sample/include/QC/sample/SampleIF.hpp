@@ -6,8 +6,8 @@
 #ifndef _QC_SAMPLE_IF_HPP_
 #define _QC_SAMPLE_IF_HPP_
 
-#include "QC/common/Types.hpp"
-#include "QC/infras/logger/Logger.hpp"
+#include "QC/Common/Types.hpp"
+#include "QC/Infras/Log/Logger.hpp"
 #include "QC/sample/DataBroker.hpp"
 #include "QC/sample/DataTypes.hpp"
 #include "QC/sample/Profiler.hpp"

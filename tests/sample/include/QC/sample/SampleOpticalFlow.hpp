@@ -6,11 +6,11 @@
 #ifndef QC_SAMPLE_NODE_OPTICALFLOW_HPP
 #define QC_SAMPLE_NODE_OPTICALFLOW_HPP
 
-#include "QC/node/OpticalFlow.hpp"
+#include "QC/Node/OpticalFlow.hpp"
 #include "QC/sample/SampleIF.hpp"
 
 using namespace QC;
-using namespace QC::node;
+using namespace QC::Node;
 
 namespace QC
 {
@@ -73,7 +73,7 @@ private:
 
     void OnDoneCb( const QCNodeEventInfo_t &eventInfo );
 
-    QC::node::OpticalFlow m_of;
+    QC::Node::OpticalFlow m_of;
 };   // class SampleOpticalFlow
 
 }   // namespace sample

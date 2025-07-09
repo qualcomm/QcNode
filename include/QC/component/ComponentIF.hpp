@@ -8,9 +8,9 @@
 
 #include <string>
 
-#include "QC/common/Types.hpp"
-#include "QC/infras/logger/Logger.hpp"
-#include "QC/infras/memory/SharedBuffer.hpp"
+#include "QC/Common/Types.hpp"
+#include "QC/Infras/Log/Logger.hpp"
+#include "QC/Infras/Memory/SharedBuffer.hpp"
 
 /** @brief The QC Version */
 #define QC_VERSION_MAJOR 1

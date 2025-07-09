@@ -6,7 +6,7 @@
 #ifndef QC_SAMPLE_CAMERA_HPP
 #define QC_SAMPLE_CAMERA_HPP
 
-#include "QC/node/Camera.hpp"
+#include "QC/Node/Camera.hpp"
 #include "QC/sample/SampleIF.hpp"
 
 #include <condition_variable>
@@ -20,7 +20,7 @@ namespace QC
 namespace sample
 {
 
-using namespace QC::node;
+using namespace QC::Node;
 
 /// @brief qcnode::sample::SampleCamera
 ///
@@ -57,7 +57,7 @@ private:
     void ProcessDoneCb( const QCNodeEventInfo_t &eventInfo );
 
 private:
-    QC::node::Camera m_camera;
+    QC::Node::Camera m_camera;
     DataTree m_config;
     DataTree m_dataTree;
 

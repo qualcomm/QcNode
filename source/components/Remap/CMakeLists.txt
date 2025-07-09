@@ -8,7 +8,7 @@ set( REMAP_HEADERS
 set( REMAP_SOURCES Remap.cpp )
 
 list( APPEND TARGET_LIBRARIES QCNodeComponentCommon FadasIface FadasIfaceStub)
-list( APPEND HEADERS_DIR ${PROJECT_SOURCE_DIR}/source/libs/FadasIface )
+list( APPEND HEADERS_DIR ${PROJECT_SOURCE_DIR}/source/Library/FadasIface )
 
 add_library( QCNodeRemap OBJECT ${REMAP_SOURCES} )
 

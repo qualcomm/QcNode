@@ -4,7 +4,7 @@
 
 #define CAMERA_UNIT_TEST
 
-#include "QC/common/Types.hpp"
+#include "QC/Common/Types.hpp"
 #include "QC/component/Camera.hpp"
 #include "QC/sample/SampleIF.hpp"
 #include "gtest/gtest.h"

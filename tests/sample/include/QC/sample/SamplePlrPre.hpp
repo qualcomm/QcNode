@@ -5,7 +5,7 @@
 #ifndef _QC_SAMPLE_PLRPRE_HPP_
 #define _QC_SAMPLE_PLRPRE_HPP_
 
-#include "QC/node/Voxelization.hpp"
+#include "QC/Node/Voxelization.hpp"
 #include "QC/sample/SampleIF.hpp"
 
 namespace QC
@@ -13,7 +13,7 @@ namespace QC
 namespace sample
 {
 
-using namespace QC::node;
+using namespace QC::Node;
 
 /// @brief qcnode::sample::SamplePlrPre
 ///
@@ -47,7 +47,7 @@ private:
     QCStatus_e ParseConfig( SampleConfig_t &config );
 
 private:
-    QC::node::Voxelization m_voxel;
+    QC::Node::Voxelization m_voxel;
     DataTree m_config;
     DataTree m_dataTree;
     QCProcessorType_e m_processor;

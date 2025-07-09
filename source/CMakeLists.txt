@@ -1,8 +1,8 @@
 
-add_subdirectory(common)
+add_subdirectory(Common)
 add_subdirectory(components)
-add_subdirectory(libs)
-add_subdirectory(nodes)
+add_subdirectory(Library)
+add_subdirectory(Node)
 
 set( HEADERS_DIR ${PROJECT_SOURCE_DIR}/include )
 
