@@ -8,7 +8,7 @@ set( QC_NODE_REMAP_SOURCES
     Remap.cpp
 )
 
-set( TARGET_LIBRARIES QCNodeRemap QCNodeNodeBase )
+set( TARGET_LIBRARIES QCNodeRemap QCNodeBase )
 
 add_library( QCNodeNodeRemap OBJECT ${QC_NODE_REMAP_SOURCES} )
 

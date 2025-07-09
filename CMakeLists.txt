@@ -3,11 +3,35 @@ cmake_minimum_required(VERSION 3.15.0)
 
 project(qcnode LANGUAGES C CXX)
 
+# valid options: 8295 8620 8650 8775 8797, override it from the command as below:
+#  cmake -DQC_TARGET_SOC=8797 ...
+set(QC_TARGET_SOC "8797" CACHE STRING "QCNode Target SOC")
+
+if(QC_TARGET_SOC STREQUAL "8295")
+    message(STATUS "Target SOC is 8295")
+    add_compile_definitions(QC_TARGET_SOC=8295)
+elseif(QC_TARGET_SOC STREQUAL "8620")
+    message(STATUS "Target SOC is 8620")
+    add_compile_definitions(QC_TARGET_SOC=8620)
+elseif(QC_TARGET_SOC STREQUAL "8650")
+    message(STATUS "Target SOC is 8650")
+    add_compile_definitions(QC_TARGET_SOC=8650)
+elseif(QC_TARGET_SOC STREQUAL "8775")
+    message(STATUS "Target SOC is 8775")
+    add_compile_definitions(QC_TARGET_SOC=8775)
+elseif(QC_TARGET_SOC STREQUAL "8797")
+    message(STATUS "Target SOC is 8797")
+    add_compile_definitions(QC_TARGET_SOC=8797)
+else()
+    message(FATAL_ERROR "Unknown target SOC: ${QC_TARGET_SOC}")
+endif()
+
 option(ENABLE_GCOV "Enable GCC Code Coverage" OFF)
 option(ENABLE_DEMUXER "Enable Demuxer building" OFF)
 option(ENABLE_C2D "Enable C2D building" OFF)
 option(ENABLE_EVA "Enable EVA building" OFF)
 option(ENABLE_FADAS "Enable FADAS building" OFF)
+option(ENABLE_RSM_V2 "Enable RSM_V2 building" OFF)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE RelWithDebInfo)

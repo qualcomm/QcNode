@@ -77,6 +77,13 @@ else()
   message(STATUS "build sample without VideoDemuxer")
 endif()
 
+if ( ENABLE_RSM_V2 )
+if( "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" )
+  list( APPEND QCNODE_SAMPLE_DEFINITIONS WITH_RSM_V2 )
+  list( APPEND TARGET_LIBRARIES rsm )
+endif()
+endif()
+
 add_library( QCNodeSample SHARED ${QCNODE_SAMPLE_SOURCES} )
 
 set_property( TARGET QCNodeSample PROPERTY LINKER_LANGUAGE CXX )

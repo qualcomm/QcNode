@@ -32,6 +32,31 @@ typedef struct
     int32_t quantOffset;
 
 public:
+    /**
+     * @brief Returns the buffer descriptor associated with the data frame.
+     * @return A reference to the buffer descriptor.
+     * @note The SharedBuffer_t structure now includes a member that references a
+     * QCBufferDescriptorBase_t. As a result, DataFrame_t holds both the legacy QCSharedBuffer_t
+     * descriptor and the new QCBufferDescriptorBase_t. Both descriptors point to the same buffer
+     * data. This design allows for a smoother transition in phase 2 when updating QCNode, as it
+     * maintains compatibility between the old and new buffer descriptor formats.
+     */
+    QCBufferDescriptorBase_t &GetBuffer() { return buffer->buffer; }
+    void Workaound()
+    {
+        /* workaround to update the QCNode new type buffer descriptor */
+        if ( QC_BUFFER_TYPE_IMAGE == buffer->sharedBuffer.type )
+        {
+            buffer->buffer = buffer->imgDesc;
+            buffer->imgDesc = buffer->sharedBuffer;
+        }
+        else
+        {
+            buffer->buffer = buffer->tensorDesc;
+            buffer->tensorDesc = buffer->sharedBuffer;
+        }
+    }
+
     QCBufferType_e BufferType() { return buffer->sharedBuffer.type; }
     QCSharedBuffer_t &SharedBuffer() { return buffer->sharedBuffer; }
     void *data() { return buffer->sharedBuffer.data(); }
@@ -43,6 +68,8 @@ typedef struct
     std::vector<DataFrame_t> frames;
 
 public:
+    QCBufferDescriptorBase_t &GetBuffer( int index ) { return frames[index].GetBuffer(); }
+
     QCBufferType_e BufferType( int index ) { return frames[index].BufferType(); }
     QCSharedBuffer_t &SharedBuffer( int index ) { return frames[index].SharedBuffer(); }
     void *data( int index ) { return frames[index].data(); }
@@ -55,7 +82,11 @@ public:
     float QuantScale( int index ) { return frames[index].quantScale; };
     int32_t QuantOffset( int index ) { return frames[index].quantOffset; };
 
-    void Add( DataFrame_t &frame ) { frames.push_back( frame ); }
+    void Add( DataFrame_t &frame )
+    {
+        frame.Workaound();
+        frames.push_back( frame );
+    }
 } DataFrames_t;
 
 typedef struct

@@ -35,11 +35,17 @@ class SampleIF;
 typedef SampleIF *( *Sample_CreateFunction_t )();
 
 #define REGISTER_SAMPLE( name, class_name )                                                        \
-    static SampleIF *CreatSample##name() { return new class_name(); }                              \
+    static SampleIF *CreatSample##name()                                                           \
+    {                                                                                              \
+        return new class_name();                                                                   \
+    }                                                                                              \
     class Register##class_name                                                                     \
     {                                                                                              \
     public:                                                                                        \
-        Register##class_name() { SampleIF::RegisterSample( #name, CreatSample##name ); }           \
+        Register##class_name()                                                                     \
+        {                                                                                          \
+            SampleIF::RegisterSample( #name, CreatSample##name );                                  \
+        }                                                                                          \
     };                                                                                             \
     const Register##class_name g_register##name;
 
@@ -94,7 +100,7 @@ public:
 protected:
     QCStatus_e Init( std::string name );
 
-    QCStatus_e Init( QCProcessorType_e processor );
+    QCStatus_e Init( QCProcessorType_e processor, int rsmPriority = 0 );
     QCStatus_e Lock();
     QCStatus_e Unlock();
 

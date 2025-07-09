@@ -1,5 +1,6 @@
 
 add_subdirectory(Common)
+add_subdirectory(Infras)
 add_subdirectory(components)
 add_subdirectory(Library)
 add_subdirectory(Node)
@@ -12,12 +13,13 @@ set( QCNODE_SOURCES ${CMAKE_BINARY_DIR}/null.cpp )
 
 set( TARGET_LIBRARIES
     QCNodeCommon
+    QCNodeMemory
     QCNodeCamera
     QCNodeVideoEncoder
     QCNodeVideoDecoder
     QCNodeCL2DFlex
     QCNodeGL2DFlex
-    QCNodeNodeBase
+    QCNodeBase
     QCNodeNodeCL2DFlex
     QCNodeNodeCamera
     QCNodeNodeVideoEncoder

@@ -2,14 +2,18 @@
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
-
+#include "QC/Infras/Memory/BufferDescriptor.hpp"
 #include "QC/Infras/Memory/BufferManager.hpp"
+#include "QC/Infras/Memory/ImageDescriptor.hpp"
 #include "QC/Infras/Memory/SharedBuffer.hpp"
+#include "QC/Infras/Memory/TensorDescriptor.hpp"
 #include <string.h>
 #include <unistd.h>
 
 namespace QC
 {
+
+using namespace QC::Memory;
 
 void QCSharedBuffer::Init()
 {
@@ -68,6 +72,46 @@ QCSharedBuffer &QCSharedBuffer::operator=( const QCSharedBuffer &rhs )
             break;
     }
     return *this;
+}
+
+QCSharedBuffer::QCSharedBuffer( const QCBufferDescriptorBase &other )
+{
+    static const BufferDescriptor_t *pBuffer = dynamic_cast<const BufferDescriptor_t *>( &other );
+    static const TensorDescriptor_t *pTensor = dynamic_cast<const TensorDescriptor_t *>( &other );
+    static const ImageDescriptor_t *pImage = dynamic_cast<const ImageDescriptor_t *>( &other );
+    if ( nullptr != pBuffer )
+    {
+        this->buffer.pData = pBuffer->pBufBase;
+        this->buffer.size = pBuffer->dmaSize;
+        this->buffer.dmaHandle = pBuffer->dmaHandle;
+        this->buffer.id = pBuffer->id;
+        this->buffer.pid = pBuffer->pid;
+        this->buffer.usage = pBuffer->usage;
+        this->buffer.flags = QC_BUFFER_FLAGS_CACHE_WB_WA;
+        this->size = pBuffer->size;
+        this->offset = pBuffer->offset;
+        this->type = pBuffer->type;
+    }
+    if ( nullptr != pTensor )
+    {
+        this->tensorProps.type = pTensor->tensorType;
+        std::copy( pTensor->dims, pTensor->dims + pTensor->numDims, this->tensorProps.dims );
+        this->tensorProps.numDims = pTensor->numDims;
+    }
+
+    if ( nullptr != pImage )
+    {
+        this->imgProps.format = pImage->format;
+        this->imgProps.width = pImage->width;
+        this->imgProps.height = pImage->height;
+        this->imgProps.batchSize = pImage->batchSize;
+        std::copy( pImage->stride, pImage->stride + pImage->numPlanes, this->imgProps.stride );
+        std::copy( pImage->actualHeight, pImage->actualHeight + pImage->numPlanes,
+                   this->imgProps.actualHeight );
+        std::copy( pImage->planeBufSize, pImage->planeBufSize + pImage->numPlanes,
+                   this->imgProps.planeBufSize );
+        this->imgProps.numPlanes = pImage->numPlanes;
+    }
 }
 
 QCSharedBuffer::~QCSharedBuffer() {}

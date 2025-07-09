@@ -8,7 +8,7 @@ set( QC_NODE_CL2D_SOURCES
     CL2DFlex.cpp
 )
 
-set( TARGET_LIBRARIES QCNodeCL2DFlex QCNodeNodeBase )
+set( TARGET_LIBRARIES QCNodeCL2DFlex QCNodeBase )
 
 add_library( QCNodeNodeCL2DFlex OBJECT ${QC_NODE_CL2D_SOURCES} )
 

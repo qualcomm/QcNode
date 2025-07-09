@@ -71,20 +71,21 @@ typedef enum
     QC_NODE_ID_MAX = UINT32_MAX
 } QCNodeID_e;
 
+/** @brief QC Buffer Type */
 typedef enum
 {
-    QC_BUF_TXT = 0,
-    QC_BUF_BINARY,
-    QC_BUF_TENSOR,
-    QC_BUF_IMAGE,
-    QC_BUF_CUSTOM_0,
-    QC_BUF_CUSTOM_1,
-    QC_BUF_CUSTOM_2,
-    QC_BUF_CUSTOM_3,
-    QC_BUF_CUSTOM_4,
-    QC_BUF_LAST,
-    QC_BUF_MAX = UINT32_MAX
-} QCBufferDataFormat_e;
+    QC_BUFFER_TYPE_TXT,
+    QC_BUFFER_TYPE_RAW,    /**< The buffer for raw data */
+    QC_BUFFER_TYPE_IMAGE,  /**< The buffer for image */
+    QC_BUFFER_TYPE_TENSOR, /**< The buffer for tensor */
+    QC_BUFFER_TYPE_CUSTOM_0,
+    QC_BUFFER_TYPE_CUSTOM_1,
+    QC_BUFFER_TYPE_CUSTOM_2,
+    QC_BUFFER_TYPE_CUSTOM_3,
+    QC_BUFFER_TYPE_CUSTOM_4,
+    QC_BUFFER_TYPE_LAST,
+    QC_BUFFER_TYPE_MAX = UINT32_MAX
+} QCBufferType_e;
 
 }   // namespace QC
 

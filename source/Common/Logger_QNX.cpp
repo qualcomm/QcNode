@@ -8,11 +8,6 @@
 #include <mutex>
 #include <sys/slog2.h>
 
-
-#ifndef QC_LOG_MSG_MAX_LEN
-#define QC_LOG_MSG_MAX_LEN 288
-#endif
-
 namespace QC
 {
 
@@ -32,30 +27,17 @@ static std::map<std::string, Logger_Handle_t> s_slog2Map;
 void Logger::DefaultLog( Logger_Handle_t hHandle, Logger_Level_e level, const char *pFormat,
                          va_list args )
 {
-    char msg[QC_LOG_MSG_MAX_LEN];
     slog2_buffer_t hBuffer = static_cast<slog2_buffer_t>( hHandle );
-    int len = 0;
     int rc;
-
-    len = vsnprintf( msg, sizeof( msg ), pFormat, args );
-    len += snprintf( &msg[len], sizeof( msg ) - len, "\n" );
-    if ( len <= sizeof( msg ) )
+    // NOTE: always use SLOG2_INFO level as observed that the DEBUG/VERBOSE message are lost,
+    // and this is a workaround
+    // rc = vslog2f( hBuffer, 0, s_qcLoggerLevelToSlog2Level[level], pFormat, args );
+    (void) s_qcLoggerLevelToSlog2Level;
+    rc = vslog2f( hBuffer, 0, SLOG2_INFO, pFormat, args );
+    if ( 0 != rc )
     {
-        // NOTE: always use SLOG2_INFO level as observed that the DEBUG/VERBOSE message are lost,
-        // and this is a workaround
-        // rc = slog2f( hBuffer, 0, s_qcLoggerLevelToSlog2Level[level], msg );
-        (void) s_qcLoggerLevelToSlog2Level;
-        rc = slog2f( hBuffer, 0, SLOG2_INFO, msg );
-        if ( 0 != rc )
-        {
-            (void) fprintf( stderr, "slog2c error=%d: %s", rc, msg );
-        }
-    }
-    else
-    {
-        (void) fprintf( stderr, "message too long: " );
+        (void) fprintf( stderr, "slog2f error=%d: ", rc );
         (void) vfprintf( stderr, pFormat, args );
-        (void) fprintf( stderr, "\n" );
     }
 }
 

@@ -1,44 +1,44 @@
 *Menu*:
-- [QC Sample Application](#qc-sample-application)
-  - [1. QC Sample Application command line arguments](#1-qc-sample-application-command-line-arguments)
-  - [2. QC Samples](#2-qc-samples)
-    - [2.1 QC DataReader Sample](#21-qc-datareader-sample)
-    - [2.2 QC Camera Sample](#22-qc-camera-sample)
-    - [2.3 QC C2D Sample](#23-qc-c2d-sample)
-    - [2.4 QC Remap Sample](#24-qc-remap-sample)
-    - [2.5 QC Qnn Sample](#25-qc-qnn-sample)
-    - [2.6 QC PostProcCenternet Sample](#26-qc-postproccenternet-sample)
-    - [2.7 QC TinyViz Sample](#27-qc-tinyviz-sample)
-    - [2.8 QC VideoEncoder Sample](#28-qc-videoencoder-sample)
-    - [2.9 QC Recorder Sample](#29-qc-recorder-sample)
-    - [2.10 QC PlrPre Sample](#210-qc-plrpre-sample)
-    - [2.11 QC PlrPost Sample](#211-qc-plrpost-sample)
-    - [2.12 QC DataOnline Sample](#212-qc-dataonline-sample)
-    - [2.13 QC CL2DFlex Sample](#213-qc-cl2dflex-sample)
-    - [2.14 QC GL2DFlex Sample](#214-qc-gl2dflex-sample)
-    - [2.15 QC Shared Ring Sample](#215-qc-shared-ring-sample)
-    - [2.16 QC FpsAdapter Sample](#216-qc-fpsadapter-sample)
-    - [2.17 QC VideoDecoder Sample](#217-qc-videodecoder-sample)
-    - [2.18 QC OpticalFlow Sample](#218-qc-opticalflow-sample)
-    - [2.19 QC OpticalFlowViz Sample](#219-qc-opticalflowviz-sample)
-    - [2.20 QC FrameSync Sample](#220-qc-framesync-sample)
-    - [2.21 QC DepthFromStereo Sample](#221-qc-depthfromstereo-sample)
-    - [2.22 QC DepthFromStereoViz Sample](#222-qc-depthfromstereoviz-sample)
-    - [2.23 QC VideoDemuxer Sample](#223-qc-videodemuxer-sample)
-  - [3. Typical QC Sample Application pipelines](#3-typical-qc-sample-application-pipelines)
+- [QCNode Sample Application](#qcnode-sample-application)
+  - [1. QCNode Sample Application command line arguments](#1-qcnode-sample-application-command-line-arguments)
+  - [2. QCNode Samples](#2-qcnode-samples)
+    - [2.1 QCNode DataReader Sample](#21-qcnode-datareader-sample)
+    - [2.2 QCNode Camera Sample](#22-qcnode-camera-sample)
+    - [2.3 QCNode C2D Sample](#23-qcnode-c2d-sample)
+    - [2.4 QCNode Remap Sample](#24-qcnode-remap-sample)
+    - [2.5 QCNode Qnn Sample](#25-qcnode-qnn-sample)
+    - [2.6 QCNode PostProcCenternet Sample](#26-qcnode-postproccenternet-sample)
+    - [2.7 QCNode TinyViz Sample](#27-qcnode-tinyviz-sample)
+    - [2.8 QCNode VideoEncoder Sample](#28-qcnode-videoencoder-sample)
+    - [2.9 QCNode Recorder Sample](#29-qcnode-recorder-sample)
+    - [2.10 QCNode PlrPre Sample](#210-qcnode-plrpre-sample)
+    - [2.11 QCNode PlrPost Sample](#211-qcnode-plrpost-sample)
+    - [2.12 QCNode DataOnline Sample](#212-qcnode-dataonline-sample)
+    - [2.13 QCNode CL2DFlex Sample](#213-qcnode-cl2dflex-sample)
+    - [2.14 QCNode GL2DFlex Sample](#214-qcnode-gl2dflex-sample)
+    - [2.15 QCNode Shared Ring Sample](#215-qcnode-shared-ring-sample)
+    - [2.16 QCNode FpsAdapter Sample](#216-qcnode-fpsadapter-sample)
+    - [2.17 QCNode VideoDecoder Sample](#217-qcnode-videodecoder-sample)
+    - [2.18 QCNode OpticalFlow Sample](#218-qcnode-opticalflow-sample)
+    - [2.19 QCNode OpticalFlowViz Sample](#219-qcnode-opticalflowviz-sample)
+    - [2.20 QCNode FrameSync Sample](#220-qcnode-framesync-sample)
+    - [2.21 QCNode DepthFromStereo Sample](#221-qcnode-depthfromstereo-sample)
+    - [2.22 QCNode DepthFromStereoViz Sample](#222-qcnode-depthfromstereoviz-sample)
+    - [2.23 QCNode VideoDemuxer Sample](#223-qcnode-videodemuxer-sample)
+  - [3. Typical QCNode Sample Application pipelines](#3-typical-qcnode-sample-application-pipelines)
     - [3.1 4 DataReader based QNN perception pipelines](#31-4-datareader-based-qnn-perception-pipelines)
     - [3.2 1 DataReader and 1 Camera AR231 based QNN perception pipelines](#32-1-datareader-and-1-camera-ar231-based-qnn-perception-pipelines)
     - [3.3 1 DataReader based Pointpillar QNN perception pipelines](#33-1-datareader-based-pointpillar-qnn-perception-pipelines)
     - [3.4 1 QNN model data online inference pipeline](#34-1-qnn-model-data-online-inference-pipeline)
     - [3.5 1 QNN model data online shared memory between process pipeline](#35-1-qnn-model-data-online-shared-memory-between-process-pipeline)
 
-# QC Sample Application
+# QCNode Sample Application
 
-This QC sample is an application to demonstrate how to use the QC components.
+This QCNode sample is an application to demonstrate how to use the QCNode components.
 
-## 1. QC Sample Application command line arguments
+## 1. QCNode Sample Application command line arguments
 
-Below is a sample that how to use command line arguments to tell the QC sample application to create the component with the specified arguments.
+Below is a sample that how to use command line arguments to tell the QCNode sample application to create the component with the specified arguments.
 
 ```sh
 export QC_LOG_LEVEL=INFO
@@ -60,12 +60,12 @@ Note: the "-n componentX_name -t componentX_type" must be in the begin for each 
 | -t        | true     | string    | The component type name, options from [DataReader, Camera, Remap, Qnn, C2D, PostProcCenternet, TinyViz, VideoEncoder, VideoDecoder, Recorder, PlrPre, PlrPost, DataOnline, CL2DFlex, GL2DFlex, SharedRing, FpsAdapter, OpticalFlow, OpticalFlowViz, FrameSync, DepthFromStereo, DepthFromStereoViz] |
 | -k        | true     | string    | The unique component attribute name |
 | -v        | true     | string    | The attribute value for the previous attribute name |
-| -d        | false    |   -       | Direct the QC log to stdout |
+| -d        | false    |   -       | Direct the QCNode log to stdout |
 | -T        | false    | int       | Specify the time in seconds that the QCNodeSampleApp runs, if not specified or value 0, it means that the QCNodeSampleApp will run forever until stop signal(Ctrl + C).  |
 
-## 2. QC Samples
+## 2. QCNode Samples
 
-### 2.1 QC DataReader Sample
+### 2.1 QCNode DataReader Sample
 
 | attribute | required | type      | default | comments |
 |-----------|----------|-----------|---------|----------|
@@ -77,6 +77,7 @@ Note: the "-n componentX_name -t componentX_type" must be in the begin for each 
 | data_pathX | true    | string    | -       | The data path for the simulated sensor X that contain the image files |
 | tensor_typeX | false | string    | float32 | The tensor type, options from [int8, int16, int32, int64, uint8, uint16, uint32, uint64, float16, float32, float64, sfixed_point8, sfixed_point16, sfixed_point32, ufixed_point8, ufixed_point16, ufixed_point32 ] |
 | dimsX     | true     | string    | -       | The tensor dimensions, in format "N,H,W,C", "N,S,C", "N,C", or "N" depends on the number of dimensions. |
+| offset   | false    | int      | 0    | Specifies the starting index for the simulated sensor data. |
 | fps       | false    | int       | 30      | The frame rate per second |
 | pool_size | false    | int       | 4       | the image memory pool size |
 | cache     | false    | bool      | true    | use cached memory or not for the image memory |
@@ -112,7 +113,7 @@ Please note that for lidar pipeline, TinyViz was used to visualize the pointcoul
 
 Refer [DataReader Utils](../../scripts/utils/data_reader/README.md#L38) for how to generate a data reader inputs point cloud files.
 
-### 2.2 QC Camera Sample
+### 2.2 QCNode Camera Sample
 
 | attribute | required | type      | default | comments |
 |-----------|----------|-----------|---------|----------|
@@ -167,7 +168,7 @@ The command line template example:
     -k topic1 -v /sensor/camera/IMX728_0_S1/raw \
 ```
 
-### 2.3 QC C2D Sample
+### 2.3 QCNode C2D Sample
 
 | attribute     | required | type      | default | comments |
 |---------------|----------|-----------|---------|----------|
@@ -201,11 +202,12 @@ The command line template example:
     -k cache -v false
 ```
 
-### 2.4 QC Remap Sample
+### 2.4 QCNode Remap Sample
 
 | attribute     | required | type      | default | comments |
 |---------------|----------|-----------|---------|----------|
 | processor     | false    | string    | "htp0"  | The processor type, options from [htp0, htp1, cpu, gpu] |
+| rsm_priority  | false     | int    | 0       | the RSM request priority, options [0,1,2,3], 0 is the lowest and 3 is highest priority. |
 | output_width  | false    | int       | 1152    | The output image width |
 | output_height | false    | int       | 800     | The output image height |
 | output_format | false    | string    | rgb     | The output image format, options from [rgb, bgr]|
@@ -250,11 +252,13 @@ The command line template example:
     -k output_topic -v /sensor/camera/CAM0/remap \
 ```
 
-### 2.5 QC Qnn Sample
+### 2.5 QCNode Qnn Sample
 
 | attribute     | required | type      | default | comments |
 |---------------|----------|-----------|---------|----------|
 | processor     | false    | string    | "htp0"  | The processor type, options from [htp0, htp1, cpu, gpu] |
+| core_ids      | false    | int list  | 0       | Comma-separated list of core IDs on which the QNN model will run. |
+| rsm_priority  | false     | int    | 0       | the RSM request priority, options [0,1,2,3], 0 is the lowest and 3 is highest priority. |
 | async         | fasle    | bool      | false   | If true, enable to use QNN Async Execute API, else use QNN Sync Execute API. |
 | model_path    | true     | string    | -       | The QNN model path |
 | image_convert         | false    | string    | default | The image convert method for input image, options from [default, gray, chroma_first]. `default`: the default way to convert the image to 1 or more tenors. `gray`: convert the image to 1 tensor with the gray(luminance) part of the image. `chroma_first`: the same as `default` for NV12 or P010, but with chroma tensor first and then luma tensor. |
@@ -262,7 +266,7 @@ The command line template example:
 | input_topic   | true     | string    | -       | the input topic name |
 | output_topic  | true     | string    | -       | the output topic name |
 | udo           | false    | string    | -       | udo lib path and interface provider name. e.g. libQnnAutoAiswOpPackage.so:AutoAiswOpPackageInterfaceProvider |
-| model_io_info_topic | false    | string    | ""       | if configured, this topic will be used to publish the input/output tensor informatin of the model, generally used by the QC DataOnline Sample for the QNN online inference.  |
+| model_io_info_topic | false    | string    | ""       | if configured, this topic will be used to publish the input/output tensor informatin of the model, generally used by the QCNode DataOnline Sample for the QNN online inference.  |
 
 The command line template example:
 
@@ -273,7 +277,7 @@ The command line template example:
     -k output_topic -v /sensor/camera/CAM0/qnn \
 ```
 
-### 2.6 QC PostProcCenternet Sample
+### 2.6 QCNode PostProcCenternet Sample
 
 | attribute     | required | type      | default | comments |
 |---------------|----------|-----------|---------|----------|
@@ -298,7 +302,7 @@ The command line template example:
     -k output_topic -v /sensor/camera/CAM0/objs \
 ```
 
-### 2.7 QC TinyViz Sample
+### 2.7 QCNode TinyViz Sample
 
 | attribute     | required | type        | default | comments |
 |---------------|----------|-------------|---------|----------|
@@ -325,7 +329,7 @@ The command line template example for Lidar pipeline:
 ```
 
 
-### 2.8 QC VideoEncoder Sample
+### 2.8 QCNode VideoEncoder Sample
 
 | attribute     | required | type      | default | comments |
 |---------------|----------|-----------|---------|----------|
@@ -347,7 +351,7 @@ The command line template example:
     -k output_topic -v /sensor/camera/CAM0/hevc \
 ```
 
-### 2.9 QC Recorder Sample
+### 2.9 QCNode Recorder Sample
 
 | attribute     | required | type      | default | comments |
 |---------------|----------|-----------|---------|----------|
@@ -374,11 +378,12 @@ The command line template example:
   -n REC0 -t Recorder -k max -v 100 -k topic -v /sensor/camera/CAM0/hevc \
 ```
 
-### 2.10 QC PlrPre Sample
+### 2.10 QCNode PlrPre Sample
 
 | attribute     | required | type      | default | comments |
 |---------------|----------|-----------|---------|----------|
 | processor     | false    | string    | "htp0"  | The processor type, options from [htp0, htp1, cpu, gpu] |
+| rsm_priority  | false     | int    | 0       | the RSM request priority, options [0,1,2,3], 0 is the lowest and 3 is highest priority. |
 | pillar_size_x | false    | float     | 0.16    | Pillar size in x direction in meters |
 | pillar_size_y | false    | float     | 0.16    | Pillar size in y direction in meters |
 | pillar_size_z | false    | float     | 4.0     | Pillar size in z direction in meters |
@@ -406,11 +411,12 @@ The command line template example:
     -k output_topic -v /sensor/lidar/LIDAR0/plrpre \
 ```
 
-### 2.11 QC PlrPost Sample
+### 2.11 QCNode PlrPost Sample
 
 | attribute     | required | type      | default | comments |
 |---------------|----------|-----------|---------|----------|
 | processor     | false    | string    | "htp0"  | The processor type, options from [htp0, htp1, cpu] |
+| rsm_priority  | false     | int    | 0       | the RSM request priority, options [0,1,2,3], 0 is the lowest and 3 is highest priority. |
 | pillar_size_x | false    | float     | 0.16    | Pillar size in x direction in meters |
 | pillar_size_y | false    | float     | 0.16    | Pillar size in y direction in meters |
 | min_x         | false    | float     | 0.0     | Minimum range value in x direction |
@@ -441,7 +447,7 @@ The command line template example:
     -k output_topic -v /sensor/lidar/LIDAR0/objs
 ```
 
-### 2.12 QC DataOnline Sample
+### 2.12 QCNode DataOnline Sample
 
 | attribute     | required | type      | default | comments |
 |---------------|----------|-----------|---------|----------|
@@ -461,7 +467,8 @@ The command line template example:
     -k output_topic -v /data/online/DO0/output \
     -k model_io_info_topic -v /data/online/DO0/model/info \
 ```
-### 2.13 QC CL2DFlex Sample
+
+### 2.13 QCNode CL2DFlex Sample
 
 | attribute     | required | type      | default | comments |
 |---------------|----------|-----------|---------|----------|
@@ -498,7 +505,7 @@ The command line template example:
     -k output_topic -v /sensor/camera/CAM0/cl2d \
 ```
 
-### 2.14 QC GL2DFlex Sample
+### 2.14 QCNode GL2DFlex Sample
 
 | attribute     | required | type      | default | comments |
 |---------------|----------|-----------|---------|----------|
@@ -525,7 +532,7 @@ The command line template example:
     -k output_topic -v /sensor/camera/CAM1/raw
 ```
 
-### 2.15 QC Shared Ring Sample
+### 2.15 QCNode Shared Ring Sample
 
 | attribute| required | type      | default | comments |
 |----------|----------|-----------|---------|----------|
@@ -545,7 +552,7 @@ The command line template example:
     -k topic -v /sensor/camera/CAM0/raw \
 ```
 
-### 2.16 QC FpsAdapter Sample
+### 2.16 QCNode FpsAdapter Sample
 
 | attribute     | required | type      | default | comments |
 |---------------|----------|-----------|---------|----------|
@@ -561,7 +568,7 @@ The command line template example:
     -k output_topic -v /sensor/camera/CAM0/raw_10fps
 ```
 
-### 2.17 QC VideoDecoder Sample
+### 2.17 QCNode VideoDecoder Sample
 
 | attribute     | required | type      | default | comments |
 |---------------|----------|-----------|---------|----------|
@@ -584,7 +591,7 @@ The command line template example:
     -k output_topic -v /sensor/camera/CAM0_DEC/raw \
 ```
 
-### 2.18 QC OpticalFlow Sample
+### 2.18 QCNode OpticalFlow Sample
 
 | attribute     | required | type      | default | comments |
 |---------------|----------|-----------|---------|----------|
@@ -609,7 +616,7 @@ The command line template example:
     -k output_topic -v /sensor/camera/CAM0/mv \
 ```
 
-### 2.19 QC OpticalFlowViz Sample
+### 2.19 QCNode OpticalFlowViz Sample
 
 The Sample OpticalFlowViz converts the motion vection output from the Sample OpticalFlow to RGB image.
 
@@ -631,7 +638,7 @@ The command line template example:
     -k output_topic -v /sensor/camera/CAM1/raw \
 ```
 
-### 2.20 QC FrameSync Sample
+### 2.20 QCNode FrameSync Sample
 
 | attribute     | required | type      | default | comments |
 |---------------|----------|-----------|---------|----------|
@@ -653,7 +660,7 @@ The command line template example:
     -k output_topic -v /sensor/camera/FS0/raw \
 ```
 
-### 2.21 QC DepthFromStereo Sample
+### 2.21 QCNode DepthFromStereo Sample
 
 | attribute     | required | type      | default | comments |
 |---------------|----------|-----------|---------|----------|
@@ -677,7 +684,7 @@ The command line template example:
     -k output_topic -v /sensor/camera/DFS0/dfs \
 ```
 
-### 2.22 QC DepthFromStereoViz Sample
+### 2.22 QCNode DepthFromStereoViz Sample
 
 The Sample DepthFromStereoViz converts the disparity and confidence map output from the Sample DepthFromStereo to RGB image.
 
@@ -701,7 +708,7 @@ The command line template example:
     -k output_topic -v /sensor/camera/CAM2/raw \
 ```
 
-### 2.23 QC VideoDemuxer Sample
+### 2.23 QCNode VideoDemuxer Sample
 
 | attribute      | required | type      | default | comments |
 |----------------|----------|-----------|---------|----------|
@@ -722,7 +729,7 @@ The command line template example:
     -k topic  -v /sensor/camera/CAM0/hevc
 ```
 
-## 3. Typical QC Sample Application pipelines
+## 3. Typical QCNode Sample Application pipelines
 
 ### 3.1 4 DataReader based QNN perception pipelines
 

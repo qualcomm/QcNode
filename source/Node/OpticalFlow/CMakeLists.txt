@@ -4,7 +4,7 @@ set( HEADERS_DIR ${PROJECT_SOURCE_DIR}/include )
 set( QC_NODE_OPTICAL_FLOW_HEADERS ${HEADERS_DIR}/QC/Node/OpticalFlow.hpp)
 set( QC_NODE_OPTICAL_FLOW_SOURCES OpticalFlow.cpp)
 
-set( TARGET_LIBRARIES QCNodeOpticalFlow QCNodeNodeBase )
+set( TARGET_LIBRARIES QCNodeOpticalFlow QCNodeBase )
 
 add_library( QCNodeNodeOpticalFlow OBJECT ${QC_NODE_OPTICAL_FLOW_SOURCES} )
 

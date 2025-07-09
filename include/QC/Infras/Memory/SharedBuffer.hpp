@@ -5,6 +5,7 @@
 #define QC_SHARED_BUFFER_HPP
 
 #include "QC/Common/Types.hpp"
+#include "QC/Infras/Memory/QCBufferDescriptorBase.hpp"
 
 namespace QC
 {
@@ -28,6 +29,15 @@ typedef struct QCSharedBuffer
 public:
     QCSharedBuffer();
     ~QCSharedBuffer();
+
+    /**
+     * @brief Construct the shared buffer descriptor from another shared buffer object.
+     * @param[in] other The shared buffer object from which buffer members are copied.
+     * @return The updated tensor descriptor.
+     * @note This is a temporary workaround API to support smoother development during phase 2.
+     *       It will be removed once phase 2 is complete.
+     */
+    QCSharedBuffer( const QCBufferDescriptorBase &other );
 
     /**
      * @brief Construct an shared buffer from another shared buffer

@@ -4,7 +4,7 @@ set( HEADERS_DIR ${PROJECT_SOURCE_DIR}/include )
 set( QC_NODE_DEPTH_FROM_STEREO_HEADERS ${HEADERS_DIR}/QC/Node/DepthFromStereo.hpp)
 set( QC_NODE_DEPTH_FROM_STEREO_SOURCES DepthFromStereo.cpp)
 
-set( TARGET_LIBRARIES QCNodeDepthFromStereo QCNodeNodeBase )
+set( TARGET_LIBRARIES QCNodeDepthFromStereo QCNodeBase )
 
 add_library( QCNodeNodeDepthFromStereo OBJECT ${QC_NODE_DEPTH_FROM_STEREO_SOURCES} )
 

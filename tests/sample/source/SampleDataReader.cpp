@@ -19,6 +19,7 @@ static std::string s_qcFormatToStr[QC_IMAGE_FORMAT_MAX] = {
         ".nv12",      /* QC_IMAGE_FORMAT_NV12 */
         ".p010",      /* QC_IMAGE_FORMAT_P010 */
         ".nv12_ubwc", /* QC_IMAGE_FORMAT_NV12_UBWC */
+        ".tp10_ubwc", /* QC_IMAGE_FORMAT_TP10_UBWC */
 };
 
 #define SIZE_OF_FLOAT16 2
@@ -140,6 +141,8 @@ QCStatus_e SampleDataReader::ParseConfig( SampleConfig_t &config )
         QC_ERROR( "invalid fps = %d\n", m_fps );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
+
+    m_offset = Get( config, "offset", 0 );
 
     bool bCache = Get( config, "cache", true );
     if ( false == bCache )
@@ -322,7 +325,7 @@ QCStatus_e SampleDataReader::LoadTensor( std::shared_ptr<SharedBuffer_t> tensor,
 void SampleDataReader::ThreadMain()
 {
     QCStatus_e ret = QC_STATUS_OK;
-    uint32_t index = 0;
+    uint32_t index = m_offset;
     uint64_t frameId = 0;
     while ( false == m_stop )
     {

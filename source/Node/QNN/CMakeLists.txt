@@ -13,7 +13,7 @@ set( QC_NODE_QNN_SOURCES
     QNN.cpp
 )
 
-set( TARGET_LIBRARIES QCNodeQnnRuntime QCNodeNodeBase )
+set( TARGET_LIBRARIES QCNodeQnnRuntime QCNodeBase )
 
 add_library( QCNodeNodeQNN OBJECT ${QC_NODE_QNN_SOURCES} )
 

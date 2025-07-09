@@ -13,7 +13,7 @@ set( QC_NODE_CAMERA_SOURCES
     Camera.cpp
 )
 
-set( TARGET_LIBRARIES QCNodeCamera QCNodeNodeBase )
+set( TARGET_LIBRARIES QCNodeCamera QCNodeBase )
 
 add_library( QCNodeNodeCamera OBJECT ${QC_NODE_CAMERA_SOURCES} )
 
@@ -25,5 +25,4 @@ target_include_directories( QCNodeNodeCamera PUBLIC ${HEADERS_DIR} )
 target_link_libraries( QCNodeNodeCamera PUBLIC ${TARGET_LIBRARIES} )
 
 install( FILES ${QC_NODE_CAMERA_HEADERS} DESTINATION include/QC/Node )
-
 
