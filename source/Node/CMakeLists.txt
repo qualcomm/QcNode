@@ -9,15 +9,15 @@ set( NODEIF_SOURCES
 
 set( TARGET_LIBRARIES QCNodeCommon QCNodeVideoCodec )
 
-add_library( QCNodeNodeBase STATIC ${NODEIF_SOURCES} )
+add_library( QCNodeBase STATIC ${NODEIF_SOURCES} )
 
-set_property( TARGET QCNodeNodeBase PROPERTY LINKER_LANGUAGE CXX )
-set_property( TARGET QCNodeNodeBase PROPERTY POSITION_INDEPENDENT_CODE ON )
+set_property( TARGET QCNodeBase PROPERTY LINKER_LANGUAGE CXX )
+set_property( TARGET QCNodeBase PROPERTY POSITION_INDEPENDENT_CODE ON )
 
 find_package(nlohmann_json 3.2.0 REQUIRED)
 list( APPEND TARGET_LIBRARIES nlohmann_json::nlohmann_json)
 
-target_link_libraries( QCNodeNodeBase PUBLIC ${TARGET_LIBRARIES} )
+target_link_libraries( QCNodeBase PUBLIC ${TARGET_LIBRARIES} )
 
 install( FILES ${NODEIF_HEADERS} DESTINATION include/QC/Node )
 install( FILES  ${HEADERS_DIR}/QC/Common/DataTree.hpp

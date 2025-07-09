@@ -60,7 +60,7 @@ QCStatus_e SampleIF::Init( std::string name )
     return ret;
 }
 
-QCStatus_e SampleIF::Init( QCProcessorType_e processor )
+QCStatus_e SampleIF::Init( QCProcessorType_e processor, int rsmPriority )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
@@ -79,7 +79,7 @@ QCStatus_e SampleIF::Init( QCProcessorType_e processor )
         memset( &m_acquireCmdV2, 0, sizeof( m_acquireCmdV2 ) );
         m_acquireCmdV2.resource = (rsm_resource_group) processor;
         m_acquireCmdV2.priority = QUEUE_PRIORITY_DEFAULT;
-        m_acquireCmdV2.configure.priority = REQUEST_PRIORITY_DEFAULT;
+        m_acquireCmdV2.configure.priority = static_cast<rsm_request_priority>( rsmPriority );
         m_acquireCmdV2.duration_us = 0;
         m_acquireCmdV2.timeout_us = 1000000;
         int rc = rsm_register_v2( &m_handle );
@@ -540,6 +540,16 @@ QCProcessorType_e SampleIF::Get( SampleConfig_t &config, std::string key,
         {
             ret = QC_PROCESSOR_HTP1;
         }
+#if QC_TARGET_SOC == 8797
+        else if ( "htp2" == processor )
+        {
+            ret = QC_PROCESSOR_HTP2;
+        }
+        else if ( "htp3" == processor )
+        {
+            ret = QC_PROCESSOR_HTP3;
+        }
+#endif
         else if ( "cpu" == processor )
         {
             ret = QC_PROCESSOR_CPU;

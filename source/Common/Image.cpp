@@ -40,7 +40,7 @@ static uint32_t s_qcFormatToNumPlanes[QC_IMAGE_FORMAT_MAX] = {
         2, /* QC_IMAGE_FORMAT_NV12 */
         2, /* QC_IMAGE_FORMAT_P010 */
         4, /* QC_IMAGE_FORMAT_NV12_UBWC */
-        4  /* QC_IMAGE_FORMAT_P010_UBWC */
+        4  /* QC_IMAGE_FORMAT_TP10_UBWC */
 };
 
 static uint32_t s_qcFormatToHeightDividerPerPlanes[QC_IMAGE_FORMAT_MAX][QC_NUM_IMAGE_PLANES] = {
@@ -49,16 +49,18 @@ static uint32_t s_qcFormatToHeightDividerPerPlanes[QC_IMAGE_FORMAT_MAX][QC_NUM_I
         { 1, 0, 0, 0 }, /* QC_IMAGE_FORMAT_UYVY */
         { 1, 2, 0, 0 }, /* QC_IMAGE_FORMAT_NV12 */
         { 1, 2, 0, 0 }, /* QC_IMAGE_FORMAT_P010 */
-        { 1, 1, 2, 2 }  /* QC_IMAGE_FORMAT_NV12_UBWC */
+        { 1, 1, 2, 2 }, /* QC_IMAGE_FORMAT_NV12_UBWC */
+        { 1, 1, 2, 2 }  /* QC_IMAGE_FORMAT_TP10_UBWC */
 };
 
 static const char *s_qcFormatToString[QC_IMAGE_FORMAT_MAX] = {
-        "RGB888",   /* QC_IMAGE_FORMAT_RGB888 */
-        "BGR888",   /* QC_IMAGE_FORMAT_BGR888 */
-        "UYVY",     /* QC_IMAGE_FORMAT_UYVY */
-        "NV12",     /* QC_IMAGE_FORMAT_NV12 */
-        "P010",     /* QC_IMAGE_FORMAT_P010 */
-        "NV12_UBWC" /* QC_IMAGE_FORMAT_NV12_UBWC */
+        "RGB888",    /* QC_IMAGE_FORMAT_RGB888 */
+        "BGR888",    /* QC_IMAGE_FORMAT_BGR888 */
+        "UYVY",      /* QC_IMAGE_FORMAT_UYVY */
+        "NV12",      /* QC_IMAGE_FORMAT_NV12 */
+        "P010",      /* QC_IMAGE_FORMAT_P010 */
+        "NV12_UBWC", /* QC_IMAGE_FORMAT_NV12_UBWC */
+        "TP_UBWC"    /* QC_IMAGE_FORMAT_TP10_UBWC */
 };
 
 QCStatus_e QCSharedBuffer::Allocate( uint32_t batchSize, uint32_t width, uint32_t height,

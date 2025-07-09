@@ -69,6 +69,7 @@ QCStatus_e NodeConfigIfs::VerifyAndSet( const std::string config, std::string &e
         }
     }
 
+    QC_DEBUG( "config: %s", config.c_str() );
 
     return status;
 }

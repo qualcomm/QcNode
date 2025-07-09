@@ -5,14 +5,18 @@
 
 homedir=`pwd`
 
-cdsp0skeldir="$homedir/lib/dsp;/usr/share/fastrpc;/vendor/dsp/cdsp;/dspfw/image/dsp/cdsp0;/dsplib/image/dsp/cdsp0;/mnt/etc/images;/mnt/etc/images/cdsp0;/mnt/etc/images/dsp;/firmware/image/dsp/cdsp0/"
-cdsp1skeldir="$homedir/lib/dsp;/usr/share/fastrpc;/vendor/dsp/cdsp1;/dspfw/image/dsp/cdsp1;/dsplib/image/dsp/cdsp1;/mnt/etc/images;/mnt/etc/images/cdsp1;/mnt/etc/images/dsp;/firmware/image/dsp/cdsp0/"
+cdsp0skeldir="$homedir/lib/dsp;/vendor/dsp/cdsp;/vendor/dsp/cdsp0;/usr/share/fastrpc;/dspfw/image/dsp/cdsp0;/dsplib/image/dsp/cdsp0;/mnt/etc/images;/mnt/etc/images/cdsp0;/mnt/etc/images/dsp;/firmware/image/dsp/cdsp0/"
+cdsp1skeldir="$homedir/lib/dsp;/vendor/dsp/cdsp1;/dspfw/image/dsp/cdsp1;/usr/share/fastrpc;/dsplib/image/dsp/cdsp1;/mnt/etc/images;/mnt/etc/images/cdsp1;/mnt/etc/images/dsp;/firmware/image/dsp/cdsp1/"
+cdsp2skeldir="$homedir/lib/dsp;/vendor/dsp/cdsp2;/dspfw/image/dsp/cdsp2;/usr/share/fastrpc;/dsplib/image/dsp/cdsp2;/mnt/etc/images;/mnt/etc/images/cdsp2;/mnt/etc/images/dsp;/firmware/image/dsp/cdsp2/"
+cdsp3skeldir="$homedir/lib/dsp;/vendor/dsp/cdsp3;/dspfw/image/dsp/cdsp3;/usr/share/fastrpc;/dsplib/image/dsp/cdsp3;/mnt/etc/images;/mnt/etc/images/cdsp3;/mnt/etc/images/dsp;/firmware/image/dsp/cdsp3/"
 
 export LD_LIBRARY_PATH=$homedir/lib/:$LD_LIBRARY_PATH:/usr/lib64:/lib:/mnt/lib64:$homedir/lib/runtime
 export PATH=$PATH:$homedir/bin
 export CDSP_LIBRARY_PATH=$cdsp0skeldir
 export CDSP0_LIBRARY_PATH=$cdsp0skeldir
 export CDSP1_LIBRARY_PATH=$cdsp1skeldir
+export CDSP2_LIBRARY_PATH=$cdsp2skeldir
+export CDSP3_LIBRARY_PATH=$cdsp3skeldir
 
 # unset DISPLAY to avoid SDL from using X11
 unset DISPLAY

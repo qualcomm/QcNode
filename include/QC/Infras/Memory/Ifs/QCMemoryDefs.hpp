@@ -35,7 +35,7 @@ typedef struct QCBufferPropBase
     QCBufferPropBase()
         : size( 0 ),
           alignment( QC_MEMORY_DEFAULT_ALLIGNMENT ),
-          attr( QC_MEMORY_DEFAULT_ATTRIBUTES ){};
+          attr( QC_MEMORY_DEFAULT_ATTRIBUTES ) {};
 
     size_t size;
     QCAlignment_t alignment;

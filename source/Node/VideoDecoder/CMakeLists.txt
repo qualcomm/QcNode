@@ -9,7 +9,7 @@ set( NODE_VIDEODECODER_SOURCES
     VideoDecoder.cpp
 )
 
-set( TARGET_LIBRARIES QCNodeNodeBase QCNodeVideoCodec )
+set( TARGET_LIBRARIES QCNodeBase QCNodeVideoCodec )
 
 add_library( QCNodeNodeVideoDecoder OBJECT ${NODE_VIDEODECODER_SOURCES} )
 

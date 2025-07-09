@@ -13,11 +13,10 @@ namespace QC
 class QCMemoryAllocatorIfs
 {
 protected:
-    const std::string m_name; /* Allocator ASCII name */
+    const std::string m_name;
 
 public:
-    QCMemoryAllocatorIfs() = delete;
-    QCMemoryAllocatorIfs( const std::string &name ) : m_name( name ){};
+    QCMemoryAllocatorIfs( const std::string &name ) : m_name( name ) {};
 
     virtual QCStatus_e Allocate( const QCBufferPropBase_t &request,
                                  QCBufferDescriptorBase_t &response ) = 0;

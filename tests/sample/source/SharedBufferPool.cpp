@@ -22,7 +22,6 @@ QCStatus_e SharedBufferPool::Init( std::string name, Logger_Level_e level, uint3
 
     m_name = name;
     m_queue.resize( number );
-    memset( m_queue.data(), 0, m_queue.size() * sizeof( SharedBufferInfo ) );
     QC_DEBUG( "Pool %s inited with queue size %u", m_name.c_str(), number );
     for ( uint32_t idx = 0; idx < number; idx++ )
     {
@@ -107,6 +106,9 @@ QCStatus_e SharedBufferPool::Init( std::string name, Logger_Level_e level, uint3
         QC_DEBUG( "%s image[%u] %ux%u allocated with size=%u data=%p handle=%llu ret=%d\n",
                   m_name.c_str(), idx, width, height, sharedBuffer.size, sharedBuffer.data(),
                   sharedBuffer.buffer.dmaHandle, ret );
+        m_queue[idx].sharedBuffer.imgDesc.name = name + "." + std::to_string( idx );
+        m_queue[idx].sharedBuffer.imgDesc = sharedBuffer;
+        m_queue[idx].sharedBuffer.buffer = m_queue[idx].sharedBuffer.imgDesc;
     }
 
     if ( QC_STATUS_OK == ret )
@@ -132,6 +134,9 @@ QCStatus_e SharedBufferPool::Init( std::string name, Logger_Level_e level, uint3
         QC_DEBUG( "%s image[%u] %u %ux%u allocated with size=%u data=%p handle=%llu ret=%d\n",
                   m_name.c_str(), idx, batchSize, width, height, sharedBuffer.size,
                   sharedBuffer.data(), sharedBuffer.buffer.dmaHandle, ret );
+        m_queue[idx].sharedBuffer.imgDesc.name = name + "." + std::to_string( idx );
+        m_queue[idx].sharedBuffer.imgDesc = sharedBuffer;
+        m_queue[idx].sharedBuffer.buffer = m_queue[idx].sharedBuffer.imgDesc;
     }
 
     if ( QC_STATUS_OK == ret )
@@ -156,6 +161,9 @@ QCStatus_e SharedBufferPool::Init( std::string name, Logger_Level_e level, uint3
         QC_DEBUG( "%s image[%u] allocated with size=%u data=%p handle=%llu ret=%d\n",
                   m_name.c_str(), idx, sharedBuffer.size, sharedBuffer.data(),
                   sharedBuffer.buffer.dmaHandle, ret );
+        m_queue[idx].sharedBuffer.imgDesc.name = name + "." + std::to_string( idx );
+        m_queue[idx].sharedBuffer.imgDesc = sharedBuffer;
+        m_queue[idx].sharedBuffer.buffer = m_queue[idx].sharedBuffer.imgDesc;
     }
 
     if ( QC_STATUS_OK == ret )
@@ -180,6 +188,9 @@ QCStatus_e SharedBufferPool::Init( std::string name, Logger_Level_e level, uint3
         QC_DEBUG( "%s tensor[%u] allocated with size=%u data=%p handle=%llu ret=%d\n",
                   m_name.c_str(), idx, sharedBuffer.size, sharedBuffer.data(),
                   sharedBuffer.buffer.dmaHandle, ret );
+        m_queue[idx].sharedBuffer.tensorDesc.name = name + "." + std::to_string( idx );
+        m_queue[idx].sharedBuffer.tensorDesc = sharedBuffer;
+        m_queue[idx].sharedBuffer.buffer = m_queue[idx].sharedBuffer.tensorDesc;
     }
 
     if ( QC_STATUS_OK == ret )

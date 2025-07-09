@@ -128,16 +128,28 @@ bool TinyViz::addCamera( const std::string camName )
         m_WindowCol = 2;
         m_WindowRow = 2;
     }
+    else if ( m_CamNameList.size() <= 6 )
+    {
+        m_WindowCol = 2;
+        m_WindowRow = 3;
+    }
     else if ( m_CamNameList.size() <= 9 )
     {
         m_WindowCol = 3;
         m_WindowRow = 3;
+    }
+    else if ( m_CamNameList.size() <= 12 )
+    {
+        m_WindowCol = 3;
+        m_WindowRow = 4;
     }
     else
     {
         m_WindowCol = 4;
         m_WindowRow = 4;
     }
+
+    QC_INFO( "TinyViz: %dx%d.", m_WindowCol, m_WindowRow );
 
     return true;
 }

@@ -7,9 +7,3 @@ add_executable( gtest_NodeCamera gtest_NodeCamera.cpp )
 target_include_directories( gtest_NodeCamera PUBLIC ${HEADERS_DIR})
 target_link_libraries( gtest_NodeCamera gtest QCNodeComponentCommon QCNode QCNodeTestUtils)
 install(TARGETS gtest_NodeCamera DESTINATION bin)
-
-set( GTEST_QCNODE_SOURCES ${GTEST_QCNODE_SOURCES}
-     ${CMAKE_CURRENT_SOURCE_DIR}/gtest_NodeCamera.cpp
-     PARENT_SCOPE )
-
-

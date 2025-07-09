@@ -6,6 +6,7 @@
 #define QC_BUFFER_DESCRIPTOR_BASE_HPP
 
 #include "QC/Common/QCDefs.hpp"
+#include <string>
 
 namespace QC
 {
@@ -24,7 +25,7 @@ public:
     std::string name;
     void *pBuf;
     uint32_t size;
-    QCBufferDataFormat_e type;
+    QCBufferType_e type;
 } QCBufferDescriptorBase_t;
 
 }   // namespace QC

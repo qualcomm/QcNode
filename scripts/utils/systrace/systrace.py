@@ -7,14 +7,19 @@ import argparse
 import json
 
 ProcessorMap = {
-  0 : "HTP0",
+  0 : "HTP0-CORE0",
   1 : "HTP1",
   2 : "CPU",
   3 : "GPU",
-  4 : "CAMERA",
-  5 : "VPU",
-  6 : "DATA_READER",
-  7 : "DATA_ONLINE",
+  4 : "HTP0-CORE1",
+  5 : "HTP0-CORE2",
+  6 : "HTP0-CORE3",
+  7 : "HTP2",
+  8 : "HTP3",
+  9 : "CAMERA",
+  10 : "VPU",
+  11 : "DATA_READER",
+  12 : "DATA_ONLINE",
 }
 
 CatMap = {

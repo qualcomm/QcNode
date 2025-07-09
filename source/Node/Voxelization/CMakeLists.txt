@@ -13,7 +13,7 @@ set( QC_NODE_VOXELIZATION_SOURCES
     Voxelization.cpp
 )
 
-set( TARGET_LIBRARIES QCNodeVoxelization QCNodeNodeBase )
+set( TARGET_LIBRARIES QCNodeVoxelization QCNodeBase )
 
 add_library( QCNodeNodeVoxelization OBJECT ${QC_NODE_VOXELIZATION_SOURCES} )
 

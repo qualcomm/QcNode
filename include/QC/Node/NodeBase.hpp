@@ -17,9 +17,12 @@
 #include "QC/Common/Types.hpp"
 #include "QC/component/VideoEncoder.hpp"
 #include "QC/Infras/Log/Logger.hpp"
+#include "QC/Infras/Memory/BufferDescriptor.hpp"
 #include "QC/Infras/Memory/Ifs/QCMemoryDefs.hpp"
+#include "QC/Infras/Memory/ImageDescriptor.hpp"
 #include "QC/Infras/Memory/QCBufferDescriptorBase.hpp"
 #include "QC/Infras/Memory/SharedBuffer.hpp"
+#include "QC/Infras/Memory/TensorDescriptor.hpp"
 #include "QC/Node/Ifs/QCFrameDescriptorNodeIfs.hpp"
 #include "QC/Node/Ifs/QCNodeDefs.hpp"
 #include "QC/Node/Ifs/QCNodeIfs.hpp"
@@ -30,7 +33,7 @@ namespace Node
 {
 
 using namespace QC::component;
-
+using namespace QC::Memory;
 /**
  * @brief QCNode Dummy Buffer Descriptor
  * This is used by QCSharedFrameDescriptorNode to indicate that the buffer identified by
@@ -44,7 +47,7 @@ public:
         name = "Dummy";
         pBuf = nullptr;
         size = 0;
-        type = QC_BUF_MAX;
+        type = QC_BUFFER_TYPE_MAX;
     }
     virtual ~QCDummyBufferDescriptor() = default;
 } QCDummyBufferDescriptor_t;
@@ -62,84 +65,6 @@ public:
 
     QCSharedBuffer_t buffer;
 } QCSharedBufferDescriptor_t;
-
-/*
- * For Phase 1: QCSharedBufferDescriptor_t represents both RAW DMA/IMAGE and Tensor as a union
- * of properties in the buffer. I don't think this approach is ideal.
- *
- * For Phase 2, it might be better to create specialized descriptor classes for RAW/IMAGE and
- * Tensor. This would allow for more specific handling and clearer separation of concerns.
- */
-
-/**
- * @brief Descriptor for QCNode Shared DMA Buffer.
- *
- * This structure represents the shared DMA buffer descriptor for QCNode. It extends the
- * QCBufferDescriptorBase and includes additional members specific to DMA buffers.
- *
- * - Inherited Members from QCBufferDescriptorBase:
- * @param name The name of the buffer.
- * @param pBuf The virtual address of the actual buffer.
- * @param size The actual size of the buffer.
- * @param type The type of the buffer.
- *
- * - New Members:
- * @param pBufBase The base virtual address of the DMA buffer.
- * @param dmaHandle The DMA handle of the buffer.
- * @param dmaSize The size of the DMA buffer.
- * @param offset The offset of the valid buffer within the shared buffer.
- * @param id The unique ID assigned by the buffer manager.
- * @param pid The process ID that allocated this buffer.
- * @param usage The usage of the buffer.
- * @param flags The flags associated with the buffer.
- *
- * @note The shared concept here means that pBufBase, dmaHandle, and dmaSize are not changeable and
- * always represent one large DMA buffer allocated through platform DMA buffer-related APIs. For
- * QNX, this is the PMEM API, and for Linux, it is the dma-buf API. The offset and size will be
- * adjusted to describe the memory portion of the large DMA buffer that should be actually used by
- * the QCNode. Generally:
- *   pBuf = pBufBase + offset;
- *   size + offset <= dmaSize;
- *
- * @note This is for phase 2. Don't use it for phase 1.
- */
-typedef struct QCSharedDmaDescriptor : public QCBufferDescriptorBase
-{
-    void *pBufBase;
-    uint64_t dmaHandle;
-    size_t dmaSize;
-    size_t offset;
-    uint64_t id;
-    uint64_t pid;
-    QCBufferUsage_e usage;
-    QCBufferFlags_t flags;
-} QCSharedDmaDescriptor_t;
-
-/**
- * @brief Descriptor for QCNode Shared Image Buffer.
- *
- * This structure represents the shared image buffer descriptor for QCNode. It extends the
- * QCSharedDmaDescriptor and includes additional members specific to image properties.
- *
- * @param props The properties of the image.
- */
-typedef struct QCSharedImageDescriptor : public QCSharedDmaDescriptor
-{
-    QCImageProps_t props;
-} QCSharedImageDescriptor_t;
-
-/**
- * @brief Descriptor for QCNode Shared Tensor Buffer.
- *
- * This structure represents the shared tensor buffer for QCNode. It extends the
- * QCSharedDmaBuffer and includes additional members specific to tensor properties.
- *
- * @param props The properties of the tensor.
- */
-typedef struct QCSharedTensorDescriptor : public QCSharedDmaDescriptor
-{
-    QCTensorProps_t props;
-} QCSharedTensorDescriptor_t;
 
 /**
  * @brief Descriptor for QCNode Shared Video Buffer.
@@ -189,6 +114,19 @@ public:
      * @return The updated QCFrameDescriptorNodeIfs object.
      */
     QCFrameDescriptorNodeIfs &operator=( QCFrameDescriptorNodeIfs &other )
+    {
+        if ( this != &other )
+        {
+            for ( size_t i = 0; i < m_buffers.size(); i++ )
+            {
+                QCBufferDescriptorBase_t &bufDesc = other.GetBuffer( i );
+                m_buffers[i] = bufDesc;
+            }
+        }
+        return *this;
+    }
+
+    QCSharedFrameDescriptorNode &operator=( QCSharedFrameDescriptorNode &other )
     {
         if ( this != &other )
         {

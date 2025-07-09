@@ -7,11 +7,11 @@
 
 #include <chrono>
 #include <iostream>
-#include <thread>
-
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <thread>
+#include <time.h>
 #include <unistd.h>
 
 using namespace QC::sample;
@@ -26,10 +26,16 @@ std::condition_variable CV;
 static void UserLog( Logger_Handle_t hHandle, Logger_Level_e level, const char *pFormat,
                      va_list args )
 {
-    char msg[256];
+    std::string strFmt;
     Logger_HandleContextUser_t *pContext = (Logger_HandleContextUser_t *) hHandle;
-    (void) vsnprintf( msg, sizeof( msg ), pFormat, args );
-    printf( "%s: %s\n", pContext->name.c_str(), msg );
+    time_t rawtime;
+    struct tm *info;
+    char timeStr[80];
+    time( &rawtime );
+    info = localtime( &rawtime );
+    strftime( timeStr, 80, "%Y-%m-%d %H:%M:%S ", info );
+    strFmt = std::string( timeStr ) + pContext->name + " : " + std::string( pFormat ) + "\n";
+    vprintf( strFmt.c_str(), args );
 }
 
 static QCStatus_e UserLoggerHandleCreate( const char *pName, Logger_Level_e level,

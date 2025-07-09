@@ -3,32 +3,47 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#ifndef _QC_SHARED_BUFFER_POOL_HPP_
-#define _QC_SHARED_BUFFER_POOL_HPP_
+#ifndef QC_SHARED_BUFFER_POOL_HPP
+#define QC_SHARED_BUFFER_POOL_HPP
 
 #include <cinttypes>
 #include <cstring>
+#include <functional>
 #include <memory>
 #include <vector>
 
 #include "QC/Common/Types.hpp"
 #include "QC/Infras/Log/Logger.hpp"
+#include "QC/Infras/Memory/BufferDescriptor.hpp"
+#include "QC/Infras/Memory/ImageDescriptor.hpp"
 #include "QC/Infras/Memory/SharedBuffer.hpp"
-
-
-using namespace QC;
+#include "QC/Infras/Memory/TensorDescriptor.hpp"
 
 namespace QC
 {
 namespace sample
 {
 
+using namespace QC::Memory;
+
 /** @brief The Shared Buffer information structure */
-typedef struct
+typedef struct SharedBuffer
 {
+public:
+    SharedBuffer() : buffer( dummy ) { dummy.name = "dummy"; }
+    std::reference_wrapper<QCBufferDescriptorBase_t> buffer;
     QCSharedBuffer_t sharedBuffer; /**< The QC shared buffer */
     uint64_t pubHandle; /**< The publish handle associated with shared buffer that to be used to
                            release the shared buffer */
+
+    QCBufferDescriptorBase_t dummy;
+    ImageDescriptor_t imgDesc;
+    TensorDescriptor_t tensorDesc;
+
+    /* hold 2 more tensor descriptor that as for QNN, maybe need to convert the image to 2 tensor
+     * descriptors */
+    TensorDescriptor_t luma;
+    TensorDescriptor_t chroma;
 } SharedBuffer_t;
 
 /** @brief The QC shared buffer ping-pong pool */
@@ -152,4 +167,4 @@ private:
 }   // namespace sample
 }   // namespace QC
 
-#endif   // #ifndef _QC_SHARED_BUFFER_POOL_HPP_
+#endif   // #ifndef QC_SHARED_BUFFER_POOL_HPP

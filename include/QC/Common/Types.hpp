@@ -37,14 +37,6 @@ namespace QC
 /** @brief QC Buffer Flags */
 typedef uint32_t QCBufferFlags_t;
 
-/** @brief QC Buffer Type */
-typedef enum
-{
-    QC_BUFFER_TYPE_RAW = 0, /**< The buffer for raw data */
-    QC_BUFFER_TYPE_IMAGE,   /**< The buffer for image */
-    QC_BUFFER_TYPE_TENSOR   /**< The buffer for tensor */
-} QCBufferType_e;
-
 /** @brief QC Buffer Usage */
 typedef enum
 {
@@ -57,13 +49,25 @@ typedef enum
     QC_BUFFER_USAGE_MAX
 } QCBufferUsage_e;
 
-/** @brief QC Computing Processor Type */
+/** @brief QC Computing Processor Type
+ * @deprecated
+ * @note This enum is deprecated as json configure was used for QCNode.
+ */
 typedef enum
 {
     QC_PROCESSOR_HTP0, /**< do computing on the processor HTP0 */
     QC_PROCESSOR_HTP1, /**< do computing on the processor HTP1 */
     QC_PROCESSOR_CPU,  /**< do computing on the processor CPU */
     QC_PROCESSOR_GPU,  /**< do computing on the processor GPU */
+#if QC_TARGET_SOC == 8797
+    // Short-term workaround for NSP resource protection on 8797
+    QC_PROCESSOR_HTP0_CORE0 = QC_PROCESSOR_HTP0,
+    QC_PROCESSOR_HTP0_CORE1 = 4,
+    QC_PROCESSOR_HTP0_CORE2,
+    QC_PROCESSOR_HTP0_CORE3,
+    QC_PROCESSOR_HTP2,
+    QC_PROCESSOR_HTP3,
+#endif
     QC_PROCESSOR_MAX
 } QCProcessorType_e;
 

@@ -8,6 +8,3 @@ target_include_directories( gtest_NodeQnn PUBLIC ${HEADERS_DIR})
 target_link_libraries( gtest_NodeQnn gtest QCNodeComponentCommon QCNode QCNodeTestUtils)
 install(TARGETS gtest_NodeQnn DESTINATION bin)
 
-set( GTEST_QCNODE_SOURCES ${GTEST_QCNODE_SOURCES}
-     ${CMAKE_CURRENT_SOURCE_DIR}/gtest_NodeQnn.cpp
-     PARENT_SCOPE )

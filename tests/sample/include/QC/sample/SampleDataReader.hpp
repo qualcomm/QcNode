@@ -67,6 +67,7 @@ private:
     uint32_t m_fps;
     std::vector<DataReaderConfig_t> m_configs;
     uint32_t m_numOfDataReaders;
+    uint32_t m_offset;
 
     uint32_t m_poolSize = 4;
     std::string m_topicName;
