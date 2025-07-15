@@ -115,6 +115,23 @@ QCStatus_e SampleIF::Init( QCProcessorType_e processor, int rsmPriority )
     return ret;
 }
 
+QCStatus_e SampleIF::Deinit()
+{
+    QCStatus_e ret = QC_STATUS_OK;
+#if defined( WITH_RSM_V2 )
+    if ( ( m_processor <= QC_PROCESSOR_HTP1 ) && ( false == m_bRsmDisabled ) )
+    {
+        int rc = rsm_unregister_v2( m_handle );
+        if ( 0 != rc )
+        {
+            QC_ERROR( "rsm unregister failed: %d", rc );
+            ret = QC_STATUS_FAIL;
+        }
+    }
+#endif
+    return ret;
+}
+
 QCStatus_e SampleIF::Lock()
 {
     QCStatus_e ret = QC_STATUS_OK;

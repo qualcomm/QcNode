@@ -571,6 +571,10 @@ QCStatus_e SampleQnn::Deinit()
         delete m_pFrameDescPool;
         m_pFrameDescPool = nullptr;
     }
+    if ( QC_STATUS_OK == ret )
+    {
+        ret = SampleIF::Deinit();
+    }
     TRACE_END( SYSTRACE_TASK_DEINIT );
 
     return ret;

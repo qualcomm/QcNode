@@ -531,6 +531,10 @@ QCStatus_e SampleRemap::Deinit()
 
     TRACE_BEGIN( SYSTRACE_TASK_DEINIT );
     ret = m_remap.DeInitialize();
+    if ( QC_STATUS_OK == ret )
+    {
+        ret = SampleIF::Deinit();
+    }
     TRACE_END( SYSTRACE_TASK_DEINIT );
 
     return ret;
