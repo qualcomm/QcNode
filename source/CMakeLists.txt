@@ -49,10 +49,10 @@ if ( ENABLE_FADAS )
   )
 endif()
 
-if( NOT TARGET QCNodeQnnRuntime )
+if( NOT TARGET QCNodeQNN )
   message(STATUS "build QCNode without QNN")
 else()
-  list( APPEND TARGET_LIBRARIES QCNodeQnnRuntime QCNodeNodeQNN )
+  list( APPEND TARGET_LIBRARIES QCNodeQNN )
 endif()
 
 add_library( QCNode SHARED ${QCNODE_SOURCES} )

@@ -2,8 +2,6 @@
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
-#include "QnnSampleAppUtils.hpp"
-// keep QnnSampleAppUtils include firstly to avoid a strange build error for linux, TODO: why
 #include "QC/sample/SampleQnn.hpp"
 
 
@@ -11,6 +9,22 @@ namespace QC
 {
 namespace sample
 {
+
+static void Split( std::vector<std::string> &splitString, const std::string &tokenizedString,
+                   const char separator )
+{
+    splitString.clear();
+    std::istringstream tokenizedStringStream( tokenizedString );
+    while ( !tokenizedStringStream.eof() )
+    {
+        std::string value;
+        getline( tokenizedStringStream, value, separator );
+        if ( !value.empty() )
+        {
+            splitString.push_back( value );
+        }
+    }
+}
 
 void SampleQnn::EventCallback( const QCNodeEventInfo_t &info )
 {
@@ -82,28 +96,28 @@ QCStatus_e SampleQnn::ParseConfig( SampleConfig_t &config )
     if ( "" != opPackagePathsStr )
     {
         std::vector<std::string> opPackagePaths;
-        split( opPackagePaths, opPackagePathsStr, ',' );
-        m_opPackagePaths.resize( opPackagePaths.size() );
+        Split( opPackagePaths, opPackagePathsStr, ',' );
+
         for ( int i = 0; i < opPackagePaths.size(); ++i )
         {
             DataTree dt;
             std::vector<std::string> opPackage;
-            split( opPackage, opPackagePaths[i], ':' );
+            Split( opPackage, opPackagePaths[i], ':' );
             if ( opPackage.size() != 2 )
             {
                 QC_ERROR( "invalid opPackage params: %s\n", opPackagePaths[i].c_str() );
                 ret = QC_STATUS_BAD_ARGUMENTS;
                 break;
             }
-            m_opPackagePaths[i].udoLibPath = opPackage[0].c_str();
-            m_opPackagePaths[i].interfaceProvider = opPackage[1].c_str();
             QC_INFO( "opPackage params %d, udoLibPath: %s, interfaceProvider: %s\n", i,
-                     m_opPackagePaths[i].udoLibPath, m_opPackagePaths[i].interfaceProvider );
-            dt.Set<std::string>( "udoLibPath", opPackage[0] );
-            dt.Set<std::string>( "interfaceProvider", opPackage[1] );
+                     opPackage[0], opPackage[1] );
+            dt.Set<std::string>( "udoLibPath", opPackage[0].c_str() );
+            dt.Set<std::string>( "interfaceProvider", opPackage[1].c_str() );
             udoPkgs.push_back( dt );
         }
     }
+
+    std::vector<uint32_t> coreIds = Get( config, "core_ids", std::vector<uint32_t>( { 0u } ) );
 
     DataTree dt;
     dt.Set<std::string>( "name", m_name );
@@ -111,10 +125,33 @@ QCStatus_e SampleQnn::ParseConfig( SampleConfig_t &config )
     dt.Set<std::string>( "modelPath", Get( config, "model_path", "" ) );
     dt.Set<std::string>( "loadType", "binary" );
     dt.Set<std::string>( "processorType", Get( config, "processor", "htp0" ) );
+    dt.Set<uint32_t>( "coreIds", coreIds );
     dt.Set( "udoPackages", udoPkgs );
     m_dataTree.Set( "static", dt );
     m_processor = Get( config, "processor", QC_PROCESSOR_HTP0 );
+    m_rsmPriority = Get( config, "rsm_priority", 0 );
 
+#if QC_TARGET_SOC == 8797
+    if ( ( QC_PROCESSOR_HTP0 == m_processor ) && ( coreIds.size() == 1 ) )
+    {
+        if ( 1u == coreIds[0] )
+        {
+            m_processor = QC_PROCESSOR_HTP0_CORE1;
+        }
+        else if ( 2u == coreIds[0] )
+        {
+            m_processor = QC_PROCESSOR_HTP0_CORE2;
+        }
+        else if ( 3u == coreIds[0] )
+        {
+            m_processor = QC_PROCESSOR_HTP0_CORE3;
+        }
+        else
+        {
+            /* default core 0 */
+        }
+    }
+#endif
     return ret;
 }
 
@@ -149,7 +186,6 @@ QCStatus_e SampleQnn::ConvertDtToInfo( DataTree &dt, TensorInfo_t &info )
 
 QCStatus_e SampleQnn::Init( std::string name, SampleConfig_t &config )
 {
-    QCNodeInit_t nodeCfg;
     QCStatus_e ret = QC_STATUS_OK;
 
     ret = SampleIF::Init( name );
@@ -160,19 +196,19 @@ QCStatus_e SampleQnn::Init( std::string name, SampleConfig_t &config )
 
     if ( QC_STATUS_OK == ret )
     {
-        ret = SampleIF::Init( m_processor );
+        ret = SampleIF::Init( m_processor, m_rsmPriority );
     }
 
     if ( QC_STATUS_OK == ret )
     {
         TRACE_BEGIN( SYSTRACE_TASK_INIT );
-        nodeCfg.config = m_dataTree.Dump();
+        m_nodeCfg.config = m_dataTree.Dump();
         if ( true == m_bAsync )
         {
             using std::placeholders::_1;
-            nodeCfg.callback = std::bind( &SampleQnn::EventCallback, this, _1 );
+            m_nodeCfg.callback = std::bind( &SampleQnn::EventCallback, this, _1 );
         }
-        ret = m_qnn.Initialize( nodeCfg );
+        ret = m_qnn.Initialize( m_nodeCfg );
         TRACE_END( SYSTRACE_TASK_INIT );
     }
 
@@ -216,7 +252,7 @@ QCStatus_e SampleQnn::Init( std::string name, SampleConfig_t &config )
             ret = ConvertDtToInfo( outDt, info );
             if ( QC_STATUS_OK == ret )
             {
-                m_ouputsInfo.push_back( info );
+                m_outputsInfo.push_back( info );
             }
             else
             {
@@ -225,7 +261,7 @@ QCStatus_e SampleQnn::Init( std::string name, SampleConfig_t &config )
         }
     }
 
-    const size_t outputNum = m_ouputsInfo.size();
+    const size_t outputNum = m_outputsInfo.size();
 
     if ( QC_STATUS_OK == ret )
     {
@@ -236,11 +272,25 @@ QCStatus_e SampleQnn::Init( std::string name, SampleConfig_t &config )
         {
             ret = m_tensorPools[index].Init( "Qnn." + name + "." + std::to_string( index ),
                                              LOGGER_LEVEL_INFO, m_poolSize,
-                                             m_ouputsInfo[i].properties, QC_BUFFER_USAGE_HTP );
+                                             m_outputsInfo[i].properties, QC_BUFFER_USAGE_HTP );
             index += 1;
             if ( QC_STATUS_OK != ret )
             {
                 break;
+            }
+        }
+    }
+
+    if ( QC_STATUS_OK == ret )
+    {
+        if ( true == m_bAsync )
+        {
+            m_pFrameDescPool = new QCSharedFrameDescriptorNodePool(
+                    m_poolSize, m_inputsInfo.size() + m_outputsInfo.size() + 1 );
+            if ( nullptr == m_pFrameDescPool )
+            {
+                QC_ERROR( "Allocate Frame Descriptor Node Pool failed" );
+                ret = QC_STATUS_NOMEM;
             }
         }
     }
@@ -273,7 +323,7 @@ QCStatus_e SampleQnn::Start()
     if ( "" != m_modelInOutInfoTopicName )
     {
         ioInfo.inputs = m_inputsInfo;
-        ioInfo.outputs = m_ouputsInfo;
+        ioInfo.outputs = m_outputsInfo;
         m_modelInOutInfoPub.Publish( ioInfo );
     }
 
@@ -294,8 +344,7 @@ void SampleQnn::ThreadMain()
     QCStatus_e ret;
     std::mutex mtx;
 
-    QCSharedFrameDescriptorNode frameDesc( m_inputsInfo.size() + m_ouputsInfo.size() + 1 );
-
+    QCSharedFrameDescriptorNode frameDesc( m_inputsInfo.size() + m_outputsInfo.size() + 1 );
     while ( false == m_stop )
     {
         DataFrames_t frames;
@@ -304,50 +353,91 @@ void SampleQnn::ThreadMain()
         {
             QC_DEBUG( "receive frameId %" PRIu64 ", timestamp %" PRIu64 "\n", frames.FrameId( 0 ),
                       frames.Timestamp( 0 ) );
-            std::vector<QCSharedBuffer_t> inputs;
-            std::vector<QCSharedBuffer_t> outputs;
             std::vector<std::shared_ptr<SharedBuffer_t>> outputBuffers;
+            uint32_t globalIdx = 0;
+            frameDesc.Clear();
             for ( auto &frame : frames.frames )
             {
-                if ( QC_BUFFER_TYPE_IMAGE == frame.BufferType() )
+                std::shared_ptr<SharedBuffer_t> sbuf = frame.buffer;
+                QCBufferDescriptorBase_t &buffer = frame.GetBuffer();
+                if ( QC_BUFFER_TYPE_IMAGE == buffer.type )
                 {
-                    if ( ( QC_IMAGE_FORMAT_NV12 == frame.SharedBuffer().imgProps.format ) ||
-                         ( QC_IMAGE_FORMAT_P010 == frame.SharedBuffer().imgProps.format ) )
+                    const ImageDescriptor_t *pImage = dynamic_cast<ImageDescriptor_t *>( &buffer );
+                    if ( nullptr != pImage )
                     {
-                        QCSharedBuffer luma;
-                        QCSharedBuffer chroma;
-                        ret = frame.SharedBuffer().ImageToTensor( &luma, &chroma );
-                        if ( QC_STATUS_OK == ret )
+                        if ( ( QC_IMAGE_FORMAT_NV12 == pImage->format ) ||
+                             ( QC_IMAGE_FORMAT_P010 == pImage->format ) )
                         {
-                            if ( SAMPLE_QNN_IMAGE_CONVERT_DEFAULT == m_imageConvertType )
+                            ret = pImage->ImageToTensor( sbuf->luma, sbuf->chroma );
+                            if ( QC_STATUS_OK == ret )
                             {
-                                inputs.push_back( luma );
-                                inputs.push_back( chroma );
+                                if ( SAMPLE_QNN_IMAGE_CONVERT_DEFAULT == m_imageConvertType )
+                                {
+                                    ret = frameDesc.SetBuffer( globalIdx, sbuf->luma );
+                                    globalIdx++;
+                                    if ( QC_STATUS_OK == ret )
+                                    {
+                                        ret = frameDesc.SetBuffer( globalIdx, sbuf->chroma );
+                                        globalIdx++;
+                                    }
+                                    if ( QC_STATUS_OK != ret )
+                                    {
+                                        QC_ERROR( "QNN FrameDesc SetBuffer failed: ret=%d", ret );
+                                    }
+                                }
+                                if ( SAMPLE_QNN_IMAGE_CONVERT_GRAY == m_imageConvertType )
+                                {
+                                    ret = frameDesc.SetBuffer( globalIdx, sbuf->luma );
+                                    globalIdx++;
+                                    if ( QC_STATUS_OK != ret )
+                                    {
+                                        QC_ERROR( "QNN FrameDesc SetBuffer failed: ret=%d", ret );
+                                    }
+                                }
+                                else
+                                {
+                                    ret = frameDesc.SetBuffer( globalIdx, sbuf->chroma );
+                                    globalIdx++;
+                                    if ( QC_STATUS_OK == ret )
+                                    {
+                                        ret = frameDesc.SetBuffer( globalIdx, sbuf->luma );
+                                        globalIdx++;
+                                    }
+                                    if ( QC_STATUS_OK != ret )
+                                    {
+                                        QC_ERROR( "QNN FrameDesc SetBuffer failed: ret=%d", ret );
+                                    }
+                                }
                             }
-                            else if ( SAMPLE_QNN_IMAGE_CONVERT_GRAY == m_imageConvertType )
+                        }
+                        else
+                        {
+                            ret = pImage->ImageToTensor( sbuf->luma );
+                            if ( QC_STATUS_OK == ret )
                             {
-                                inputs.push_back( luma );
-                            }
-                            else
-                            {
-                                inputs.push_back( chroma );
-                                inputs.push_back( luma );
+                                ret = frameDesc.SetBuffer( globalIdx, sbuf->luma );
+                                globalIdx++;
+                                if ( QC_STATUS_OK != ret )
+                                {
+                                    QC_ERROR( "QNN FrameDesc SetBuffer failed: ret=%d", ret );
+                                }
                             }
                         }
                     }
                     else
                     {
-                        QCSharedBuffer_t sharedBuffer;
-                        ret = frame.SharedBuffer().ImageToTensor( &sharedBuffer );
-                        if ( QC_STATUS_OK == ret )
-                        {
-                            inputs.push_back( sharedBuffer );
-                        }
+                        QC_ERROR( "QNN get invalid image descriptor" );
+                        ret = QC_STATUS_INVALID_BUF;
                     }
                 }
                 else
                 {
-                    inputs.push_back( frame.SharedBuffer() );
+                    ret = frameDesc.SetBuffer( globalIdx, buffer );
+                    if ( QC_STATUS_OK != ret )
+                    {
+                        QC_ERROR( "QNN FrameDesc SetBuffer failed: ret=%d", ret );
+                    }
+                    globalIdx++;
                 }
                 if ( QC_STATUS_OK != ret )
                 { /* only possible has error for image */
@@ -358,12 +448,17 @@ void SampleQnn::ThreadMain()
                 }
             }
 
-            for ( size_t i = 0; ( i < m_ouputsInfo.size() ) && ( QC_STATUS_OK == ret ); i++ )
+            for ( size_t i = 0; ( i < m_outputsInfo.size() ) && ( QC_STATUS_OK == ret ); i++ )
             {
                 std::shared_ptr<SharedBuffer_t> buffer = m_tensorPools[i].Get();
                 if ( nullptr != buffer )
                 {
-                    outputs.push_back( buffer->sharedBuffer );
+                    ret = frameDesc.SetBuffer( globalIdx, buffer->buffer );
+                    if ( QC_STATUS_OK != ret )
+                    {
+                        QC_ERROR( "QNN FrameDesc SetBuffer failed: ret=%d", ret );
+                    }
+                    globalIdx++;
                     outputBuffers.push_back( buffer );
                 }
                 else
@@ -372,37 +467,6 @@ void SampleQnn::ThreadMain()
                 }
             }
 
-            /* below code is ugly not friendly as because of the design, how to make better? */
-            std::vector<QCSharedBufferDescriptor_t> bufferDescs;
-            bufferDescs.resize( inputs.size() + outputs.size() );
-            frameDesc.Clear();
-            uint32_t globalIdx = 0;
-            if ( QC_STATUS_OK == ret )
-            {
-                for ( auto &buffer : inputs )
-                {
-                    bufferDescs[globalIdx].buffer = buffer;
-                    ret = frameDesc.SetBuffer( globalIdx, bufferDescs[globalIdx] );
-                    if ( QC_STATUS_OK != ret )
-                    {
-                        break;
-                    }
-                    globalIdx++;
-                }
-            }
-            if ( QC_STATUS_OK == ret )
-            {
-                for ( auto &buffer : outputs )
-                {
-                    bufferDescs[globalIdx].buffer = buffer;
-                    ret = frameDesc.SetBuffer( globalIdx, bufferDescs[globalIdx] );
-                    if ( QC_STATUS_OK != ret )
-                    {
-                        break;
-                    }
-                    globalIdx++;
-                }
-            }
             if ( QC_STATUS_OK == ret )
             {
                 ret = SampleIF::Lock();
@@ -413,17 +477,25 @@ void SampleQnn::ThreadMain()
                     if ( true == m_bAsync )
                     {
                         m_asyncResult = 0xdeadbeef;
-                        ret = m_qnn.ProcessFrameDescriptor( frameDesc );
-                        if ( QC_STATUS_OK == ret )
+                        QCReturn<QCFrameDescriptorNodeIfs> result = m_pFrameDescPool->Get();
+                        if ( QC_STATUS_OK == result.status )
                         {
-                            std::unique_lock<std::mutex> lock( mtx );
-                            (void) m_condVar.wait_for( lock, std::chrono::milliseconds( 1000 ) );
-                            if ( 0 != m_asyncResult )
+                            QCFrameDescriptorNodeIfs &fd = result.obj;
+                            fd = frameDesc;
+                            ret = m_qnn.ProcessFrameDescriptor( fd );
+                            if ( QC_STATUS_OK == ret )
                             {
-                                QC_ERROR( "QNN Async Execute failed for %" PRIu64 " : %" PRIu64,
-                                          frames.FrameId( 0 ), m_asyncResult );
-                                ret = QC_STATUS_FAIL;
+                                std::unique_lock<std::mutex> lock( mtx );
+                                (void) m_condVar.wait_for( lock,
+                                                           std::chrono::milliseconds( 1000 ) );
+                                if ( 0 != m_asyncResult )
+                                {
+                                    QC_ERROR( "QNN Async Execute failed for %" PRIu64 " : %" PRIu64,
+                                              frames.FrameId( 0 ), m_asyncResult );
+                                    ret = QC_STATUS_FAIL;
+                                }
                             }
+                            m_pFrameDescPool->Put( fd );
                         }
                     }
                     else
@@ -453,9 +525,9 @@ void SampleQnn::ThreadMain()
                     tensor.buffer = buffer;
                     tensor.frameId = frames.FrameId( 0 );
                     tensor.timestamp = frames.Timestamp( 0 );
-                    tensor.name = m_ouputsInfo[index].name;
-                    tensor.quantScale = m_ouputsInfo[index].quantScale;
-                    tensor.quantOffset = m_ouputsInfo[index].quantOffset;
+                    tensor.name = m_outputsInfo[index].name;
+                    tensor.quantScale = m_outputsInfo[index].quantScale;
+                    tensor.quantOffset = m_outputsInfo[index].quantOffset;
                     outTensors.Add( tensor );
                     index++;
                 }
@@ -494,6 +566,11 @@ QCStatus_e SampleQnn::Deinit()
 
     TRACE_BEGIN( SYSTRACE_TASK_DEINIT );
     ret = m_qnn.DeInitialize();
+    if ( nullptr != m_pFrameDescPool )
+    {
+        delete m_pFrameDescPool;
+        m_pFrameDescPool = nullptr;
+    }
     TRACE_END( SYSTRACE_TASK_DEINIT );
 
     return ret;

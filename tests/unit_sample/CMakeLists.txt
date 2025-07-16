@@ -1,3 +1,3 @@
 
-add_subdirectory(QnnRuntime)
+add_subdirectory(Qnn)
 
