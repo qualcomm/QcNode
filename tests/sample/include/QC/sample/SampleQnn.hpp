@@ -69,12 +69,11 @@ private:
     std::string m_modelInOutInfoTopicName;
 
     std::string m_modelPath;
-    std::vector<QnnRuntime_UdoPackage_t> m_opPackagePaths;
     std::thread m_thread;
     bool m_stop;
 
     std::vector<TensorInfo_t> m_inputsInfo;
-    std::vector<TensorInfo_t> m_ouputsInfo;
+    std::vector<TensorInfo_t> m_outputsInfo;
 
     std::vector<SharedBufferPool> m_tensorPools;
 
@@ -83,9 +82,13 @@ private:
     DataPublisher<ModelInOutInfo_t> m_modelInOutInfoPub;
 
     DataTree m_dataTree;
+    QCNodeInit_t m_nodeCfg;
     Qnn m_qnn;
     uint64_t m_asyncResult;
     QCProcessorType_e m_processor;
+    int m_rsmPriority;
+
+    QCSharedFrameDescriptorNodePool *m_pFrameDescPool = nullptr;
 };   // class SampleQnn
 
 }   // namespace sample

@@ -6,6 +6,7 @@
 #include <chrono>
 #include <cinttypes>
 #include <cmath>
+#include <condition_variable>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -17,21 +18,17 @@
 #include <unistd.h>
 #include <vector>
 
-#include "QC/component/QnnRuntime.hpp"
-#include "QC/Infras/Memory/SharedBuffer.hpp"
-#include "QnnSampleAppUtils.hpp"
 
-using namespace QC::component;
+#include "QC/Common/DataTree.hpp"
+#include "QC/Infras/Memory/Utils/TensorAllocator.hpp"
+#include "QC/Node/QNN.hpp"
+
+using namespace QC::Node;
+using namespace QC::Memory;
 using namespace QC;
 
-static bool s_bDisableDumpingOutputs = false;
 
-const char *s_processorName[] = {
-        "HTP0",
-        "HTP1",
-        "CPU",
-        "GPU",
-};
+static bool s_bDisableDumpingOutputs = false;
 
 static void *LoadRaw( std::string path, size_t &size )
 {
@@ -71,6 +68,22 @@ static void SaveRaw( std::string path, void *pData, size_t size )
     }
 }
 
+static void Split( std::vector<std::string> &splitString, const std::string &tokenizedString,
+                   const char separator )
+{
+    splitString.clear();
+    std::istringstream tokenizedStringStream( tokenizedString );
+    while ( !tokenizedStringStream.eof() )
+    {
+        std::string value;
+        getline( tokenizedStringStream, value, separator );
+        if ( !value.empty() )
+        {
+            splitString.push_back( value );
+        }
+    }
+}
+
 typedef struct
 {
     void *pData;
@@ -80,38 +93,140 @@ typedef struct
 typedef struct
 {
     std::string name;
+    TensorProps_t properties;
+    float quantScale;
+    int32_t quantOffset;
+} QnnTest_TensorInfo_t;
+
+typedef struct
+{
+    std::string name;
     std::string modelPath;
     int nLoops = 100;
-    QCProcessorType_e processor = QC_PROCESSOR_HTP0;
+    std::string processor = "htp0";
     std::vector<QnnTest_Buffer_t> inputs;
-    std::vector<QnnRuntime_UdoPackage_t> opPackagePaths;
+    DataTree dt;
     int tid; /* deploy this on which thread */
     int delayMs = 0;
     int periodMs = 0;
     int batchMultiplier = 1;
+    boolean bAsync = false;
 } QnnTest_Parameters_t;
-
-static std::string GetTensorInfoStr( const QnnRuntime_TensorInfo_t &info )
-{
-    std::string str = "";
-    std::stringstream ss;
-
-    ss << "type=" << info.properties.type << " dims=[";
-    for ( uint32_t i = 0; i < info.properties.numDims; i++ )
-    {
-        ss << info.properties.dims[i] << ", ";
-    }
-    ss << "] scale=" << info.quantScale << " offset=" << info.quantOffset;
-    str = ss.str();
-
-    return str;
-}
 
 class QnnTestRunner
 {
 public:
-    QnnTestRunner() {}
+    QnnTestRunner() : m_ta( "QnnTest" ) {}
     ~QnnTestRunner() {}
+
+    QCStatus_e ConvertDtToInfo( DataTree &dt, QnnTest_TensorInfo_t &info )
+    {
+        QCStatus_e ret = QC_STATUS_OK;
+        std::vector<uint32_t> dims = dt.Get<uint32_t>( "dims", std::vector<uint32_t>( {} ) );
+
+        info.name = dt.Get<std::string>( "name", "" );
+        info.quantOffset = dt.Get<int32_t>( "quantOffset", 0 );
+        info.quantScale = dt.Get<float>( "quantScale", 1.0f );
+
+        if ( dims.size() <= QC_NUM_TENSOR_DIMS )
+        {
+            info.properties.numDims = dims.size();
+            std::copy( dims.begin(), dims.end(), info.properties.dims );
+        }
+        else
+        {
+            ret = QC_STATUS_BAD_ARGUMENTS;
+        }
+
+        info.properties.tensorType = dt.GetTensorType( "type", QC_TENSOR_TYPE_MAX );
+        if ( QC_TENSOR_TYPE_MAX == info.properties.tensorType )
+        {
+            ret = QC_STATUS_BAD_ARGUMENTS;
+        }
+
+        return ret;
+    }
+
+    QCStatus_e GetModelInfo()
+    {
+        QCStatus_e ret;
+        QCNodeConfigIfs &cfgIfs = m_qnn.GetConfigurationIfs();
+        const std::string &options = cfgIfs.GetOptions();
+        DataTree optionsDt;
+        std::vector<DataTree> inputDts;
+        std::vector<DataTree> outputDts;
+        std::string errors;
+        ret = optionsDt.Load( options, errors );
+        if ( QC_STATUS_OK == ret )
+        {
+            ret = optionsDt.Get( "model.inputs", inputDts );
+        }
+        if ( QC_STATUS_OK == ret )
+        {
+            ret = optionsDt.Get( "model.outputs", outputDts );
+        }
+        if ( QC_STATUS_OK == ret )
+        {
+            for ( auto &inDt : inputDts )
+            {
+                QnnTest_TensorInfo_t info;
+                ret = ConvertDtToInfo( inDt, info );
+                if ( QC_STATUS_OK == ret )
+                {
+                    m_inputsInfo.push_back( info );
+                }
+                else
+                {
+                    break;
+                }
+            }
+        }
+
+        for ( auto &outDt : outputDts )
+        {
+            QnnTest_TensorInfo_t info;
+            ret = ConvertDtToInfo( outDt, info );
+            if ( QC_STATUS_OK == ret )
+            {
+                m_outputsInfo.push_back( info );
+            }
+            else
+            {
+                break;
+            }
+        }
+        return ret;
+    }
+
+    std::string GetTensorInfoStr( const QnnTest_TensorInfo_t &info )
+    {
+        std::string str = "";
+        std::stringstream ss;
+
+        ss << "type=" << info.properties.tensorType << " dims=[";
+        for ( uint32_t i = 0; i < info.properties.numDims; i++ )
+        {
+            ss << info.properties.dims[i] << ", ";
+        }
+        ss << "] scale=" << info.quantScale << " offset=" << info.quantOffset;
+        str = ss.str();
+
+        return str;
+    }
+
+    void EventCallback( const QCNodeEventInfo_t &info )
+    {
+        if ( QC_STATUS_OK == info.status )
+        {
+            m_asyncResult = 0;
+            m_condVar.notify_one();
+        }
+        else
+        {
+            m_asyncResult = 0xdeadbeef; /* TODO: */
+            m_condVar.notify_one();
+        }
+    }
 
     QCStatus_e Init( QnnTest_Parameters_t &params )
     {
@@ -122,31 +237,24 @@ public:
         auto &modelPath = m_params.modelPath;
         auto processor = m_params.processor;
         auto &inputs = m_params.inputs;
+        m_bAsync = params.bAsync;
         const int batchMultiplier = m_params.batchMultiplier;
-        printf( "[%s] Test models %s run %d nLoops on processor %d with %" PRIu64 " inputs\n",
-                name.c_str(), modelPath.c_str(), m_params.nLoops, processor, inputs.size() );
+        printf( "[%s] Test models %s run %d nLoops on processor %s with %" PRIu64 " inputs\n",
+                name.c_str(), modelPath.c_str(), m_params.nLoops, processor.c_str(),
+                inputs.size() );
 
         auto begin = std::chrono::high_resolution_clock::now();
-        m_config = { QNNRUNTIME_LOAD_CONTEXT_BIN_FROM_FILE,
-                     modelPath.c_str(),
-                     nullptr,
-                     0,
-                     processor,
-                     QNN_PRIORITY_DEFAULT,
-                     nullptr,
-                     0 };
-        if ( ( QC_PROCESSOR_CPU == processor ) || ( QC_PROCESSOR_GPU == processor ) )
-        {
-            m_config.loadType = QNNRUNTIME_LOAD_SHARED_LIBRARY_FROM_FILE;
-        }
+        m_config.Set( "static", params.dt );
+        QCNodeInit_t config = {
+                m_config.Dump(),
+        };
 
-        if ( m_params.opPackagePaths.size() > 0 )
+        if ( true == m_bAsync )
         {
-            m_config.numOfUdoPackages = m_params.opPackagePaths.size();
-            m_config.pUdoPackages = &m_params.opPackagePaths[0];
+            using std::placeholders::_1;
+            config.callback = std::bind( &QnnTestRunner::EventCallback, this, _1 );
         }
-
-        ret = m_qnn.Init( name.c_str(), &m_config, LOGGER_LEVEL_INFO );
+        ret = m_qnn.Initialize( config );
         if ( QC_STATUS_OK != ret )
         {
             printf( "[%s] Failed to create QNN Runtime, error is %d\n", name.c_str(), ret );
@@ -157,34 +265,25 @@ public:
 
         if ( QC_STATUS_OK == ret )
         {
-            ret = m_qnn.GetInputInfo( &m_inputInfoList );
+            ret = GetModelInfo();
         }
 
         if ( QC_STATUS_OK == ret )
         {
-            m_inputBuffers.resize( m_inputInfoList.num );
+            m_inputBuffers.resize( m_inputsInfo.size() );
+            m_outputBuffers.resize( m_outputsInfo.size() );
+            m_pFrameDesc = new QCSharedFrameDescriptorNode( m_inputsInfo.size() +
+                                                            m_outputsInfo.size() + 1 );
         }
 
-
-        uint32_t outputNum = 0;
-        if ( QC_STATUS_OK == ret )
+        for ( size_t i = 0; ( i < m_inputsInfo.size() ) && ( QC_STATUS_OK == ret ); i++ )
         {
-            ret = m_qnn.GetOutputInfo( &m_outputInfoList );
-        }
-
-        if ( QC_STATUS_OK == ret )
-        {
-            m_outputBuffers.resize( m_outputInfoList.num );
-        }
-
-        for ( size_t i = 0; ( i < m_inputInfoList.num ) && ( QC_STATUS_OK == ret ); i++ )
-        {
-            auto &info = m_inputInfoList.pInfo[i];
-            printf( "[%s] input %" PRIu64 " name=%s %s\n", name.c_str(), i, info.pName,
+            auto &info = m_inputsInfo[i];
+            printf( "[%s] input %" PRIu64 " name=%s %s\n", name.c_str(), i, info.name.c_str(),
                     GetTensorInfoStr( info ).c_str() );
-            QCTensorProps_t tensorProperties = info.properties;
+            TensorProps_t tensorProperties = info.properties;
             tensorProperties.dims[0] = tensorProperties.dims[0] * batchMultiplier;
-            ret = m_inputBuffers[i].Allocate( &tensorProperties );
+            ret = m_ta.Allocate( tensorProperties, m_inputBuffers[i] );
             if ( QC_STATUS_OK == ret )
             {
                 if ( i < inputs.size() )
@@ -193,7 +292,7 @@ public:
                     printf( "[%s] load real input for input %" PRIu64 "\n", name.c_str(), i );
                     if ( inputs[i].size == inputSize )
                     {
-                        memcpy( m_inputBuffers[i].data(), inputs[i].pData, inputSize );
+                        memcpy( m_inputBuffers[i].pBuf, inputs[i].pData, inputSize );
                     }
                     else if ( ( inputs[i].size == ( inputSize * sizeof( float ) ) ) &&
                               ( info.quantScale != 0 ) )
@@ -202,7 +301,7 @@ public:
                         auto scale = info.quantScale;
                         auto offset = info.quantOffset;
                         float *fData = (float *) inputs[i].pData;
-                        uint8_t *pData = (uint8_t *) m_inputBuffers[i].data();
+                        uint8_t *pData = (uint8_t *) m_inputBuffers[i].pBuf;
                         for ( size_t j = 0; j < inputSize; j++ )
                         {
                             pData[j] = (uint8_t) std::min(
@@ -220,6 +319,8 @@ public:
                         ret = QC_STATUS_FAIL;
                     }
                 }
+
+                (void) m_pFrameDesc->SetBuffer( i, m_inputBuffers[i] );
             }
             else
             {
@@ -228,19 +329,23 @@ public:
             }
         }
 
-        for ( size_t i = 0; ( i < m_outputInfoList.num ) && ( QC_STATUS_OK == ret ); i++ )
+        for ( size_t i = 0; ( i < m_outputsInfo.size() ) && ( QC_STATUS_OK == ret ); i++ )
         {
-            auto &info = m_outputInfoList.pInfo[i];
-            printf( "[%s] output %" PRIu64 " name=%s %s\n", name.c_str(), i, info.pName,
+            auto &info = m_outputsInfo[i];
+            printf( "[%s] output %" PRIu64 " name=%s %s\n", name.c_str(), i, info.name.c_str(),
                     GetTensorInfoStr( info ).c_str() );
-            QCTensorProps_t tensorProperties = info.properties;
+            TensorProps_t tensorProperties = info.properties;
             tensorProperties.dims[0] = tensorProperties.dims[0] * batchMultiplier;
-            ret = m_outputBuffers[i].Allocate( &tensorProperties );
+            ret = m_ta.Allocate( tensorProperties, m_outputBuffers[i] );
             if ( QC_STATUS_OK != ret )
             {
                 printf( "[%s] Failed to allocate buffer for output %" PRIu64 "\n", name.c_str(),
                         i );
                 ret = QC_STATUS_NOMEM;
+            }
+            else
+            {
+                (void) m_pFrameDesc->SetBuffer( m_inputsInfo.size() + i, m_outputBuffers[i] );
             }
         }
 
@@ -251,7 +356,11 @@ public:
 
         if ( QC_STATUS_OK == ret )
         {
-            ret = m_qnn.EnablePerf();
+            std::string errors;
+            QCNodeConfigIfs &cfgIfs = m_qnn.GetConfigurationIfs();
+            DataTree dtp;
+            dtp.Set<bool>( "dynamic.enablePerf", true );
+            ret = cfgIfs.VerifyAndSet( dtp.Dump(), errors );
         }
 
         return ret;
@@ -263,7 +372,7 @@ public:
         auto &name = m_params.name;
         auto processor = m_params.processor;
         auto &inputs = m_params.inputs;
-        QnnRuntime_Perf_t perf = { 0, 0, 0, 0 };
+        Qnn_Perf_t perf = { 0, 0, 0, 0 };
 
         if ( 0 == m_iter )
         {
@@ -271,17 +380,32 @@ public:
         }
 
         auto begin = std::chrono::high_resolution_clock::now();
-        ret = m_qnn.Execute( m_inputBuffers.data(), m_inputBuffers.size(), m_outputBuffers.data(),
-                             m_outputBuffers.size() );
+        ret = m_qnn.ProcessFrameDescriptor( *m_pFrameDesc );
         if ( QC_STATUS_OK != ret )
         {
             printf( "[%s] Failed to run, error is %d\n", name.c_str(), ret );
+        }
+        else
+        {
+            if ( true == m_bAsync )
+            {
+                std::unique_lock<std::mutex> lock( m_lock );
+                (void) m_condVar.wait_for( lock, std::chrono::milliseconds( 1000 ) );
+                if ( 0 != m_asyncResult )
+                {
+                    printf( "[%s] QNN Async Execute failed: %" PRIu64 "\n", name.c_str(),
+                            m_asyncResult );
+                    ret = QC_STATUS_FAIL;
+                }
+            }
         }
         auto end = std::chrono::high_resolution_clock::now();
         auto cost = std::chrono::duration_cast<std::chrono::microseconds>( end - begin ).count();
         if ( QC_STATUS_OK == ret )
         {
-            ret = m_qnn.GetPerf( &perf );
+            QCNodeMonitoringIfs &monitorIfs = m_qnn.GetMonitoringIfs();
+            uint32_t size = sizeof( perf );
+            ret = monitorIfs.Place( &perf, size );
             m_total += cost;
             if ( QC_STATUS_OK == ret )
             {
@@ -292,31 +416,30 @@ public:
             }
             printf( "[%s-%s-%d] %d: %.2f ms, perf(us): QNN=%" PRIu64 " RPC=%" PRIu64
                     " QNN ACC=%" PRIu64 " ACC=%" PRIu64 "\n",
-                    name.c_str(), s_processorName[processor], m_params.tid, m_iter,
-                    (float) cost / 1000.0, perf.entireExecTime, perf.rpcExecTimeCPU,
-                    perf.rpcExecTimeHTP, perf.rpcExecTimeAcc );
+                    name.c_str(), processor.c_str(), m_params.tid, m_iter, (float) cost / 1000.0,
+                    perf.entireExecTime, perf.rpcExecTimeCPU, perf.rpcExecTimeHTP,
+                    perf.rpcExecTimeAcc );
             if ( ( inputs.size() > 0 ) && ( false == s_bDisableDumpingOutputs ) )
             {
                 for ( size_t i = 0; i < m_outputBuffers.size(); i++ )
                 {
                     std::string path = name + "_output" + std::to_string( i ) + ".raw";
-                    SaveRaw( path, m_outputBuffers[i].data(), m_outputBuffers[i].size );
-                    auto &info = m_outputInfoList.pInfo[i];
+                    SaveRaw( path, m_outputBuffers[i].pBuf, m_outputBuffers[i].size );
+                    auto &info = m_outputsInfo[i];
                     // enhanced way to dump the output for accuracy analyze
-                    uint8_t *pData = (uint8_t *) m_outputBuffers[i].data();
+                    uint8_t *pData = (uint8_t *) m_outputBuffers[i].pBuf;
                     float *fData = new float[m_outputBuffers[i].size];
                     for ( size_t j = 0; j < m_outputBuffers[i].size; j++ )
                     {
                         fData[j] = info.quantScale * ( pData[j] + info.quantOffset );
                     }
-                    path = name + "_" + std::string( info.pName ) + ".raw";
+                    path = name + "_" + std::string( info.name.c_str() ) + ".raw";
                     SaveRaw( path, fData, m_outputBuffers[i].size * sizeof( float ) );
                     delete[] fData;
                 }
             }
 
             m_iter++;
-
 
             if ( 0 == ( m_iter % m_params.nLoops ) )
             {
@@ -329,7 +452,7 @@ public:
                         " RPC: avg %.2f ms %.2f FPS;"
                         " QNN ACC: avg %.2f ms %.2f FPS;"
                         " ACC: avg %.2f ms %.2f FPS\n",
-                        name.c_str(), s_processorName[processor], m_params.tid, m_iter,
+                        name.c_str(), processor.c_str(), m_params.tid, m_iter,
                         (float) m_total / m_iter / 1000.0, FPS,
                         (float) m_totalQnn / m_iter / 1000.0,
                         (float) 1000000.0 / ( m_totalQnn / m_iter ),
@@ -349,7 +472,7 @@ public:
         auto name = m_params.name;
         auto begin = std::chrono::high_resolution_clock::now();
         m_qnn.Stop();
-        m_qnn.Deinit();
+        m_qnn.DeInitialize();
         auto end = std::chrono::high_resolution_clock::now();
         auto cost = std::chrono::duration_cast<std::chrono::microseconds>( end - begin ).count();
         printf( "[%s] Deinit cost %.2f ms\n", name.c_str(), (float) cost / 1000.0 );
@@ -363,12 +486,13 @@ public:
 
 private:
     QnnTest_Parameters_t m_params;
-    QnnRuntime_Config_t m_config;
-    QnnRuntime m_qnn;
-    QnnRuntime_TensorInfoList_t m_inputInfoList;
-    QnnRuntime_TensorInfoList_t m_outputInfoList;
-    std::vector<QCSharedBuffer_t> m_inputBuffers;
-    std::vector<QCSharedBuffer_t> m_outputBuffers;
+    DataTree m_config;
+    Qnn m_qnn;
+    std::vector<QnnTest_TensorInfo_t> m_inputsInfo;
+    std::vector<QnnTest_TensorInfo_t> m_outputsInfo;
+
+    std::vector<TensorDescriptor_t> m_inputBuffers;
+    std::vector<TensorDescriptor_t> m_outputBuffers;
     uint64_t m_total = 0;
     uint64_t m_totalQnn = 0;
     uint64_t m_totalRpc = 0;
@@ -377,6 +501,15 @@ private:
     int m_iter = 0;
 
     std::chrono::time_point<std::chrono::high_resolution_clock> m_start;
+
+    bool m_bAsync = false;
+    uint64_t m_asyncResult;
+    std::condition_variable m_condVar;
+    std::mutex m_lock;
+
+    TensorAllocator m_ta;
+
+    QCSharedFrameDescriptorNode *m_pFrameDesc;
 };
 
 bool ThreadMain( int nLoops, std::vector<std::shared_ptr<QnnTestRunner>> runners )
@@ -418,16 +551,16 @@ bool ThreadMain( int nLoops, std::vector<std::shared_ptr<QnnTestRunner>> runners
 int Usage( char *prog, int error )
 {
     printf( "usage: %s"
-            " -n name -m model_path -p processor [-b batch_multiplier][-t tid] [-l nLoops] [-i "
-            "input.raw]* [-P period] "
-            "[-S start] [-d]\n"
+            " -n name -m model_path -p processor [-c core_ids] [-b batch_multiplier][-t tid]"
+            " [-l nLoops] [-i input.raw]* [-P period] [-S start] [-a] [-q priority] [-d]\n"
             "  With below options to create a QNN tester:\n"
             "    -n name: The unique QNN tester name, must be before options -m/-p/-l/-i/-P/-S\n"
             "    -m model_path: The QNN model path, for HTP, it was context bin, others, it was\n"
             "      shared library\n"
             "    -t tid: The thread id to run the QNN model, those tester with the same tid run\n"
             "      sequentially in the same thread\n"
-            "    -p processor: The processor, 0: HTP0, 1: HTP1, 2: CPU, 3:GPU\n"
+            "    -p processor: The processor, optins: [htp0, htp1, htp2, htp3, cpu, gpu]\n"
+            "    -c core_ids: The processor core_ids, separated by comma, e.g. 0,1, default, 0\n"
             "    -b batch_multiplier:  Specifies the value with which the batch value in input and "
             "output tensors dimensions will be multiplied.\n"
             "    -u udo: Specifies udo lib path and interface provider name."
@@ -437,6 +570,9 @@ int Usage( char *prog, int error )
             "      option if the QNN model has multiple inputs\n"
             "    -P period: optional, the period in ms of the QNN Execute call\n"
             "    -S start: optional, the delay time in ms to start to do the QNN Execute call\n"
+            "    -a: enable async execution mode.\n"
+            "    -q priotity: specify the QNN model priority, options: [low, normal, normal_high, "
+            "high]\n"
             "  Repeat above options to create multiple testers\n"
             "  Other miscellaneous options:\n"
             "    -d: disable dumping outputs even if the input raw files specified\n",
@@ -450,15 +586,23 @@ int main( int argc, char *argv[] )
     std::vector<QnnTest_Parameters_t> paramsList;
 
     int flags, opt;
-    while ( ( opt = getopt( argc, argv, "n:m:p:b:u:t:l:i:P:S:dh" ) ) != -1 )
+    while ( ( opt = getopt( argc, argv, "an:m:p:c:b:u:t:l:i:P:S:q:dh" ) ) != -1 )
     {
         switch ( opt )
         {
+            case 'a':
+            {
+                QnnTest_Parameters_t &params = paramsList.back();
+                params.bAsync = true;
+                break;
+            }
             case 'n':
             {
                 QnnTest_Parameters_t params;
                 params.name = optarg;
                 params.tid = paramsList.size();
+                params.dt.Set<std::string>( "name", params.name );
+                params.dt.Set<uint32_t>( "id", params.tid );
                 paramsList.push_back( params );
                 break;
             }
@@ -466,18 +610,45 @@ int main( int argc, char *argv[] )
             {
                 QnnTest_Parameters_t &params = paramsList.back();
                 params.modelPath = optarg;
+                params.dt.Set<std::string>( "modelPath", params.modelPath );
+                params.dt.Set<std::string>( "loadType", "binary" );
                 break;
             }
             case 'p':
             {
                 QnnTest_Parameters_t &params = paramsList.back();
-                params.processor = (QCProcessorType_e) atoi( optarg );
-                if ( ( params.processor >= QC_PROCESSOR_MAX ) ||
-                     ( params.processor < QC_PROCESSOR_HTP0 ) )
+                params.processor = optarg;
+                if ( ( params.processor != "htp0" ) && ( params.processor != "htp1" ) &&
+                     ( params.processor != "htp2" ) && ( params.processor != "htp3" ) &&
+                     ( params.processor != "cpu" ) && ( params.processor != "gpu" ) )
                 {
                     printf( "invalid processor %s for %s\n", optarg, params.name.c_str() );
                     return -1;
                 }
+                params.dt.Set<std::string>( "processorType", params.processor );
+                if ( ( params.processor == "cpu" ) || ( params.processor == "gpu" ) )
+                {
+                    params.dt.Set<std::string>( "loadType", "library" );
+                }
+                break;
+            }
+            case 'c':
+            {
+                QnnTest_Parameters_t &params = paramsList.back();
+                std::vector<std::string> coreIds;
+                std::vector<uint32_t> coreIdsU32;
+                Split( coreIds, optarg, ',' );
+                for ( size_t i = 0; i < coreIds.size(); ++i )
+                {
+                    uint32_t coreId = atoi( coreIds[i].c_str() );
+                    if ( coreId >= 4 )
+                    {
+                        printf( "invalid core id %d for %s\n", coreId, params.name.c_str() );
+                        return -1;
+                    }
+                    coreIdsU32.push_back( coreId );
+                }
+                params.dt.Set<std::vector<uint32_t>>( "coreIds", coreIdsU32 );
                 break;
             }
             case 'b':
@@ -490,22 +661,27 @@ int main( int argc, char *argv[] )
             {
                 QnnTest_Parameters_t &params = paramsList.back();
                 std::vector<std::string> opPackagePaths;
-                split( opPackagePaths, optarg, ',' );
-                params.opPackagePaths.resize( opPackagePaths.size() );
-                for ( int i = 0; i < opPackagePaths.size(); ++i )
+                Split( opPackagePaths, optarg, ',' );
+                for ( size_t i = 0; i < opPackagePaths.size(); ++i )
                 {
                     static std::vector<std::string> opPackage;
-                    split( opPackage, opPackagePaths[i], ':' );
+                    Split( opPackage, opPackagePaths[i], ':' );
                     if ( opPackage.size() != 2 )
                     {
                         printf( "invalid opPackage params: %s\n", opPackagePaths[i].c_str() );
                         return -1;
                     }
-                    params.opPackagePaths[i].udoLibPath = opPackage[0].c_str();
-                    params.opPackagePaths[i].interfaceProvider = opPackage[1].c_str();
-                    printf( "opPackage params %d, udoLibPath: %s, interfaceProvider: %s\n", i,
-                            params.opPackagePaths[i].udoLibPath,
-                            params.opPackagePaths[i].interfaceProvider );
+                    std::string udoLibPath = opPackage[0];
+                    std::string interfaceProvider = opPackage[1];
+                    printf( "opPackage params %" PRIu64 ", udoLibPath: %s, interfaceProvider: %s\n",
+                            i, udoLibPath.c_str(), interfaceProvider.c_str() );
+                    std::vector<DataTree> udoPkgs;
+                    (void) params.dt.Get( "udoPackages", udoPkgs );
+                    DataTree udo;
+                    udo.Set<std::string>( "udoLibPath", udoLibPath );
+                    udo.Set<std::string>( "interfaceProvider", interfaceProvider );
+                    udoPkgs.push_back( udo );
+                    params.dt.Set( "udoPackages", udoPkgs );
                 }
                 break;
             }
@@ -545,6 +721,12 @@ int main( int argc, char *argv[] )
                 params.delayMs = atoi( optarg );
                 break;
             }
+            case 'q':
+            {
+                QnnTest_Parameters_t &params = paramsList.back();
+                params.dt.Set<std::string>( "priority", std::string( optarg ) );
+                break;
+            }
             case 'd':
                 s_bDisableDumpingOutputs = true;
                 break;
@@ -560,10 +742,11 @@ int main( int argc, char *argv[] )
     for ( auto &params : paramsList )
     {
         printf( "Test case %s model_path=%s nLoops=%d processor=%s tid=%d with %d inputs, delay %d "
-                "ms, period %d ms\n",
+                "ms, period %d ms, %s mode, priority %s\n",
                 params.name.c_str(), params.modelPath.c_str(), params.nLoops,
-                s_processorName[params.processor], params.tid, (int) params.inputs.size(),
-                params.delayMs, params.periodMs );
+                params.processor.c_str(), params.tid, (int) params.inputs.size(), params.delayMs,
+                params.periodMs, params.bAsync ? "async" : "sync",
+                params.dt.Get<std::string>( "priority", "normal" ).c_str() );
         auto runner = std::make_shared<QnnTestRunner>();
         auto ret = runner->Init( params );
         if ( QC_STATUS_OK != ret )

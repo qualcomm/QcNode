@@ -5,71 +5,71 @@
 #ifndef QC_NODE_QNN_HPP
 #define QC_NODE_QNN_HPP
 
-#include "QC/component/QnnRuntime.hpp"
 #include "QC/Node/NodeBase.hpp"
+#include "QnnTypes.h"
 
 namespace QC
 {
 namespace Node
 {
 
-using namespace QC::component;
+/**
+ * @brief Performance metrics for QNN model execution.
+ *
+ * This structure captures timing information related to the execution of a QNN model,
+ * including total execution time and breakdowns by processor type.
+ *
+ * @param entireExecTime     Total execution time of the QNN model in microseconds (µs).
+ *
+ * @param rpcExecTimeCPU     Execution time (in microseconds) for the remote procedure call
+ *                           on the CPU when the client invokes QnnGraph_execute.
+ *
+ * @param rpcExecTimeHTP     Execution time (in microseconds) for the remote procedure call
+ *                           on the HTP (Hexagon Tensor Processor) when the client invokes
+ *                           QnnGraph_execute.
+ *
+ * @param rpcExecTimeDSP     Execution time (in microseconds) for the remote procedure call
+ *                           on the DSP or other accelerator when the client invokes
+ *                           QnnGraph_execute.
+ */
+typedef struct
+{
+    uint64_t entireExecTime;
+    uint64_t rpcExecTimeCPU;
+    uint64_t rpcExecTimeHTP;
+    uint64_t rpcExecTimeAcc;
+} Qnn_Perf_t;
+
 
 /**
- * @brief QNN Node Configuration Data Structure
- * @param params The QC component QNN configuration data structure.
- * @param contextBufferId The context buffer index in QCNodeInit::buffers, specifying the buffer to
- * load a QNN model from memory provided by the user. Typically used when the QNN context binary
- * file is encrypted, and the user application decrypts and saves it into a memory buffer.
- * @note contextBufferId is not used when params.loadType is not
- * QNNRUNTIME_LOAD_CONTEXT_BIN_FROM_BUFFER.
- * @param bufferIds The indices of buffers in QCNodeInit::buffers provided by the user application
- * for use by QNN. These buffers will be registered into QNN during the initialization stage.
- * @note bufferIds are optional and can be empty, in which case the buffers will be registered into
- * QNN when the API ProcessFrameDescriptor is called.
- * @param globalBufferIdMap The global buffer index map used to identify which buffer in
- * QCFrameDescriptorNodeIfs is used for QNN input(s) and output(s).
- * @note globalBufferIdMap is optional and can be empty, in which case a default buffer index map
- * will be applied for QNN input(s) and output(s). For example, for a model with N inputs and M
- * outputs:
- * - The index 0 of QCFrameDescriptorNodeIfs will be input 0.
- * - The index 1 of QCFrameDescriptorNodeIfs will be input 1.
- * - ...
- * - The index N-1 of QCFrameDescriptorNodeIfs will be input N-1.
- * - The index N of QCFrameDescriptorNodeIfs will be output 0.
- * - The index N+1 of QCFrameDescriptorNodeIfs will be output 1.
- * - ...
- * - The index N+M-1 of QCFrameDescriptorNodeIfs will be output M-1.
- * - The index N+M of QCFrameDescriptorNodeIfs will be the slot for error data information if QNN
- *   asynchronous mode is used with the callback specified.
- * @param bDeRegisterAllBuffersWhenStop When the Stop API of the QNN node is called and
- * bDeRegisterAllBuffersWhenStop is true, deregister all buffers.
+ * @brief Represents the QNN implementation used by QnnConfig, QnnMonitor, and Node QNN.
+ *
+ * This class encapsulates the specific implementation details of the
+ * QNN (Qualcomm Neural Network) runtime that are shared across configuration,
+ * monitoring, and Node QNN.
+ *
+ * It serves as a central reference for components that need to interact with
+ * the underlying QNN runtime implementation.
  */
-typedef struct QnnConfig : public QCNodeConfigBase_t
-{
-    QnnRuntime_Config_t params;
-    uint32_t contextBufferId;
-    std::vector<uint32_t> bufferIds;
-    std::vector<QCNodeBufferMapEntry_t> globalBufferIdMap;
-    bool bDeRegisterAllBuffersWhenStop;
-} QnnConfig_t;
+class QnnImpl;
 
-class QnnConfigIfs : public NodeConfigIfs
+class QnnConfig : public NodeConfigIfs
 {
 public:
     /**
-     * @brief QnnConfigIfs Constructor
-     * @param[in] logger A reference to the logger to be shared and used by QnnConfigIfs.
-     * @param[in] qnn A reference to the QC QNN component to be used by QnnConfigIfs.
+     * @brief QnnConfig Constructor
+     * @param[in] logger A reference to the logger to be shared and used by QnnConfig.
+     * @param[in] pQnnImpl A pointer to the QnnImpl object to be used by QnnConfig.
      * @return None
      */
-    QnnConfigIfs( Logger &logger, QnnRuntime &qnn ) : NodeConfigIfs( logger ), m_qnn( qnn ) {}
+    QnnConfig( Logger &logger, QnnImpl *pQnnImpl ) : NodeConfigIfs( logger ), m_pQnnImpl( pQnnImpl )
+    {}
 
     /**
-     * @brief QnnConfigIfs Destructor
+     * @brief QnnConfig Destructor
      * @return None
      */
-    ~QnnConfigIfs() {}
+    ~QnnConfig() {}
 
     /**
      * @brief Verify the configuration string and set the configuration structure.
@@ -81,18 +81,21 @@ public:
      *     "static": {
      *        "name": "The Node unique name, type: string",
      *        "id": "The Node unique ID, type: uint32_t",
-     *        "processorType": "The processor type, type: string, options: [htp0, htp1, cpu, gpu],
+     *        "processorType": "The processor type, type: string,
+     *                          options: [ htp0, htp1, htp2, htp3, cpu, gpu ],
      *                          default: htp0",
+     *        "coreIds": [ A list of uint32_t values representing core id ]
+     *                   default: [0],
      *        "loadType": "The load type, type: string, options: [binary, library, buffer],
      *                     default: binary",
      *        "modelPath": "The QNN model file path, type: string, present if loadType is binary
      *                       or library",
      *        "contextBufferId": "The context buffer index in QCNodeInit::buffers,
      *                            type: uint32_t, present if loadType is buffer",
-     *        "bufferIds": [A list of uint32_t values representing the indices of buffers
-     *                      in QCNodeInit::buffers],
+     *        "bufferIds": [ A list of uint32_t values representing the indices of buffers
+     *                      in QCNodeInit::buffers ],
      *        "priority": "The QNN model scheduling priority, type: string,
-     *                     options: [low, normal, normal_high, high], default: normal",
+     *                     options: [ low, normal, normal_high, high ], default: normal",
      *        "udoPackages": [
      *           {
      *             "udoLibPath": "The UDO library file path, type: string",
@@ -124,7 +127,7 @@ public:
      * @brief Get Configuration Options
      * @return A reference string to the JSON configuration options.
      * @note
-     * TODO: Provide a more detailed introduction about the JSON configuration options.
+     * Use this API to query detailed input and output information from the loaded QNN model.
      */
     virtual const std::string &GetOptions();
 
@@ -132,68 +135,42 @@ public:
      * @brief Get the Configuration Structure.
      * @return A reference to the Configuration Structure.
      */
-    virtual const QCNodeConfigBase_t &Get() { return m_config; };
+    virtual const QCNodeConfigBase_t &Get();
 
 private:
     QCStatus_e VerifyStaticConfig( DataTree &dt, std::string &errors );
     QCStatus_e ParseStaticConfig( DataTree &dt, std::string &errors );
     QCStatus_e ApplyDynamicConfig( DataTree &dt, std::string &errors );
-    std::string ConvertTensorTypeToString( QCTensorType_e tensorType );
-    DataTree ConvertTensorInfoToJson( const QnnRuntime_TensorInfo_t &info );
-    std::vector<DataTree>
-    ConvertTensorInfoListToJson( const QnnRuntime_TensorInfoList_t &infoList );
+
+    DataTree ConvertTensorInfoToJson( const Qnn_Tensor_t &info );
+    std::vector<DataTree> ConvertTensorInfoListToJson( const std::vector<Qnn_Tensor_t> &infoList );
 
 private:
-    /**
-     * @brief The Udo Package
-     * @param interfaceProvider The name of the interface provider.
-     * @param udoLibPath The UDO library path.
-     */
-    typedef struct
-    {
-        std::string interfaceProvider;
-        std::string udoLibPath;
-    } UdoPackage_t;
-
-private:
-    QnnRuntime &m_qnn;
+    QnnImpl *m_pQnnImpl;
     bool m_bOptionsBuilt = false;
     std::string m_options;
-    QnnConfig_t m_config;
-    std::string m_modelPath;
-    std::vector<UdoPackage_t> m_udoPkgs;
-    std::vector<QnnRuntime_UdoPackage_t> m_udoPackages;
 };
 
-// TODO: how to handle QnnMonitorConfig
-typedef struct QnnMonitorConfig : public QCNodeMonitoringBase_t
-{
-    bool bPerfEnabled;
-} QnnMonitorConfig_t;
-
-// TODO: how to handle QnnMonitoringIfs
+// TODO: how to handle QnnMonitor
 // logging is part of MonitoringIfs
-class QnnMonitoringIfs : public QCNodeMonitoringIfs
+class QnnMonitor : public QCNodeMonitoringIfs
 {
 public:
     /**
-     * @brief QnnMonitoringIfs Constructor
-     * @param[in] logger A reference to the logger to be shared and used by QnnMonitoringIfs.
-     * @param[in] qnn A reference to the QC QNN component to be used by QnnMonitoringIfs.
+     * @brief QnnMonitor Constructor
+     * @param[in] logger A reference to the logger to be shared and used by QnnMonitor.
+     * @param[in] qnn A reference to the QC QNN component to be used by QnnMonitor.
      * @return None
      */
-    QnnMonitoringIfs( Logger &logger, QnnRuntime &qnn ) : m_logger( logger ), m_qnn( qnn ) {}
+    QnnMonitor( Logger &logger, QnnImpl *pQnnImpl ) : m_logger( logger ), m_pQnnImpl( pQnnImpl ) {}
 
-    ~QnnMonitoringIfs() {}
+    ~QnnMonitor() {}
 
-    virtual QCStatus_e VerifyAndSet( const std::string config, std::string &errors )
-    {
-        return QC_STATUS_UNSUPPORTED;
-    }
+    virtual QCStatus_e VerifyAndSet( const std::string config, std::string &errors );
 
-    virtual const std::string &GetOptions() { return m_options; }
+    virtual const std::string &GetOptions();
 
-    virtual const QCNodeMonitoringBase_t &Get() { return m_config; };
+    virtual const QCNodeMonitoringBase_t &Get();
 
     virtual uint32_t GetMaximalSize();
     virtual uint32_t GetCurrentSize();
@@ -204,19 +181,18 @@ public:
      * @param[inout] size The size of the buffer pData and returns the actual size of the placed
      * data.
      * @return QC_STATUS_OK on success, or an error code on failure.
-     * @note pData is of type QnnRuntime_Perf_t.
+     * @note pData is of type Qnn_Perf_t.
      * @example
-     *   QnnRuntime_Perf_t perf;
+     *   Qnn_Perf_t perf;
      *   QCNodeMonitoringIfs& monitorIfs = qnn.GetMonitoringIfs();
      *   QCStatus_e status = monitorIfs.Place( &perf, sizeof( perf ) );
      */
     virtual QCStatus_e Place( void *pData, uint32_t &size );
 
 private:
-    QnnRuntime &m_qnn;
+    QnnImpl *m_pQnnImpl;
     Logger &m_logger;
     std::string m_options;
-    QnnMonitorConfig_t m_config;
 };
 
 class Qnn : public NodeBase
@@ -226,18 +202,18 @@ public:
      * @brief Qnn Constructor
      * @return None
      */
-    Qnn() : m_configIfs( m_logger, m_qnn ), m_monitorIfs( m_logger, m_qnn ) {};
+    Qnn();
 
     /**
      * @brief Qnn Destructor
      * @return None
      */
-    ~Qnn() {};
+    ~Qnn();
 
     /**
      * @brief Initializes Node QNN.
      * @param[in] config The Node QNN configuration.
-     * @note QCNodeInit::config - Refer to the comments of the API QnnConfigIfs::VerifyAndSet.
+     * @note QCNodeInit::config - Refer to the comments of the API QnnConfig::VerifyAndSet.
      * @note QCNodeInit::callback - The user application callback to notify the status of
      * the API ProcessFrameDescriptor. This is optional. If provided, the API ProcessFrameDescriptor
      * will be asynchronous; otherwise, the API ProcessFrameDescriptor will be synchronous.
@@ -263,8 +239,8 @@ public:
     virtual QCNodeMonitoringIfs &GetMonitoringIfs() { return m_monitorIfs; }
 
     /**
-     * @brief Start the Node QNN
-     * @return QC_STATUS_OK on success, others on failure
+     * @brief Starts the QNN Node.
+     * @return QC_STATUS_OK on success; other status codes indicate failure.
      */
     virtual QCStatus_e Start();
 
@@ -298,49 +274,36 @@ public:
     virtual QCStatus_e ProcessFrameDescriptor( QCFrameDescriptorNodeIfs &frameDesc );
 
     /**
-     * @brief Stop the Node QNN
-     * @return QC_STATUS_OK on success, others on failure
+     * @brief Stops the QNN Node.
+     * @return QC_STATUS_OK on success; other status codes indicate failure.
      */
     virtual QCStatus_e Stop();
 
     /**
-     * @brief De-initialize Node QNN
-     * @return QC_STATUS_OK on success, others on failure
+     * @brief De-initializes the QNN Node and releases associated resources.
+     *
+     * This function performs cleanup operations for the QNN Node, including releasing
+     * memory, deregistering buffers, and resetting internal states. It should be called
+     * when the node is no longer needed.
+     *
+     * @return QC_STATUS_OK on success; other status codes indicate failure.
      */
     virtual QCStatus_e DeInitialize();
 
     /**
-     * @brief Get the current state of the Node QNN
-     * @return The current state of the Node QNN
+     * @brief Retrieves the current state of the QNN Node.
+     *
+     * This function returns the current operational state of the QNN Node,
+     * which may indicate whether the node is initialized, running, stopped, or in an error state.
+     *
+     * @return The current state of the QNN Node.
      */
-    virtual QCObjectState_e GetState() { return static_cast<QCObjectState_e>( m_qnn.GetState() ); }
+    virtual QCObjectState_e GetState();
 
 private:
-    static void OutputCallback( void *pAppPriv, void *pOutputPriv );
-    static void ErrorCallback( void *pAppPriv, void *pOutputPriv, Qnn_NotifyStatus_t notifyStatus );
-    void OutputCallback( void *pOutputPriv );
-    void ErrorCallback( void *pOutputPriv, Qnn_NotifyStatus_t notifyStatus );
-
-    QCStatus_e SetupGlobalBufferIdMap( const QnnConfig_t &cfg );
-
-private:
-    QnnRuntime m_qnn;
-    QnnConfigIfs m_configIfs;
-    QnnMonitoringIfs m_monitorIfs;
-
-    bool m_bDeRegisterAllBuffersWhenStop = false;
-
-    uint32_t m_inputNum;
-    uint32_t m_outputNum;
-
-    uint32_t m_bufferDescNum;
-
-    std::vector<QCNodeBufferMapEntry_t> m_globalBufferIdMap;
-    QCNodeEventCallBack_t m_callback = nullptr;
-    uint64_t m_ticketId = 1;
-    std::mutex m_lock;
-    std::map<uint64_t, QCFrameDescriptorNodeIfs *> m_frameDescMap;
-    QCSharedFrameDescriptorNodePool *m_pFrameDescPool = nullptr;
+    QnnImpl *m_pQnnImpl;
+    QnnConfig m_configIfs;
+    QnnMonitor m_monitorIfs;
 };
 
 }   // namespace Node
