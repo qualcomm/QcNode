@@ -1,4 +1,4 @@
-# How to build QC with TinyViz for HGY Ubuntu
+# How to build QCNode with TinyViz for HGY Ubuntu
 
 ## Set WORKSPACE path:
 export WORKSPACE=$PWD (or other path.)
@@ -85,7 +85,7 @@ export LDFLAGS="$LDFLAGS -L$TOOLCHAIN_SYSROOT/usr/lib/aarch64-linux-gnu"
 - Set and create object file path
 ```sh
 export TARGET=aarch64-ubuntu
-export PKG_NAME=qc-$TARGET.tar.gz
+export PKG_NAME=qcnode-$TARGET.tar.gz
 export INSTALL_PATH=/opt/qcnode
 export DST_DIR=$WORKSPACE/opt/qcnode
 
@@ -180,6 +180,24 @@ make -j16 destdir=${DST_DIR} C_FLAGS="${CFLAGS}" LD_FLAGS="${LDFLAGS}"
 make install
 ```
 
+- Build and install json:
+```sh
+cd $WORKSPACE
+wget https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz -P $WORKSPACE --no-check-certificate
+tar -xf json.tar.xz
+cd $WORKSPACE/json
+mkdir -p build
+cd build
+cmake   -DCMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE \
+        -DCMAKE_INCLUDE_PATH=$TOOLCHAIN_SYSROOT/usr/include \
+        -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+        -DCMAKE_INSTALL_PREFIX=$DST_DIR \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+        -DJSON_BuildTests=OFF ..
+make -j16
+make install
+```
+
 ## Build QCNode package
 - Setup QNN SDK env:
 Unzip QNN SDK package to $WORKSPACE and rename as qnn_sdk.
@@ -191,31 +209,52 @@ source $WORKSPACE/qnn_sdk/bin/envsetup.sh
     - Find parserinternaldefs.h file in chipcode
     - copy it to path: $WORKSPACE/ubuntu/sysroots/aarch64-oe-linux/usr/include
 
-- build QC SDK:
+- build QCNode SDK:
 Get source code and put at $WORKSPACE path, then use the following commands to build:
 ```sh
 cd $WORKSPACE/qcnode
 mkdir build
 cd build
+export QC_TARGET_SOC=8650
+export ENABLE_RSM_V2=ON
+export ENABLE_FADAS=ON
+export ENABLE_DEMUXER=ON
+export ENABLE_EVA=ON
+export ENABLE_C2D=OFF
+export ENABLE_GCOV=OFF
 cmake -DCMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE \
     -DCMAKE_INCLUDE_PATH=$TOOLCHAIN_SYSROOT/usr/include \
     -DCMAKE_BUILD_TYPE=RelWithDebInfo \
     -DCMAKE_INSTALL_PREFIX=$INSTALL_PATH \
     -DCMAKE_PREFIX_PATH=$DST_DIR \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-    -DENABLE_GCOV=OFF ..
+    -DENABLE_GCOV=${ENABLE_GCOV} \
+    -DENABLE_C2D=${ENABLE_C2D} \
+    -DENABLE_EVA=${ENABLE_EVA} \
+    -DENABLE_DEMUXER=${ENABLE_DEMUXER} \
+    -DENABLE_FADAS=${ENABLE_FADAS} \
+    -DENABLE_RSM_V2=${ENABLE_RSM_V2} \
+    -DQC_TARGET_SOC=${QC_TARGET_SOC} \
+    ..
 make -j16
 make DESTDIR=$WORKSPACE install
 ```
 
-- copy QNN library to QC
+- copy QNN library to QCNode
 ```sh
 cp $QNN_SDK_ROOT/bin/aarch64-oe-linux-gcc9.3/* $DST_DIR/bin
 cp $QNN_SDK_ROOT/lib/aarch64-oe-linux-gcc9.3/* $DST_DIR/lib
-cp $QNN_SDK_ROOT/lib/hexagon-v73/unsigned/libQnn* $DST_DIR/lib/dsp
+if [[ "${QC_TARGET_SOC}" == "8797" ]] ; then
+  HEXAGON_VARIANT=hexagon-v81
+elif [[ "${QC_TARGET_SOC}" == "8620" ]] ; then
+  HEXAGON_VARIANT=hexagon-v75
+else
+  HEXAGON_VARIANT=hexagon-v73
+fi
+cp $QNN_SDK_ROOT/lib/${HEXAGON_VARIANT}/unsigned/libQnn* $DST_DIR/lib/dsp
 ```
 
-- copy font file to QC
+- copy font file to QCNode
 ```sh
 cd $WORKSPACE
 mkdir font
@@ -226,7 +265,7 @@ mkdir $DST_DIR/lib/runtime
 cp LiberationSans-Regular.ttf $DST_DIR/lib/runtime
 ```
 
-- copy dependent libraries to QC
+- copy dependent libraries to QCNode
 ```sh
 cd $WORKSPACE
 readelf -d $DST_DIR/lib/libSDL2.so | \
