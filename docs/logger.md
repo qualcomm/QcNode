@@ -7,14 +7,14 @@
     - [3.1.1 For QNX, the default used log system is slog2.](#311-for-qnx-the-default-used-log-system-is-slog2)
     - [3.1.2 For Linux, the default used log system is syslog.](#312-for-linux-the-default-used-log-system-is-syslog)
   - [3.2 Direct the QC logger message to the standard output(stdout)](#32-direct-the-qc-logger-message-to-the-standard-outputstdout)
-    - [3.2.1 Define a customized Logger_HandleContextUser_t for the Logger_Handle_t](#321-define-a-customized-logger_handlecontextuser_t-for-the-logger_handle_t)
-    - [3.2.2 Implement a Logger_Create_t API that to create a logger handle](#322-implement-a-logger_create_t-api-that-to-create-a-logger-handle)
-    - [3.2.3 Implement a Logger_Log_t API that to do message log](#323-implement-a-logger_log_t-api-that-to-do-message-log)
-    - [3.2.4 Implement a Logger_Destroy_t API that to destroy the logger](#324-implement-a-logger_destroy_t-api-that-to-destroy-the-logger)
+    - [3.2.1 Define a customized Logger\_HandleContextUser\_t for the Logger\_Handle\_t](#321-define-a-customized-logger_handlecontextuser_t-for-the-logger_handle_t)
+    - [3.2.2 Implement a Logger\_Create\_t API that to create a logger handle](#322-implement-a-logger_create_t-api-that-to-create-a-logger-handle)
+    - [3.2.3 Implement a Logger\_Log\_t API that to do message log](#323-implement-a-logger_log_t-api-that-to-do-message-log)
+    - [3.2.4 Implement a Logger\_Destroy\_t API that to destroy the logger](#324-implement-a-logger_destroy_t-api-that-to-destroy-the-logger)
     - [3.2.5 Call the Logger::Setup to switch to use the stdout](#325-call-the-loggersetup-to-switch-to-use-the-stdout)
 - [4. How to dynamic change the logger level through environment variable](#4-how-to-dynamic-change-the-logger-level-through-environment-variable)
-  - [4.1 "QC_LOG_LEVEL" to control all the logger level](#41-qcnode_log_level-to-control-all-the-logger-level)
-  - [4.2 "${name}_QC_LOG_LEVEL" to control the logger level of the logger with name.](#42-name_qcnode_log_level-to-control-the-logger-level-of-the-logger-with-name)
+  - [4.1 "QC\_LOG\_LEVEL" to control all the logger level.](#41-qc_log_level-to-control-all-the-logger-level)
+  - [4.2 "${name}\_QC\_LOG\_LEVEL" to control the logger level of the logger with name.](#42-name_qc_log_level-to-control-the-logger-level-of-the-logger-with-name)
 
 The QC logger is designed to be used by the QC components or utils only, and with customization, the log messages can be easily directed to the user application used log system.
 
@@ -91,7 +91,7 @@ So if change the logger member "[m_hHandle](../include/QC/Infras/Log/Logger.hpp#
 Below is a demo command to check the QC logs:
 
 ```sh
-slog2info | grep qcnode
+slog2info | grep -i qcnode
 
 # below command to clear logs
 slog2info -c
@@ -106,7 +106,7 @@ slog2info -c
 Below is a demo command to check the QC logs:
 
 ```sh
-journalctl   | grep qcnode
+journalctl -o short-precise | grep -i qcnode
 
 # below command to clear logs
 journalctl --flush --rotate --vacuum-size=1
