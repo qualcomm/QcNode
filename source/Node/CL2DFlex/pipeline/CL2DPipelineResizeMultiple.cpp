@@ -3,20 +3,19 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#include "include/CL2DPipelineLetterboxMultiple.hpp"
+#include "pipeline/CL2DPipelineResizeMultiple.hpp"
 
 namespace QC
 {
-namespace component
+namespace Node
 {
 
-CL2DPipelineLetterboxMultiple::CL2DPipelineLetterboxMultiple() {}
+CL2DPipelineResizeMultiple::CL2DPipelineResizeMultiple() {}
 
-CL2DPipelineLetterboxMultiple::~CL2DPipelineLetterboxMultiple() {}
+CL2DPipelineResizeMultiple::~CL2DPipelineResizeMultiple() {}
 
-QCStatus_e CL2DPipelineLetterboxMultiple::Init( uint32_t inputId, cl_kernel *pKernel,
-                                                CL2DFlex_Config_t *pConfig,
-                                                OpenclSrv *pOpenclSrvObj )
+QCStatus_e CL2DPipelineResizeMultiple::Init( uint32_t inputId, cl_kernel *pKernel,
+                                             CL2DFlex_Config_t *pConfig, OpenclSrv *pOpenclSrvObj )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
@@ -27,12 +26,12 @@ QCStatus_e CL2DPipelineLetterboxMultiple::Init( uint32_t inputId, cl_kernel *pKe
     if ( ( QC_IMAGE_FORMAT_NV12 == m_config.inputFormats[m_inputId] ) &&
          ( QC_IMAGE_FORMAT_RGB888 == m_config.outputFormat ) && ( 1 == m_config.numOfInputs ) )
     {
-        m_pipeline = CL2DFLEX_PIPELINE_LETTERBOX_NEAREST_NV12_TO_RGB_MULTIPLE;
-        ret = m_pOpenclSrvObj->CreateKernel( pKernel, "LetterboxNV12ToRGBMultiple" );
+        m_pipeline = CL2DFLEX_PIPELINE_RESIZE_NEAREST_NV12_TO_RGB_MULTIPLE;
+        ret = m_pOpenclSrvObj->CreateKernel( pKernel, "ResizeNV12ToRGBMultiple" );
     }
     else
     {
-        QC_ERROR( "Invalid CL2DFlex letterbox multiple pipeline for inputId=%d!", m_inputId );
+        QC_ERROR( "Invalid CL2DFlex resize multiple pipeline for inputId=%d!", m_inputId );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
@@ -42,7 +41,7 @@ QCStatus_e CL2DPipelineLetterboxMultiple::Init( uint32_t inputId, cl_kernel *pKe
     {
         QCTensorProps_t roiProp = {
                 QC_TENSOR_TYPE_INT_32,
-                { ( uint32_t )( QC_CL2DFLEX_ROI_NUMBER_MAX * 4 ), 0 },
+                { (uint32_t) ( QC_CL2DFLEX_ROI_NUMBER_MAX * 4 ), 0 },
                 1,
         };
         ret = m_roiBuffer.Allocate( &roiProp );
@@ -52,11 +51,10 @@ QCStatus_e CL2DPipelineLetterboxMultiple::Init( uint32_t inputId, cl_kernel *pKe
         QC_ERROR( "Failed to allocate roi buffer!" );
     }
 
-
     return ret;
 }
 
-QCStatus_e CL2DPipelineLetterboxMultiple::Deinit()
+QCStatus_e CL2DPipelineResizeMultiple::Deinit()
 {
     QCStatus_e ret = QC_STATUS_OK;
 
@@ -69,8 +67,8 @@ QCStatus_e CL2DPipelineLetterboxMultiple::Deinit()
     return ret;
 }
 
-QCStatus_e CL2DPipelineLetterboxMultiple::Execute( const QCSharedBuffer_t *pInput,
-                                                   const QCSharedBuffer_t *pOutput )
+QCStatus_e CL2DPipelineResizeMultiple::Execute( const QCSharedBuffer_t *pInput,
+                                                const QCSharedBuffer_t *pOutput )
 {
     QCStatus_e ret = QC_STATUS_BAD_ARGUMENTS;
 
@@ -79,10 +77,10 @@ QCStatus_e CL2DPipelineLetterboxMultiple::Execute( const QCSharedBuffer_t *pInpu
     return ret;
 }
 
-QCStatus_e CL2DPipelineLetterboxMultiple::ExecuteWithROI( const QCSharedBuffer_t *pInput,
-                                                          const QCSharedBuffer_t *pOutput,
-                                                          const CL2DFlex_ROIConfig_t *pROIs,
-                                                          const uint32_t numROIs )
+QCStatus_e CL2DPipelineResizeMultiple::ExecuteWithROI( const QCSharedBuffer_t *pInput,
+                                                       const QCSharedBuffer_t *pOutput,
+                                                       const CL2DFlex_ROIConfig_t *pROIs,
+                                                       const uint32_t numROIs )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
@@ -104,15 +102,14 @@ QCStatus_e CL2DPipelineLetterboxMultiple::ExecuteWithROI( const QCSharedBuffer_t
         {
             uint32_t srcOffset = pInput->offset;
             uint32_t dstOffset = pOutput->offset;
-            if ( CL2DFLEX_PIPELINE_LETTERBOX_NEAREST_NV12_TO_RGB_MULTIPLE == m_pipeline )
+            if ( CL2DFLEX_PIPELINE_RESIZE_NEAREST_NV12_TO_RGB_MULTIPLE == m_pipeline )
             {
-                ret = LetterboxFromNV12ToRGBMultiple( numROIs, bufferSrc, srcOffset, bufferDst,
-                                                      dstOffset, pInput, pOutput, pROIs );
+                ret = ResizeFromNV12ToRGBMultiple( numROIs, bufferSrc, srcOffset, bufferDst,
+                                                   dstOffset, pInput, pOutput, pROIs );
             }
             else
             {
-                QC_ERROR( "Invalid CL2DFlex letterbox multiple pipeline for inputId=%d!",
-                          m_inputId );
+                QC_ERROR( "Invalid CL2DFlex resize multiple pipeline for inputId=%d!", m_inputId );
                 ret = QC_STATUS_BAD_ARGUMENTS;
             }
         }
@@ -121,7 +118,7 @@ QCStatus_e CL2DPipelineLetterboxMultiple::ExecuteWithROI( const QCSharedBuffer_t
     return ret;
 }
 
-QCStatus_e CL2DPipelineLetterboxMultiple::LetterboxFromNV12ToRGBMultiple(
+QCStatus_e CL2DPipelineResizeMultiple::ResizeFromNV12ToRGBMultiple(
         uint32_t numROIs, cl_mem bufferSrc, uint32_t srcOffset, cl_mem bufferDst,
         uint32_t dstOffset, const QCSharedBuffer_t *pInput, const QCSharedBuffer_t *pOutput,
         const CL2DFlex_ROIConfig_t *pROIs )
@@ -156,8 +153,8 @@ QCStatus_e CL2DPipelineLetterboxMultiple::LetterboxFromNV12ToRGBMultiple(
         }
         else
         {
-            size_t numOfArgs = 12;
-            OpenclIfcae_Arg_t OpenclArgs[12];
+            size_t numOfArgs = 11;
+            OpenclIfcae_Arg_t OpenclArgs[11];
             OpenclArgs[0].pArg = (void *) &bufferSrc;
             OpenclArgs[0].argSize = sizeof( cl_mem );
             OpenclArgs[1].pArg = (void *) &srcOffset;
@@ -180,8 +177,6 @@ QCStatus_e CL2DPipelineLetterboxMultiple::LetterboxFromNV12ToRGBMultiple(
             OpenclArgs[9].argSize = sizeof( cl_int );
             OpenclArgs[10].pArg = (void *) &( pOutput->imgProps.stride[0] );
             OpenclArgs[10].argSize = sizeof( cl_int );
-            OpenclArgs[11].pArg = (void *) &( m_config.letterboxPaddingValue );
-            OpenclArgs[11].argSize = sizeof( cl_int );
 
             OpenclIface_WorkParams_t OpenclWorkParams;
             OpenclWorkParams.workDim = 3;
@@ -196,7 +191,7 @@ QCStatus_e CL2DPipelineLetterboxMultiple::LetterboxFromNV12ToRGBMultiple(
             ret = m_pOpenclSrvObj->Execute( m_pKernel, OpenclArgs, numOfArgs, &OpenclWorkParams );
             if ( QC_STATUS_OK != ret )
             {
-                QC_ERROR( "Failed to execute LetterboxMultiple NV12 to RGB OpenCL kernel!" );
+                QC_ERROR( "Failed to execute ResizeMultiple NV12 to RGB OpenCL kernel!" );
                 ret = QC_STATUS_FAIL;
             }
 
@@ -211,5 +206,5 @@ QCStatus_e CL2DPipelineLetterboxMultiple::LetterboxFromNV12ToRGBMultiple(
     return ret;
 }
 
-}   // namespace component
+}   // namespace Node
 }   // namespace QC

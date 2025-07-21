@@ -3,11 +3,11 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#include "include/CL2DPipelineConvertUBWC.hpp"
+#include "pipeline/CL2DPipelineConvertUBWC.hpp"
 
 namespace QC
 {
-namespace component
+namespace Node
 {
 
 CL2DPipelineConvertUBWC::CL2DPipelineConvertUBWC() {}
@@ -86,8 +86,8 @@ QCStatus_e CL2DPipelineConvertUBWC::ConvertUBWCFromNV12UBWCToNV12( const QCShare
 {
     QCStatus_e ret = QC_STATUS_OK;
 
-    uint32_t sizeOne = ( uint32_t )( pOutput->size ) / ( pOutput->imgProps.batchSize );
-    uint32_t dstOffset = ( uint32_t )( pOutput->offset ) + m_inputId * sizeOne;
+    uint32_t sizeOne = (uint32_t) ( pOutput->size ) / ( pOutput->imgProps.batchSize );
+    uint32_t dstOffset = (uint32_t) ( pOutput->offset ) + m_inputId * sizeOne;
     cl_mem bufferSrc;
     cl_mem bufferDst;
     cl_mem bufferSrcY;
@@ -201,5 +201,5 @@ QCStatus_e CL2DPipelineConvertUBWC::ConvertUBWCFromNV12UBWCToNV12( const QCShare
     return ret;
 }
 
-}   // namespace component
+}   // namespace Node
 }   // namespace QC

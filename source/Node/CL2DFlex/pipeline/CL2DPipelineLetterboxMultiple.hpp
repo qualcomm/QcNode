@@ -6,11 +6,11 @@
 #ifndef QC_CL2D_PIPELINE_LETTERBOXMULTIPLE_HPP
 #define QC_CL2D_PIPELINE_LETTERBOXMULTIPLE_HPP
 
-#include "include/CL2DPipelineBase.hpp"
+#include "pipeline/CL2DPipelineBase.hpp"
 
 namespace QC
 {
-namespace component
+namespace Node
 {
 
 class CL2DPipelineLetterboxMultiple : public CL2DPipelineBase
@@ -43,7 +43,7 @@ private:
 
 };   // class PipelineLetterboxMultiple
 
-}   // namespace component
+}   // namespace Node
 }   // namespace QC
 
 #endif   // QC_CL2D_PIPELINE_LETTERBOXMULTIPLE_HPP
