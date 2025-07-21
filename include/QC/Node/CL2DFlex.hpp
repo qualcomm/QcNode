@@ -5,59 +5,119 @@
 #ifndef QC_NODE_CL2DFLEX_HPP
 #define QC_NODE_CL2DFLEX_HPP
 
-#include "QC/component/CL2DFlex.hpp"
+#include "OpenclIface.hpp"
 #include "QC/Node/NodeBase.hpp"
 
 namespace QC
 {
 namespace Node
 {
-using namespace QC::component;
+using namespace QC::libs::OpenclIface;
+
+/*=================================================================================================
+** Typedefs
+=================================================================================================*/
+
+/** @brief CL2DFlex valid work modes */
+typedef enum
+{
+    CL2DFLEX_WORK_MODE_CONVERT, /**<color convert only, roi.width should be equal to output width
+                                  and roi.height should be equal to output height*/
+    CL2DFLEX_WORK_MODE_RESIZE_NEAREST,    /**<color convert and resize use nearest point*/
+    CL2DFLEX_WORK_MODE_RESIZE_BILINEAR,   /**<color convert and resize use bilinear interpolation*/
+    CL2DFLEX_WORK_MODE_LETTERBOX_NEAREST, /**<color convert and letterbox with fixed height/width
+                                            ratio use nearest point*/
+    CL2DFLEX_WORK_MODE_LETTERBOX_NEAREST_MULTIPLE, /**<color convert and letterbox with fixed
+                                                      height/width ratio use nearest point, execute
+                                                      on multiple batches with different ROI
+                                                      paramters*/
+    CL2DFLEX_WORK_MODE_RESIZE_NEAREST_MULTIPLE,    /**<color convert and resize use nearest point,
+                                                      execute on multiple batches with different ROI
+                                                      paramters*/
+    CL2DFLEX_WORK_MODE_CONVERT_UBWC,  /**<convert from ubwc compress format to normal format*/
+    CL2DFLEX_WORK_MODE_REMAP_NEAREST, /**<color convert and remap using nearest point in map table
+                                         to do undistortion*/
+    CL2DFLEX_WORK_MODE_MAX
+} CL2DFlex_Work_Mode_e;
+
+/** @brief remap tables for input images */
+typedef struct
+{
+    QCSharedBuffer_t
+            *pMapX; /**<shared buffer for X map, each element is the column coordinate of the mapped
+                       location in the source image, data size is mapWidth * mapHeight*/
+    QCSharedBuffer_t
+            *pMapY; /**<shared buffer for Y map, each element is the row coordinate of the mapped
+                       location in the source image, data size is mapWidth * mapHeight*/
+} CL2DFlex_MapTable_t;
+
+/** @brief CL2DFlex input images ROI configuration */
+typedef struct
+{
+    uint32_t x;      /**<ROI beginnning x coordinate*/
+    uint32_t y;      /**<ROI beginnning y coordinate*/
+    uint32_t width;  /**<ROI width, x+width must be smaller than
+                        input width*/
+    uint32_t height; /**<ROI height, y+height must be smaller
+                        than input height*/
+} CL2DFlex_ROIConfig_t;
+
+/** @brief CL2DFlex component configuration */
+typedef struct
+{
+    uint32_t numOfInputs;                          /**<number of input images*/
+    CL2DFlex_Work_Mode_e workModes[QC_MAX_INPUTS]; /**<work mode for each input*/
+    QCImageFormat_e inputFormats[QC_MAX_INPUTS];   /**<input image format for each batch*/
+    uint32_t inputWidths[QC_MAX_INPUTS];           /**<input image width for each batch, must be
+                                                         an integer   multiple of 2*/
+    uint32_t inputHeights[QC_MAX_INPUTS];          /**<input image height for each batch, must be an
+                                                         integer  multiple of 2*/
+    QCImageFormat_e outputFormat;                  /**<output image format*/
+    uint32_t outputWidth;                          /**<output image width*/
+    uint32_t outputHeight;                         /**<output image height*/
+    uint32_t numOfROIs;                            /**<number of output ROIs for ROI pipeline*/
+    CL2DFlex_ROIConfig_t ROIs[QC_MAX_INPUTS];      /**<ROI configurations for each batch*/
+    uint32_t letterboxPaddingValue =
+            0; /**<the padding value for letterbox resize with fixed height/width ratio, uint32
+                  value in which the lower 24 bits are composed of three 8 bits values representing
+                  R,G,B respectively, default set to 0 which means all black */
+    CL2DFlex_MapTable_t remapTable[QC_MAX_INPUTS]; /**<remap table, used for remap work mode*/
+    OpenclIfcae_Perf_e priority =
+            OPENCLIFACE_PERF_NORMAL; /**<OpenCL performance priority level, default set to normal*/
+
+} CL2DFlex_Config_t;
 
 /**
- * @brief CL2D Node Configuration Data Structure
- * @param params The QC component CL2D configuration data structure.
- * @param bufferIds The indices of buffers in QCNodeInit::buffers provided by the user application
- * for use by CL2D. These buffers will be registered into CL2D during the initialization stage.
- * @note bufferIds are optional and can be empty, in which case the buffers will be registered into
- * CL2D when the API ProcessFrameDescriptor is called.
- * @param globalBufferIdMap The global buffer index map used to identify which buffer in
- * QCFrameDescriptorNodeIfs is used for CL2D input(s) and output(s).
- * @note globalBufferIdMap is optional and can be empty, in which case a default buffer index map
- * will be applied for CL2D input(s) and output(s). For now CL2D only support multiple inputs to
- * single output
- * - The index 0 of QCFrameDescriptorNodeIfs will be input 0.
- * - The index 1 of QCFrameDescriptorNodeIfs will be input 1.
- * - ...
- * - The index N-1 of QCFrameDescriptorNodeIfs will be input N-1.
- * - The index N of QCFrameDescriptorNodeIfs will be output.
- * @param bDeRegisterAllBuffersWhenStop When the Stop API of the CL2DFlex node is called and
- * bDeRegisterAllBuffersWhenStop is true, deregister all buffers.
+ * @brief Represents the CL2DFlex implementation used by CL2DFlexConfig, CL2DFlexMonitor, and Node
+ * CL2DFlex.
+ *
+ * This class encapsulates the specific implementation details of the
+ * CL2DFlex that are shared across configuration, monitoring,  and Node CL2DFlex.
+ *
+ * It serves as a central reference for components that need to interact with
+ * the underlying CL2DFlex implementation.
  */
-typedef struct CL2DFlexConfig : public QCNodeConfigBase_t
-{
-    CL2DFlex_Config_t params;
-    std::vector<uint32_t> bufferIds;
-    std::vector<QCNodeBufferMapEntry_t> globalBufferIdMap;
-    bool bDeRegisterAllBuffersWhenStop;
-} CL2DFlexConfig_t;
+class CL2DFlexImpl;
 
-class CL2DFlexConfigIfs : public NodeConfigIfs
+class CL2DFlexConfig : public NodeConfigIfs
 {
 public:
     /**
-     * @brief CL2DFlexConfigIfs Constructor
-     * @param[in] logger A reference to the logger to be shared and used by CL2DFlexConfigIfs.
-     * @param[in] cl2d A reference to the QC CL2D component to be used by CL2DFlexConfigIfs.
+     * @brief CL2DFlexConfig Constructor
+     * @param[in] logger A reference to the logger to be shared and used by CL2DFlexConfig.
+     * @param[in] pCL2DFlexImpl A pointer to the CL2DFlexImpl object to be used by CL2DFlexConfig.
      * @return None
      */
-    CL2DFlexConfigIfs( Logger &logger, CL2DFlex &cl2d ) : NodeConfigIfs( logger ), m_cl2d( cl2d ) {}
+    CL2DFlexConfig( Logger &logger, CL2DFlexImpl *pCL2DFlexImpl )
+        : NodeConfigIfs( logger ),
+          m_pCL2DFlexImpl( pCL2DFlexImpl )
+    {}
 
     /**
-     * @brief CL2DFlexConfigIfs Destructor
+     * @brief CL2DFlexConfig Destructor
      * @return None
      */
-    ~CL2DFlexConfigIfs() {}
+    ~CL2DFlexConfig() {}
 
     /**
      * @brief Verify the configuration string and set the configuration structure.
@@ -129,37 +189,38 @@ public:
      * @brief Get the Configuration Structure.
      * @return A reference to the Configuration Structure.
      */
-    virtual const QCNodeConfigBase_t &Get() { return m_config; };
+    virtual const QCNodeConfigBase_t &Get();
 
 private:
     QCStatus_e VerifyStaticConfig( DataTree &dt, std::string &errors );
     QCStatus_e ParseStaticConfig( DataTree &dt, std::string &errors );
 
 private:
-    CL2DFlex &m_cl2d;
+    CL2DFlexImpl *m_pCL2DFlexImpl;
     std::string m_options;
-
-public:
-    CL2DFlexConfig_t m_config;
-    uint32_t m_mapXBufferIds[QC_MAX_INPUTS];
-    uint32_t m_mapYBufferIds[QC_MAX_INPUTS];
-    CL2DFlex_ROIConfig_t m_ROIs[QC_CL2DFLEX_ROI_NUMBER_MAX];
     uint32_t m_numOfInputs;
-    uint32_t m_numOfROIs;
 };
 
-// TODO: how to handle CL2DFlexMonitorConfig
+// TODO: how to handle CL2DFlexMonitoring
 typedef struct CL2DFlexMonitorConfig : public QCNodeMonitoringBase_t
 {
-    bool bPerfEnabled;
+    bool bEnablePerf;
 } CL2DFlexMonitorConfig_t;
 
-// TODO: how to handle CL2DFlexMonitoringIfs
-class CL2DFlexMonitoringIfs : public QCNodeMonitoringIfs
+class CL2DFlexMonitoring : public QCNodeMonitoringIfs
 {
 public:
-    CL2DFlexMonitoringIfs() {}
-    ~CL2DFlexMonitoringIfs() {}
+    /**
+     * @brief CL2DFlexMonitor Constructor
+     * @param[in] logger A reference to the logger to be shared and used by CL2DFlexConfig.
+     * @param[in] pCL2DFlexImpl A pointer to the CL2DFlexImpl object to be used by CL2DFlexConfig.
+     * @return None
+     */
+    CL2DFlexMonitoring( Logger &logger, CL2DFlexImpl *pCL2DFlexImpl )
+        : m_logger( logger ),
+          m_pCL2DFlexImpl( pCL2DFlexImpl )
+    {}
+    ~CL2DFlexMonitoring() {}
 
     virtual QCStatus_e VerifyAndSet( const std::string config, std::string &errors )
     {
@@ -168,16 +229,19 @@ public:
 
     virtual const std::string &GetOptions() { return m_options; }
 
-    virtual const QCNodeMonitoringBase_t &Get() { return m_config; };
+    virtual const QCNodeMonitoringBase_t &Get() { return m_monitorConfig; }
 
     virtual uint32_t GetMaximalSize() { return UINT32_MAX; }
     virtual uint32_t GetCurrentSize() { return UINT32_MAX; }
 
+
     virtual QCStatus_e Place( void *ptr, uint32_t &size ) { return QC_STATUS_UNSUPPORTED; }
 
 private:
+    CL2DFlexImpl *m_pCL2DFlexImpl;
+    Logger &m_logger;
     std::string m_options;
-    CL2DFlexMonitorConfig_t m_config;
+    CL2DFlexMonitorConfig_t m_monitorConfig;
 };
 
 class CL2DFlex : public NodeBase
@@ -187,18 +251,18 @@ public:
      * @brief CL2DFlex Constructor
      * @return None
      */
-    CL2DFlex() : m_configIfs( m_logger, m_cl2d ) {};
+    CL2DFlex();
 
     /**
      * @brief CL2DFlex Destructor
      * @return None
      */
-    ~CL2DFlex() {};
+    ~CL2DFlex();
 
     /**
      * @brief Initializes Node CL2DFlex.
      * @param[in] config The Node CL2DFlex configuration.
-     * @note QCNodeInit::config - Refer to the comments of the API CL2DFlexConfigIfs::VerifyAndSet.
+     * @note QCNodeInit::config - Refer to the comments of the API CL2DFlexConfig::VerifyAndSet.
      * @note QCNodeInit::buffers - Buffers provided by the user application. The buffers can be
      * provided for the following purposes:
      * - 1. A buffer provided to store the mapping tables for remap work mode.
@@ -255,21 +319,12 @@ public:
      * @brief Get the current state of the Node CL2DFlex
      * @return The current state of the Node CL2DFlex
      */
-    virtual QCObjectState_e GetState() { return static_cast<QCObjectState_e>( m_cl2d.GetState() ); }
+    virtual QCObjectState_e GetState();
 
 private:
-    QCStatus_e SetupGlobalBufferIdMap( const CL2DFlexConfig_t &cfg );
-
-private:
-    QC::component::CL2DFlex m_cl2d;
-    CL2DFlexConfigIfs m_configIfs;
-    CL2DFlexMonitoringIfs m_monitorIfs;
-    bool m_bDeRegisterAllBuffersWhenStop = false;
-
-    uint32_t m_inputNum;
-    uint32_t m_outputNum = 1;
-
-    std::vector<QCNodeBufferMapEntry_t> m_globalBufferIdMap;
+    CL2DFlexImpl *m_pCL2DFlexImpl;
+    CL2DFlexConfig m_configIfs;
+    CL2DFlexMonitoring m_monitorIfs;
 };
 
 }   // namespace Node

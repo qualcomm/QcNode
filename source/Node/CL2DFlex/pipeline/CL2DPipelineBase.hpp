@@ -6,14 +6,14 @@
 #ifndef QC_CL2D_PIPELINE_BASE_HPP
 #define QC_CL2D_PIPELINE_BASE_HPP
 
-#include "QC/component/CL2DFlex.hpp"
+#include "CL2DFlexImpl.hpp"
 
 using namespace QC;
 using namespace QC::libs::OpenclIface;
 
 namespace QC
 {
-namespace component
+namespace Node
 {
 
 /** @brief CL2DFlex valid pipelines */
@@ -97,7 +97,7 @@ protected:
 
 };   // class CL2DPipelineBase
 
-}   // namespace component
+}   // namespace Node
 }   // namespace QC
 
 #endif   // QC_CL2D_PIPELINE_BASE_HPP

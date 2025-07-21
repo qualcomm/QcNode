@@ -6,11 +6,11 @@
 #ifndef QC_CL2D_PIPELINE_RESIZE_HPP
 #define QC_CL2D_PIPELINE_RESIZE_HPP
 
-#include "include/CL2DPipelineBase.hpp"
+#include "pipeline/CL2DPipelineBase.hpp"
 
 namespace QC
 {
-namespace component
+namespace Node
 {
 
 class CL2DPipelineResize : public CL2DPipelineBase
@@ -49,7 +49,7 @@ private:
 
 };   // class PipelineResize
 
-}   // namespace component
+}   // namespace Node
 }   // namespace QC
 
 #endif   // QC_CL2D_PIPELINE_RESIZE_HPP

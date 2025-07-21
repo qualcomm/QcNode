@@ -6,11 +6,11 @@
 #ifndef QC_CL2D_PIPELINE_REMAP_HPP
 #define QC_CL2D_PIPELINE_REMAP_HPP
 
-#include "include/CL2DPipelineBase.hpp"
+#include "pipeline/CL2DPipelineBase.hpp"
 
 namespace QC
 {
-namespace component
+namespace Node
 {
 
 class CL2DPipelineRemap : public CL2DPipelineBase
@@ -44,7 +44,7 @@ private:
 
 };   // class PipelineRemap
 
-}   // namespace component
+}   // namespace Node
 }   // namespace QC
 
 #endif   // QC_CL2D_PIPELINE_REMAP_HPP
