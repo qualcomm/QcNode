@@ -337,16 +337,19 @@ The command line template example for Lidar pipeline:
 
 ### 2.8 QCNode VideoEncoder Sample
 
-| attribute     | required | type      | default | comments |
-|---------------|----------|-----------|---------|----------|
-| format        | false    | string    | "nv12"  | The image format, options from [nv12, nv12_ubwc] |
-| width         | true     | int       | -       | The image width |
-| height        | true     | int       | -       | The image height |
-| pool_size     | false    | int       | 4       | The image memory pool size |
-| bitrate       | false    | int       | 8000000 | The encoding bitrate |
-| fps           | false    | int       | 30      | The frame rate per second |
-| input_topic   | true     | string    | -       | the input topic name |
-| output_topic  | true     | string    | -       | the output topic name |
+| attribute          | required | type      | default     | comments |
+|--------------------|----------|-----------|-------------|----------|
+| width              | true     | int       | -           | The image width |
+| height             | true     | int       | -           | The image height |
+| pool_size          | false    | int       | 4           | The image memory pool size |
+| bitrate            | false    | int       | 8000000     | The encoding bitrate |
+| fps                | false    | int       | 30          | The frame rate per second |
+| input_topic        | true     | string    | -           | the input topic name |
+| output_topic       | true     | string    | -           | the output topic name |
+| format             | false    | string    | "nv12"      | The image format, options from [nv12, nv12_ubwc] |
+| output_format      | false    | string    | h265        | The output image format, options from [h264, h265] |
+| numInputBufferReq  | false    | int       | $pool_size  | Number of input buffers |
+| numOutputBufferReq | false    | int       | $pool_size  | Number of output buffers |
 
 The command line template example:
 
@@ -576,16 +579,18 @@ The command line template example:
 
 ### 2.17 QCNode VideoDecoder Sample
 
-| attribute     | required | type      | default | comments |
-|---------------|----------|-----------|---------|----------|
-| width         | true     | int       | -       | The frame width |
-| height        | true     | int       | -       | The frame height |
-| input_format  | false    | string    | h265    | The input frame format, options from [h264, h265] |
-| output_format | false    | string    | nv12    | The output image format, options from [nv12, nv12_ubwc, p010] |
-| pool_size     | false    | int       | 4       | The image memory pool size |
-| fps           | false    | int       | 30      | The frame rate per second |
-| input_topic   | true     | string    | -       | the input topic name |
-| output_topic  | true     | string    | -       | the output topic name |
+| attribute          | required | type      | default     | comments |
+|--------------------|----------|-----------|-------------|----------|
+| width              | true     | int       | -           | The frame width |
+| height             | true     | int       | -           | The frame height |
+| input_format       | false    | string    | h265        | The input frame format, options from [h264, h265] |
+| output_format      | false    | string    | nv12        | The output image format, options from [nv12, nv12_ubwc, p010] |
+| pool_size          | false    | int       | 4           | The image memory pool size |
+| fps                | false    | int       | 30          | The frame rate per second |
+| input_topic        | true     | string    | -           | the input topic name |
+| output_topic       | true     | string    | -           | the output topic name |
+| numInputBufferReq  | false    | int       | $pool_size  | Number of input buffers |
+| numOutputBufferReq | false    | int       | $pool_size  | Number of output buffers |
 
 The command line template example:
 

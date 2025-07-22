@@ -21,8 +21,6 @@ target_include_directories( QCNodeComponentCommon PUBLIC ${HEADERS_DIR} )
 target_link_libraries( QCNodeComponentCommon PUBLIC ${TARGET_LIBRARIES} )
 
 install( FILES ${COMPONENT_COMMON_HEADERS} DESTINATION include/QC/component )
-add_subdirectory(VideoEncoder)
-add_subdirectory(VideoDecoder)
 
 if ( ENABLE_RADAR AND NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" )
 add_subdirectory(Radar)

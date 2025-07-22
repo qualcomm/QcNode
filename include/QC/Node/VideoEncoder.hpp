@@ -5,29 +5,94 @@
 #ifndef QC_NODE_VIDEO_ENCODER_HPP
 #define QC_NODE_VIDEO_ENCODER_HPP
 
-#include "QC/component/VideoDecoder.hpp"
-#include "QC/Node/NodeBase.hpp"
 #include <mutex>
 #include <queue>
+#include <string>
 #include <sys/uio.h>
 #include <unordered_map>
 
-namespace QC
+#include "VidcDrvClient.hpp"
+#include "QC/Common/Types.hpp"
+#include "QC/Infras/Log/Logger.hpp"
+#include "QC/Infras/Memory/VideoFrameDescriptor.hpp"
+#include "QC/Node/NodeBase.hpp"
+#include "VidcNodeBase.hpp"
+
+namespace QC::Node
 {
-namespace Node
+
+/** @brief This data type list the different rate control mode */
+typedef enum
 {
-using namespace QC::component;
+    VIDEO_ENCODER_RCM_CBR_CFR = VIDC_RATE_CONTROL_CBR_CFR,
+    VIDEO_ENCODER_RCM_CBR_VFR = VIDC_RATE_CONTROL_CBR_VFR,
+    VIDEO_ENCODER_RCM_VBR_CFR = VIDC_RATE_CONTROL_VBR_CFR,
+    VIDEO_ENCODER_RCM_VBR_VFR = VIDC_RATE_CONTROL_VBR_VFR,
+    VIDEO_ENCODER_RCM_UNUSED = VIDC_RATE_CONTROL_UNUSED
+} VideoEncoder_RateControlMode_e;
+
+/** @brief This data type list the different profile */
+typedef enum
+{
+    VIDEO_ENCODER_PROFILE_H264_BASELINE = 0,
+    VIDEO_ENCODER_PROFILE_H264_HIGH,
+    VIDEO_ENCODER_PROFILE_H264_MAIN,
+    VIDEO_ENCODER_PROFILE_HEVC_MAIN,
+    VIDEO_ENCODER_PROFILE_HEVC_MAIN10,
+    VIDEO_ENCODER_PROFILE_MAX
+} VideoEncoder_Profile_e;
+
+/** @brief This data type list the different frame types */
+typedef enum
+{
+    VIDEO_ENCODER_FRAME_I = VIDC_FRAME_I,
+    VIDEO_ENCODER_FRAME_P = VIDC_FRAME_P,
+    VIDEO_ENCODER_FRAME_B = VIDC_FRAME_B,
+    VIDEO_ENCODER_FRAME_IDR = VIDC_FRAME_IDR,
+    VIDEO_ENCODER_FRAME_NOTCODED = VIDC_FRAME_NOTCODED,
+    VIDEO_ENCODER_FRAME_YUV = VIDC_FRAME_YUV,
+    VIDEO_ENCODER_FRAME_UNUSED = VIDC_FRAME_UNUSED
+} VideoEncoder_FrameType_e;
+
+/** @brief This data type list the different VideoEncoder Callback Event Type */
+typedef VideoCodec_EventType_e VideoEncoder_EventType_e;
+
+/** @brief This data type list the different VideoEncoder Property that can set dynamically */
+typedef enum
+{
+    VIDEO_ENCODER_PROP_BITRATE = 0,
+    VIDEO_ENCODER_PROP_FRAME_RATE,
+    VIDEO_ENCODER_PROP_MAX
+} VideoEncoder_Prop_e;
+
+/** @brief Store the data interacted with video core */
+typedef struct
+{
+    vidc_profile_type profile;      /**< The codec profile payload */
+    vidc_level_type level;          /**< The codec level payload */
+    vidc_frame_rate_type frameRate; /**< Frame rate for Encoder */
+    vidc_iperiod_type iPeriod;      /**< The data type to set I frame period pattern for encoder */
+    vidc_idr_period_type idrPeriod; /**< The IDR frame periodicity within Intra coded frames */
+    vidc_target_bitrate_type bitrate;    /**< The encoder target bitrate */
+    vidc_enable_type enableSyncFrameSeq; /**< Enable sync frame sequence header */
+    vidc_plane_def_type planeDefY;       /**< Specifies layout of raw data for planeY */
+    vidc_plane_def_type planeDefUV;      /**< Specifies layout of raw data for planeUV */
+} VidcEncoderData_t;
 
 /**
  * @brief Video Encoder Node Configuration Data Structure
  * @param params The QC component Video Encoder configuration data structure.
  */
-typedef struct VideoEncoderConfig : public QCNodeConfigBase_t
+typedef struct VideoEncoder_Config : public VidcNodeBase_Config_t
 {
-    VideoEncoder_Config_t params;
+    uint32_t bitRate;   /**< bps */
+    uint32_t gop;       /**< number of p frames in a period */
+    bool bSyncFrameSeqHdr = false;                 /**< enable sync frame sequence header */
+    VideoEncoder_RateControlMode_e rateControlMode;
+    VideoEncoder_Profile_e profile;
 } VideoEncoder_Config_t;
 
-class VideoEncoderConfigIfs : public NodeConfigIfs
+class VideoEncoderConfigIfs : public VidcNodeBaseConfigIfs
 {
 public:
     /**
@@ -38,9 +103,8 @@ public:
      * VideoEncoderConfigIfs.
      * @return None
      */
-    VideoEncoderConfigIfs( Logger &logger, VideoEncoder &vide )
-        : NodeConfigIfs( logger ),
-          m_Vide( vide )
+    VideoEncoderConfigIfs( Logger &logger )
+        : VidcNodeBaseConfigIfs( logger )
     {}
 
     /**
@@ -94,20 +158,24 @@ public:
      * @note
      * TODO: Provide a more detailed introduction about the JSON configuration options.
      */
-    virtual const std::string &GetOptions();
+    const virtual std::string& GetOptions( )
+    {
+        return m_options;
+    }
 
     /**
      * @brief Get the Configuration Structure.
      * @return A reference to the Configuration Structure.
      */
-    virtual const QCNodeConfigBase_t &Get() { return m_config; }
+    const virtual QCNodeConfigBase_t& Get( )
+    {
+        return m_config;
+    }
 
 private:
-    QCStatus_e VerifyStaticConfig( DataTree &dt, std::string &errors );
     QCStatus_e ParseStaticConfig( DataTree &dt, std::string &errors );
     QCStatus_e ApplyDynamicConfig( DataTree &dt, std::string &errors );
 
-    VideoEncoder &m_Vide;
     VideoEncoder_Config_t m_config;
     std::string m_options;
 };
@@ -120,10 +188,7 @@ typedef struct VideoEncoderMonitorConfig : public QCNodeMonitoringBase_t
 class VideoEncoderMonitoringIfs : public QCNodeMonitoringIfs
 {
 public:
-    VideoEncoderMonitoringIfs( Logger &logger, VideoEncoder &vide )
-        : m_logger( logger ),
-          m_Vide( vide )
-    {}
+    VideoEncoderMonitoringIfs( Logger &logger ) : m_logger( logger ) {}
     virtual ~VideoEncoderMonitoringIfs() {}
 
     virtual QCStatus_e VerifyAndSet( const std::string config, std::string &errors )
@@ -131,17 +196,25 @@ public:
         return QC_STATUS_UNSUPPORTED;
     }
 
-    virtual const std::string &GetOptions() { return m_options; }
+    const virtual std::string& GetOptions( )
+    {
+        return m_options;
+    }
 
-    virtual const QCNodeMonitoringBase_t &Get() { return m_config; };
+    const virtual QCNodeMonitoringBase_t& Get( )
+    {
+        return m_config;
+    }
 
-    virtual inline uint32_t GetMaximalSize() { return UINT32_MAX; }
-    virtual inline uint32_t GetCurrentSize() { return UINT32_MAX; }
+    virtual inline uint32_t GetMaximalSize( ) { return UINT32_MAX; }
+    virtual inline uint32_t GetCurrentSize( ) { return UINT32_MAX; }
 
-    virtual QCStatus_e Place( void *ptr, uint32_t &size ) { return QC_STATUS_UNSUPPORTED; }
+    virtual QCStatus_e Place( void *ptr, uint32_t &size )
+    {
+        return QC_STATUS_UNSUPPORTED;
+    }
 
 private:
-    VideoEncoder &m_Vide;
     Logger &m_logger;
     std::string m_options;
     VideoEncoderMonitorConfig_t m_config;
@@ -155,14 +228,18 @@ typedef enum
 } VideoEncoderBufferId_e;
 
 /** @brief Top level control for interfacing with vidc based driver */
-class VideoEncoder : public NodeBase
+class VideoEncoder : public VidcNodeBase
 {
+
 public:
     /**
      * @brief VideoEncoder Constructor
      * @return None
      */
-    VideoEncoder() : m_configIfs( m_logger, m_vide ), m_monitorIfs( m_logger, m_vide ) {}
+    VideoEncoder() : m_configIfs( m_logger ), m_monitorIfs( m_logger )
+    {
+        m_state = QC_OBJECT_STATE_INITIAL;
+    }
 
     /**
      * @brief VideoEncoder Destructor
@@ -201,24 +278,6 @@ public:
     virtual inline QCNodeMonitoringIfs &GetMonitoringIfs() { return m_monitorIfs; }
 
     /**
-     * @brief Start the Node Video Encoder
-     * @return QC_STATUS_OK on success, others on failure
-     */
-    virtual QCStatus_e Start();
-
-    /**
-     * @brief Stop the Node Video Encoder
-     * @return QC_STATUS_OK on success, others on failure
-     */
-    virtual QCStatus_e Stop();
-
-    /**
-     * @brief De-initialize Node Video Encoder
-     * @return QC_STATUS_OK on success, others on failure
-     */
-    virtual QCStatus_e DeInitialize();
-
-    /**
      * @brief Processes the Frame Descriptor.
      * @param[in] frameDesc The frame descriptor containing a vector of input/output buffers.
      * @note ProcessFrameDescriptor call will return immediately after queuing the job into the
@@ -243,7 +302,10 @@ public:
      * @brief Get the current state of the Node VideoEncoder
      * @return The current state of the Node VideoEncoder
      */
-    virtual QCObjectState_e GetState() { return m_vide.GetState(); }
+    virtual QCObjectState_e GetState() { return m_state; }
+
+    virtual QCStatus_e Start();
+    virtual QCStatus_e Stop();
 
 protected:
     /**
@@ -251,36 +313,43 @@ protected:
      * @param pInput pointer to hold the video frame information
      * @return QC_STATUS_OK on success, others on failure
      */
-    QCStatus_e SubmitInputFrame( const QCSharedVideoFrameDescriptor *pInput );
+    QCStatus_e SubmitInputFrame( VideoFrameDescriptor &inFrameDesc );
 
     /**
      * @brief submit a video frame back to VIDC driver
      * @param pOutput pointer to hold the video frame information
      * @return QC_STATUS_OK on success, others on failure
      */
-    QCStatus_e SubmitOutputFrame( const QCSharedVideoFrameDescriptor *pOutput );
+    QCStatus_e SubmitOutputFrame( VideoFrameDescriptor &outFrameDesc );
 
-    void InFrameCallback( const VideoEncoder_InputFrame_t *pInputFrame );
-    void OutFrameCallback( const VideoEncoder_OutputFrame_t *pOutputFrame );
-    void EventCallback( const VideoEncoder_EventType_e eventId, const void *pEvent );
+    QCStatus_e ValidateConfig( );
+    QCStatus_e SetVidcProfileLevel( VideoEncoder_Profile_e profile );
+    QCStatus_e InitDrvProperty( );
+    QCStatus_e GetInputInformation( );
+//    QCStatus_e Configure( const VideoEncoder_OnTheFlyCmd_t *pCmd );
+
+    void PrintEncoderConfig();
+
+    QCStatus_e CheckBuffer( const VideoFrameDescriptor &vidFrmDesc, VideoCodec_BufType_e bufferType );
+    void InFrameCallback( VideoFrameDescriptor &inFrameDesc );
+    void OutFrameCallback( VideoFrameDescriptor &outFrameDesc );
+    void EventCallback( VideoEncoder_EventType_e eventId, const void *pEvent );
 
 private:
-    QC::component::VideoEncoder m_vide;
     VideoEncoderConfigIfs m_configIfs;
     VideoEncoderMonitoringIfs m_monitorIfs;
     QCNodeEventCallBack_t m_callback;
 
-    static void NVE_InFrameCallback( const VideoEncoder_InputFrame_t *pInputFrame,
-                                     void *pPrivData );
+    const VideoEncoder_Config_t *m_pConfig = nullptr;
 
-    static void NVE_OutFrameCallback( const VideoEncoder_OutputFrame_t *pOutputFrame,
-                                      void *pPrivData );
+    VidcEncoderData_t m_vidcEncoderData;
 
-    static void NVE_EventCallback( const VideoEncoder_EventType_e eventId, const void *pEvent,
-                                   void *pPrivData );
+    static void InFrameCallback( VideoFrameDescriptor &inFrameDesc, void *pPrivData );
+    static void OutFrameCallback( VideoFrameDescriptor &outFrameDesc, void *pPrivData );
+    static void EventCallback( VideoCodec_EventType_e eventId, const void *pPayload,
+                               void *pPrivData );
 };
 
-}   // namespace Node
-}   // namespace QC
+} // namespace QC::Node
 
 #endif   // QC_NODE_VIDEO_ENCODER_HPP

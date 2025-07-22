@@ -1,9 +1,4 @@
 add_subdirectory(Common)
-add_subdirectory(VideoEncoder)
-
-if( ENABLE_DEMUXER )
-    add_subdirectory(VideoDecoder)
-endif()
 
 if ( ENABLE_RADAR AND NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" )
   add_subdirectory(Radar)

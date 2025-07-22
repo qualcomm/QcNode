@@ -9,18 +9,17 @@
 #include <stdio.h>
 #include <string>
 
+#include "QC/sample/BufferManager.hpp"
 #include "QC/Node/VideoEncoder.hpp"
 
 using namespace QC;
 using namespace QC::Node;
+using namespace QC::sample;
 
 static std::mutex g_InMutex;
 static std::condition_variable g_InCondVar;
 static std::mutex g_OutMutex;
 static std::condition_variable g_OutCondVar;
-
-static VideoEncoder_InputFrame_t g_sharedInputFrame;
-static VideoEncoder_OutputFrame_t g_sharedOutputFrame;
 
 static uint64_t g_timestamp = 0;
 
@@ -31,8 +30,7 @@ void OnDoneCb( const QCNodeEventInfo_t &eventInfo )
     // INPUT frame:
     QCBufferDescriptorBase_t &inBufDesc =
             frameDesc.GetBuffer( QC_NODE_VIDEO_ENCODER_INPUT_BUFF_ID );
-    const QCSharedVideoFrameDescriptor_t *pInSharedBuffer =
-            static_cast<QCSharedVideoFrameDescriptor_t *>( &inBufDesc );
+    const VideoFrameDescriptor *pInSharedBuffer = static_cast<VideoFrameDescriptor *>( &inBufDesc );
 
     if ( nullptr != pInSharedBuffer )
     {
@@ -49,8 +47,7 @@ void OnDoneCb( const QCNodeEventInfo_t &eventInfo )
     // OUTPUT frame:
     QCBufferDescriptorBase_t &outBufDesc =
             frameDesc.GetBuffer( QC_NODE_VIDEO_ENCODER_OUTPUT_BUFF_ID );
-    const QCSharedVideoFrameDescriptor_t *pOutSharedBuffer =
-            static_cast<QCSharedVideoFrameDescriptor_t *>( &outBufDesc );
+    const VideoFrameDescriptor *pOutSharedBuffer = static_cast<VideoFrameDescriptor *>( &outBufDesc );
 
     if ( nullptr != pOutSharedBuffer )
     {
@@ -69,6 +66,7 @@ TEST( NodeVideoEncoder, SANITY_VideoEncoder_Dynamic )
 {
     QCStatus_e ret;
     std::string errors;
+    BufferManager bufMgr = BufferManager( { "VENC", QC_NODE_TYPE_VENC, 0 } );
     QCNodeIfs *pNodeVide = new QC::Node::VideoEncoder();
     DataTree dt;
     dt.Set<std::string>( "static.name", "SANITY_VideoEncoder_Dynamic" );
@@ -141,30 +139,32 @@ TEST( NodeVideoEncoder, SANITY_VideoEncoder_Dynamic )
     ASSERT_EQ( QC_STATUS_OK, ret );
     ASSERT_EQ( QC_OBJECT_STATE_RUNNING, pNodeVide->GetState() );
 
-    QCSharedFrameDescriptorNode frameDesc( QC_NODE_VIDEO_ENCODER_EVENT_BUFF_ID + 1 );
+    NodeFrameDescriptor frameDesc( QC_NODE_VIDEO_ENCODER_EVENT_BUFF_ID + 1 );
 
-    std::vector<QCSharedBufferDescriptor_t> inputs;
-    std::vector<QCSharedBufferDescriptor_t> outputs;
+    std::vector<VideoFrameDescriptor_t> inputs;
+    std::vector<VideoFrameDescriptor_t> outputs;
 
     for ( uint32_t i = 0; i < numInputBufferReq; i++ )
     {
-        QCSharedBufferDescriptor_t bufDesc;
-        ret = bufDesc.buffer.Allocate( width, height, inFormat );
+        ImageDescriptor_t bufDesc;
+        ret = bufMgr.Allocate( ImageBasicProps( width, height, inFormat ), bufDesc );
         ASSERT_EQ( QC_STATUS_OK, ret );
-        inputs.push_back( bufDesc );
+        VideoFrameDescriptor_t vdesc;
+        vdesc = bufDesc;
+        inputs.push_back( vdesc );
     }
 
     for ( uint32_t i = 0; i < numOutputBufferReq; i++ )
     {
-        QCImageProps_t imgProps;
+        ImageProps_t imgProps;
         imgProps.batchSize = 1;
         imgProps.width = width;
         imgProps.height = height;
         imgProps.numPlanes = 1;
         imgProps.planeBufSize[0] = 118784;
         imgProps.format = outFormat;
-        QCSharedBufferDescriptor_t bufDesc;
-        ret = static_cast<QCStatus_e>( bufDesc.buffer.Allocate( &imgProps ) );
+        VideoFrameDescriptor_t bufDesc;
+        ret = bufMgr.Allocate( imgProps, bufDesc );
         ASSERT_EQ( QC_STATUS_OK, ret );
         outputs.push_back( bufDesc );
     }
@@ -208,13 +208,13 @@ TEST( NodeVideoEncoder, SANITY_VideoEncoder_Dynamic )
 
     for ( auto &output : outputs )
     {
-        ret = static_cast<QCStatus_e>( output.buffer.Free() );
+        ret = bufMgr.Free(output);
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
 
     for ( auto &input : inputs )
     {
-        ret = static_cast<QCStatus_e>( input.buffer.Free() );
+        ret = bufMgr.Free(input);
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
 }
@@ -409,6 +409,7 @@ TEST( NodeVideoEncoder, SANITY_VideoEncoder_InitError )
 {
     QCStatus_e ret;
     std::string errors;
+    BufferManager bufMgr = BufferManager( { "VENC", QC_NODE_TYPE_VENC, 0 } );
     QCNodeIfs *pNodeVide = new QC::Node::VideoEncoder();
     DataTree dt;
     dt.Set<std::string>( "static.name", "VideoEncoderErrorTest_bad_width" );
@@ -435,30 +436,30 @@ TEST( NodeVideoEncoder, SANITY_VideoEncoder_InitError )
 
     printf( "config: %s\n", config.config.c_str() );
 
-    QCSharedFrameDescriptorNode frameDesc( QC_NODE_VIDEO_ENCODER_EVENT_BUFF_ID + 1 );
+    NodeFrameDescriptor frameDesc( QC_NODE_VIDEO_ENCODER_EVENT_BUFF_ID + 1 );
 
-    std::vector<QCSharedBufferDescriptor_t> inputs;
-    std::vector<QCSharedBufferDescriptor_t> outputs;
+    std::vector<VideoFrameDescriptor_t> inputs;
+    std::vector<VideoFrameDescriptor_t> outputs;
 
     for ( unsigned int i = 0; i < numInputBufferReq; ++i )
     {
-        QCSharedBufferDescriptor_t bufDesc;
-        ret = (QCStatus_e) bufDesc.buffer.Allocate( 176, 144, QC_IMAGE_FORMAT_NV12 );
+        VideoFrameDescriptor_t bufDesc;
+        ret = bufMgr.Allocate( ImageBasicProps( 176, 144, QC_IMAGE_FORMAT_NV12 ), bufDesc );
         ASSERT_EQ( QC_STATUS_OK, ret );
         inputs.push_back( bufDesc );
     }
 
     for ( unsigned int i = 0; i < numOutputBufferReq; ++i )
     {
-        QCImageProps_t imgProps;
+        ImageProps_t imgProps;
         imgProps.batchSize = 1;
         imgProps.width = 176;
         imgProps.height = 144;
         imgProps.numPlanes = 1;
         imgProps.planeBufSize[0] = 118784;
         imgProps.format = QC_IMAGE_FORMAT_COMPRESSED_H264;
-        QCSharedBufferDescriptor_t bufDesc;
-        ret = (QCStatus_e) bufDesc.buffer.Allocate( &imgProps );
+        VideoFrameDescriptor_t bufDesc;
+        ret = bufMgr.Allocate( imgProps, bufDesc );
         ASSERT_EQ( QC_STATUS_OK, ret );
         outputs.push_back( bufDesc );
     }
@@ -538,13 +539,13 @@ TEST( NodeVideoEncoder, SANITY_VideoEncoder_InitError )
 
     for ( auto &output : outputs )
     {
-        ret = output.buffer.Free();
+        ret = bufMgr.Free(output);
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
 
     for ( auto &input : inputs )
     {
-        ret = input.buffer.Free();
+        ret = bufMgr.Free(input);
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
 }

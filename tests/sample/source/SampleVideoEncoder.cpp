@@ -13,28 +13,26 @@ void SampleVideoEncoder::OnDoneCb( const QCNodeEventInfo_t &eventInfo )
 {
     auto &fd = eventInfo.frameDesc;
     auto &bufIn = fd.GetBuffer( QC_NODE_VIDEO_ENCODER_INPUT_BUFF_ID );
-    QCSharedVideoFrameDescriptor_t *pBufIn =
-            dynamic_cast<QCSharedVideoFrameDescriptor_t *>( &bufIn );
+    VideoFrameDescriptor *pBufIn = dynamic_cast<VideoFrameDescriptor *>( &bufIn );
     if ( nullptr != pBufIn )
     {
         InFrameCallback( *pBufIn, eventInfo );
     }
 
     auto &bufOut = fd.GetBuffer( QC_NODE_VIDEO_ENCODER_OUTPUT_BUFF_ID );
-    QCSharedVideoFrameDescriptor_t *pBufOut =
-            dynamic_cast<QCSharedVideoFrameDescriptor_t *>( &bufOut );
+    VideoFrameDescriptor *pBufOut = dynamic_cast<VideoFrameDescriptor *>( &bufOut );
     if ( nullptr != pBufOut )
     {
         OutFrameCallback( *pBufOut, eventInfo );
     }
 }
 
-void SampleVideoEncoder::InFrameCallback( QCSharedVideoFrameDescriptor_t &inFrame,
+void SampleVideoEncoder::InFrameCallback( VideoFrameDescriptor &inFrame,
                                           const QCNodeEventInfo_t &eventInfo )
 {
     uint64_t frameId = inFrame.appMarkData;
 
-    QC_DEBUG( "Received input video frame Id %" PRIu64 " from node %d, status %d\n", frameId,
+    QC_DEBUG( "Received input video frame Id %" PRIu64 " from node %d, status %d", frameId,
               eventInfo.node, eventInfo.status, eventInfo.state );
     TRACE_EVENT( SYSTRACE_EVENT_VENC_INPUT_DONE );
 
@@ -44,26 +42,26 @@ void SampleVideoEncoder::InFrameCallback( QCSharedVideoFrameDescriptor_t &inFram
     // unlock @m_lock
 }
 
-void SampleVideoEncoder::OutFrameCallback( QCSharedVideoFrameDescriptor_t &outFrame,
+void SampleVideoEncoder::OutFrameCallback( VideoFrameDescriptor &outFrame,
                                            const QCNodeEventInfo_t &eventInfo )
 {
     uint64_t frameId = outFrame.appMarkData;
 
-    QC_DEBUG( "Received output video frame Id %" PRIu64 " from node %d, status %d\n", frameId,
+    QC_DEBUG( "Received output video frame Id %" PRIu64 " from node %d, status %d", frameId,
               eventInfo.node, eventInfo.status, eventInfo.state );
 
     DataFrames_t frames;
     DataFrame_t frame;
 
     SharedBuffer_t *pSharedBuffer = new SharedBuffer_t;
-    pSharedBuffer->sharedBuffer = outFrame.buffer;
+    pSharedBuffer->SetBuffer(outFrame);
     pSharedBuffer->pubHandle = 0;
 
     std::shared_ptr<SharedBuffer_t> buffer( pSharedBuffer, [&]( SharedBuffer_t *pSharedBuffer ) {
-        QCSharedVideoFrameDescriptor buffDesc;
-        buffDesc.buffer = pSharedBuffer->sharedBuffer;
+        VideoFrameDescriptor buffDesc;
+        buffDesc = pSharedBuffer->GetBuffer();
 
-        QCSharedFrameDescriptorNode frameDesc( QC_NODE_VIDEO_ENCODER_OUTPUT_BUFF_ID + 1 );
+        NodeFrameDescriptor frameDesc( QC_NODE_VIDEO_ENCODER_OUTPUT_BUFF_ID + 1 );
         frameDesc.SetBuffer( QC_NODE_VIDEO_ENCODER_OUTPUT_BUFF_ID, buffDesc );
 
         QC_DEBUG( "enc-out-buf back, handle:0x%x", pSharedBuffer->sharedBuffer.buffer.dmaHandle );
@@ -88,7 +86,7 @@ void SampleVideoEncoder::OutFrameCallback( QCSharedVideoFrameDescriptor_t &outFr
         TRACE_END( frame.frameId );
         QC_DEBUG( "enc-outFrameCallback, frameId %" PRIu64 " tsNs:%" PRIu64
                   " type %d size %" PRIu32,
-                  info.frameId, info.timestamp, outFrame.frameType, outFrame.buffer.size );
+                  info.frameId, info.timestamp, outFrame.frameType, outFrame.GetDataSize() );
         m_pub.Publish( frames );
     }
     else
@@ -106,22 +104,43 @@ void SampleVideoEncoder::OutFrameCallback( QCSharedVideoFrameDescriptor_t &outFr
     }
 }
 
-QCStatus_e SampleVideoEncoder::Init( std::string name, SampleConfig_t &config )
+QCStatus_e SampleVideoEncoder::Init( std::string name, SampleConfig_t &samplecfg )
 {
     QCStatus_e ret = SampleIF::Init( name );
 
     if ( QC_STATUS_OK == ret )
     {
-        ret = ParseConfig( config );
+        ret = ParseConfig( samplecfg );
     }
 
     if ( QC_STATUS_OK == ret )
     {
         using std::placeholders::_1;
+        m_nodeCfg.config = m_dataTree.Dump();
+        m_nodeCfg.callback = std::bind( &SampleVideoEncoder::OnDoneCb, this, _1 );
+    }
 
-        QCNodeInit_t config = { .config = m_dataTree.Dump(),
-                                .callback = std::bind( &SampleVideoEncoder::OnDoneCb, this, _1 ) };
-        ret = m_encoder.Initialize( config );
+    QCImageProps_t imgProp;
+
+    memset(&imgProp, 0, sizeof(imgProp));
+    imgProp.format = m_outFormat;
+    imgProp.width = m_width;
+    imgProp.height = m_height;
+    imgProp.batchSize = 1;
+    imgProp.numPlanes = 1;
+    imgProp.planeBufSize[0] = 2 * 1024 * 1024;
+
+    ret = m_frameBufferPools.Init( m_name, m_nodeId, LOGGER_LEVEL_INFO, m_numOutputBufferReq,
+                                   imgProp, QC_MEMORY_ALLOCATOR_DMA_VPU );
+
+    if ( QC_STATUS_OK == ret )
+    {
+        ret = m_frameBufferPools.GetBuffers( m_nodeCfg.buffers );
+    }
+
+    if ( QC_STATUS_OK == ret )
+    {
+        ret = m_encoder.Initialize( m_nodeCfg );
     }
 
     if ( QC_STATUS_OK == ret )
@@ -158,8 +177,7 @@ void SampleVideoEncoder::ThreadMain()
 {
     QCStatus_e ret;
 
-    QCSharedFrameDescriptorNode frameDesc( QC_NODE_VIDEO_ENCODER_INPUT_BUFF_ID +
-                                           1 );   // for input only
+    NodeFrameDescriptor frameDesc( QC_NODE_VIDEO_ENCODER_INPUT_BUFF_ID + 1 );   // for input only
 
     while ( false == m_stop )
     {
@@ -167,19 +185,19 @@ void SampleVideoEncoder::ThreadMain()
         ret = m_sub.Receive( frames );
         if ( QC_STATUS_OK == ret )
         {
-            for ( auto &frame : frames.frames )
+            for ( DataFrame_t &frame : frames.frames )
             {
-                QC_DEBUG( "Received frameId %" PRIu64 ", type %d, size %lu, timestamp %" PRIu64
-                          "\n ",
+                QC_DEBUG( "Received frameId %" PRIu64 ", type %d, size %lu, timestamp %" PRIu64,
                           frame.frameId, frame.GetBufferType(), frame.GetDataSize(),
                           frame.timestamp );
 
-                QCSharedVideoFrameDescriptor_t frameSharedBuffer;
-                frameSharedBuffer.buffer = frame.SharedBuffer();
-                frameSharedBuffer.timestampNs = frame.timestamp;
-                frameSharedBuffer.appMarkData = frame.frameId;
+                VideoFrameDescriptor frameBuffer;
 
-                ret = frameDesc.SetBuffer( QC_NODE_VIDEO_ENCODER_INPUT_BUFF_ID, frameSharedBuffer );
+                frameBuffer = frame.GetBuffer();
+                frameBuffer.timestampNs = frame.timestamp;
+                frameBuffer.appMarkData = frame.frameId;
+
+                ret = frameDesc.SetBuffer( QC_NODE_VIDEO_ENCODER_INPUT_BUFF_ID, frameBuffer );
                 if ( QC_STATUS_OK != ret )
                 {
                     break;
@@ -197,6 +215,7 @@ void SampleVideoEncoder::ThreadMain()
                 ret = m_encoder.ProcessFrameDescriptor( frameDesc );
                 if ( QC_STATUS_OK == ret )
                 {
+                    QC_DEBUG( "Processed input frameId %" PRIu64 " successfully", frame.frameId );
                     FrameInfo info = { frame.frameId, frame.timestamp };
                     std::unique_lock<std::mutex> l( m_lock );
                     m_frameInfoQueue.push( info );
@@ -280,71 +299,81 @@ QCStatus_e SampleVideoEncoder::ParseConfig( SampleConfig_t &config )
 
     m_config.Set<std::string>( "name", m_name );
 
-    uint32_t width = Get( config, "width", 0 );
-    if ( 0 == width )
+    m_width = Get( config, "width", 0 );
+    if ( 0 == m_width )
     {
-        QC_ERROR( "invalid width = %u\n", width );
+        QC_ERROR( "invalid width = %u", m_width );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
-        m_config.Set<uint32_t>( "width", width );
+        m_config.Set<uint32_t>( "width", m_width );
     }
 
-    uint32_t height = Get( config, "height", 0 );
-    if ( 0 == height )
+    m_height = Get( config, "height", 0 );
+    if ( 0 == m_height )
     {
-        QC_ERROR( "invalid height = %u\n", height );
+        QC_ERROR( "invalid height = %u", m_height );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
-        m_config.Set<uint32_t>( "height", height );
+        m_config.Set<uint32_t>( "height", m_height );
     }
 
-    uint32_t numInputBufferReq = Get( config, "pool_size", 4 );
-    if ( 0 == numInputBufferReq )
+    m_poolSize = Get( config, "pool_size", 4 );
+
+    m_numInputBufferReq = Get( config, "numInputBufferReq", m_poolSize );
+    if ( 0 == m_numInputBufferReq )
     {
-        QC_ERROR( "invalid pool_size = %u\n", numInputBufferReq );
+        QC_ERROR( "invalid numInputBufferReq = %u", m_numInputBufferReq );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
-        m_config.Set<uint32_t>( "numInputBufferReq", numInputBufferReq );
+        m_config.Set<uint32_t>( "numInputBufferReq", m_numInputBufferReq );
     }
 
-    uint32_t numOutputBufferReq = Get( config, "pool_size", numInputBufferReq );
-    m_config.Set<uint32_t>( "numOutputBufferReq", numOutputBufferReq );
-
-    uint32_t bitRate = Get( config, "bitrate", 8000000 );
-    if ( 0 == bitRate )
+    m_numOutputBufferReq = Get( config, "numOutputBufferReq", m_numInputBufferReq );
+    if ( 0 == m_numOutputBufferReq )
     {
-        QC_ERROR( "invalid bitrate = %u\n", bitRate );
+        QC_ERROR( "invalid numOutputBufferReq = %u", m_numOutputBufferReq );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
-        m_config.Set<uint32_t>( "bitrate", bitRate );
+        m_config.Set<uint32_t>( "numOutputBufferReq", m_numOutputBufferReq );
     }
 
-    uint32_t frameRate = Get( config, "fps", 30 );
-    if ( 0 == frameRate )
+    m_bitRate = Get( config, "bitrate", 64000 );
+    if ( 0 == m_bitRate )
     {
-        QC_ERROR( "invalid fps = %u\n", frameRate );
+        QC_ERROR( "invalid bitrate = %u", m_bitRate );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
-        m_config.Set<uint32_t>( "frameRate", frameRate );
+        m_config.Set<uint32_t>( "bitrate", m_bitRate );
     }
 
-    bool bSyncFrameSeqHdr = Get( config, "sync_frame", false );
-    m_config.Set<bool>( "sync_frame", bSyncFrameSeqHdr );
+    m_frameRate = Get( config, "fps", 30 );
+    if ( 0 == m_frameRate )
+    {
+        QC_ERROR( "invalid fps = %u", m_frameRate );
+        ret = QC_STATUS_BAD_ARGUMENTS;
+    }
+    else
+    {
+        m_config.Set<uint32_t>( "frameRate", m_frameRate );
+    }
+
+    m_bSyncFrameSeqHdr = Get( config, "sync_frame", false );
+    m_config.Set<bool>( "sync_frame", m_bSyncFrameSeqHdr );
 
     m_inputTopicName = Get( config, "input_topic", "" );
     if ( "" == m_inputTopicName )
     {
-        QC_ERROR( "no input topic\n" );
+        QC_ERROR( "no input topic" );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
@@ -354,12 +383,34 @@ QCStatus_e SampleVideoEncoder::ParseConfig( SampleConfig_t &config )
     m_outputTopicName = Get( config, "output_topic", "" );
     if ( "" == m_outputTopicName )
     {
-        QC_ERROR( "no output topic\n" );
+        QC_ERROR( "no output topic" );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
     }
+
+    m_inFormat = Get( config, "format" , QC_IMAGE_FORMAT_NV12 );
+    if (QC_IMAGE_FORMAT_MAX == m_inFormat ||
+        (m_inFormat != QC_IMAGE_FORMAT_NV12 &&
+         m_inFormat != QC_IMAGE_FORMAT_NV12_UBWC) )
+
+    {
+        QC_ERROR( "invalid format for input stream" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
+    }
+
+    m_outFormat = Get( config, "output_format" , QC_IMAGE_FORMAT_COMPRESSED_H265 );
+    if (QC_IMAGE_FORMAT_MAX == m_outFormat ||
+        (m_outFormat != QC_IMAGE_FORMAT_COMPRESSED_H264 &&
+         m_outFormat != QC_IMAGE_FORMAT_COMPRESSED_H265) )
+    {
+        QC_ERROR( "invalid format for output stream" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
+    }
+
+    m_config.Set<std::string>( "inputImageFormat", Get( config, "format", "nv12" ) );
+    m_config.Set<std::string>( "outputImageFormat", Get( config, "output_format", "h265" ) );
 
     m_config.Set<uint32_t>( "gop", 20 );
     m_config.Set<bool>( "bInputDynamicMode", true );
@@ -374,4 +425,3 @@ REGISTER_SAMPLE( VideoEncoder, SampleVideoEncoder );
 
 }   // namespace sample
 }   // namespace QC
-

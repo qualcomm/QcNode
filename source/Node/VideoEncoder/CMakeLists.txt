@@ -11,13 +11,13 @@ set( NODE_VIDEOENCODER_SOURCES
 
 set( TARGET_LIBRARIES QCNodeBase QCNodeVideoCodec )
 
-add_library( QCNodeNodeVideoEncoder OBJECT ${NODE_VIDEOENCODER_SOURCES} )
+add_library( QCNodeVideoEncoder OBJECT ${NODE_VIDEOENCODER_SOURCES} )
 
-set_property( TARGET QCNodeNodeVideoEncoder PROPERTY LINKER_LANGUAGE CXX )
-set_property( TARGET QCNodeNodeVideoEncoder PROPERTY POSITION_INDEPENDENT_CODE ON )
+set_property( TARGET QCNodeVideoEncoder PROPERTY LINKER_LANGUAGE CXX )
+set_property( TARGET QCNodeVideoEncoder PROPERTY POSITION_INDEPENDENT_CODE ON )
 
-target_include_directories( QCNodeNodeVideoEncoder PUBLIC ${HEADERS_DIR} )
+target_include_directories( QCNodeVideoEncoder PUBLIC ${HEADERS_DIR} )
 
-target_link_libraries( QCNodeNodeVideoEncoder PUBLIC ${TARGET_LIBRARIES} )
+target_link_libraries( QCNodeVideoEncoder PUBLIC ${TARGET_LIBRARIES} )
 
 install( FILES ${NODE_VIDEOENCODER_HEADERS} DESTINATION include/QC/Node )

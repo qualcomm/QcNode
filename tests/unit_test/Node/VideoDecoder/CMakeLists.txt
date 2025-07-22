@@ -1,0 +1,5 @@
+set( HEADERS_DIR ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/tests/utils ${PROJECT_SOURCE_DIR}/tests/sample/Library/VidcDemuxer/include)
+add_executable( gtest_NodeVideoDecoder gtest_NodeVideoDecoder.cpp )
+target_include_directories( gtest_NodeVideoDecoder PUBLIC ${HEADERS_DIR})
+target_link_libraries( gtest_NodeVideoDecoder gtest BufferManager QCNodeComponentCommon QCNode QCNodeTestUtils VidcDemuxer)
+install(TARGETS gtest_NodeVideoDecoder DESTINATION bin)

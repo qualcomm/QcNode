@@ -29,14 +29,12 @@
 #include "QC/Node/NodeConfigBase.hpp"
 #include "QC/Node/NodeFrameDescriptor.hpp"
 #include "QC/Node/NodeFrameDescriptorPool.hpp"
-#include "QC/component/VideoEncoder.hpp"
 
 namespace QC
 {
 namespace Node
 {
 
-using namespace QC::component;
 using namespace QC::Memory;
 
 /**
@@ -52,35 +50,6 @@ public:
 
     QCSharedBuffer_t buffer;
 } QCSharedBufferDescriptor_t;
-
-/**
- * @brief Descriptor for QCNode Shared Video Buffer.
- *
- * This structure represents the buffer for the QCNode VideoEncoder or VideoDecoder. It extends the
- * QCSharedBufferDescriptor and includes additional members specific to video encoding/decoding.
- *
- * @param[inout] timestampNs The timestamp of the frame data in nanoseconds.
- * @param[inout] appMarkData The mark data for the frame, which will be copied to the corresponding
- * output frame. The API will not modify this data, only copy it.
- * @param[out] frameFlag Indicates whether any error occurred during the encoding/decoding of this
- * frame. This is only used for the output frame.
- * @param[inout] frameType Indicates the type of frame (I, P, B, or IDR). This is used only for
- * H.264 or H.265 frames.
- *
- * @note This is a proposal, and this type needs to be moved to the Node Video related header file.
- *
- * @note For phase 2: Update to inherit QCSharedImageDescriptor.
- */
-typedef struct QCSharedVideoFrameDescriptor : public QCSharedBufferDescriptor
-{
-public:
-    QCSharedVideoFrameDescriptor() = default;
-    virtual ~QCSharedVideoFrameDescriptor() = default;
-    uint64_t timestampNs;
-    uint64_t appMarkData;
-    uint32_t frameFlag;
-    VideoEncoder_FrameType_e frameType;
-} QCSharedVideoFrameDescriptor_t;
 
 class NodeBase : public QCNodeIfs
 {
