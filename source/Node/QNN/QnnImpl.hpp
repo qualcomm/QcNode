@@ -23,7 +23,7 @@ using namespace QC::Memory;
 
 #ifndef QNN_NOTIFY_PARAM_NUM
 /* @note this value must be power of 2 */
-#define QNN_NOTIFY_PARAM_NUM 8
+#define QNN_NOTIFY_PARAM_NUM 8u
 #endif
 
 

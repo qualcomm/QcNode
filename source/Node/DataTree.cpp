@@ -11,7 +11,13 @@ DataTree::DataTree() {}
 
 DataTree::DataTree( const json &js ) : m_json( js ) {}
 
-DataTree::DataTree( const DataTree &rhs ) : m_json( rhs.m_json ) {}
+DataTree::DataTree( const DataTree &rhs )
+{
+    if ( this != &rhs )
+    {
+        m_json = rhs.m_json;
+    }
+}
 
 DataTree::~DataTree() {}
 

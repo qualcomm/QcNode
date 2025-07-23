@@ -15,7 +15,6 @@
 
 #include "QC/Common/DataTree.hpp"
 #include "QC/Common/Types.hpp"
-#include "QC/component/VideoEncoder.hpp"
 #include "QC/Infras/Log/Logger.hpp"
 #include "QC/Infras/Memory/BufferDescriptor.hpp"
 #include "QC/Infras/Memory/Ifs/QCMemoryDefs.hpp"
@@ -26,6 +25,7 @@
 #include "QC/Node/Ifs/QCFrameDescriptorNodeIfs.hpp"
 #include "QC/Node/Ifs/QCNodeDefs.hpp"
 #include "QC/Node/Ifs/QCNodeIfs.hpp"
+#include "QC/component/VideoEncoder.hpp"
 
 namespace QC
 {
@@ -42,7 +42,7 @@ using namespace QC::Memory;
 typedef struct QCDummyBufferDescriptor : public QCBufferDescriptorBase
 {
 public:
-    QCDummyBufferDescriptor()
+    QCDummyBufferDescriptor() noexcept
     {
         name = "Dummy";
         pBuf = nullptr;
@@ -104,7 +104,9 @@ class QCSharedFrameDescriptorNode : public QCFrameDescriptorNodeIfs
 {
 public:
     QCSharedFrameDescriptorNode() = delete;
-    QCSharedFrameDescriptorNode( uint32_t numOfBuffers ) : m_buffers( numOfBuffers, Dummy() ) {}
+    QCSharedFrameDescriptorNode( uint32_t numOfBuffers ) noexcept
+        : m_buffers( numOfBuffers, Dummy() )
+    {}
     ~QCSharedFrameDescriptorNode() {}
 
     /**
@@ -119,7 +121,7 @@ public:
         {
             for ( size_t i = 0; i < m_buffers.size(); i++ )
             {
-                QCBufferDescriptorBase_t &bufDesc = other.GetBuffer( i );
+                QCBufferDescriptorBase_t &bufDesc = other.GetBuffer( static_cast<uint32_t>( i ) );
                 m_buffers[i] = bufDesc;
             }
         }
@@ -132,7 +134,7 @@ public:
         {
             for ( size_t i = 0; i < m_buffers.size(); i++ )
             {
-                QCBufferDescriptorBase_t &bufDesc = other.GetBuffer( i );
+                QCBufferDescriptorBase_t &bufDesc = other.GetBuffer( static_cast<uint32_t>( i ) );
                 m_buffers[i] = bufDesc;
             }
         }
@@ -192,11 +194,11 @@ public:
     }
 
 private:
-    QCDummyBufferDescriptor_t &Dummy() { return *( (QCDummyBufferDescriptor_t *) &s_dummy ); }
+    QCDummyBufferDescriptor_t &Dummy() { return s_dummy; }
 
 private:
     std::vector<std::reference_wrapper<QCBufferDescriptorBase_t>> m_buffers;
-    static const QCDummyBufferDescriptor_t s_dummy;
+    static QCDummyBufferDescriptor_t s_dummy;
 };
 
 /**
@@ -285,12 +287,12 @@ public:
     void Put( QCFrameDescriptorNodeIfs &frameDesc ) { m_queue.push( frameDesc ); }
 
 private:
-    QCSharedFrameDescriptorNode &Dummy() { return *( (QCSharedFrameDescriptorNode *) &s_dummy ); }
+    QCSharedFrameDescriptorNode &Dummy() { return s_dummy; }
     std::vector<QCSharedFrameDescriptorNode> m_frameDescs;
     std::queue<std::reference_wrapper<QCFrameDescriptorNodeIfs>> m_queue;
     std::mutex m_lock;
     uint32_t m_numOfBuffers;
-    static const QCSharedFrameDescriptorNode s_dummy;
+    static QCSharedFrameDescriptorNode s_dummy;
 };
 
 class NodeConfigIfs : public QCNodeConfigIfs
@@ -308,6 +310,10 @@ public:
      * @return None
      */
     ~NodeConfigIfs() {}
+
+
+    NodeConfigIfs( const NodeConfigIfs &other ) = delete;
+
 
     /**
      * @brief Verify and Load the json string

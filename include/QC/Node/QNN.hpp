@@ -146,7 +146,7 @@ private:
     std::vector<DataTree> ConvertTensorInfoListToJson( const std::vector<Qnn_Tensor_t> &infoList );
 
 private:
-    QnnImpl *m_pQnnImpl;
+    QnnImpl *m_pQnnImpl = nullptr;
     bool m_bOptionsBuilt = false;
     std::string m_options;
 };
@@ -165,6 +165,8 @@ public:
     QnnMonitor( Logger &logger, QnnImpl *pQnnImpl ) : m_logger( logger ), m_pQnnImpl( pQnnImpl ) {}
 
     ~QnnMonitor() {}
+
+    QnnMonitor( const QnnMonitor &other ) = delete;
 
     virtual QCStatus_e VerifyAndSet( const std::string config, std::string &errors );
 
@@ -190,7 +192,7 @@ public:
     virtual QCStatus_e Place( void *pData, uint32_t &size );
 
 private:
-    QnnImpl *m_pQnnImpl;
+    QnnImpl *m_pQnnImpl = nullptr;
     Logger &m_logger;
     std::string m_options;
 };

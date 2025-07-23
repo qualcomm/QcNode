@@ -9,9 +9,9 @@ namespace QC
 namespace Node
 {
 
-const QCDummyBufferDescriptor_t QCSharedFrameDescriptorNode::s_dummy;
+QCDummyBufferDescriptor_t QCSharedFrameDescriptorNode::s_dummy;
 
-const QCSharedFrameDescriptorNode QCSharedFrameDescriptorNodePool::s_dummy( 1 );
+QCSharedFrameDescriptorNode QCSharedFrameDescriptorNodePool::s_dummy( 1 );
 
 const std::string NodeConfigIfs::s_QC_STATUS_UNSUPPORTED = "QC_STATUS_UNSUPPORTED";
 
