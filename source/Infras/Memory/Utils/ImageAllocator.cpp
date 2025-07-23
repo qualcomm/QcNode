@@ -15,8 +15,9 @@ namespace Memory
 {
 
 #define PLANEDEF_HW_USAGE_FLAGS                                                                    \
-    ( WFD_USAGE_OPENGL_ES2 | WFD_USAGE_OPENGL_ES3 | WFD_USAGE_CAPTURE | WFD_USAGE_VIDEO |          \
-      WFD_USAGE_DISPLAY | WFD_USAGE_NATIVE )
+    ( (uint32_t) WFD_USAGE_OPENGL_ES2 | (uint32_t) WFD_USAGE_OPENGL_ES3 |                          \
+      (uint32_t) WFD_USAGE_CAPTURE | (uint32_t) WFD_USAGE_VIDEO | (uint32_t) WFD_USAGE_DISPLAY |   \
+      (uint32_t) WFD_USAGE_NATIVE )
 
 static PDColorFormat_e s_qcFormatToApdfFormat[QC_IMAGE_FORMAT_MAX] = {
         PD_FORMAT_RGB888, /* QC_IMAGE_FORMAT_RGB888 */
@@ -114,7 +115,7 @@ QCStatus_e BasicImageAllocator::Allocate( const QCBufferPropBase_t &request,
 
         if ( ( QC_IMAGE_FORMAT_NV12_UBWC == format ) || ( QC_IMAGE_FORMAT_TP10_UBWC == format ) )
         {
-            nUsage = nUsage | WFD_USAGE_COMPRESSION;
+            nUsage = nUsage | (uint32_t) WFD_USAGE_COMPRESSION;
         }
 
         if ( QC_STATUS_OK == status )
@@ -338,7 +339,7 @@ QCStatus_e ImageAllocator::Allocate( const QCBufferPropBase_t &request,
             }
             else
             {
-                size = pImageProps->planeBufSize[0];
+                size = static_cast<size_t>( pImageProps->planeBufSize[0] );
             }
         }
 

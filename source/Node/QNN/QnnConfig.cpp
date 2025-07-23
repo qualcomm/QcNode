@@ -34,7 +34,7 @@ DataTree QnnConfig::ConvertTensorInfoToJson( const Qnn_Tensor_t &info )
     else
     {
         dt.Set<std::string>( "quantType", "none" );
-        dt.Set<float>( "quantScale", 1.0 );
+        dt.Set<float>( "quantScale", 1.0f );
         dt.Set<int32_t>( "quantOffset", 0 );
     }
 

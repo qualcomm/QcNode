@@ -24,7 +24,7 @@ public:
     virtual ~QCBufferDescriptorBase() = default;
     std::string name;
     void *pBuf;
-    uint32_t size;
+    size_t size;
     QCBufferType_e type;
 } QCBufferDescriptorBase_t;
 

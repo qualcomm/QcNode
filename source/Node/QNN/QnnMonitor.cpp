@@ -41,7 +41,7 @@ uint32_t QnnMonitor::GetCurrentSize()
 QCStatus_e QnnMonitor::Place( void *pData, uint32_t &size )
 {
     QCStatus_e status = QC_STATUS_OK;
-    Qnn_Perf_t *pPerf = reinterpret_cast<Qnn_Perf_t *>( pData );
+    Qnn_Perf_t perf;
 
     if ( nullptr == pData )
     {
@@ -55,7 +55,11 @@ QCStatus_e QnnMonitor::Place( void *pData, uint32_t &size )
     }
     else
     {
-        status = m_pQnnImpl->GetPerf( *pPerf );
+        status = m_pQnnImpl->GetPerf( perf );
+        if ( QC_STATUS_OK == status )
+        {
+            memcpy( pData, &perf, sizeof( Qnn_Perf_t ) );
+        }
     }
 
     return status;

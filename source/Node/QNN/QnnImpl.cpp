@@ -78,11 +78,21 @@ static void QnnLog_Callback( const char *fmt, QnnLog_Level_t logLevel, uint64_t 
 
 static size_t memscpy( void *dst, size_t dstSize, const void *src, size_t copySize )
 {
-    if ( !dst || !src || !dstSize || !copySize ) return 0;
+    size_t minSize = 0;
+    if ( ( nullptr == dst ) || ( nullptr == src ) || ( 0 == dstSize ) || ( 0 == copySize ) )
+    {
+        minSize = 0;
+    }
+    else
+    {
+        size_t minSize = copySize;
+        if ( dstSize < copySize )
+        {
+            minSize = dstSize;
+        }
 
-    size_t minSize = dstSize < copySize ? dstSize : copySize;
-
-    memcpy( dst, src, minSize );
+        (void) memcpy( dst, src, minSize );
+    }
 
     return minSize;
 }
@@ -92,7 +102,8 @@ QCStatus_e QnnImpl::GetQnnFunctionPointers( std::string backendPath, std::string
 {
     QCStatus_e status = QC_STATUS_OK;
     void *libModelHandle = nullptr;
-    void *libBackendHandle = dlopen( backendPath.c_str(), RTLD_NOW | RTLD_GLOBAL );
+    void *libBackendHandle =
+            dlopen( backendPath.c_str(), (int) ( (uint32_t) RTLD_NOW | (uint32_t) RTLD_GLOBAL ) );
     if ( nullptr == libBackendHandle )
     {
         QC_ERROR( "Unable to load backend. dlerror(): %s", dlerror() );
@@ -160,7 +171,8 @@ QCStatus_e QnnImpl::GetQnnFunctionPointers( std::string backendPath, std::string
         if ( true == loadModelLib )
         {
             QC_INFO( "Loading model shared library (%s)", modelPath.c_str() );
-            libModelHandle = dlopen( modelPath.c_str(), RTLD_NOW | RTLD_GLOBAL );
+            libModelHandle = dlopen( modelPath.c_str(),
+                                     (int) ( (uint32_t) RTLD_NOW | (uint32_t) RTLD_GLOBAL ) );
             if ( nullptr == libModelHandle )
             {
                 QC_ERROR( "Unable to load model. dlerror(): %s", dlerror() );
@@ -226,7 +238,8 @@ QCStatus_e QnnImpl::GetQnnSystemFunctionPointers( std::string systemLibraryPath 
     void *systemLibraryHandle = nullptr;
     QnnSystemInterfaceGetProvidersFn_t getSystemInterfaceProviders{ nullptr };
 
-    systemLibraryHandle = dlopen( systemLibraryPath.c_str(), RTLD_NOW | RTLD_LOCAL );
+    systemLibraryHandle = dlopen( systemLibraryPath.c_str(),
+                                  (int) ( (uint32_t) RTLD_NOW | (uint32_t) RTLD_LOCAL ) );
     if ( nullptr == systemLibraryHandle )
     {
         QC_ERROR( "Unable to load system library. dlerror(): %s", dlerror() );
@@ -813,8 +826,8 @@ QCStatus_e QnnImpl::LoadOpPackages( std::vector<Qnn_UdoPackage_t> &udoPackages )
         QC_INFO( "Registered Op Package: %s and interface provider: %s",
                  udoPackage.udoLibPath.c_str(), udoPackage.interfaceProvider.c_str() );
         retVal = m_qnnFunctionPointers.qnnInterface.backendRegisterOpPackage(
-                m_backendHandle, (char *) udoPackage.udoLibPath.c_str(),
-                (char *) udoPackage.interfaceProvider.c_str(), nullptr );
+                m_backendHandle, udoPackage.udoLibPath.c_str(),
+                udoPackage.interfaceProvider.c_str(), nullptr );
         if ( QNN_BACKEND_NO_ERROR != retVal )
         {
             QC_ERROR( "Could not register Op Package: %s and interface provider: %s, "
@@ -825,8 +838,8 @@ QCStatus_e QnnImpl::LoadOpPackages( std::vector<Qnn_UdoPackage_t> &udoPackages )
         }
         else
         {
-            QC_INFO( "Registered Op Package: %s and interface provider: %s", udoPackage.udoLibPath,
-                     udoPackage.interfaceProvider );
+            QC_INFO( "Registered Op Package: %s and interface provider: %s",
+                     udoPackage.udoLibPath.c_str(), udoPackage.interfaceProvider.c_str() );
         }
     }
     return status;
@@ -880,38 +893,6 @@ QCStatus_e QnnImpl::CreateFromModelSo( std::string modelFile )
         }
     }
 
-    if ( QC_STATUS_OK == status )
-    {
-        Qnn_ContextBinarySize_t binaryBufferSize;
-        retVal = m_qnnFunctionPointers.qnnInterface.contextGetBinarySize( m_context,
-                                                                          &binaryBufferSize );
-        if ( QNN_GRAPH_NO_ERROR == retVal )
-        {
-            std::unique_ptr<uint8_t[]> saveBuffer( new uint8_t[binaryBufferSize] );
-            Qnn_ContextBinarySize_t writtenBufferSize;
-
-            if ( QNN_GRAPH_NO_ERROR == m_qnnFunctionPointers.qnnInterface.contextGetBinary(
-                                               m_context,
-                                               reinterpret_cast<void *>( saveBuffer.get() ),
-                                               binaryBufferSize, &writtenBufferSize ) )
-            {
-                QC_INFO( "saving cached binary(size = %llu)", writtenBufferSize );
-                std::string fileDir = dirname( (char *) modelFile.c_str() );
-                std::string fileName = fileDir + "/program.bin";
-                FILE *pFile = fopen( fileName.c_str(), "wb" );
-                if ( nullptr != pFile )
-                {
-                    (void) fwrite( saveBuffer.get(), 1, writtenBufferSize, pFile );
-                    (void) fclose( pFile );
-                }
-                else
-                {
-                    QC_ERROR( "Error while writing binary to file." );
-                    status = QC_STATUS_FAIL;
-                }
-            }
-        }
-    }
     return status;
 }
 
@@ -994,7 +975,7 @@ QCStatus_e QnnImpl::CreateFromBinaryFile( std::string modelFile )
 {
     QCStatus_e status = QC_STATUS_OK;
     QCBufferDescriptorBase bufDesc;
-    size_t bufferSize = 0;
+    uint32_t bufferSize = 0;
     FILE *pFile = fopen( modelFile.c_str(), "rb" );
     if ( nullptr == pFile )
     {
@@ -1004,7 +985,7 @@ QCStatus_e QnnImpl::CreateFromBinaryFile( std::string modelFile )
     else
     {
         fseek( pFile, 0, SEEK_END );
-        bufferSize = static_cast<size_t>( ftell( pFile ) );
+        bufferSize = static_cast<uint32_t>( ftell( pFile ) );
         fseek( pFile, 0, SEEK_SET );
         if ( 0 == bufferSize )
         {
@@ -1251,7 +1232,7 @@ QnnImpl::Initialize( QCNodeEventCallBack_t callback,
                 {
                     QnnDevice_HardwareDeviceInfo_t hwDevice =
                             m_platformInfo->v1.hwDevices[deviceId];
-                    hwDevice.v1.numCores = m_config.coreIds.size();
+                    hwDevice.v1.numCores = static_cast<uint32_t>( m_config.coreIds.size() );
                     hwDevice.v1.cores = coreInfo.data();
 
                     QnnDevice_PlatformInfo_t platformInfo = {
@@ -1409,17 +1390,19 @@ QCStatus_e QnnImpl::RemoteRegisterBuf( const TensorDescriptor_t &tensorDesc, int
         std::lock_guard<std::mutex> l( s_lock[m_config.processorType] );
 #ifdef QC_USE_REMOTE_REGISTER_V2
 #if defined( __QNXNTO__ )
-        remote_register_buf_v2( extDomainId, tensorDesc.pBufBase, tensorDesc.dmaSize, 0 );
+        remote_register_buf_v2( extDomainId, tensorDesc.pBufBase,
+                                static_cast<int>( tensorDesc.dmaSize ), 0 );
 #else
-        remote_register_buf_v2( extDomainId, tensorDesc.pBufBase, tensorDesc.dmaSize,
+        remote_register_buf_v2( extDomainId, tensorDesc.pBufBase,
+                                static_cast<int>( tensorDesc.dmaSize ),
                                 static_cast<int>( tensorDesc.dmaHandle ) );
 #endif
 
 #else
 #if defined( __QNXNTO__ )
-        remote_register_buf( tensorDesc.pBufBase, tensorDesc.dmaSize, 0 );
+        remote_register_buf( tensorDesc.pBufBase, static_cast<int>( tensorDesc.dmaSize ), 0 );
 #else
-        remote_register_buf( tensorDesc.pBufBase, tensorDesc.dmaSize,
+        remote_register_buf( tensorDesc.pBufBase, static_cast<int>( tensorDesc.dmaSize ),
                              static_cast<int>( tensorDesc.dmaHandle ) );
 #endif
 #endif
@@ -1460,6 +1443,7 @@ QCStatus_e QnnImpl::RegisterBufferToHTP( const TensorDescriptor_t &tensorDesc,
 {
     QCStatus_e status = QC_STATUS_OK;
     Qnn_ErrorHandle_t retVal;
+    std::vector<uint32_t> dims( tensorDesc.dims, tensorDesc.dims + tensorDesc.numDims );
 
 #if ( ( QNN_HTP_API_VERSION_MAJOR == 5 ) && ( QNN_HTP_API_VERSION_MINOR >= 16 ) ) ||               \
         ( QNN_HTP_API_VERSION_MAJOR > 5 )
@@ -1484,7 +1468,7 @@ QCStatus_e QnnImpl::RegisterBufferToHTP( const TensorDescriptor_t &tensorDesc,
             {
                 Qnn_MemDescriptor_t desc;
                 desc.memShape.numDim = tensorDesc.numDims;
-                desc.memShape.dimSize = (uint32_t *) tensorDesc.dims;
+                desc.memShape.dimSize = dims.data();
                 desc.memShape.shapeConfig = nullptr;
                 desc.dataType = SwitchToQnnDataType( tensorDesc.tensorType );
 
@@ -1645,7 +1629,8 @@ QCStatus_e QnnImpl::ProcessFrameDescriptor( QCFrameDescriptorNodeIfs &frameDesc 
         for ( uint32_t i = 0; i < m_inputTensorNum; i++ )
         {
             Qnn_MemHandle_t memHandle = nullptr;
-            uint32_t globalBufferId = m_config.globalBufferIdMap[i].globalBufferId;
+            uint32_t globalBufferId =
+                    m_config.globalBufferIdMap[static_cast<size_t>( i )].globalBufferId;
             QCBufferDescriptorBase_t &bufDesc = frameDesc.GetBuffer( globalBufferId );
             const TensorDescriptor_t *pTensor =
                     dynamic_cast<const TensorDescriptor_t *>( &bufDesc );
@@ -1695,7 +1680,8 @@ QCStatus_e QnnImpl::ProcessFrameDescriptor( QCFrameDescriptorNodeIfs &frameDesc 
         {
             Qnn_MemHandle_t memHandle = nullptr;
             uint32_t globalBufferId =
-                    m_config.globalBufferIdMap[m_inputTensorNum + i].globalBufferId;
+                    m_config.globalBufferIdMap[static_cast<size_t>( m_inputTensorNum + i )]
+                            .globalBufferId;
             QCBufferDescriptorBase_t &bufDesc = frameDesc.GetBuffer( globalBufferId );
             const TensorDescriptor_t *pTensor =
                     dynamic_cast<const TensorDescriptor_t *>( &bufDesc );
@@ -1828,7 +1814,7 @@ QCStatus_e QnnImpl::EnablePerf()
     }
     else if ( nullptr != m_profileBackendHandle )
     {
-        QC_ERROR( "perf prifiler already created!" );
+        QC_ERROR( "perf profiler already created!" );
         status = QC_STATUS_ALREADY;
     }
     else
@@ -1998,9 +1984,9 @@ QCStatus_e QnnImpl::RemoteDeRegisterBuf( void *pData, size_t size )
         if ( 0 == it->second )
         {
 #ifdef QC_USE_REMOTE_REGISTER_V2
-            remote_register_buf_v2( extDomainId, (void *) pData, size, -1 );
+            remote_register_buf_v2( extDomainId, (void *) pData, static_cast<int>( size ), -1 );
 #else
-            remote_register_buf( (void *) pData, size, -1 );
+            remote_register_buf( (void *) pData, static_cast<int>( size ), -1 );
 #endif
             s_dmaMemRefMap[m_config.processorType].erase( it );
         }
@@ -2204,7 +2190,9 @@ void QnnImpl::QnnNotifyFn( NotifyParam_t *pNotifyParam, Qnn_NotifyStatus_t notif
             QCFrameDescriptorNodeIfs *pFrameDesc = pNotifyParam->pFrameDesc;
             QCBufferDescriptorBase_t errDesc;
             uint32_t globalBufferId =
-                    m_config.globalBufferIdMap[m_inputTensorNum + m_outputTensorNum].globalBufferId;
+                    m_config.globalBufferIdMap[static_cast<size_t>( m_inputTensorNum +
+                                                                    m_outputTensorNum )]
+                            .globalBufferId;
             errDesc.name = "QNN ERROR";
             errDesc.pBuf = &notifyStatus;
             errDesc.size = sizeof( notifyStatus );
@@ -2551,7 +2539,7 @@ void QnnImpl::NotifyParamQueue::Push( NotifyParam_t *pNotifyParam )
     if ( ( pNotifyParam >= &notifyParam[0] ) &&
          ( pNotifyParam <= &notifyParam[QNN_NOTIFY_PARAM_NUM - 1] ) )
     {
-        idx = pNotifyParam - &notifyParam[0];
+        idx = static_cast<uint16_t>( pNotifyParam - &notifyParam[0] );
         ring[pushIdx % QNN_NOTIFY_PARAM_NUM] = idx;
         pushIdx++;
     }

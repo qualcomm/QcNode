@@ -86,6 +86,7 @@ public:
           width( width ),
           height( height )
     {}
+
     QCImageFormat_e format;
     uint32_t batchSize;
     uint32_t width;

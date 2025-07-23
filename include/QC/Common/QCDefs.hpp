@@ -10,6 +10,11 @@
 namespace QC
 {
 
+#ifndef QC_TARGET_SOC
+#define QC_TARGET_SOC 8797
+#warning "QC_TARGET_SOC is not defined. Default to 8797"
+#endif
+
 /** @brief QC Status */
 typedef enum
 {

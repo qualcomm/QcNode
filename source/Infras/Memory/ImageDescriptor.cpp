@@ -86,7 +86,7 @@ QCStatus_e ImageDescriptor::ImageToTensor( TensorDescriptor_t &tensorDesc ) cons
         tensorDesc.dims[1] = this->height;
         tensorDesc.dims[2] = this->width;
         tensorDesc.dims[3] = bpp;
-        tensorDesc.size = this->batchSize * this->height * this->width * bpp;
+        tensorDesc.size = static_cast<size_t>( this->batchSize * this->height * this->width * bpp );
     }
     return status;
 }
@@ -121,12 +121,12 @@ QCStatus_e ImageDescriptor::ImageToTensor( TensorDescriptor_t &luma,
             QC_LOG_ERROR( "not supported for batched image" );
             status = QC_STATUS_UNSUPPORTED;
         }
-        else if ( 0 != ( this->height & 0x1 ) )
+        else if ( 0 != ( this->height & 0x1u ) )
         {
             QC_LOG_ERROR( "height is not n times of 2" );
             status = QC_STATUS_UNSUPPORTED;
         }
-        else if ( 0 != ( this->width & 0x1 ) )
+        else if ( 0 != ( this->width & 0x1u ) )
         {
             QC_LOG_ERROR( "width is not n times of 2" );
             status = QC_STATUS_UNSUPPORTED;
@@ -162,7 +162,8 @@ QCStatus_e ImageDescriptor::ImageToTensor( TensorDescriptor_t &luma,
         luma.dims[1] = this->height;
         luma.dims[2] = this->width;
         luma.dims[3] = 1;
-        luma.size = this->height * this->width * s_qcFormatToBytesPerPixel[this->format];
+        luma.size = static_cast<size_t>( this->height * this->width *
+                                         s_qcFormatToBytesPerPixel[this->format] );
 
         chroma = *this;
         chroma.offset = this->offset + this->planeBufSize[0];
@@ -180,7 +181,8 @@ QCStatus_e ImageDescriptor::ImageToTensor( TensorDescriptor_t &luma,
         chroma.dims[1] = this->height / 2;
         chroma.dims[2] = this->width / 2;
         chroma.dims[3] = 2;
-        chroma.size = this->height * this->width * s_qcFormatToBytesPerPixel[this->format] / 2;
+        chroma.size = static_cast<size_t>( this->height * this->width *
+                                           s_qcFormatToBytesPerPixel[this->format] / 2 );
     }
 
     return status;
