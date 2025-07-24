@@ -1375,6 +1375,13 @@ TEST( QNN, TestAccuracy )
         ASSERT_GT( cosSim, 0.99d );
         free( pOutputData );
     }
+
+    ret = qnn.Stop();
+    ASSERT_EQ( QC_STATUS_OK, ret );
+
+    ret = qnn.DeInitialize();
+    ASSERT_EQ( QC_STATUS_OK, ret );
+
     for ( size_t i = 0; i < inputs.size(); ++i )
     {
         ret = ta.Free( inputs[i] );
