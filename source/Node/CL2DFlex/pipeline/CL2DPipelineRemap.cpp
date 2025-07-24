@@ -3,11 +3,11 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#include "include/CL2DPipelineRemap.hpp"
+#include "pipeline/CL2DPipelineRemap.hpp"
 
 namespace QC
 {
-namespace component
+namespace Node
 {
 
 CL2DPipelineRemap::CL2DPipelineRemap() {}
@@ -97,8 +97,8 @@ QCStatus_e CL2DPipelineRemap::Execute( const QCSharedBuffer_t *pInput,
         else
         {
             uint32_t srcOffset = pInput->offset;
-            uint32_t sizeOne = ( uint32_t )( pOutput->size ) / ( pOutput->imgProps.batchSize );
-            uint32_t dstOffset = ( uint32_t )( pOutput->offset ) + m_inputId * sizeOne;
+            uint32_t sizeOne = (uint32_t) ( pOutput->size ) / ( pOutput->imgProps.batchSize );
+            uint32_t dstOffset = (uint32_t) ( pOutput->offset ) + m_inputId * sizeOne;
 
             if ( CL2DFLEX_PIPELINE_REMAP_NEAREST_NV12_TO_RGB == m_pipeline )
             {
@@ -255,5 +255,5 @@ QCStatus_e CL2DPipelineRemap::RemapFromNV12ToBGR( cl_mem bufferSrc, uint32_t src
     return ret;
 }
 
-}   // namespace component
+}   // namespace Node
 }   // namespace QC
