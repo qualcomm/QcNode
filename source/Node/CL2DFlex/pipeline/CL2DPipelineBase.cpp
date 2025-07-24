@@ -3,11 +3,11 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#include "include/CL2DPipelineBase.hpp"
+#include "pipeline/CL2DPipelineBase.hpp"
 
 namespace QC
 {
-namespace component
+namespace Node
 {
 
 CL2DPipelineBase::CL2DPipelineBase() {}
@@ -37,5 +37,5 @@ void CL2DPipelineBase::DeinitLogger()
     /* ignore logger deinit error */
 }
 
-}   // namespace component
+}   // namespace Node
 }   // namespace QC

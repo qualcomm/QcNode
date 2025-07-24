@@ -3,11 +3,11 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#include "include/CL2DPipelineConvert.hpp"
+#include "pipeline/CL2DPipelineConvert.hpp"
 
 namespace QC
 {
-namespace component
+namespace Node
 {
 
 CL2DPipelineConvert::CL2DPipelineConvert() {}
@@ -89,8 +89,8 @@ QCStatus_e CL2DPipelineConvert::Execute( const QCSharedBuffer_t *pInput,
         else
         {
             uint32_t srcOffset = pInput->offset;
-            uint32_t sizeOne = ( uint32_t )( pOutput->size ) / ( pOutput->imgProps.batchSize );
-            uint32_t dstOffset = ( uint32_t )( pOutput->offset ) + m_inputId * sizeOne;
+            uint32_t sizeOne = (uint32_t) ( pOutput->size ) / ( pOutput->imgProps.batchSize );
+            uint32_t dstOffset = (uint32_t) ( pOutput->offset ) + m_inputId * sizeOne;
 
             if ( CL2DFLEX_PIPELINE_CONVERT_NV12_TO_RGB == m_pipeline )
             {
@@ -164,8 +164,8 @@ QCStatus_e CL2DPipelineConvert::ConvertFromNV12ToRGB( cl_mem bufferSrc, uint32_t
 
     OpenclIface_WorkParams_t OpenclWorkParams;
     OpenclWorkParams.workDim = 2;
-    size_t globalWorkSize[2] = { ( size_t )( pOutput->imgProps.width ) / 2,
-                                 ( size_t )( pOutput->imgProps.height ) / 2 };
+    size_t globalWorkSize[2] = { (size_t) ( pOutput->imgProps.width ) / 2,
+                                 (size_t) ( pOutput->imgProps.height ) / 2 };
     OpenclWorkParams.pGlobalWorkSize = globalWorkSize;
     size_t globalWorkOffset[2] = { 0, 0 };
     OpenclWorkParams.pGlobalWorkOffset = globalWorkOffset;
@@ -212,7 +212,7 @@ QCStatus_e CL2DPipelineConvert::ConvertFromUYVYToRGB( cl_mem bufferSrc, uint32_t
 
     OpenclIface_WorkParams_t OpenclWorkParams;
     OpenclWorkParams.workDim = 2;
-    size_t globalWorkSize[2] = { ( size_t )( pOutput->imgProps.width ) / 2,
+    size_t globalWorkSize[2] = { (size_t) ( pOutput->imgProps.width ) / 2,
                                  pOutput->imgProps.height };
     OpenclWorkParams.pGlobalWorkSize = globalWorkSize;
     size_t globalWorkOffset[2] = { 0, 0 };
@@ -264,8 +264,8 @@ QCStatus_e CL2DPipelineConvert::ConvertFromUYVYToNV12( cl_mem bufferSrc, uint32_
 
     OpenclIface_WorkParams_t OpenclWorkParams;
     OpenclWorkParams.workDim = 2;
-    size_t globalWorkSize[2] = { ( size_t )( pOutput->imgProps.width ) / 2,
-                                 ( size_t )( pOutput->imgProps.height ) / 2 };
+    size_t globalWorkSize[2] = { (size_t) ( pOutput->imgProps.width ) / 2,
+                                 (size_t) ( pOutput->imgProps.height ) / 2 };
     OpenclWorkParams.pGlobalWorkSize = globalWorkSize;
     size_t globalWorkOffset[2] = { 0, 0 };
     OpenclWorkParams.pGlobalWorkOffset = globalWorkOffset;
@@ -282,5 +282,5 @@ QCStatus_e CL2DPipelineConvert::ConvertFromUYVYToNV12( cl_mem bufferSrc, uint32_
     return ret;
 }
 
-}   // namespace component
+}   // namespace Node
 }   // namespace QC
