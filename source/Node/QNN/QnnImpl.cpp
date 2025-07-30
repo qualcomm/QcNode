@@ -387,6 +387,11 @@ QCStatus_e QnnImpl::DeepCopyQnnTensorInfo( Qnn_Tensor_t *dst, const Qnn_Tensor_t
                 }
             }
         }
+        else if ( QNN_QUANTIZATION_ENCODING_UNDEFINED ==
+                  QNN_TENSOR_GET_QUANT_PARAMS( src ).quantizationEncoding )
+        {
+            /* OK for no quantization */
+        }
         else
         {
             QC_ERROR( "unsupported quantization encoding %d",
@@ -608,7 +613,7 @@ QCStatus_e QnnImpl::CopyGraphsInfo( const QnnSystemContext_GraphInfo_t *graphsIn
     if ( QC_STATUS_OK != status )
     {
         QC_ERROR( "Received an ERROR during extractGraphsInfo. Freeing resources." );
-        if ( graphsInfo )
+        if ( nullptr != graphsInfo )
         {
             for ( uint32_t gIdx = 0; gIdx < numGraphs; gIdx++ )
             {
@@ -628,6 +633,7 @@ QCStatus_e QnnImpl::CopyGraphsInfo( const QnnSystemContext_GraphInfo_t *graphsIn
             free( *graphsInfo );
         }
         free( graphsInfo );
+        graphsInfo = nullptr;
         status = QC_STATUS_FAIL;
     }
     return status;

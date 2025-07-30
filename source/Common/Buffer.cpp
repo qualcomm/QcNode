@@ -76,9 +76,9 @@ QCSharedBuffer &QCSharedBuffer::operator=( const QCSharedBuffer &rhs )
 
 QCSharedBuffer::QCSharedBuffer( const QCBufferDescriptorBase &other )
 {
-    static const BufferDescriptor_t *pBuffer = dynamic_cast<const BufferDescriptor_t *>( &other );
-    static const TensorDescriptor_t *pTensor = dynamic_cast<const TensorDescriptor_t *>( &other );
-    static const ImageDescriptor_t *pImage = dynamic_cast<const ImageDescriptor_t *>( &other );
+    const BufferDescriptor_t *pBuffer = dynamic_cast<const BufferDescriptor_t *>( &other );
+    const TensorDescriptor_t *pTensor = dynamic_cast<const TensorDescriptor_t *>( &other );
+    const ImageDescriptor_t *pImage = dynamic_cast<const ImageDescriptor_t *>( &other );
     if ( nullptr != pBuffer )
     {
         this->buffer.pData = pBuffer->pBufBase;
