@@ -43,6 +43,12 @@ if ( ENABLE_FADAS )
   )
 endif()
 
+if ( ENABLE_RADAR AND NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" )
+  list( APPEND TARGET_LIBRARIES
+            QCNodeRadar
+            QCNodeNodeRadar
+  )
+endif()
 if( NOT TARGET QCNodeQNN )
   message(STATUS "build QCNode without QNN")
 else()

@@ -18,6 +18,7 @@
   - [The QCNode GL2DFlex](./GL2DFlex.md)
   - [The QCNode OpticalFlow](./OpticalFlow.md)
   - [The QCNode DepthFromStereo](./DepthFromStereo.md)
+  - [The QCNode Radar](./NodeRadar.md)
 
 - The QCNode Sample
   - [The QCNode Sample App](../tests/sample/README.md)

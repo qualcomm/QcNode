@@ -38,6 +38,12 @@ if ( ENABLE_FADAS )
             SampleRemap.cpp )
 endif()
 
+if ( ENABLE_RADAR AND NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" )
+  list( APPEND QCNODE_SAMPLE_SOURCES SampleRadar.cpp )
+else()
+  message(STATUS "build sample without Radar")
+endif()
+
 set( QCNODE_SAMPLE_DEFINITIONS )
 
 if( NOT TARGET QCNode )
