@@ -32,6 +32,7 @@ option(ENABLE_C2D "Enable C2D building" OFF)
 option(ENABLE_EVA "Enable EVA building" OFF)
 option(ENABLE_FADAS "Enable FADAS building" OFF)
 option(ENABLE_RSM_V2 "Enable RSM_V2 building" OFF)
+option(ENABLE_RADAR "Enable Radar building" OFF)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE RelWithDebInfo)

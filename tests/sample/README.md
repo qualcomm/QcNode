@@ -25,6 +25,7 @@
     - [2.21 QCNode DepthFromStereo Sample](#221-qcnode-depthfromstereo-sample)
     - [2.22 QCNode DepthFromStereoViz Sample](#222-qcnode-depthfromstereoviz-sample)
     - [2.23 QCNode VideoDemuxer Sample](#223-qcnode-videodemuxer-sample)
+    - [2.24 QCNode Radar Sample](#224-qcnode-radar-sample)
   - [3. Typical QCNode Sample Application pipelines](#3-typical-qcnode-sample-application-pipelines)
     - [3.1 4 DataReader based QNN perception pipelines](#31-4-datareader-based-qnn-perception-pipelines)
     - [3.2 1 DataReader and 1 Camera AR231 based QNN perception pipelines](#32-1-datareader-and-1-camera-ar231-based-qnn-perception-pipelines)
@@ -57,7 +58,7 @@ Note: the "-n componentX_name -t componentX_type" must be in the begin for each 
 | parameter | required | type      | comments |
 |-----------|----------|-----------|----------|
 | -n        | true     | string    | The unique component name |
-| -t        | true     | string    | The component type name, options from [DataReader, Camera, Remap, Qnn, C2D, PostProcCenternet, TinyViz, VideoEncoder, VideoDecoder, Recorder, PlrPre, PlrPost, DataOnline, CL2DFlex, GL2DFlex, SharedRing, FpsAdapter, OpticalFlow, OpticalFlowViz, FrameSync, DepthFromStereo, DepthFromStereoViz] |
+| -t        | true     | string    | The component type name, options from [DataReader, Camera, Remap, Qnn, C2D, PostProcCenternet, TinyViz, VideoEncoder, VideoDecoder, Recorder, PlrPre, PlrPost, DataOnline, CL2DFlex, GL2DFlex, SharedRing, FpsAdapter, OpticalFlow, OpticalFlowViz, FrameSync, DepthFromStereo, DepthFromStereoViz, Radar] |
 | -k        | true     | string    | The unique component attribute name |
 | -v        | true     | string    | The attribute value for the previous attribute name |
 | -d        | false    |   -       | Direct the QCNode log to stdout |
@@ -728,6 +729,101 @@ The command line template example:
     -k playback_time 2000 \
     -k topic  -v /sensor/camera/CAM0/hevc
 ```
+
+### 2.24 QCNode Radar Sample
+
+| attribute | required | type      | default | comments |
+|-----------|----------|-----------|---------|----------|
+| max_input_buffer_size | false | int | 1048576 | Maximum input buffer size in bytes (1MB default, max 100MB) |
+| max_output_buffer_size | false | int | 1048576 | Maximum output buffer size in bytes (1MB default, max 100MB) |
+| service_name | false | string | "/dev/radar0" | Radar service device path |
+| timeout_ms | false | int | 5000 | Processing timeout in milliseconds (max 60 seconds) |
+| enable_performance_log | false | bool | false | Enable/disable performance logging |
+| pool_size | false | int | 4 | Number of buffers in output buffer pool (max 32) |
+| cache | false | bool | true | Enable/disable cached memory allocation |
+| input_topic | true | string | - | Input topic name for radar data |
+| output_topic | true | string | - | Output topic name for processed results |
+
+The QC Radar Sample demonstrates hardware-accelerated radar data processing using the QC Radar Node component. It provides a complete radar processing pipeline that can read radar data from input topics, process it using hardware acceleration, and publish the results to output topics.
+
+Key Features:
+- Hardware-accelerated radar processing via QC Radar Node
+- Configurable buffer sizes and processing parameters
+- Zero-copy buffer sharing between pipeline components
+- Performance monitoring and logging capabilities
+- Robust error handling and recovery mechanisms
+- Thread-safe operation with dedicated processing thread
+
+The command line template example:
+
+```sh
+  -n RADAR0 -t Radar \
+    -k max_input_buffer_size -v 2097152 \
+    -k max_output_buffer_size -v 2097152 \
+    -k service_name -v "/dev/radar0" \
+    -k timeout_ms -v 10000 \
+    -k enable_performance_log -v true \
+    -k pool_size -v 8 \
+    -k cache -v true \
+    -k input_topic -v /sensor/radar/RADAR0/raw \
+    -k output_topic -v /sensor/radar/RADAR0/processed \
+```
+
+Typical Usage Patterns:
+
+1. **DataReader → Radar → Recorder Pipeline:**
+```sh
+./bin/qcrun ./bin/QCNodeSampleApp \
+  -n RADAR_DATA -t DataReader -k number -v 1 \
+    -k type0 -v tensor -k tensor_type0 -v uint8 -k dims0 -v "2097152,1" \
+    -k data_path0 -v /data/radar_input \
+    -k topic -v /sensor/radar/RADAR0/raw \
+  -n RADAR0 -t Radar \
+    -k max_input_buffer_size -v 2097152 \
+    -k max_output_buffer_size -v 2097152 \
+    -k service_name -v "/dev/radar0" \
+    -k timeout_ms -v 10000 \
+    -k enable_performance_log -v true \
+    -k input_topic -v /sensor/radar/RADAR0/raw \
+    -k output_topic -v /sensor/radar/RADAR0/processed \
+  -n RADAR_REC -t Recorder -k max -v 100 \
+    -k topic -v /sensor/radar/RADAR0/processed
+```
+
+This pipeline demonstrates:
+- **DataReader**: Reads raw radar data files (0.raw, 1.raw, 2.raw, etc.) from `/data/radar_input/` directory as `QC_BUFFER_TYPE_TENSOR` buffers
+- **Radar**: Processes the raw radar data using hardware acceleration via the Radar Node component
+- **Recorder**: Writes the processed results back to disk as individual files (`/tmp/RADAR_REC_0_0.raw`, `/tmp/RADAR_REC_1_0.raw`, etc.) with metadata in `/tmp/RADAR_REC.meta`
+
+2. **Radar Processing with Performance Monitoring:**
+```sh
+./bin/qcrun ./bin/QCNodeSampleApp \
+  -n RADAR_DATA -t DataReader -k number -v 1 \
+    -k type0 -v tensor -k tensor_type0 -v uint8 -k dims0 -v "1048576,1" \
+    -k data_path0 -v /data/radar_input \
+    -k fps -v 10 \
+    -k topic -v /sensor/radar/RADAR0/raw \
+  -n RADAR0 -t Radar \
+    -k max_input_buffer_size -v 1048576 \
+    -k max_output_buffer_size -v 1048576 \
+    -k service_name -v "/dev/radar0" \
+    -k timeout_ms -v 5000 \
+    -k enable_performance_log -v true \
+    -k pool_size -v 8 \
+    -k input_topic -v /sensor/radar/RADAR0/raw \
+    -k output_topic -v /sensor/radar/RADAR0/processed
+```
+
+This pipeline demonstrates radar processing with detailed performance monitoring and logging enabled.
+
+**Data Preparation:**
+To use the radar pipeline, prepare your radar data files in the following format:
+- Create a directory (e.g., `/data/radar_input/`)
+- Place raw radar data files named sequentially: `0.raw`, `1.raw`, `2.raw`, etc.
+- Each file should contain raw radar data up to the specified buffer size
+- The DataReader will read these files sequentially and create `QC_BUFFER_TYPE_TENSOR` buffers
+- The Radar component will process these tensors using hardware acceleration
+- The Recorder will save the processed results back to disk with metadata
 
 ## 3. Typical QCNode Sample Application pipelines
 

@@ -3,4 +3,6 @@ if ( ENABLE_FADAS )
 endif()
 add_subdirectory(OpenclIface)
 add_subdirectory(VideoCodec)
-
+if ( ENABLE_RADAR AND NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" )
+add_subdirectory(RadarIface)
+endif()
