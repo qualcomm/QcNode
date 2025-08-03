@@ -49,15 +49,15 @@ public:
      * @param height The image height in pixels.
      * @param format The image format.
      * @param usage The intended usage of the buffer, default is QC_BUFFER_USAGE_CAMERA.
-     * @param attr The attributes of the buffer, default is QC_CACHEABLE.
+     * @param cache The cache attributes of the buffer, default is QC_CACHEABLE.
      * @return None.
      * @note This constructor sets up the properties of the buffer with the given parameters, while
      * most other properties are set to their default suggested values.
      */
     ImageBasicProps( uint32_t width, uint32_t height, QCImageFormat_e format,
                      QCBufferUsage_e usage = QC_BUFFER_USAGE_CAMERA,
-                     QCAllocationAttribute_e attr = QC_CACHEABLE )
-        : BufferProps( 0, usage, attr ),
+                     QCAllocationCache_e cache = QC_CACHEABLE )
+        : BufferProps( 0, usage, cache ),
           format( format ),
           batchSize( 1 ),
           width( width ),
@@ -72,15 +72,15 @@ public:
      * @param height The image height in pixels.
      * @param format The image format.
      * @param usage The intended usage of the buffer, default is QC_BUFFER_USAGE_CAMERA.
-     * @param attr The attributes of the buffer, default is QC_CACHEABLE.
+     * @param cache The cache attributes of the buffer, default is QC_CACHEABLE.
      * @return None.
      * @note This constructor sets up the properties of the image with the given parameters, while
      * most other properties are set to their default suggested values.
      */
     ImageBasicProps( uint32_t batchSize, uint32_t width, uint32_t height, QCImageFormat_e format,
                      QCBufferUsage_e usage = QC_BUFFER_USAGE_CAMERA,
-                     QCAllocationAttribute_e attr = QC_CACHEABLE )
-        : BufferProps( 0, usage, attr ),
+                     QCAllocationCache_e cache = QC_CACHEABLE )
+        : BufferProps( 0, usage, cache ),
           format( format ),
           batchSize( batchSize ),
           width( width ),
@@ -100,7 +100,7 @@ public:
  * Inherited Members from ImageBasicProps:
  * @param size The total required buffer size.
  * @param alignment The alignment requirement of the buffer.
- * @param attr The attributes of the buffer.
+ * @param cache The cache attributes of the buffer.
  * @param usage The intended usage of the buffer.
  * @param format The image format.
  * @param batchSize The image batch size.
@@ -137,7 +137,7 @@ public:
      * @param planeBufSizes The actual buffer size of the image for each plane, calculated as
      * (stride * actualHeight + padding size).
      * @param usage The intended usage of the buffer, default is QC_BUFFER_USAGE_CAMERA.
-     * @param attr The attributes of the buffer, default is QC_CACHEABLE.
+     * @param cache The cache attributes of the buffer, default is QC_CACHEABLE.
      * @return None.
      * @note This constructor sets up the properties of the image with the given parameters, while
      * most other properties are set to their default suggested values.
@@ -148,8 +148,8 @@ public:
     ImageProps( uint32_t batchSize, uint32_t width, uint32_t height, QCImageFormat_e format,
                 std::vector<uint32_t> strides, std::vector<uint32_t> actualHeights,
                 std::vector<uint32_t> planeBufSizes, QCBufferUsage_e usage = QC_BUFFER_USAGE_CAMERA,
-                QCAllocationAttribute_e attr = QC_CACHEABLE )
-        : ImageBasicProps( batchSize, width, height, format, usage, attr )
+                QCAllocationCache_e cache = QC_CACHEABLE )
+        : ImageBasicProps( batchSize, width, height, format, usage, cache )
     {
         numPlanes = static_cast<uint32_t>( strides.size() );
         std::copy( strides.begin(), strides.end(), stride );
@@ -180,7 +180,7 @@ public:
  * @param id The unique ID assigned by the buffer manager.
  * @param pid The process ID that allocated this buffer.
  * @param usage The intended usage of the buffer.
- * @param attr The attributes associated with the buffer.
+ * @param cache The cache attributes associated with the buffer.
  *
  * New Members:
  * @param format The image format.

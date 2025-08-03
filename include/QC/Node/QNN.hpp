@@ -145,7 +145,6 @@ private:
     DataTree ConvertTensorInfoToJson( const Qnn_Tensor_t &info );
     std::vector<DataTree> ConvertTensorInfoListToJson( const std::vector<Qnn_Tensor_t> &infoList );
 
-private:
     QnnImpl *m_pQnnImpl = nullptr;
     bool m_bOptionsBuilt = false;
     std::string m_options;

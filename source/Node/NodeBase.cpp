@@ -83,7 +83,7 @@ QCStatus_e NodeBase::Init( QCNodeID_t nodeId, Logger_Level_e level )
     { /* logger used by QCNodeConfigIfs and already initialized */
         status = QC_STATUS_OK;
     }
-    QC_LOG_DEBUG( "Init NodeBase %s(%u) status=%d", nodeId.name.c_str(), nodeId.id, status );
+    QC_LOG_DEBUG( "Init NodeBase %s(%u) type (%d) status=%d", m_nodeId.name.c_str(), m_nodeId.id, m_nodeId.type, status );
     return status;
 }
 
@@ -91,7 +91,7 @@ QCStatus_e NodeBase::DeInitialize()
 {
     QCStatus_e status = QC_STATUS_OK;
     status = (QCStatus_e) m_logger.Deinit();
-    QC_LOG_DEBUG( "DeInit NodeBase %s(%u) status=%d", m_nodeId.name.c_str(), m_nodeId.id, status );
+    QC_LOG_DEBUG( "DeInit NodeBase %s(%u) type(%d) status=%d", m_nodeId.name.c_str(), m_nodeId.id, m_nodeId.type, status );
     return status;
 }
 

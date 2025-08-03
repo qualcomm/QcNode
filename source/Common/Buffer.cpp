@@ -12,8 +12,8 @@
 
 namespace QC
 {
-
-using namespace QC::Memory;
+namespace Memory
+{
 
 void QCSharedBuffer::Init()
 {
@@ -22,7 +22,7 @@ void QCSharedBuffer::Init()
     this->buffer.dmaHandle = 0;
     this->buffer.size = 0;
     this->buffer.id = 0;
-    this->buffer.pid = static_cast<uint64_t>( getpid() );
+    this->buffer.pid = getpid();
     this->buffer.usage = QC_BUFFER_USAGE_DEFAULT;
     this->buffer.flags = 0;
     this->size = 0;
@@ -74,7 +74,7 @@ QCSharedBuffer &QCSharedBuffer::operator=( const QCSharedBuffer &rhs )
     return *this;
 }
 
-QCSharedBuffer::QCSharedBuffer( const QCBufferDescriptorBase &other )
+QCSharedBuffer::QCSharedBuffer( const QCBufferDescriptorBase_t &other )
 {
     const BufferDescriptor_t *pBuffer = dynamic_cast<const BufferDescriptor_t *>( &other );
     const TensorDescriptor_t *pTensor = dynamic_cast<const TensorDescriptor_t *>( &other );
@@ -142,7 +142,7 @@ QCStatus_e QCSharedBuffer::Allocate( size_t size, QCBufferUsage_e usage, QCBuffe
             this->buffer.pData = pData;
             this->buffer.dmaHandle = dmaHandle;
             this->buffer.size = size;
-            this->buffer.pid = static_cast<uint64_t>( getpid() );
+            this->buffer.pid = getpid();
             this->buffer.usage = usage;
             this->buffer.flags = flags;
             this->size = size;
@@ -170,7 +170,7 @@ QCStatus_e QCSharedBuffer::Free()
 {
     QCStatus_e ret = QC_STATUS_OK;
     BufferManager *pBufferManager = BufferManager::GetDefaultBufferManager();
-    int pid = getpid();
+    pid_t pid = getpid();
 
     if ( nullptr == pBufferManager )
     {
@@ -215,7 +215,7 @@ QCStatus_e QCSharedBuffer::Import( const QCSharedBuffer *pSharedBuffer )
     void *pData = nullptr;
     uint64_t dmaHandle = 0;
     BufferManager *pBufferManager = BufferManager::GetDefaultBufferManager();
-    int pid = getpid();
+    pid_t pid = getpid();
 
     if ( nullptr == pBufferManager )
     {
@@ -276,7 +276,7 @@ QCStatus_e QCSharedBuffer::UnImport()
 {
     QCStatus_e ret = QC_STATUS_OK;
     BufferManager *pBufferManager = BufferManager::GetDefaultBufferManager();
-    int pid = getpid();
+    pid_t pid = getpid();
 
     if ( nullptr == pBufferManager )
     {
@@ -315,4 +315,5 @@ QCStatus_e QCSharedBuffer::UnImport()
     return ret;
 }
 
+}   // namespace Memory
 }   // namespace QC

@@ -25,7 +25,7 @@ TensorDescriptor &TensorDescriptor::operator=( const BufferDescriptor &other )
         this->id = other.id;
         this->pid = other.pid;
         this->usage = other.usage;
-        this->attr = other.attr;
+        this->cache = other.cache;
 
         const TensorDescriptor_t *pTensor = dynamic_cast<const TensorDescriptor_t *>( &other );
         if ( nullptr != pTensor )
@@ -51,7 +51,7 @@ TensorDescriptor &TensorDescriptor::operator=( const QCSharedBuffer_t &other )
     this->id = other.buffer.id;
     this->pid = other.buffer.pid;
     this->usage = other.buffer.usage;
-    this->attr = QC_CACHEABLE;
+    this->cache = QC_CACHEABLE;
     this->tensorType = other.tensorProps.type;
     std::copy( other.tensorProps.dims, other.tensorProps.dims + other.tensorProps.numDims,
                this->dims );

@@ -16,6 +16,8 @@
 
 namespace QC
 {
+namespace Memory
+{
 
 static std::mutex s_heapMutex;
 static int s_heapDevFd[ID_DMA_BUF_HEAP_CMA] = { -1, -1 };
@@ -169,7 +171,7 @@ QCStatus_e QCDmaFree( void *pData, uint64_t dmaHandle, size_t size )
     return ret;
 }
 
-QCStatus_e QCDmaImport( void **pData, uint64_t *pDmaHandle, uint64_t pid, uint64_t dmaHandle,
+QCStatus_e QCDmaImport( void **pData, uint64_t *pDmaHandle, pid_t pid, uint64_t dmaHandle,
                         size_t size, QCBufferFlags_t flags, QCBufferUsage_e usage )
 {
     int rc = 0;
@@ -285,4 +287,5 @@ QCStatus_e QCDmaUnImport( void *pData, uint64_t dmaHandle, size_t size )
 
     return ret;
 }
+}   // namespace Memory
 }   // namespace QC

@@ -71,7 +71,7 @@ static const char *s_qcFormatToString[QC_IMAGE_FORMAT_MAX] = {
 
 BasicImageAllocator::BasicImageAllocator( const std::string &name ) : BinaryAllocator( name )
 {
-    (void) QC_LOGGER_INIT( m_name.c_str(), LOGGER_LEVEL_ERROR );
+    (void) QC_LOGGER_INIT( GetConfiguration().name.c_str(), LOGGER_LEVEL_ERROR );
 };
 
 BasicImageAllocator::~BasicImageAllocator()
@@ -199,7 +199,7 @@ QCStatus_e BasicImageAllocator::Allocate( const QCBufferPropBase_t &request,
 
 ImageAllocator::ImageAllocator( const std::string &name ) : BinaryAllocator( name )
 {
-    (void) QC_LOGGER_INIT( m_name.c_str(), LOGGER_LEVEL_ERROR );
+    (void) QC_LOGGER_INIT( GetConfiguration().name.c_str(), LOGGER_LEVEL_ERROR );
 };
 
 ImageAllocator::~ImageAllocator()

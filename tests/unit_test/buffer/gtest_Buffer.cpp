@@ -10,9 +10,20 @@
 #include <thread>
 
 using namespace QC;
+using namespace QC::Memory;
 using namespace std::chrono_literals;
 
-TEST( Buffer, SANITY_ImageAllocateByWHF )
+class Buffer : public testing::Test
+{
+
+protected:
+    void SetUp() override {}
+
+    void TearDown() override {}
+};
+
+
+TEST_F( Buffer, SANITY_ImageAllocateByWHF )
 {
     QCSharedBuffer_t sharedBuffer;
     QCSharedBuffer_t sharedBufferM;
@@ -124,7 +135,7 @@ TEST( Buffer, SANITY_ImageAllocateByWHF )
     ASSERT_EQ( QC_STATUS_OK, ret );
 }
 
-TEST( Buffer, SANITY_ImageAllocateByProps )
+TEST_F( Buffer, SANITY_ImageAllocateByProps )
 {
     QCSharedBuffer_t sharedBuffer;
     QCImageProps_t imgProp;
@@ -178,7 +189,7 @@ TEST( Buffer, SANITY_ImageAllocateByProps )
     ASSERT_EQ( QC_STATUS_OK, ret );
 }
 
-TEST( Buffer, SANITY_ImageAllocateRGBByProps )
+TEST_F( Buffer, SANITY_ImageAllocateRGBByProps )
 {
     QCSharedBuffer_t sharedBufferAll;
     QCSharedBuffer_t sharedBufferMiddle;
@@ -223,7 +234,7 @@ TEST( Buffer, SANITY_ImageAllocateRGBByProps )
     ASSERT_EQ( QC_STATUS_OK, ret );
 }
 
-TEST( Buffer, SANITY_CompressedImageAllocateByProps )
+TEST_F( Buffer, SANITY_CompressedImageAllocateByProps )
 {
     QCSharedBuffer_t sharedBuffer;
     QCImageProps_t imgProp;
@@ -247,7 +258,7 @@ TEST( Buffer, SANITY_CompressedImageAllocateByProps )
     ASSERT_EQ( QC_STATUS_OK, ret );
 }
 
-TEST( Buffer, SANITY_TensorAllocate )
+TEST_F( Buffer, SANITY_TensorAllocate )
 {
     QCSharedBuffer_t sharedBuffer;
     QCTensorProps_t tensorProp = { QC_TENSOR_TYPE_UFIXED_POINT_8, { 1, 128, 128, 10 }, 4 };
@@ -377,7 +388,7 @@ static bool IsTheSameSharedBuffer( QCSharedBuffer_t &bufferA, QCSharedBuffer_t &
     return bEqual;
 }
 
-TEST( Buffer, L2_Buffer )
+TEST_F( Buffer, L2_Buffer )
 {
     QCStatus_e ret;
     for ( int i = 0; i < (int) QC_BUFFER_USAGE_MAX; i++ )
@@ -490,7 +501,7 @@ static void InitImageProps( QCImageProps_t &imgProp )
     imgProp.planeBufSize[0] = 0;
 }
 
-TEST( Buffer, L2_Image )
+TEST_F( Buffer, L2_Image )
 {
     {
         QCSharedBuffer_t sharedBuffer;
@@ -722,7 +733,7 @@ TEST( Buffer, L2_Image )
     }
 }
 
-TEST( Buffer, L2_Tensor )
+TEST_F( Buffer, L2_Tensor )
 {
     for ( uint32_t i = 0; i < (uint32_t) QC_TENSOR_TYPE_MAX; i++ )
     {
@@ -789,7 +800,7 @@ TEST( Buffer, L2_Tensor )
     }
 }
 
-TEST( Buffer, L2_BufferManager )
+TEST_F( Buffer, L2_BufferManager )
 {
     BufferManager *pBufferManager = BufferManager::GetDefaultBufferManager();
     ASSERT_NE( nullptr, pBufferManager );
@@ -843,7 +854,7 @@ TEST( Buffer, L2_BufferManager )
     }
 }
 
-TEST( Buffer, L2_Image2Tensor )
+TEST_F( Buffer, L2_Image2Tensor )
 {
     QCStatus_e ret;
     {
@@ -1028,7 +1039,7 @@ TEST( Buffer, L2_Image2Tensor )
     }
 }
 
-TEST( Buffer, SanityImport )
+TEST_F( Buffer, SanityImport )
 {
     QCSharedBuffer_t sharedBuffer;
     uint32_t *pData;
@@ -1064,7 +1075,7 @@ TEST( Buffer, SanityImport )
     }
 }
 
-TEST( Buffer, L2_Import )
+TEST_F( Buffer, L2_Import )
 {
     QCSharedBuffer_t sharedBuffer;
     QCSharedBuffer_t importedBuffer;

@@ -24,7 +24,7 @@ BufferDescriptor &BufferDescriptor::operator=( BufferDescriptor &other )
         this->id = other.id;
         this->pid = other.pid;
         this->usage = other.usage;
-        this->attr = other.attr;
+        this->cache = other.cache;
     }
     return *this;
 }

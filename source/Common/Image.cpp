@@ -9,6 +9,9 @@
 
 namespace QC
 {
+namespace Memory
+{
+
 #define PLANEDEF_HW_USAGE_FLAGS                                                                    \
     ( WFD_USAGE_OPENGL_ES2 | WFD_USAGE_OPENGL_ES3 | WFD_USAGE_CAPTURE | WFD_USAGE_VIDEO |          \
       WFD_USAGE_DISPLAY | WFD_USAGE_NATIVE )
@@ -556,4 +559,6 @@ QCStatus_e QCSharedBuffer::ImageToTensor( QCSharedBuffer *pLuma, QCSharedBuffer 
 
     return ret;
 }
+
+}   // namespace Memory
 }   // namespace QC

@@ -23,6 +23,7 @@ extern "C"
 #include "QC/Infras/Log/Logger.hpp"
 #include "QC/Infras/Memory/SharedBuffer.hpp"
 using namespace QC;
+using namespace QC::Memory;
 
 namespace QC
 {

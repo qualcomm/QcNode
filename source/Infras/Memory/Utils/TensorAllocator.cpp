@@ -39,7 +39,7 @@ static uint32_t s_qcTensorTypeToDataSize[QC_TENSOR_TYPE_MAX] = {
 
 TensorAllocator::TensorAllocator( const std::string &name ) : BinaryAllocator( name )
 {
-    (void) QC_LOGGER_INIT( m_name.c_str(), LOGGER_LEVEL_ERROR );
+    (void) QC_LOGGER_INIT( GetConfiguration().name.c_str(), LOGGER_LEVEL_ERROR );
 };
 
 TensorAllocator::~TensorAllocator()

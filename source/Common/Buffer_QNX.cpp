@@ -2,12 +2,13 @@
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
-#if defined( __QNXNTO__ )
 #include "QC/Infras/Memory/BufferManager.hpp"
 #include "QC/Infras/Memory/SharedBuffer.hpp"
 #include <pmem.h>
 
 namespace QC
+{
+namespace Memory
 {
 
 static uint32_t s_usageToPMemID[QC_BUFFER_USAGE_MAX] = {
@@ -100,7 +101,7 @@ QCStatus_e QCDmaFree( void *pData, uint64_t dmaHandle, size_t size )
     return ret;
 }
 
-QCStatus_e QCDmaImport( void **pData, uint64_t *pDmaHandle, uint64_t pid, uint64_t dmaHandle,
+QCStatus_e QCDmaImport( void **pData, uint64_t *pDmaHandle, pid_t pid, uint64_t dmaHandle,
                         size_t size, QCBufferFlags_t flags, QCBufferUsage_e usage )
 {
     QCStatus_e ret = QC_STATUS_OK;
@@ -185,6 +186,6 @@ QCStatus_e QCDmaUnImport( void *pData, uint64_t dmaHandle, size_t size )
 
     return ret;
 }
-}   // namespace QC
 
-#endif /*  __QNXNTO__ */
+}   // namespace Memory
+}   // namespace QC

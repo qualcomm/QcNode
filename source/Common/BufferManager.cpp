@@ -9,6 +9,8 @@
 
 namespace QC
 {
+namespace Memory
+{
 
 std::mutex BufferManager::s_lock;
 static BufferManager s_dftBufMgr;
@@ -182,4 +184,6 @@ QCStatus_e BufferManager::GetSharedBuffer( uint64_t id, QCSharedBuffer_t *pShare
 
     return ret;
 }
+
+}   // namespace Memory
 }   // namespace QC

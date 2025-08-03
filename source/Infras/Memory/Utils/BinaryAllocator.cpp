@@ -11,9 +11,9 @@ namespace QC
 namespace Memory
 {
 
-BinaryAllocator::BinaryAllocator( const std::string &name ) : QCMemoryAllocatorIfs( name )
+BinaryAllocator::BinaryAllocator( const std::string &name ) : QCMemoryAllocatorIfs( {name}, QC_MEMORY_ALLOCATOR_DMA )
 {
-    (void) QC_LOGGER_INIT( m_name.c_str(), LOGGER_LEVEL_ERROR );
+    (void) QC_LOGGER_INIT( GetConfiguration().name.c_str(), LOGGER_LEVEL_ERROR );
 };
 
 BinaryAllocator::~BinaryAllocator()
@@ -33,7 +33,7 @@ QCStatus_e BinaryAllocator::Allocate( const QCBufferPropBase_t &request,
 
     if ( ( nullptr != pBufferProps ) && ( nullptr != pBufferDescriptor ) )
     {
-        if ( QC_NON_CACHEABLE != request.attr )
+        if ( QC_CACHEABLE_NON != request.cache )
         {
             flags |= QC_BUFFER_FLAGS_CACHE_WB_WA;
         }
@@ -44,7 +44,7 @@ QCStatus_e BinaryAllocator::Allocate( const QCBufferPropBase_t &request,
                 QCDmaAllocate( &pData, &dmaHandle, pBufferProps->size, flags, pBufferProps->usage );
         if ( QC_STATUS_OK == status )
         {
-            pBufferDescriptor->name = m_name + "-" + std::to_string( dmaHandle );
+            pBufferDescriptor->name = GetConfiguration().name + "-" + std::to_string( dmaHandle );
             pBufferDescriptor->pBuf = pData;
             pBufferDescriptor->size = pBufferProps->size;
             pBufferDescriptor->type = QC_BUFFER_TYPE_RAW;
@@ -53,9 +53,9 @@ QCStatus_e BinaryAllocator::Allocate( const QCBufferPropBase_t &request,
             pBufferDescriptor->dmaSize = pBufferProps->size;
             pBufferDescriptor->offset = 0;
             pBufferDescriptor->id = 0; /* TODO: talk with Vadiam about the new buffer manager */
-            pBufferDescriptor->pid = static_cast<uint64_t>( getpid() );
+            pBufferDescriptor->pid = getpid();
             pBufferDescriptor->usage = pBufferProps->usage;
-            pBufferDescriptor->attr = pBufferProps->attr;
+            pBufferDescriptor->cache = pBufferProps->cache;
         }
     }
     else
@@ -71,7 +71,7 @@ QCStatus_e BinaryAllocator::Free( const QCBufferDescriptorBase_t &buffer )
     QCStatus_e status = QC_STATUS_OK;
     const BufferDescriptor_t *pBufferDescriptor =
             dynamic_cast<const BufferDescriptor_t *>( &buffer );
-    int pid = getpid();
+    pid_t pid = getpid();
 
     if ( nullptr == pBufferDescriptor )
     {

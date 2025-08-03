@@ -25,11 +25,13 @@ install( FILES  ${HEADERS_DIR}/QC/Common/DataTree.hpp
                 DESTINATION include/QC/Common )
 install( FILES  ${HEADERS_DIR}/QC/Infras/Log/Logger.hpp
                 DESTINATION include/QC/Infras/Log )
-install( FILES  ${HEADERS_DIR}/QC/Infras/Memory/Ifs/QCMemoryAllocatorIfs.hpp
+install( FILES  ${HEADERS_DIR}/QC/Infras/Memory/Ifs/QCBufferDescriptorBase.hpp
+                ${HEADERS_DIR}/QC/Infras/Memory/Ifs/QCMemoryAllocatorIfs.hpp
                 ${HEADERS_DIR}/QC/Infras/Memory/Ifs/QCMemoryDefs.hpp
+                ${HEADERS_DIR}/QC/Infras/Memory/Ifs/QCMemoryManagerIfs.hpp
+                ${HEADERS_DIR}/QC/Infras/Memory/Ifs/QCMemoryPoolIfs.hpp
+                ${HEADERS_DIR}/QC/Infras/Memory/Ifs/QCMemoryUtilsIfs.hpp
                 DESTINATION include/QC/Infras/Memory/Ifs )
-install( FILES  ${HEADERS_DIR}/QC/Infras/Memory/QCBufferDescriptorBase.hpp
-                DESTINATION include/QC/Infras/Memory )
 install( FILES  ${HEADERS_DIR}/QC/Node/Ifs/QCFrameDescriptorNodeIfs.hpp
                 ${HEADERS_DIR}/QC/Node/Ifs/QCNodeConfigIfs.hpp
                 ${HEADERS_DIR}/QC/Node/Ifs/QCNodeDefs.hpp

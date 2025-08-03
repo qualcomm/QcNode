@@ -19,7 +19,7 @@
 #include "QC/Infras/Memory/BufferDescriptor.hpp"
 #include "QC/Infras/Memory/Ifs/QCMemoryDefs.hpp"
 #include "QC/Infras/Memory/ImageDescriptor.hpp"
-#include "QC/Infras/Memory/QCBufferDescriptorBase.hpp"
+#include "QC/Infras/Memory/Ifs/QCBufferDescriptorBase.hpp"
 #include "QC/Infras/Memory/SharedBuffer.hpp"
 #include "QC/Infras/Memory/TensorDescriptor.hpp"
 #include "QC/Node/Ifs/QCFrameDescriptorNodeIfs.hpp"
@@ -39,14 +39,12 @@ using namespace QC::Memory;
  * This is used by QCSharedFrameDescriptorNode to indicate that the buffer identified by
  * globalBufferId is dummy and not provided by the user application or QCNode.
  */
-typedef struct QCDummyBufferDescriptor : public QCBufferDescriptorBase
+typedef struct QCDummyBufferDescriptor : public QCBufferDescriptorBase_t
 {
 public:
     QCDummyBufferDescriptor() noexcept
     {
         name = "Dummy";
-        pBuf = nullptr;
-        size = 0;
         type = QC_BUFFER_TYPE_MAX;
     }
     virtual ~QCDummyBufferDescriptor() = default;
@@ -56,7 +54,7 @@ public:
  * @brief QCNode Shared Buffer Descriptor
  * @param buffer The QC shared buffer.
  */
-typedef struct QCSharedBufferDescriptor : public QCBufferDescriptorBase
+typedef struct QCSharedBufferDescriptor : public QCBufferDescriptorBase_t
 {
 
 public:
@@ -196,7 +194,6 @@ public:
 private:
     QCDummyBufferDescriptor_t &Dummy() { return s_dummy; }
 
-private:
     std::vector<std::reference_wrapper<QCBufferDescriptorBase_t>> m_buffers;
     static QCDummyBufferDescriptor_t s_dummy;
 };

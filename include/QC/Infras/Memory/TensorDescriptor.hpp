@@ -46,7 +46,7 @@ public:
      * @param tensorType The tensor type.
      * @param dims The tensor dimensions.
      * @param usage The intended usage of the buffer, default is QC_BUFFER_USAGE_CAMERA.
-     * @param attr The attributes of the buffer, default is QC_CACHEABLE.
+     * @param cache The cache attributes of the buffer, default is QC_CACHEABLE.
      * @return None.
      * @note This constructor sets up the properties of the tensor with the given parameters, while
      * most other properties are set to their default suggested values.
@@ -55,8 +55,8 @@ public:
      */
     TensorProps( QCTensorType_e tensorType, std::vector<uint32_t> dims,
                  QCBufferUsage_e usage = QC_BUFFER_USAGE_CAMERA,
-                 QCAllocationAttribute_e attr = QC_CACHEABLE )
-        : BufferProps( 0, usage, attr ),
+                 QCAllocationCache_e cache = QC_CACHEABLE )
+        : BufferProps( 0, usage, cache ),
           tensorType( tensorType )
     {
         numDims = static_cast<uint32_t>( dims.size() );

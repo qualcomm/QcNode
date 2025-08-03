@@ -11,8 +11,6 @@ namespace QC
 namespace Node
 {
 
-using namespace QC::Memory;
-
 CL2DFlex::CL2DFlex()
     : m_pCL2DFlexImpl( new CL2DFlexImpl( m_nodeId, m_logger ) ),
       m_configIfs( m_logger, m_pCL2DFlexImpl ),
