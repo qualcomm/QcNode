@@ -5,9 +5,11 @@
 #define QC_SHARED_BUFFER_HPP
 
 #include "QC/Common/Types.hpp"
-#include "QC/Infras/Memory/QCBufferDescriptorBase.hpp"
+#include "QC/Infras/Memory/Ifs/QCBufferDescriptorBase.hpp"
 
 namespace QC
+{
+namespace Memory
 {
 
 /** @brief QC Shared Buffer between Components for zero copy purpose */
@@ -37,7 +39,7 @@ public:
      * @note This is a temporary workaround API to support smoother development during phase 2.
      *       It will be removed once phase 2 is complete.
      */
-    QCSharedBuffer( const QCBufferDescriptorBase &other );
+    QCSharedBuffer( const QCBufferDescriptorBase_t &other );
 
     /**
      * @brief Construct an shared buffer from another shared buffer
@@ -207,7 +209,7 @@ QCStatus_e QCDmaFree( void *pData, uint64_t dmaHandle, size_t size );
  * @param[in] usage the DMA buffer usage
  * @return QC_STATUS_OK on success, others on failure
  */
-QCStatus_e QCDmaImport( void **pData, uint64_t *pDmaHandle, uint64_t pid, uint64_t dmaHandle,
+QCStatus_e QCDmaImport( void **pData, uint64_t *pDmaHandle, pid_t pid, uint64_t dmaHandle,
                         size_t size, QCBufferFlags_t flags, QCBufferUsage_e usage );
 
 /**
@@ -218,6 +220,7 @@ QCStatus_e QCDmaImport( void **pData, uint64_t *pDmaHandle, uint64_t pid, uint64
  * @return QC_STATUS_OK on success, others on failure
  */
 QCStatus_e QCDmaUnImport( void *pData, uint64_t dmaHandle, size_t size );
+}   // namespace Memory
 }   // namespace QC
 
 #endif   // QC_SHARED_BUFFER_HPP

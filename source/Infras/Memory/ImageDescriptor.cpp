@@ -247,7 +247,7 @@ ImageDescriptor &ImageDescriptor::operator=( const BufferDescriptor &other )
         this->id = other.id;
         this->pid = other.pid;
         this->usage = other.usage;
-        this->attr = other.attr;
+        this->cache = other.cache;
         const ImageDescriptor_t *pImage = dynamic_cast<const ImageDescriptor_t *>( &other );
         if ( pImage )
         {
@@ -277,7 +277,7 @@ ImageDescriptor &ImageDescriptor::operator=( const QCSharedBuffer_t &other )
     this->id = other.buffer.id;
     this->pid = other.buffer.pid;
     this->usage = other.buffer.usage;
-    this->attr = QC_CACHEABLE;
+    this->cache = QC_CACHEABLE;
     this->format = other.imgProps.format;
     this->batchSize = other.imgProps.batchSize;
     this->width = other.imgProps.width;

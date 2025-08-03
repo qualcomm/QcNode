@@ -7,6 +7,9 @@
 
 namespace QC
 {
+namespace Memory
+{
+
 #define SIZE_OF_FLOAT16 2
 static uint32_t s_qcTensorTypeToDataSize[QC_TENSOR_TYPE_MAX] = {
         sizeof( int8_t ),  /* QC_TENSOR_TYPE_INT_8 */
@@ -92,4 +95,6 @@ QCStatus_e QCSharedBuffer::Allocate( const QCTensorProps_t *pTensorProps, QCBuff
 
     return ret;
 }
+
+}   // namespace Memory
 }   // namespace QC

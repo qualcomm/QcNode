@@ -221,12 +221,12 @@ TEST( Memory, SANITY_ImageAllocateByWHF )
     BufferProps_t bufProps;
     ImageProps_t imgProps;
     imgProps.size = 1024;
-    imgProps.attr = static_cast<QCAllocationAttribute_e>( 1234 );
+    imgProps.cache = static_cast<QCAllocationCache_e>( 1234 );
     imgProps.alignment = 8096;
     imgProps.usage = static_cast<QCBufferUsage_e>( 5678 );
     bufProps = imgProps;
     ASSERT_EQ( 1024, bufProps.size );
-    ASSERT_EQ( 1234, bufProps.attr );
+    ASSERT_EQ( 1234, bufProps.cache );
     ASSERT_EQ( 8096, bufProps.alignment );
     ASSERT_EQ( 5678, bufProps.usage );
 }
@@ -447,7 +447,7 @@ static bool IsTheSameSharedBuffer( BufferDescriptor_t &bufferA, BufferDescriptor
     if ( ( bufferA.pBuf != bufferB.pBuf ) || ( bufferA.pBufBase != bufferB.pBufBase ) ||
          ( bufferA.dmaHandle != bufferB.dmaHandle ) || ( bufferA.dmaSize != bufferB.dmaSize ) ||
          ( bufferA.id != bufferB.id ) || ( bufferA.pid != bufferB.pid ) ||
-         ( bufferA.usage != bufferB.usage ) || ( bufferA.attr != bufferB.attr ) )
+         ( bufferA.usage != bufferB.usage ) || ( bufferA.cache != bufferB.cache ) )
     {
         printf( "buffer buffer not equal\n" );
         bEqual = false;
@@ -513,14 +513,14 @@ static bool IsTheSameSharedBuffer( BufferDescriptor_t &bufferA, BufferDescriptor
 TEST( Memory, L2_Buffer )
 {
     QCStatus_e status;
-    BinaryAllocator ma( "BINARY" );
+    BinaryAllocator ma("BINARY");
     for ( int i = 0; i < (int) QC_BUFFER_USAGE_MAX; i++ )
     {
 
         QCBufferUsage_e usage = (QCBufferUsage_e) i;
-        QCAllocationAttribute_e attr = QC_NON_CACHEABLE;
+        QCAllocationCache_e cache = QC_CACHEABLE_NON;
         BufferDescriptor_t bufDesc;
-        status = ma.Allocate( BufferProps_t( (size_t) 1024 * 1024 * 1024 * 256, usage, attr ),
+        status = ma.Allocate( BufferProps_t( (size_t) 1024 * 1024 * 1024 * 256, usage, cache ),
                               bufDesc );
 #if !defined( __QNXNTO__ )
         if ( QC_STATUS_UNSUPPORTED == status )
@@ -531,7 +531,7 @@ TEST( Memory, L2_Buffer )
 #endif
         ASSERT_EQ( QC_STATUS_NOMEM, status );
 
-        status = ma.Allocate( BufferProps_t( (size_t) 1024 * 1024 * 32, usage, attr ), bufDesc );
+        status = ma.Allocate( BufferProps_t( (size_t) 1024 * 1024 * 32, usage, cache ), bufDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
 
         status = ma.Free( bufDesc );
@@ -541,16 +541,16 @@ TEST( Memory, L2_Buffer )
     for ( int i = 0; i < (int) QC_BUFFER_USAGE_MAX; i++ )
     {
         QCBufferUsage_e usage = (QCBufferUsage_e) i;
-        QCAllocationAttribute_e attr = QC_CACHEABLE;
+        QCAllocationCache_e cache = QC_CACHEABLE;
         BufferDescriptor_t bufDesc;
 #if defined( __QNXNTO__ )
         /* not do this for Linux, see device crashed */
-        status = ma.Allocate( BufferProps_t( (size_t) 1024 * 1024 * 1024 * 256, usage, attr ),
+        status = ma.Allocate( BufferProps_t( (size_t) 1024 * 1024 * 1024 * 256, usage, cache ),
                               bufDesc );
         ASSERT_EQ( QC_STATUS_NOMEM, status );
 #endif
 
-        status = ma.Allocate( BufferProps_t( (size_t) 1024 * 1024 * 32, usage, attr ), bufDesc );
+        status = ma.Allocate( BufferProps_t( (size_t) 1024 * 1024 * 32, usage, cache ), bufDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
 
         BufferDescriptor_t bufDesc2 = bufDesc;

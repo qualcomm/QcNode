@@ -9,8 +9,6 @@ set( COMMON_SOURCES
     Image.cpp
     Tensor.cpp
     Logger.cpp
-    Buffer_QNX.cpp
-    Logger_QNX.cpp
 )
 
 set( TARGET_LIBRARIES )
@@ -20,6 +18,8 @@ if( "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" AND "${CMAKE_SYSTEM_PROCESSOR}" STRE
     list( APPEND TARGET_LIBRARIES kiumd apdf aosal pthread dl systemd )
     list( APPEND HEADERS_DIR ${CMAKE_SYSROOT}/usr/include/WF )
     list( APPEND HEADERS_DIR ${CMAKE_SYSROOT}/usr/include/linux-ark )
+else()
+    list( APPEND COMMON_SOURCES Buffer_QNX.cpp Logger_QNX.cpp )
 endif()
 
 add_library( QCNodeCommon OBJECT ${COMMON_SOURCES} )

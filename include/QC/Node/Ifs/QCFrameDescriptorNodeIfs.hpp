@@ -5,12 +5,14 @@
 #ifndef QC_FRAME_DESCRIPTOR_NODE_BASES_HPP
 #define QC_FRAME_DESCRIPTOR_NODE_BASES_HPP
 
-#include "QC/Infras/Memory/QCBufferDescriptorBase.hpp"
+#include "QC/Infras/Memory/Ifs/QCBufferDescriptorBase.hpp"
 #include "QC/Node/Ifs/QCNodeDefs.hpp"
 #include <chrono>
 
 namespace QC
 {
+
+using namespace QC::Memory;
 
 /**
  * @brief QCNode Frame Descriptor for Node

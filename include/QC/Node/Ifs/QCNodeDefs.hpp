@@ -11,17 +11,37 @@
 namespace QC
 {
 
+/**
+ * @struct QCNodeID_t
+ * @brief Structure representing a QCNode ID.
+ * This structure contains a name and an ID that uniquely identify a QCNode. */
 typedef struct QCNodeID
 {
     constexpr bool operator==( const QCNodeID &nodeId )
     {
-        return ( ( id == nodeId.id ) && ( name.compare( nodeId.name ) == 0 ) );
+        return ( ( type == nodeId.type ) && ( 0 == name.compare( nodeId.name ) == 0 ) &&
+                 ( id == nodeId.id ) );
     };
     constexpr bool operator!=( const QCNodeID &nodeId )
     {
-        return ( ( id != nodeId.id ) || ( name.compare( nodeId.name ) != 0 ) );
+        return ( ( type != nodeId.type ) || ( name.compare( nodeId.name ) != 0 ) ||
+                 ( id != nodeId.id ) );
     };
+
+    /**
+     * @var name
+     * @brief The unique name of the QCNode. */
     std::string name;
+
+    /**
+     * @var type
+     * @brief The ID of the QCNode. */
+    QCNodeType_e type;
+
+    /**
+     * @var id
+     * @brief The unique id of the QCNode.
+     * The id values are zero based countinuous value*/
     uint32_t id;
 } QCNodeID_t;
 

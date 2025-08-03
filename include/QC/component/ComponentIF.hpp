@@ -22,6 +22,8 @@ namespace QC
 namespace component
 {
 
+using namespace QC::Memory;
+
 /**
  * @brief ComponentIF
  * Component Interface

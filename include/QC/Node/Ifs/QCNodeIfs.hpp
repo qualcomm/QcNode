@@ -36,7 +36,7 @@ typedef struct QCNodeInit
 {
     std::string config;
     QCNodeEventCallBack_t callback;
-    std::vector<std::reference_wrapper<QCBufferDescriptorBase>> buffers;
+    std::vector<std::reference_wrapper<QCBufferDescriptorBase_t>> buffers;
 } QCNodeInit_t;
 
 class QCNodeIfs

@@ -23,14 +23,14 @@
 
 #include "QC/sample/shared_ring/SpinLock.hpp"
 
-using namespace QC;
-
 namespace QC
 {
 namespace sample
 {
 namespace shared_ring
 {
+
+using namespace QC::Memory;
 
 #ifndef SHARED_RING_NUM_DATA_FRAMES
 #define SHARED_RING_NUM_DATA_FRAMES 32
