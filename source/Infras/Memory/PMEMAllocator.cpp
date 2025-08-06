@@ -4,6 +4,7 @@
 
 #include "QC/Infras/Memory/PMEMAllocator.hpp"
 #include <pmem.h>
+#include <unistd.h>
 
 namespace QC
 {
@@ -69,6 +70,7 @@ QCStatus_e PMEMAllocator::Allocate( const QCBufferPropBase_t &request,
             response.allocatorType = GetConfiguration().type;
             response.alignment = request.alignment;
             response.cache = request.cache;
+            response.pid = getpid();
             response.name = GetConfiguration().name + "-" + std::to_string( response.dmaHandle );
         }
     }

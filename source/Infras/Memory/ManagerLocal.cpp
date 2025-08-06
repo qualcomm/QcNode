@@ -15,10 +15,9 @@ namespace Memory
 {
 
 ManagerLocal::ManagerLocal()
-//: m_state( QC_OBJECT_STATE_INITIAL )
 {
     m_state = QC_OBJECT_STATE_INITIAL;
-    (void) QC_LOGGER_INIT( "ManagerLocal", LOGGER_LEVEL_VERBOSE );
+    (void) QC_LOGGER_INIT( "ManagerLocal", LOGGER_LEVEL_ERROR );
 }
 
 QCStatus_e ManagerLocal::Initialize( const QCMemoryManagerInit_t &init )
@@ -45,7 +44,8 @@ QCStatus_e ManagerLocal::Initialize( const QCMemoryManagerInit_t &init )
                     m_pools.back();
 
             m_allocations.push_back( allocMap );
-            std::map<QCBufferDescriptorBase_t, QCMemoryAllocator_e> &refAllocMap = m_allocations.back();
+            std::map<QCBufferDescriptorBase_t, QCMemoryAllocator_e> &refAllocMap =
+                    m_allocations.back();
         }
     }
 
@@ -56,6 +56,11 @@ QCStatus_e ManagerLocal::Initialize( const QCMemoryManagerInit_t &init )
     else
     {
         m_state = QC_OBJECT_STATE_ERROR;
+        if ( nullptr != m_config )
+        {
+            delete m_config;
+            m_config = nullptr;
+        }
     }
 
     return status;
@@ -96,8 +101,11 @@ QCStatus_e ManagerLocal::DeInitialize()
         m_allocations.pop_back();
     }
 
-    delete m_config;
-    m_config = nullptr;
+    if ( nullptr != m_config )
+    {
+        delete m_config;
+        m_config = nullptr;
+    }
 
     if ( QC_STATUS_OK == status )
     {
@@ -514,7 +522,8 @@ QCStatus_e ManagerLocal::AllocateBuffer( const QCMemoryHandle_t handle,
         if ( QC_STATUS_OK != status ) QC_ERROR( "BAD ALLOC RESULT" );
         else
         {
-            std::map<QCBufferDescriptorBase_t, QCMemoryAllocator_e> &bufferMap = m_allocations[handleIt->second];
+            std::map<QCBufferDescriptorBase_t, QCMemoryAllocator_e> &bufferMap =
+                    m_allocations[handleIt->second];
             bufferMap.insert( { buff, allocator } );
 
             // validate insertion
@@ -539,7 +548,8 @@ QCStatus_e ManagerLocal::AllocateBuffer( const QCMemoryHandle_t handle,
         }
     }
 
-    if ( ( QC_STATUS_OK != status ) && ( QC_STATUS_BAD_ARGUMENTS != status ) )
+    if ( ( QC_STATUS_OK != status ) && ( QC_STATUS_BAD_ARGUMENTS != status ) &&
+         ( QC_STATUS_NOMEM != status ) )
     {
         QC_ERROR( "m_state = QC_OBJECT_STATE_ERROR" );
         m_state = QC_OBJECT_STATE_ERROR;
@@ -571,7 +581,8 @@ QCStatus_e ManagerLocal::FreeBuffer( const QCMemoryHandle_t handle,
     else
     {
         // Validate existance of the buffer pointer in the data base
-        std::map<QCBufferDescriptorBase_t, QCMemoryAllocator_e> &bufferMap = m_allocations[handleIt->second];
+        std::map<QCBufferDescriptorBase_t, QCMemoryAllocator_e> &bufferMap =
+                m_allocations[handleIt->second];
         auto bufferIt = bufferMap.find( buff );
         if ( bufferIt != bufferMap.end() )
         {
@@ -611,6 +622,16 @@ QCStatus_e ManagerLocal::FreeBuffer( const QCMemoryHandle_t handle,
 QCStatus_e ManagerLocal::ReclaimResources( const QCMemoryHandle_t &handle )
 {
     QCStatus_e status = QC_STATUS_OK;
+    QCObjectState_e state = GetState();
+
+    if ( state != QC_OBJECT_STATE_READY )
+    {
+        QC_DEBUG( "state != QC_OBJECT_STATE_READY" );
+        // changing temporally object state to allow call to
+        // memory release methods which are blocked by wrong state
+        m_state = QC_OBJECT_STATE_READY;
+    }
+
     std::map<QCMemoryHandle_t, uint32_t>::iterator handleIt;
     // validate handle
     if ( false == IsMemoryHandleRegistered( handle, handleIt ) )
@@ -623,8 +644,9 @@ QCStatus_e ManagerLocal::ReclaimResources( const QCMemoryHandle_t &handle )
         QC_DEBUG( "handle (%ull) ", handle.GetHandle() );
         QC_DEBUG( "handle allocations in vector is %d ", handleIt->second );
         // reclaim stand alone allocations
-        //###############################
-        std::map<QCBufferDescriptorBase_t, QCMemoryAllocator_e> &bufferMap = m_allocations[handleIt->second];
+        // ###############################
+        std::map<QCBufferDescriptorBase_t, QCMemoryAllocator_e> &bufferMap =
+                m_allocations[handleIt->second];
 
         if ( true == bufferMap.empty() )
         {
@@ -634,9 +656,9 @@ QCStatus_e ManagerLocal::ReclaimResources( const QCMemoryHandle_t &handle )
         {
             // itterate over map and release allocations
             uint32_t freedREsourcesCount = 0;
-            for ( auto it = bufferMap.begin(); it != bufferMap.end(); )
+            for ( ; false == bufferMap.empty(); )
             {
-                QC_DEBUG( "it %p ", it );
+                auto it = bufferMap.begin();
                 if ( it != bufferMap.end() )
                 {
                     QCBufferDescriptorBase_t buffDescriptor = it->first;
@@ -671,7 +693,7 @@ QCStatus_e ManagerLocal::ReclaimResources( const QCMemoryHandle_t &handle )
         }
 
         // reclaim pool allocations & destroy pools
-        //########################################
+        // ########################################
         std::map<QCMemoryPoolHandle_t, std::reference_wrapper<QCMemoryPoolIfs>> &poolMap =
                 m_pools[handleIt->second];
         // itterate over map and release allocations
@@ -682,19 +704,24 @@ QCStatus_e ManagerLocal::ReclaimResources( const QCMemoryHandle_t &handle )
         else
         {
             uint32_t freedPoolsCount = 0;
-            for ( auto it = poolMap.begin(); it != poolMap.end(); )
+            for ( ; false == poolMap.empty(); )
             {
-                QCStatus_e localStatus = DestroyPool( handle, it->first );
-                if ( QC_STATUS_OK != localStatus )
+                auto it = poolMap.begin();
+                if ( it != poolMap.end() )
                 {
-                    status = localStatus;
-                    QC_ERROR( "Destroy Pool failed with memory handle %ull and pool handle %ull",
-                              handle.GetHandle(), it->first.GetHandle() );
-                }
-                else
-                {
-                    freedPoolsCount++;
-                    QC_DEBUG( "freedPoolsCount %d", freedPoolsCount );
+                    QCStatus_e localStatus = DestroyPool( handle, it->first );
+                    if ( QC_STATUS_OK != localStatus )
+                    {
+                        status = localStatus;
+                        QC_ERROR(
+                                "Destroy Pool failed with memory handle %ull and pool handle %ull",
+                                handle.GetHandle(), it->first.GetHandle() );
+                    }
+                    else
+                    {
+                        freedPoolsCount++;
+                        QC_DEBUG( "freedPoolsCount %d", freedPoolsCount );
+                    }
                 }
             }
             QC_DEBUG( "Total freedPoolsCount %d", freedPoolsCount );
@@ -708,10 +735,16 @@ QCStatus_e ManagerLocal::ReclaimResources( const QCMemoryHandle_t &handle )
         }
     }
 
-    if ( ( QC_STATUS_OK != status ) && ( QC_STATUS_BAD_ARGUMENTS != status ) )
+    if ( status == QC_STATUS_FAIL )
     {
         QC_ERROR( "m_state = QC_OBJECT_STATE_ERROR" );
         m_state = QC_OBJECT_STATE_ERROR;
+    }
+    else
+    {
+        // return original state value from
+        // start of the method
+        m_state = state;
     }
 
     return status;
