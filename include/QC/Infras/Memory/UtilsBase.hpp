@@ -6,6 +6,7 @@
 #define QC_MEMORY_UTILS_BASE_HPP
 
 #include "QC/Infras/Memory/Ifs/QCMemoryUtilsIfs.hpp"
+#include <apdf.h>
 
 namespace QC
 {
@@ -26,7 +27,7 @@ public:
      * This constructor Intilizes members which do not require external parameters
      */
     UtilsBase();
-    
+
     /**
      * @brief Destructor for the UtilsBase class.
      * This destructor releases any resources allocated by the ManagerLocal object.
@@ -54,24 +55,44 @@ public:
     virtual QCStatus_e MemoryUnMap( const QCBufferDescriptorBase_t &buff );
 
     /**
-     * @brief Calculates the buffer size for a tensor.
-     * This method calculates the buffer size for a tensor based on its properties and returns a
-     * status code indicating success or failure.
+     * @brief Sets tensor descriptorvalues from tensor properties.
      * @param prop The tensor properties.
+     * @param desc The tensor descriptor.
      * @return The status of the buffer size calculation operation.
      */
-    virtual QCStatus_e SetTensorBuffSizeFromTensorProp( TensorProps_t &prop );
+    virtual QCStatus_e SetTensorDescFromTensorProp( TensorProps_t &prop, TensorDescriptor_t &desc );
 
     /**
-     * @brief Calculates the buffer size for an image.
-     * This method calculates the buffer size for an image based on its properties and returns a
-     * status code indicating success or failure.
-     * @param prop The image properties.
-     * @return The status of the buffer size calculation operation.
+     * @brief Sets the buffer descriptor values for an image.
+     * @param prop The image basic properties.
+     * @param desc The image descriptor.
+     * @return The status of the buffer descriptor setting operation.
      */
-    virtual QCStatus_e SetImageBuffSizeFromImageProp( ImageProps_t &prop );
+    virtual QCStatus_e SetImageDescFromImageBasicProp( ImageBasicProps_t &prop,
+                                                       ImageDescriptor_t &desc );
+
+    /**
+     * @brief Sets the buffer descriptor values for an image.
+     * @param prop The image properties.
+     * @param desc The image descriptor.
+     * @return The status of the buffer descriptor setting operation.
+     */
+    virtual QCStatus_e SetImageDescFromImageProp( ImageProps_t &prop, ImageDescriptor_t &desc );
 
 private:
+    /**
+     * @var s_qcFormatToString
+     * @brief Array mapping QC format to string.
+     * This array maps each QC format type to string.
+     */
+    static const char *s_qcFormatToString[QC_IMAGE_FORMAT_MAX];
+
+    /**
+     * @var s_qcFormatToApdfFormat
+     * @brief Array mapping QC format to APD format.
+     * This array maps each QC format type to its corresponding APD format.
+     */
+    static const PDColorFormat_e s_qcFormatToApdfFormat[QC_IMAGE_FORMAT_MAX];
     /**
      * @var s_qcTensorTypeToDataSize
      * @brief Array mapping tensor types to data sizes.
@@ -98,13 +119,13 @@ private:
      * @brief Array mapping image formats to height dividers per plane.
      * This array maps each image format to its corresponding height dividers per plane.
      */
-    static const uint32_t s_qcFormatToHeightDividerPerPlanes[QC_IMAGE_FORMAT_MAX][QC_NUM_IMAGE_PLANES];
+    static const uint32_t s_qcFormatToHeightDividerPerPlanes[QC_IMAGE_FORMAT_MAX]
+                                                            [QC_NUM_IMAGE_PLANES];
 
     /**
      * @brief Declare the logger for this class.
      */
     QC_DECLARE_LOGGER();
-
 };
 
 }   // namespace Memory

@@ -87,6 +87,11 @@ QCStatus_e PMEMAllocator::Free( const QCBufferDescriptorBase_t &BufferDescriptor
         status = QC_STATUS_NULL_PTR;
         QC_ERROR( "nullptr == BufferDescriptor.pBuf" );
     }
+    else if ( 0 == BufferDescriptor.dmaHandle )
+    {
+        QC_ERROR( "0 == BufferDescriptor.dmaHandle" );
+        status = QC_STATUS_BAD_ARGUMENTS;
+    }
     else if ( 0 == BufferDescriptor.size )
     {
         QC_ERROR( "BufferDescriptor.size != 0" );

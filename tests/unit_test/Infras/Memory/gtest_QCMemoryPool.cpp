@@ -83,6 +83,12 @@ TEST_F( Test_QCMemoryPool, SANITY )
         status = memoryPool.PutElement( extraBuffer );
         ASSERT_EQ( QC_STATUS_NULL_PTR, status );
 
+        // wrong pBuf
+        extraBuffer.allocatorType = QC_MEMORY_ALLOCATOR_HEAP;
+        extraBuffer.pBuf = (void *) 0xFFFFFFFFFFFFFFFF;
+        status = memoryPool.PutElement( extraBuffer );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
+
         // returning correct buffers
         status = memoryPool.PutElement( buffer[0] );
         ASSERT_EQ( QC_STATUS_OK, status );
@@ -113,5 +119,77 @@ TEST_F( Test_QCMemoryPool, SANITY )
 
         status = memoryPool.PutElement( buffer[9] );
         ASSERT_EQ( QC_STATUS_OK, status );
+    }
+}
+
+
+TEST_F( Test_QCMemoryPool, SANITY_Init )
+{
+    {
+        HeapAllocator allocatorIfs;
+
+        QCMemoryPoolConfig_t poolCfg( allocatorIfs );
+        poolCfg.buff.size = 512;
+        poolCfg.buff.alignment = QC_MEMORY_DEFAULT_ALLIGNMENT;
+        poolCfg.buff.cache = QC_CACHEABLE;
+        poolCfg.maxElements = 0;
+        poolCfg.name = "Test Pool";
+
+        Pool memoryPool( poolCfg );
+        QCStatus_e status = memoryPool.Init();
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
+    }
+}
+
+TEST_F( Test_QCMemoryPool, SANITY_detructor_with_non_returned_buffers )
+{
+    {
+        HeapAllocator allocatorIfs;
+
+        QCMemoryPoolConfig_t poolCfg( allocatorIfs );
+        poolCfg.buff.size = 512;
+        poolCfg.buff.alignment = QC_MEMORY_DEFAULT_ALLIGNMENT;
+        poolCfg.buff.cache = QC_CACHEABLE;
+        poolCfg.maxElements = 10;
+        poolCfg.name = "Test Pool";
+
+        QCMemoryPoolIfs *pool = new Pool( poolCfg );
+        QCMemoryPoolIfs &memoryPool = *pool;
+
+        QCStatus_e status = memoryPool.Init();
+        ASSERT_EQ( QC_STATUS_OK, status );
+
+        QCBufferDescriptorBase_t buffer[10];
+        status = memoryPool.GetElement( buffer[0] );
+        ASSERT_EQ( QC_STATUS_OK, status );
+
+        status = memoryPool.GetElement( buffer[1] );
+        ASSERT_EQ( QC_STATUS_OK, status );
+
+        status = memoryPool.GetElement( buffer[2] );
+        ASSERT_EQ( QC_STATUS_OK, status );
+
+        status = memoryPool.GetElement( buffer[3] );
+        ASSERT_EQ( QC_STATUS_OK, status );
+
+        status = memoryPool.GetElement( buffer[4] );
+        ASSERT_EQ( QC_STATUS_OK, status );
+
+        status = memoryPool.GetElement( buffer[5] );
+        ASSERT_EQ( QC_STATUS_OK, status );
+
+        status = memoryPool.GetElement( buffer[6] );
+        ASSERT_EQ( QC_STATUS_OK, status );
+
+        status = memoryPool.GetElement( buffer[7] );
+        ASSERT_EQ( QC_STATUS_OK, status );
+
+        status = memoryPool.GetElement( buffer[8] );
+        ASSERT_EQ( QC_STATUS_OK, status );
+
+        status = memoryPool.GetElement( buffer[9] );
+        ASSERT_EQ( QC_STATUS_OK, status );
+
+        pool->~QCMemoryPoolIfs();
     }
 }

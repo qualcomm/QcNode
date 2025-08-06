@@ -94,6 +94,11 @@ QCStatus_e PMEMUtils::MemoryUnMap( const QCBufferDescriptorBase_t &buff )
         QC_ERROR( "nullptr == buff.pBuf" );
         status = QC_STATUS_BAD_ARGUMENTS;
     }
+    else if ( 0 == buff.dmaHandle )
+    {
+        QC_ERROR( "0 == buff.dmaHandle" );
+        status = QC_STATUS_BAD_ARGUMENTS;
+    }
     else
     {
         int rc = pmem_unmap_handle( pmemHandle, buff.pBuf );

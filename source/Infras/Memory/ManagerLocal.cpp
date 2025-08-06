@@ -7,6 +7,7 @@
 #include "QC/Infras/Memory/Pool.hpp"
 #include <cstdlib>
 #include <random>
+#include <unistd.h>
 
 
 namespace QC
@@ -23,15 +24,25 @@ ManagerLocal::ManagerLocal()
 QCStatus_e ManagerLocal::Initialize( const QCMemoryManagerInit_t &init )
 {
     QCStatus_e status = QC_STATUS_OK;
-    m_state = QC_OBJECT_STATE_INITIALIZING;
     m_config = new QCMemoryManagerInit_t( init.numOfNodes, init.allocators );
-    if ( 0 == init.numOfNodes )
+    if ( QC_OBJECT_STATE_INITIAL != GetState() )
+    {
+        QC_ERROR( "QC_OBJECT_STATE_INITIAL != m_state" );
+        status = QC_STATUS_BAD_STATE;
+    }
+    else if ( 0 == init.numOfNodes )
     {
         QC_ERROR( "0 ==  init.numOfNodes" );
         status = QC_STATUS_BAD_ARGUMENTS;
     }
+    else if ( nullptr == m_config )
+    {
+        QC_ERROR( "nullptr == m_config" );
+        status = QC_STATUS_NULL_PTR;
+    }
     else
     {
+        m_state = QC_OBJECT_STATE_INITIALIZING;
         m_pools.reserve( m_config->numOfNodes );
         m_allocations.reserve( m_config->numOfNodes );
         std::map<QCMemoryPoolHandle_t, std::reference_wrapper<QCMemoryPoolIfs>> poolMap;
@@ -53,7 +64,7 @@ QCStatus_e ManagerLocal::Initialize( const QCMemoryManagerInit_t &init )
     {
         m_state = QC_OBJECT_STATE_READY;
     }
-    else
+    else if ( QC_STATUS_NULL_PTR == status )
     {
         m_state = QC_OBJECT_STATE_ERROR;
         if ( nullptr != m_config )
@@ -62,12 +73,27 @@ QCStatus_e ManagerLocal::Initialize( const QCMemoryManagerInit_t &init )
             m_config = nullptr;
         }
     }
+    else
+    {}
 
     return status;
 }
 
 ManagerLocal::~ManagerLocal()
 {
+    if ( GetState() == QC_OBJECT_STATE_READY )
+    {
+        QCStatus_e status = DeInitialize();
+        if ( QC_STATUS_OK != status )
+        {
+            QC_ERROR( "DeInitialize failed" );
+        }
+    }
+    else
+    {
+        QC_INFO( "ManagerLocal::DeInitialize() called successfully" );
+    }
+
     (void) QC_LOGGER_DEINIT();
 }
 
@@ -76,44 +102,51 @@ QCStatus_e ManagerLocal::DeInitialize()
     // Free all allocated resources if not freed before
     QC_INFO();
     QCStatus_e status = QC_STATUS_OK;
-    m_state = QC_OBJECT_STATE_DEINITIALIZING;
-    for ( auto i = m_handleToNodeIdInVector.begin(); i != m_handleToNodeIdInVector.end(); i++ )
+    if ( ( GetState() == QC_OBJECT_STATE_INITIAL ) ||
+         ( GetState() == QC_OBJECT_STATE_INITIALIZING ) )
     {
-        QCStatus_e statusLocal = ReclaimResources( i->first );
-        QC_INFO( "ReclaimResources for QCMemoryHandle_t %d returned %d", i->first, status );
-        if ( QC_STATUS_OK != statusLocal )
-        {
-            status = statusLocal;
-            QC_ERROR( "ReclaimResources for QCMemoryHandle_t %d returned %d", i->first, status );
-        }
-    }
-
-    for ( auto i = 0; i < m_config->numOfNodes; i++ )
-    {
-        QC_DEBUG( "DB memory free itteration %d ", i );
-        std::map<QCMemoryPoolHandle_t, std::reference_wrapper<QCMemoryPoolIfs>> &refPoolMap =
-                m_pools.back();
-        QC_DEBUG( "refPoolMap at %p ", &refPoolMap );
-        m_pools.pop_back();
-
-        std::map<QCBufferDescriptorBase_t, QCMemoryAllocator_e> &refAllocMap = m_allocations.back();
-        QC_DEBUG( "refAllocMap at %p ", &refAllocMap );
-        m_allocations.pop_back();
-    }
-
-    if ( nullptr != m_config )
-    {
-        delete m_config;
-        m_config = nullptr;
-    }
-
-    if ( QC_STATUS_OK == status )
-    {
-        m_state = QC_OBJECT_STATE_INITIAL;
+        status = QC_STATUS_BAD_STATE;
     }
     else
     {
-        m_state = QC_OBJECT_STATE_ERROR;
+        m_state = QC_OBJECT_STATE_DEINITIALIZING;
+        for ( auto i = m_handleToNodeIdInVector.begin(); i != m_handleToNodeIdInVector.end(); i++ )
+        {
+            QCStatus_e statusLocal = ReclaimResources( i->first );
+            QC_INFO( "ReclaimResources for QCMemoryHandle_t %d returned %d", i->first, status );
+            if ( QC_STATUS_OK != statusLocal )
+            {
+                status = statusLocal;
+                QC_ERROR( "ReclaimResources for QCMemoryHandle_t %d returned %d", i->first,
+                          status );
+            }
+        }
+
+        for ( auto i = 0; i < m_config->numOfNodes; i++ )
+        {
+            QC_DEBUG( "DB memory free itteration %d ", i );
+            std::map<QCMemoryPoolHandle_t, std::reference_wrapper<QCMemoryPoolIfs>> &refPoolMap =
+                    m_pools.back();
+            QC_DEBUG( "refPoolMap at %p ", &refPoolMap );
+            m_pools.pop_back();
+
+            std::map<QCBufferDescriptorBase_t, QCMemoryAllocator_e> &refAllocMap =
+                    m_allocations.back();
+            QC_DEBUG( "refAllocMap at %p ", &refAllocMap );
+            m_allocations.pop_back();
+        }
+
+        delete m_config;
+        m_config = nullptr;
+
+        if ( QC_STATUS_OK == status )
+        {
+            m_state = QC_OBJECT_STATE_INITIAL;
+        }
+        else
+        {
+            m_state = QC_OBJECT_STATE_ERROR;
+        }
     }
 
     return status;
@@ -168,12 +201,12 @@ QCStatus_e ManagerLocal::Register( const QCNodeID_t &node, QCMemoryHandle_t &han
     else if ( m_handleToNodeIdInVector.size() == m_config->numOfNodes )
     {
         QC_ERROR( "m_handleToNodeIdInVector.size() == m_config->numOfNodes" );
-        status = QC_STATUS_NO_RESOURCE;
+        status = QC_STATUS_BAD_ARGUMENTS;
     }
     else if ( true == IsMemoryHandleRegistered( handle, it ) )
     {
         QC_ERROR( "COULD NOT GENERATE UNIQUE HANDLE" );
-        status = QC_STATUS_FAIL;
+        status = QC_STATUS_BAD_ARGUMENTS;
     }
     else if ( m_config->numOfNodes <= node.id )
     {
@@ -202,7 +235,7 @@ QCStatus_e ManagerLocal::Register( const QCNodeID_t &node, QCMemoryHandle_t &han
         }
     }
 
-    if ( ( QC_STATUS_OK != status ) && ( QC_STATUS_BAD_ARGUMENTS != status ) )
+    if ( QC_STATUS_FAIL == status )
     {
         QC_ERROR( "m_state = QC_OBJECT_STATE_ERROR" );
         m_state = QC_OBJECT_STATE_ERROR;
@@ -216,7 +249,15 @@ QCStatus_e ManagerLocal::UnRegister( const QCMemoryHandle_t &memHandle )
     QCStatus_e status = QC_STATUS_OK;
     std::map<QCMemoryHandle_t, uint32_t>::iterator handleIt;
 
-    if ( false == IsMemoryHandleRegistered( memHandle, handleIt ) )
+    // scoped lock
+    std::lock_guard<std::mutex> lk( m_handle2NodeIdLock );
+
+    if ( GetState() != QC_OBJECT_STATE_READY )
+    {
+        QC_ERROR( "GetState () != QC_OBJECT_STATE_READY, state =%d", GetState() );
+        status = QC_STATUS_BAD_STATE;
+    }
+    else if ( false == IsMemoryHandleRegistered( memHandle, handleIt ) )
     {
         status = QC_STATUS_BAD_ARGUMENTS;
         QC_ERROR( "memHndle %ull is not in data base", memHandle.GetHandle() );
@@ -228,7 +269,7 @@ QCStatus_e ManagerLocal::UnRegister( const QCMemoryHandle_t &memHandle )
         status = ReclaimResources( memHandle );
         if ( status != QC_STATUS_OK )
         {
-            QC_ERROR( "cant free resources" );
+            QC_ERROR( "free resources failed" );
         }
         else
         {
@@ -242,7 +283,7 @@ QCStatus_e ManagerLocal::UnRegister( const QCMemoryHandle_t &memHandle )
         }
     }
 
-    if ( ( QC_STATUS_OK != status ) && ( QC_STATUS_BAD_ARGUMENTS != status ) )
+    if ( QC_STATUS_FAIL == status )
     {
         QC_ERROR( "m_state = QC_OBJECT_STATE_ERROR" );
         m_state = QC_OBJECT_STATE_ERROR;
@@ -342,7 +383,7 @@ QCStatus_e ManagerLocal::CreatePool( const QCMemoryHandle_t &handle,
         }
     }
 
-    if ( ( QC_STATUS_OK != status ) && ( QC_STATUS_BAD_ARGUMENTS != status ) )
+    if ( QC_STATUS_FAIL == status )
     {
         QC_ERROR( "m_state = QC_OBJECT_STATE_ERROR" );
         m_state = QC_OBJECT_STATE_ERROR;
@@ -360,7 +401,12 @@ QCStatus_e ManagerLocal::DestroyPool( const QCMemoryHandle_t &handle,
     // scoped lock
     std::lock_guard<std::mutex> lk( m_poolsLock );
 
-    if ( false == IsMemoryHandleRegistered( handle, itNodeMap ) )
+    if ( GetState() != QC_OBJECT_STATE_READY )
+    {
+        QC_ERROR( "GetState () != QC_OBJECT_STATE_READY, state =%d", GetState() );
+        status = QC_STATUS_BAD_STATE;
+    }
+    else if ( false == IsMemoryHandleRegistered( handle, itNodeMap ) )
     {
         status = QC_STATUS_BAD_ARGUMENTS;
         QC_ERROR( "not registers handle  %ull", handle.GetHandle() );
@@ -385,7 +431,7 @@ QCStatus_e ManagerLocal::DestroyPool( const QCMemoryHandle_t &handle,
         }
     }
 
-    if ( ( QC_STATUS_OK != status ) && ( QC_STATUS_BAD_ARGUMENTS != status ) )
+    if ( QC_STATUS_FAIL == status )
     {
         QC_ERROR( "m_state = QC_OBJECT_STATE_ERROR" );
         m_state = QC_OBJECT_STATE_ERROR;
@@ -426,7 +472,7 @@ QCStatus_e ManagerLocal::AllocateBufferFromPool( const QCMemoryHandle_t &memoryH
         status = pool.GetElement( buff );
     }
 
-    if ( ( QC_STATUS_OK != status ) && ( QC_STATUS_BAD_ARGUMENTS != status ) )
+    if ( QC_STATUS_FAIL == status )
     {
         QC_ERROR( "m_state = QC_OBJECT_STATE_ERROR" );
         m_state = QC_OBJECT_STATE_ERROR;
@@ -445,7 +491,12 @@ QCStatus_e ManagerLocal::PutBufferToPool( const QCMemoryHandle_t &memoryHandle,
     // scoped lock
     std::lock_guard<std::mutex> lk( m_poolsLock );
 
-    if ( false == IsMemoryHandleRegistered( memoryHandle, itNodeMap ) )
+    if ( GetState() != QC_OBJECT_STATE_READY )
+    {
+        QC_ERROR( "GetState () != QC_OBJECT_STATE_READY, state =%d", GetState() );
+        status = QC_STATUS_BAD_STATE;
+    }
+    else if ( false == IsMemoryHandleRegistered( memoryHandle, itNodeMap ) )
     {
         status = QC_STATUS_BAD_ARGUMENTS;
         QC_ERROR( "not registers handle  %ull", memoryHandle.GetHandle() );
@@ -462,7 +513,7 @@ QCStatus_e ManagerLocal::PutBufferToPool( const QCMemoryHandle_t &memoryHandle,
         status = pool.PutElement( buff );
     }
 
-    if ( ( QC_STATUS_OK != status ) && ( QC_STATUS_BAD_ARGUMENTS != status ) )
+    if ( QC_STATUS_FAIL == status )
     {
         QC_ERROR( "m_state = QC_OBJECT_STATE_ERROR" );
         m_state = QC_OBJECT_STATE_ERROR;
@@ -548,8 +599,7 @@ QCStatus_e ManagerLocal::AllocateBuffer( const QCMemoryHandle_t handle,
         }
     }
 
-    if ( ( QC_STATUS_OK != status ) && ( QC_STATUS_BAD_ARGUMENTS != status ) &&
-         ( QC_STATUS_NOMEM != status ) )
+    if ( QC_STATUS_FAIL == status )
     {
         QC_ERROR( "m_state = QC_OBJECT_STATE_ERROR" );
         m_state = QC_OBJECT_STATE_ERROR;
@@ -566,9 +616,13 @@ QCStatus_e ManagerLocal::FreeBuffer( const QCMemoryHandle_t handle,
 
     // scoped lock
     std::lock_guard<std::mutex> lk( m_allocationsLock );
-
+    if ( GetState() != QC_OBJECT_STATE_READY )
+    {
+        QC_ERROR( "GetState () != QC_OBJECT_STATE_READY, state =%d", GetState() );
+        status = QC_STATUS_BAD_STATE;
+    }
     // validate handle
-    if ( false == IsMemoryHandleRegistered( handle, handleIt ) )
+    else if ( false == IsMemoryHandleRegistered( handle, handleIt ) )
     {
         QC_ERROR( "handle (%ull) elegal", handle.GetHandle() );
         status = QC_STATUS_BAD_ARGUMENTS;
@@ -603,13 +657,18 @@ QCStatus_e ManagerLocal::FreeBuffer( const QCMemoryHandle_t handle,
                 }
             }
             else
+            {
                 QC_ERROR( "Memory release failed %d", status );
+            }
         }
         else
-            status = QC_STATUS_FAIL;
+        {
+            QC_ERROR( "Descriptor not in DB" );
+            status = QC_STATUS_BAD_ARGUMENTS;
+        }
     }
 
-    if ( ( QC_STATUS_OK != status ) && ( QC_STATUS_BAD_ARGUMENTS != status ) )
+    if ( QC_STATUS_FAIL == status )
     {
         QC_ERROR( "m_state = QC_OBJECT_STATE_ERROR" );
         m_state = QC_OBJECT_STATE_ERROR;
@@ -644,7 +703,7 @@ QCStatus_e ManagerLocal::ReclaimResources( const QCMemoryHandle_t &handle )
         QC_DEBUG( "handle (%ull) ", handle.GetHandle() );
         QC_DEBUG( "handle allocations in vector is %d ", handleIt->second );
         // reclaim stand alone allocations
-        // ###############################
+        //###############################
         std::map<QCBufferDescriptorBase_t, QCMemoryAllocator_e> &bufferMap =
                 m_allocations[handleIt->second];
 

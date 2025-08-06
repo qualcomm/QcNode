@@ -37,8 +37,6 @@ DMABUFFAllocator::~DMABUFFAllocator()
 QCStatus_e DMABUFFAllocator::Allocate( const QCBufferPropBase_t &request,
                                        QCBufferDescriptorBase_t &response )
 {
-    // TODO
-    // ADD ALLIGNMENT HANDLING
     QCStatus_e status = QC_STATUS_OK;
     response.pBuf = nullptr;
     int fd = -1;
@@ -58,6 +56,13 @@ QCStatus_e DMABUFFAllocator::Allocate( const QCBufferPropBase_t &request,
     {
         status = QC_STATUS_BAD_ARGUMENTS;
         QC_ERROR( " 0 == request.size" );
+    }
+    else if ( request.alignment > QC_MEMORY_DEFAULT_ALLIGNMENT )
+    {
+        status = QC_STATUS_UNSUPPORTED;
+        QC_ERROR( " request.alignment (%d) > QC_MEMORY_DEFAULT_ALLIGNMENT (%d), lerger than "
+                  "supported",
+                  request.alignment, QC_MEMORY_DEFAULT_ALLIGNMENT );
     }
     else
     {
