@@ -1390,46 +1390,44 @@ QCStatus_e QnnImpl::RemoteRegisterBuf( const TensorDescriptor_t &tensorDesc, int
     extDomainId = get_extended_domains_id( domain, client );
 #endif
 
-    int rpcFd = rpcmem_to_fd( tensorDesc.pBufBase );
+    int rpcFd = rpcmem_to_fd( tensorDesc.pBuf );
     if ( rpcFd < 0 )
     {
         std::lock_guard<std::mutex> l( s_lock[m_config.processorType] );
 #ifdef QC_USE_REMOTE_REGISTER_V2
 #if defined( __QNXNTO__ )
-        remote_register_buf_v2( extDomainId, tensorDesc.pBufBase,
-                                static_cast<int>( tensorDesc.dmaSize ), 0 );
+        remote_register_buf_v2( extDomainId, tensorDesc.pBuf, static_cast<int>( tensorDesc.size ),
+                                0 );
 #else
-        remote_register_buf_v2( extDomainId, tensorDesc.pBufBase,
-                                static_cast<int>( tensorDesc.dmaSize ),
+        remote_register_buf_v2( extDomainId, tensorDesc.pBuf, static_cast<int>( tensorDesc.size ),
                                 static_cast<int>( tensorDesc.dmaHandle ) );
 #endif
 
 #else
 #if defined( __QNXNTO__ )
-        remote_register_buf( tensorDesc.pBufBase, static_cast<int>( tensorDesc.dmaSize ), 0 );
+        remote_register_buf( tensorDesc.pBuf, static_cast<int>( tensorDesc.size ), 0 );
 #else
-        remote_register_buf( tensorDesc.pBufBase, static_cast<int>( tensorDesc.dmaSize ),
+        remote_register_buf( tensorDesc.pBuf, static_cast<int>( tensorDesc.size ),
                              static_cast<int>( tensorDesc.dmaHandle ) );
 #endif
 #endif
-        rpcFd = rpcmem_to_fd( tensorDesc.pBufBase );
+        rpcFd = rpcmem_to_fd( tensorDesc.pBuf );
         if ( rpcFd >= 0 )
         {
-            s_dmaMemRefMap[m_config.processorType][tensorDesc.pBufBase] = 1;
+            s_dmaMemRefMap[m_config.processorType][tensorDesc.pBuf] = 1;
             fd = rpcFd;
         }
         else
         {
             QC_ERROR( "remote register failed for buffer %p(%" PRIu64 ", %" PRIu64 ") for core %d!",
-                      tensorDesc.pBufBase, tensorDesc.dmaSize, tensorDesc.offset,
-                      m_config.processorType );
+                      tensorDesc.pBuf, tensorDesc.size, tensorDesc.offset, m_config.processorType );
             status = QC_STATUS_FAIL;
         }
     }
     else
     {
         std::lock_guard<std::mutex> l( s_lock[m_config.processorType] );
-        auto it = s_dmaMemRefMap[m_config.processorType].find( tensorDesc.pBufBase );
+        auto it = s_dmaMemRefMap[m_config.processorType].find( tensorDesc.pBuf );
         if ( it != s_dmaMemRefMap[m_config.processorType].end() )
         {
             it->second++;
@@ -1465,7 +1463,7 @@ QCStatus_e QnnImpl::RegisterBufferToHTP( const TensorDescriptor_t &tensorDesc,
     if ( QC_STATUS_OK == status )
     {
         std::lock_guard<std::mutex> l( m_lock );
-        auto it = m_dmaMemInfoMap.find( static_cast<uint8_t *>( tensorDesc.pBuf ) );
+        auto it = m_dmaMemInfoMap.find( tensorDesc.GetDataPtr() );
         if ( it == m_dmaMemInfoMap.end() )
         {
             int fd;
@@ -1482,7 +1480,7 @@ QCStatus_e QnnImpl::RegisterBufferToHTP( const TensorDescriptor_t &tensorDesc,
         ( QNN_HTP_API_VERSION_MAJOR > 5 )
                 QnnMemHtp_Descriptor_t htpDesc;
                 htpDesc.type = QNN_HTP_MEM_SHARED_BUFFER;
-                htpDesc.size = tensorDesc.dmaSize;
+                htpDesc.size = tensorDesc.size;
                 htpDesc.sharedBufferConfig.fd = fd;
                 htpDesc.sharedBufferConfig.offset = tensorDesc.offset;
 
@@ -1499,20 +1497,20 @@ QCStatus_e QnnImpl::RegisterBufferToHTP( const TensorDescriptor_t &tensorDesc,
                 {
                     QnnImpl::DmaMemInfo_t info;
                     info.memHandle = memHandle;
-                    info.size = tensorDesc.dmaSize;
+                    info.size = tensorDesc.size;
                     info.fd = fd;
-                    m_dmaMemInfoMap[static_cast<uint8_t *>( tensorDesc.pBuf )] = info;
+                    m_dmaMemInfoMap[tensorDesc.GetDataPtr()] = info;
                     QC_INFO( "succeed to register map buffer %p(%d, %" PRIu64 ", %" PRIu64
                              ") as %p for core %d",
-                             tensorDesc.pBufBase, fd, tensorDesc.dmaSize, tensorDesc.offset,
-                             memHandle, m_config.processorType );
+                             tensorDesc.pBuf, fd, tensorDesc.size, tensorDesc.offset, memHandle,
+                             m_config.processorType );
                 }
                 else
                 {
-                    (void) RemoteDeRegisterBuf( tensorDesc.pBufBase, tensorDesc.dmaSize );
+                    (void) RemoteDeRegisterBuf( tensorDesc.pBuf, tensorDesc.size );
                     QC_ERROR( "failed to map buffer %p(%d, %" PRIu64 ", %" PRIu64
                               ") for core %d, error %d\n",
-                              tensorDesc.pBufBase, fd, tensorDesc.dmaSize, tensorDesc.offset,
+                              tensorDesc.pBuf, fd, tensorDesc.size, tensorDesc.offset,
                               m_config.processorType, retVal );
                     status = QC_STATUS_FAIL;
                 }
@@ -1524,7 +1522,7 @@ QCStatus_e QnnImpl::RegisterBufferToHTP( const TensorDescriptor_t &tensorDesc,
             memHandle = info.memHandle;
             QC_DEBUG( "already register map buffer %p(%d, %" PRIu64 ", %" PRIu64
                       ") as %p for core %d",
-                      tensorDesc.pBufBase, info.fd, tensorDesc.size, tensorDesc.offset, memHandle,
+                      tensorDesc.pBuf, info.fd, tensorDesc.size, tensorDesc.offset, memHandle,
                       m_config.processorType );
         }
     }
@@ -1668,8 +1666,8 @@ QCStatus_e QnnImpl::ProcessFrameDescriptor( QCFrameDescriptorNodeIfs &frameDesc 
                 else
                 {
                     QNN_TENSOR_SET_MEM_TYPE( &m_inputs[i], QNN_TENSORMEMTYPE_RAW );
-                    Qnn_ClientBuffer_t clientBuffer = { (uint8_t *) pTensor->pBuf,
-                                                        (uint32_t) pTensor->size };
+                    Qnn_ClientBuffer_t clientBuffer = { (uint8_t *) pTensor->GetDataPtr(),
+                                                        (uint32_t) pTensor->GetDataSize() };
                     QNN_TENSOR_SET_CLIENT_BUF( &m_inputs[i], clientBuffer );
                 }
             }
@@ -1719,8 +1717,8 @@ QCStatus_e QnnImpl::ProcessFrameDescriptor( QCFrameDescriptorNodeIfs &frameDesc 
                 else
                 {
                     QNN_TENSOR_SET_MEM_TYPE( &m_outputs[i], QNN_TENSORMEMTYPE_RAW );
-                    Qnn_ClientBuffer_t clientBuffer = { (uint8_t *) pTensor->pBuf,
-                                                        (uint32_t) pTensor->size };
+                    Qnn_ClientBuffer_t clientBuffer = { (uint8_t *) pTensor->GetDataPtr(),
+                                                        (uint32_t) pTensor->GetDataSize() };
                     QNN_TENSOR_SET_CLIENT_BUF( &m_outputs[i], clientBuffer );
                 }
             }
@@ -1990,9 +1988,9 @@ QCStatus_e QnnImpl::RemoteDeRegisterBuf( void *pData, size_t size )
         if ( 0 == it->second )
         {
 #ifdef QC_USE_REMOTE_REGISTER_V2
-            remote_register_buf_v2( extDomainId, (void *) pData, static_cast<int>( size ), -1 );
+            remote_register_buf_v2( extDomainId, pData, static_cast<int>( size ), -1 );
 #else
-            remote_register_buf( (void *) pData, static_cast<int>( size ), -1 );
+            remote_register_buf( pData, static_cast<int>( size ), -1 );
 #endif
             s_dmaMemRefMap[m_config.processorType].erase( it );
         }

@@ -270,9 +270,9 @@ QCStatus_e SampleQnn::Init( std::string name, SampleConfig_t &config )
         size_t index = 0;
         for ( int i = 0; i < outputNum; ++i )
         {
-            ret = m_tensorPools[index].Init( "Qnn." + name + "." + std::to_string( index ),
-                                             LOGGER_LEVEL_INFO, m_poolSize,
-                                             m_outputsInfo[i].properties, QC_BUFFER_USAGE_HTP );
+            ret = m_tensorPools[index].Init(
+                    "Qnn." + name + "." + std::to_string( index ), LOGGER_LEVEL_INFO, m_poolSize,
+                    m_outputsInfo[i].properties, QC_MEMORY_ALLOCATOR_DMA_HTP );
             index += 1;
             if ( QC_STATUS_OK != ret )
             {

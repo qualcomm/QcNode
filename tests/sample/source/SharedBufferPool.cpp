@@ -5,8 +5,6 @@
 #include "QC/sample/SharedBufferPool.hpp"
 #include "QC/sample/SampleIF.hpp"
 
-using namespace QC;
-
 namespace QC
 {
 namespace sample
@@ -95,19 +93,36 @@ QCStatus_e SharedBufferPool::Register( void )
 
 QCStatus_e SharedBufferPool::Init( std::string name, Logger_Level_e level, uint32_t number,
                                    uint32_t width, uint32_t height, QCImageFormat_e format,
-                                   QCBufferUsage_e usage, QCBufferFlags_t flags )
+                                   QCMemoryAllocator_e allocatorType, QCAllocationCache_e cache )
 {
     QCStatus_e ret = Init( name, level, number );
+    if ( QC_STATUS_OK == ret )
+    {
+        if ( nullptr == m_pAllocator )
+        {
+            m_pAllocator = new BasicImageAllocator( name );
+            if ( nullptr == m_pAllocator )
+            {
+                QC_ERROR( "Failed to create allocator!" );
+                ret = QC_STATUS_NOMEM;
+            }
+        }
+        else
+        {
+            QC_ERROR( "Init already done!" );
+        }
+    }
 
     for ( uint32_t idx = 0; ( idx < m_queue.size() ) && ( QC_STATUS_OK == ret ); idx++ )
     {
-        QCSharedBuffer_t &sharedBuffer = m_queue[idx].sharedBuffer.sharedBuffer;
-        ret = sharedBuffer.Allocate( width, height, format, usage, flags );
-        QC_DEBUG( "%s image[%u] %ux%u allocated with size=%u data=%p handle=%llu ret=%d\n",
-                  m_name.c_str(), idx, width, height, sharedBuffer.size, sharedBuffer.data(),
-                  sharedBuffer.buffer.dmaHandle, ret );
+        ImageDescriptor_t &imgDesc = m_queue[idx].sharedBuffer.imgDesc;
+        ret = m_pAllocator->Allocate(
+                ImageBasicProps_t( width, height, format, allocatorType, cache ), imgDesc );
+        QC_DEBUG( "%s image[%u] %ux%u %d allocated with size=%u data=%p handle=%llu ret=%d",
+                  m_name.c_str(), idx, width, height, format, imgDesc.size, imgDesc.pBuf,
+                  imgDesc.dmaHandle, ret );
         m_queue[idx].sharedBuffer.imgDesc.name = name + "." + std::to_string( idx );
-        m_queue[idx].sharedBuffer.imgDesc = sharedBuffer;
+        m_queue[idx].sharedBuffer.sharedBuffer = imgDesc;
         m_queue[idx].sharedBuffer.buffer = m_queue[idx].sharedBuffer.imgDesc;
     }
 
@@ -122,20 +137,38 @@ QCStatus_e SharedBufferPool::Init( std::string name, Logger_Level_e level, uint3
 
 QCStatus_e SharedBufferPool::Init( std::string name, Logger_Level_e level, uint32_t number,
                                    uint32_t batchSize, uint32_t width, uint32_t height,
-                                   QCImageFormat_e format, QCBufferUsage_e usage,
-                                   QCBufferFlags_t flags )
+                                   QCImageFormat_e format, QCMemoryAllocator_e allocatorType,
+                                   QCAllocationCache_e cache )
 {
     QCStatus_e ret = Init( name, level, number );
+    if ( QC_STATUS_OK == ret )
+    {
+        if ( nullptr == m_pAllocator )
+        {
+            m_pAllocator = new BasicImageAllocator( name );
+            if ( nullptr == m_pAllocator )
+            {
+                QC_ERROR( "Failed to create allocator!" );
+                ret = QC_STATUS_NOMEM;
+            }
+        }
+        else
+        {
+            QC_ERROR( "Init already done!" );
+        }
+    }
 
     for ( uint32_t idx = 0; ( idx < m_queue.size() ) && ( QC_STATUS_OK == ret ); idx++ )
     {
-        QCSharedBuffer_t &sharedBuffer = m_queue[idx].sharedBuffer.sharedBuffer;
-        ret = sharedBuffer.Allocate( batchSize, width, height, format, usage, flags );
-        QC_DEBUG( "%s image[%u] %u %ux%u allocated with size=%u data=%p handle=%llu ret=%d\n",
-                  m_name.c_str(), idx, batchSize, width, height, sharedBuffer.size,
-                  sharedBuffer.data(), sharedBuffer.buffer.dmaHandle, ret );
+        ImageDescriptor_t &imgDesc = m_queue[idx].sharedBuffer.imgDesc;
+        ret = m_pAllocator->Allocate(
+                ImageBasicProps_t( batchSize, width, height, format, allocatorType, cache ),
+                imgDesc );
+        QC_DEBUG( "%s image[%u] %u %ux%u %d allocated with size=%u data=%p handle=%llu ret=%d",
+                  m_name.c_str(), idx, batchSize, width, height, format, imgDesc.size, imgDesc.pBuf,
+                  imgDesc.dmaHandle, ret );
         m_queue[idx].sharedBuffer.imgDesc.name = name + "." + std::to_string( idx );
-        m_queue[idx].sharedBuffer.imgDesc = sharedBuffer;
+        m_queue[idx].sharedBuffer.sharedBuffer = imgDesc;
         m_queue[idx].sharedBuffer.buffer = m_queue[idx].sharedBuffer.imgDesc;
     }
 
@@ -149,20 +182,51 @@ QCStatus_e SharedBufferPool::Init( std::string name, Logger_Level_e level, uint3
 }
 
 QCStatus_e SharedBufferPool::Init( std::string name, Logger_Level_e level, uint32_t number,
-                                   const QCImageProps_t &imageProps, QCBufferUsage_e usage,
-                                   QCBufferFlags_t flags )
+                                   const QCImageProps_t &imageProps,
+                                   QCMemoryAllocator_e allocatorType, QCAllocationCache_e cache )
 {
+    ImageProps_t imgProp;
     QCStatus_e ret = Init( name, level, number );
+
+    imgProp.format = imageProps.format;
+    imgProp.batchSize = imageProps.batchSize;
+    imgProp.width = imageProps.width;
+    imgProp.height = imageProps.height;
+    imgProp.allocatorType = allocatorType;
+    imgProp.cache = cache;
+    std::copy( imageProps.stride, imageProps.stride + imageProps.numPlanes, imgProp.stride );
+    std::copy( imageProps.actualHeight, imageProps.actualHeight + imageProps.numPlanes,
+               imgProp.actualHeight );
+    std::copy( imageProps.planeBufSize, imageProps.planeBufSize + imageProps.numPlanes,
+               imgProp.planeBufSize );
+    imgProp.numPlanes = imageProps.numPlanes;
+
+    if ( QC_STATUS_OK == ret )
+    {
+        if ( nullptr == m_pAllocator )
+        {
+            m_pAllocator = new ImageAllocator( name );
+            if ( nullptr == m_pAllocator )
+            {
+                QC_ERROR( "Failed to create allocator!" );
+                ret = QC_STATUS_NOMEM;
+            }
+        }
+        else
+        {
+            QC_ERROR( "Init already done!" );
+        }
+    }
 
     for ( uint32_t idx = 0; ( idx < m_queue.size() ) && ( QC_STATUS_OK == ret ); idx++ )
     {
-        QCSharedBuffer_t &sharedBuffer = m_queue[idx].sharedBuffer.sharedBuffer;
-        ret = sharedBuffer.Allocate( &imageProps, usage, flags );
-        QC_DEBUG( "%s image[%u] allocated with size=%u data=%p handle=%llu ret=%d\n",
-                  m_name.c_str(), idx, sharedBuffer.size, sharedBuffer.data(),
-                  sharedBuffer.buffer.dmaHandle, ret );
+        ImageDescriptor_t &imgDesc = m_queue[idx].sharedBuffer.imgDesc;
+        ret = m_pAllocator->Allocate( imgProp, imgDesc );
+        QC_DEBUG( "%s image[%u] %u %ux%u %d allocated with size=%u data=%p handle=%llu ret=%d",
+                  m_name.c_str(), idx, imgProp.batchSize, imgProp.width, imgProp.height,
+                  imgProp.format, imgDesc.size, imgDesc.pBuf, imgDesc.dmaHandle, ret );
         m_queue[idx].sharedBuffer.imgDesc.name = name + "." + std::to_string( idx );
-        m_queue[idx].sharedBuffer.imgDesc = sharedBuffer;
+        m_queue[idx].sharedBuffer.sharedBuffer = imgDesc;
         m_queue[idx].sharedBuffer.buffer = m_queue[idx].sharedBuffer.imgDesc;
     }
 
@@ -176,20 +240,43 @@ QCStatus_e SharedBufferPool::Init( std::string name, Logger_Level_e level, uint3
 }
 
 QCStatus_e SharedBufferPool::Init( std::string name, Logger_Level_e level, uint32_t number,
-                                   const QCTensorProps_t &tensorProps, QCBufferUsage_e usage,
-                                   QCBufferFlags_t flags )
+                                   const QCTensorProps_t &tensorProps,
+                                   QCMemoryAllocator_e allocatorType, QCAllocationCache_e cache )
 {
+    TensorProps_t tensorProp;
     QCStatus_e ret = Init( name, level, number );
+    tensorProp.tensorType = tensorProps.type;
+    tensorProp.numDims = tensorProps.numDims;
+    tensorProp.allocatorType = allocatorType;
+    tensorProp.cache = cache;
+    std::copy( tensorProps.dims, tensorProps.dims + tensorProps.numDims, tensorProp.dims );
+
+    if ( QC_STATUS_OK == ret )
+    {
+        if ( nullptr == m_pAllocator )
+        {
+            m_pAllocator = new TensorAllocator( name );
+            if ( nullptr == m_pAllocator )
+            {
+                QC_ERROR( "Failed to create allocator!" );
+                ret = QC_STATUS_NOMEM;
+            }
+        }
+        else
+        {
+            QC_ERROR( "Init already done!" );
+        }
+    }
 
     for ( uint32_t idx = 0; ( idx < m_queue.size() ) && ( QC_STATUS_OK == ret ); idx++ )
     {
-        QCSharedBuffer_t &sharedBuffer = m_queue[idx].sharedBuffer.sharedBuffer;
-        ret = sharedBuffer.Allocate( &tensorProps, usage, flags );
+        TensorDescriptor_t &tensorDesc = m_queue[idx].sharedBuffer.tensorDesc;
+        ret = m_pAllocator->Allocate( tensorProp, tensorDesc );
         QC_DEBUG( "%s tensor[%u] allocated with size=%u data=%p handle=%llu ret=%d\n",
-                  m_name.c_str(), idx, sharedBuffer.size, sharedBuffer.data(),
-                  sharedBuffer.buffer.dmaHandle, ret );
+                  m_name.c_str(), idx, tensorDesc.size, tensorDesc.pBuf, tensorDesc.dmaHandle,
+                  ret );
         m_queue[idx].sharedBuffer.tensorDesc.name = name + "." + std::to_string( idx );
-        m_queue[idx].sharedBuffer.tensorDesc = sharedBuffer;
+        m_queue[idx].sharedBuffer.sharedBuffer = tensorDesc;
         m_queue[idx].sharedBuffer.buffer = m_queue[idx].sharedBuffer.tensorDesc;
     }
 
@@ -247,8 +334,8 @@ QCStatus_e SharedBufferPool::Deinit()
         (void) SampleIF::DeRegisterBuffers( m_name );
         for ( uint32_t idx = 0; idx < m_queue.size(); idx++ )
         {
-            QCSharedBuffer_t &sharedBuffer = m_queue[idx].sharedBuffer.sharedBuffer;
-            ret2 = sharedBuffer.Free();
+            QCBufferDescriptorBase_t &bufDesc = m_queue[idx].sharedBuffer.buffer;
+            ret2 = m_pAllocator->Free( bufDesc );
             if ( QC_STATUS_OK != ret2 )
             {
                 QC_ERROR( "free %u failed: %d", idx, ret2 );
@@ -257,6 +344,8 @@ QCStatus_e SharedBufferPool::Deinit()
         }
         m_queue.clear();
         m_bIsInited = false;
+        delete m_pAllocator;
+        m_pAllocator = nullptr;
     }
 
     return ret;
@@ -267,8 +356,11 @@ SharedBufferPool::~SharedBufferPool()
     for ( uint32_t idx = 0; idx < m_queue.size(); idx++ )
     {
         /* It's safe to call Free without Allocate, just ignore the return error */
-        QCSharedBuffer_t &sharedBuffer = m_queue[idx].sharedBuffer.sharedBuffer;
-        (void) sharedBuffer.Free();
+        QCBufferDescriptorBase_t &bufDesc = m_queue[idx].sharedBuffer.buffer;
+        if ( nullptr != m_pAllocator )
+        {
+            (void) m_pAllocator->Free( bufDesc );
+        }
     }
 }
 }   // namespace sample

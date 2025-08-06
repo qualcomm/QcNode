@@ -147,11 +147,11 @@ QCStatus_e SampleDataReader::ParseConfig( SampleConfig_t &config )
     bool bCache = Get( config, "cache", true );
     if ( false == bCache )
     {
-        m_bufferFlags = 0;
+        m_bufferCache = QC_CACHEABLE_NON;
     }
     else
     {
-        m_bufferFlags = QC_BUFFER_FLAGS_CACHE_WB_WA;
+        m_bufferCache = QC_CACHEABLE;
     }
 
     m_topicName = Get( config, "topic", "" );
@@ -191,14 +191,14 @@ QCStatus_e SampleDataReader::Init( std::string name, SampleConfig_t &config )
             {
                 ret = m_bufferPools[i].Init( name + std::to_string( i ), LOGGER_LEVEL_INFO,
                                              m_poolSize, m_configs[i].width, m_configs[i].height,
-                                             m_configs[i].format, QC_BUFFER_USAGE_CAMERA,
-                                             m_bufferFlags );
+                                             m_configs[i].format, QC_MEMORY_ALLOCATOR_DMA_CAMERA,
+                                             m_bufferCache );
             }
             else
             {
                 ret = m_bufferPools[i].Init( name + std::to_string( i ), LOGGER_LEVEL_INFO,
                                              m_poolSize, m_configs[i].tensorProps,
-                                             QC_BUFFER_USAGE_DEFAULT, m_bufferFlags );
+                                             QC_MEMORY_ALLOCATOR_DMA_HTP, m_bufferCache );
             }
         }
     }
@@ -224,6 +224,7 @@ QCStatus_e SampleDataReader::LoadImage( std::shared_ptr<SharedBuffer_t> image, s
     QCStatus_e ret = QC_STATUS_OK;
     FILE *file = nullptr;
     size_t length = 0;
+    QCBufferDescriptorBase_t &bufDesc = image->buffer;
 
     file = fopen( path.c_str(), "rb" );
     if ( nullptr == file )
@@ -236,7 +237,7 @@ QCStatus_e SampleDataReader::LoadImage( std::shared_ptr<SharedBuffer_t> image, s
     {
         fseek( file, 0, SEEK_END );
         length = (size_t) ftell( file );
-        if ( image->sharedBuffer.size < length )
+        if ( bufDesc.size < length )
         {
             QC_ERROR( "Invalid image file %s", path.c_str() );
             ret = QC_STATUS_FAIL;
@@ -246,7 +247,7 @@ QCStatus_e SampleDataReader::LoadImage( std::shared_ptr<SharedBuffer_t> image, s
     if ( QC_STATUS_OK == ret )
     {
         fseek( file, 0, SEEK_SET );
-        auto r = fread( image->sharedBuffer.data(), 1, length, file );
+        auto r = fread( bufDesc.pBuf, 1, length, file );
         if ( length != r )
         {
             QC_ERROR( "failed to read image file %s", path.c_str() );
@@ -270,50 +271,61 @@ QCStatus_e SampleDataReader::LoadTensor( std::shared_ptr<SharedBuffer_t> tensor,
     FILE *file = nullptr;
     size_t length = 0;
     uint32_t batchSize = 0;
-    uint32_t oneSize = s_qcTensorTypeToDataSize[tensor->sharedBuffer.tensorProps.type];
+    QCBufferDescriptorBase_t &bufDesc = tensor->buffer;
+    uint32_t oneSize = 0;
+    TensorDescriptor_t *pTensor = dynamic_cast<TensorDescriptor_t *>( &bufDesc );
 
-    for ( uint32_t i = 1; i < tensor->sharedBuffer.tensorProps.numDims; i++ )
+    if ( nullptr == pTensor )
     {
-        oneSize *= tensor->sharedBuffer.tensorProps.dims[i];
+        QC_ERROR( "Not a valid tensor descriptor" );
+        ret = QC_STATUS_INVALID_BUF;
     }
-
-    file = fopen( path.c_str(), "rb" );
-    if ( nullptr == file )
+    else
     {
-        QC_DEBUG( "Failed to open file %s", path.c_str() );
-        ret = QC_STATUS_ALREADY;
-    }
-
-    if ( QC_STATUS_OK == ret )
-    {
-        fseek( file, 0, SEEK_END );
-        length = (size_t) ftell( file );
-        batchSize = length / oneSize;
-        if ( tensor->sharedBuffer.size < length )
+        oneSize = s_qcTensorTypeToDataSize[pTensor->tensorType];
+        for ( uint32_t i = 1; i < pTensor->numDims; i++ )
         {
-            QC_ERROR( "Invalid Tensor file %s", path.c_str() );
-            ret = QC_STATUS_FAIL;
+            oneSize *= pTensor->dims[i];
         }
-    }
 
-    if ( QC_STATUS_OK == ret )
-    {
-        fseek( file, 0, SEEK_SET );
-        auto r = fread( tensor->sharedBuffer.data(), 1, length, file );
-        if ( length != r )
+        file = fopen( path.c_str(), "rb" );
+        if ( nullptr == file )
         {
-            QC_ERROR( "failed to read PointCloud file %s", path.c_str() );
-            ret = QC_STATUS_FAIL;
+            QC_DEBUG( "Failed to open file %s", path.c_str() );
+            ret = QC_STATUS_ALREADY;
         }
-        else
-        {
-            tensor->sharedBuffer.tensorProps.dims[0] = batchSize;
-        }
-    }
 
-    if ( nullptr != file )
-    {
-        fclose( file );
+        if ( QC_STATUS_OK == ret )
+        {
+            fseek( file, 0, SEEK_END );
+            length = (size_t) ftell( file );
+            batchSize = length / oneSize;
+            if ( pTensor->size < length )
+            {
+                QC_ERROR( "Invalid Tensor file %s", path.c_str() );
+                ret = QC_STATUS_FAIL;
+            }
+        }
+
+        if ( QC_STATUS_OK == ret )
+        {
+            fseek( file, 0, SEEK_SET );
+            auto r = fread( pTensor->pBuf, 1, length, file );
+            if ( length != r )
+            {
+                QC_ERROR( "failed to read PointCloud file %s", path.c_str() );
+                ret = QC_STATUS_FAIL;
+            }
+            else
+            {
+                pTensor->dims[0] = batchSize;
+            }
+        }
+
+        if ( nullptr != file )
+        {
+            fclose( file );
+        }
     }
 
     QC_DEBUG( "Loading %u batch tensor %s %s", batchSize, path.c_str(),

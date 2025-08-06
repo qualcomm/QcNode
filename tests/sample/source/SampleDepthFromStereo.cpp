@@ -14,9 +14,7 @@ namespace sample
 SampleDepthFromStereo::SampleDepthFromStereo() {}
 SampleDepthFromStereo::~SampleDepthFromStereo() {}
 
-void SampleDepthFromStereo::OnDoneCb( const QCNodeEventInfo_t &eventInfo )
-{
-}
+void SampleDepthFromStereo::OnDoneCb( const QCNodeEventInfo_t &eventInfo ) {}
 
 QCStatus_e SampleDepthFromStereo::ParseConfig( SampleConfig_t &config )
 {
@@ -25,29 +23,29 @@ QCStatus_e SampleDepthFromStereo::ParseConfig( SampleConfig_t &config )
     m_config.Set<std::string>( "name", m_name );
 
     std::string dirStr = Get( config, "direction", "l2r" );
-    m_config.Set<std::string>("direction", dirStr);
+    m_config.Set<std::string>( "direction", dirStr );
 
     m_width = Get( config, "width", 1280 );
-    m_config.Set<uint32_t>("width", m_width);
+    m_config.Set<uint32_t>( "width", m_width );
 
     m_height = Get( config, "height", 416 );
-    m_config.Set<uint32_t>("height", m_height);
+    m_config.Set<uint32_t>( "height", m_height );
 
-    m_config.Set<std::string>("format", Get( config, "format", "nv12" ));
-    m_config.Set<uint32_t>("fps", Get( config, "fps", 30 ));
+    m_config.Set<std::string>( "format", Get( config, "format", "nv12" ) );
+    m_config.Set<uint32_t>( "fps", Get( config, "fps", 30 ) );
 
     bool bCache = Get( config, "cache", true );
     if ( false == bCache )
     {
-        m_bufferFlags = 0;
+        m_bufferCache = QC_CACHEABLE_NON;
     }
     else
     {
-        m_bufferFlags = QC_BUFFER_FLAGS_CACHE_WB_WA;
+        m_bufferCache = QC_CACHEABLE;
     }
 
     m_poolSize = Get( config, "pool_size", 4 );
-    m_config.Set<uint32_t>("pool_size", m_poolSize);
+    m_config.Set<uint32_t>( "pool_size", m_poolSize );
 
     m_inputTopicName = Get( config, "input_topic", "" );
     if ( "" == m_inputTopicName )
@@ -88,7 +86,7 @@ QCStatus_e SampleDepthFromStereo::Init( std::string name, SampleConfig_t &config
                                        4 };
 
         ret = m_dispPool.Init( name + ".disp", LOGGER_LEVEL_INFO, m_poolSize, dispTsProp,
-                               QC_BUFFER_USAGE_EVA, m_bufferFlags );
+                               QC_MEMORY_ALLOCATOR_DMA_EVA, m_bufferCache );
     }
 
     if ( QC_STATUS_OK == ret )
@@ -98,10 +96,10 @@ QCStatus_e SampleDepthFromStereo::Init( std::string name, SampleConfig_t &config
                                        4 };
 
         ret = m_confPool.Init( name + ".conf", LOGGER_LEVEL_INFO, m_poolSize, confTsProp,
-                               QC_BUFFER_USAGE_EVA, m_bufferFlags );
+                               QC_MEMORY_ALLOCATOR_DMA_EVA, m_bufferCache );
     }
 
-    if (QC_STATUS_OK == ret)
+    if ( QC_STATUS_OK == ret )
     {
         using std::placeholders::_1;
 

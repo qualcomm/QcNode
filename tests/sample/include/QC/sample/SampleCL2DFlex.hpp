@@ -52,7 +52,7 @@ private:
 
 private:
     uint32_t m_poolSize = 4;
-    QCBufferFlags_t m_bufferFlags = QC_BUFFER_FLAGS_CACHE_WB_WA;
+    QCAllocationCache_e m_bufferCache = QC_CACHEABLE;
     bool m_bNoPadding = false;
 
     std::string m_inputTopicName;

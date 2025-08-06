@@ -68,7 +68,7 @@ QCStatus_e VidcDemuxer::DeInit()
 {
     QCStatus_e ret = QC_STATUS_OK;
 
-    if ( !m_bInitialized )
+    if ( false == m_bInitialized )
     {
         ret = QC_STATUS_BAD_STATE;
         QC_LOG_ERROR( "VidcDemuxer::DeInit Error: demuxer not initialzed" );
@@ -94,15 +94,14 @@ QCStatus_e VidcDemuxer::DeInit()
     return ret;
 }
 
-QCStatus_e VidcDemuxer::GetFrame( QCSharedBuffer_t *pSharedBuffer,
+QCStatus_e VidcDemuxer::GetFrame( QCBufferDescriptorBase_t &bufDesc,
                                   VidcDemuxer_FrameInfo_t &frameInfo )
 {
     QCStatus_e ret = QC_STATUS_OK;
-
     vidc_frame_data_type frame;
-    void *bufferAddr = pSharedBuffer->data();
+    ImageDescriptor_t *pImage = dynamic_cast<ImageDescriptor_t *>( &bufDesc );
 
-    if ( !m_bInitialized )
+    if ( false == m_bInitialized )
     {
         ret = QC_STATUS_BAD_STATE;
         QC_LOG_ERROR( "VidcDemuxer::Process Error: demuxer not initialzed" );
@@ -110,19 +109,19 @@ QCStatus_e VidcDemuxer::GetFrame( QCSharedBuffer_t *pSharedBuffer,
 
     if ( QC_STATUS_OK == ret )
     {
-        if ( pSharedBuffer == nullptr )
+        if ( ( nullptr == pImage ) || ( nullptr == pImage->pBuf ) )
         {
             ret = QC_STATUS_INVALID_BUF;
-            QC_LOG_ERROR( "VidcDemuxer::Process Error: shared buffer is empty" );
+            QC_LOG_ERROR( "VidcDemuxer::Process Error: buffer is invalid" );
         }
     }
 
     if ( QC_STATUS_OK == ret )
     {
         (void) memset( &frame, 0, sizeof( vidc_frame_data_type ) );
-        frame.frame_addr = (uint8_t *) bufferAddr;
-        frame.data_len = pSharedBuffer->size;
-        frame.alloc_len = pSharedBuffer->buffer.size;
+        frame.frame_addr = (uint8_t *) pImage->GetDataPtr();
+        frame.data_len = pImage->GetDataSize();
+        frame.alloc_len = pImage->size;
 
         if ( m_bSendCodecConfig == true )
         {
@@ -178,7 +177,7 @@ QCStatus_e VidcDemuxer::GetVideoInfo( VidcDemuxer_VideoInfo_t &videoInfo )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
-    if ( !m_bInitialized )
+    if ( false == m_bInitialized )
     {
         ret = QC_STATUS_BAD_STATE;
         QC_LOG_ERROR( "VidcDemuxer::GetVideoInfo Error: demuxer not initialzed" );

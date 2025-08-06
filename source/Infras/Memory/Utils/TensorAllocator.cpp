@@ -37,15 +37,13 @@ static uint32_t s_qcTensorTypeToDataSize[QC_TENSOR_TYPE_MAX] = {
         sizeof( uint32_t )  /* QC_TENSOR_TYPE_UFIXED_POINT_32 */
 };
 
-TensorAllocator::TensorAllocator( const std::string &name ) : BinaryAllocator( name )
-{
-    (void) QC_LOGGER_INIT( GetConfiguration().name.c_str(), LOGGER_LEVEL_ERROR );
-};
+TensorAllocator::TensorAllocator( const std::string &name ) : BinaryAllocator( name ) {};
 
-TensorAllocator::~TensorAllocator()
-{
-    (void) QC_LOGGER_DEINIT();
-};
+TensorAllocator::TensorAllocator( const QCNodeID_t &nodeId, Logger_Level_e logLevel )
+    : BinaryAllocator( nodeId, logLevel )
+{}
+
+TensorAllocator::~TensorAllocator() {};
 
 QCStatus_e TensorAllocator::Allocate( const QCBufferPropBase_t &request,
                                       QCBufferDescriptorBase_t &response )

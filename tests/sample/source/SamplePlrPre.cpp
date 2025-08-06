@@ -129,7 +129,7 @@ QCStatus_e SamplePlrPre::Init( std::string name, SampleConfig_t &config )
             };
         }
         ret = m_coordsPool.Init( name + ".coords", LOGGER_LEVEL_INFO, m_poolSize, outPlrsTsProp,
-                                 QC_BUFFER_USAGE_HTP );
+                                 QC_MEMORY_ALLOCATOR_DMA_HTP );
     }
 
     if ( QC_STATUS_OK == ret )
@@ -140,7 +140,7 @@ QCStatus_e SamplePlrPre::Init( std::string name, SampleConfig_t &config )
                 3,
         };
         ret = m_featuresPool.Init( name + ".features", LOGGER_LEVEL_INFO, m_poolSize,
-                                   outFeatureTsProp, QC_BUFFER_USAGE_HTP );
+                                   outFeatureTsProp, QC_MEMORY_ALLOCATOR_DMA_HTP );
     }
 
     if ( QC_STATUS_OK == ret )

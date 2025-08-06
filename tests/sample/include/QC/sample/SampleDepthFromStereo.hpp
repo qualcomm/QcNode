@@ -59,7 +59,7 @@ private:
     std::string m_inputTopicName;
     std::string m_outputTopicName;
 
-    QCBufferFlags_t m_bufferFlags = QC_BUFFER_FLAGS_CACHE_WB_WA;
+    QCAllocationCache_e m_bufferCache = QC_CACHEABLE;
 
     std::thread m_thread;
     SharedBufferPool m_dispPool;

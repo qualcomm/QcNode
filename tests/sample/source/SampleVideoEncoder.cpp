@@ -30,7 +30,7 @@ void SampleVideoEncoder::OnDoneCb( const QCNodeEventInfo_t &eventInfo )
 }
 
 void SampleVideoEncoder::InFrameCallback( QCSharedVideoFrameDescriptor_t &inFrame,
-                                              const QCNodeEventInfo_t &eventInfo )
+                                          const QCNodeEventInfo_t &eventInfo )
 {
     uint64_t frameId = inFrame.appMarkData;
 
@@ -45,7 +45,7 @@ void SampleVideoEncoder::InFrameCallback( QCSharedVideoFrameDescriptor_t &inFram
 }
 
 void SampleVideoEncoder::OutFrameCallback( QCSharedVideoFrameDescriptor_t &outFrame,
-                                               const QCNodeEventInfo_t &eventInfo )
+                                           const QCNodeEventInfo_t &eventInfo )
 {
     uint64_t frameId = outFrame.appMarkData;
 
@@ -120,8 +120,7 @@ QCStatus_e SampleVideoEncoder::Init( std::string name, SampleConfig_t &config )
         using std::placeholders::_1;
 
         QCNodeInit_t config = { .config = m_dataTree.Dump(),
-                                .callback =
-                                        std::bind( &SampleVideoEncoder::OnDoneCb, this, _1 ) };
+                                .callback = std::bind( &SampleVideoEncoder::OnDoneCb, this, _1 ) };
         ret = m_encoder.Initialize( config );
     }
 
@@ -172,7 +171,8 @@ void SampleVideoEncoder::ThreadMain()
             {
                 QC_DEBUG( "Received frameId %" PRIu64 ", type %d, size %lu, timestamp %" PRIu64
                           "\n ",
-                          frame.frameId, frame.BufferType(), frame.size(), frame.timestamp );
+                          frame.frameId, frame.GetBufferType(), frame.GetDataSize(),
+                          frame.timestamp );
 
                 QCSharedVideoFrameDescriptor_t frameSharedBuffer;
                 frameSharedBuffer.buffer = frame.SharedBuffer();
@@ -281,7 +281,7 @@ QCStatus_e SampleVideoEncoder::ParseConfig( SampleConfig_t &config )
     m_config.Set<std::string>( "name", m_name );
 
     uint32_t width = Get( config, "width", 0 );
-    if (0 == width)
+    if ( 0 == width )
     {
         QC_ERROR( "invalid width = %u\n", width );
         ret = QC_STATUS_BAD_ARGUMENTS;
@@ -292,7 +292,7 @@ QCStatus_e SampleVideoEncoder::ParseConfig( SampleConfig_t &config )
     }
 
     uint32_t height = Get( config, "height", 0 );
-    if (0 == height)
+    if ( 0 == height )
     {
         QC_ERROR( "invalid height = %u\n", height );
         ret = QC_STATUS_BAD_ARGUMENTS;
@@ -303,7 +303,7 @@ QCStatus_e SampleVideoEncoder::ParseConfig( SampleConfig_t &config )
     }
 
     uint32_t numInputBufferReq = Get( config, "numInputBufferReq", 4 );
-    if (0 == numInputBufferReq)
+    if ( 0 == numInputBufferReq )
     {
         QC_ERROR( "invalid pool_size = %u\n", numInputBufferReq );
         ret = QC_STATUS_BAD_ARGUMENTS;
@@ -317,7 +317,7 @@ QCStatus_e SampleVideoEncoder::ParseConfig( SampleConfig_t &config )
     m_config.Set<uint32_t>( "numOutputBufferReq", numOutputBufferReq );
 
     uint32_t bitRate = Get( config, "bitrate", 8000000 );
-    if (0 == bitRate)
+    if ( 0 == bitRate )
     {
         QC_ERROR( "invalid bitrate = %u\n", bitRate );
         ret = QC_STATUS_BAD_ARGUMENTS;
@@ -328,7 +328,7 @@ QCStatus_e SampleVideoEncoder::ParseConfig( SampleConfig_t &config )
     }
 
     uint32_t frameRate = Get( config, "fps", 30 );
-    if (0 == frameRate)
+    if ( 0 == frameRate )
     {
         QC_ERROR( "invalid fps = %u\n", frameRate );
         ret = QC_STATUS_BAD_ARGUMENTS;
@@ -342,7 +342,7 @@ QCStatus_e SampleVideoEncoder::ParseConfig( SampleConfig_t &config )
     m_config.Set<bool>( "sync_frame", bSyncFrameSeqHdr );
 
     m_inputTopicName = Get( config, "input_topic", "" );
-    if ("" == m_inputTopicName)
+    if ( "" == m_inputTopicName )
     {
         QC_ERROR( "no input topic\n" );
         ret = QC_STATUS_BAD_ARGUMENTS;
@@ -352,7 +352,7 @@ QCStatus_e SampleVideoEncoder::ParseConfig( SampleConfig_t &config )
     }
 
     m_outputTopicName = Get( config, "output_topic", "" );
-    if ("" == m_outputTopicName)
+    if ( "" == m_outputTopicName )
     {
         QC_ERROR( "no output topic\n" );
         ret = QC_STATUS_BAD_ARGUMENTS;

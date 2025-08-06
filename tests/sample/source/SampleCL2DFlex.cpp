@@ -317,11 +317,11 @@ QCStatus_e SampleCL2DFlex::ParseConfig( SampleConfig_t &config )
     bool bCache = Get( config, "cache", true );
     if ( false == bCache )
     {
-        m_bufferFlags = 0;
+        m_bufferCache = QC_CACHEABLE_NON;
     }
     else
     {
-        m_bufferFlags = QC_BUFFER_FLAGS_CACHE_WB_WA;
+        m_bufferCache = QC_CACHEABLE;
     }
 
     m_inputTopicName = Get( config, "input_topic", "" );
@@ -374,7 +374,7 @@ QCStatus_e SampleCL2DFlex::Init( std::string name, SampleConfig_t &config )
             imgProp.actualHeight[0] = m_outputHeight;
             imgProp.planeBufSize[0] = 0;
             ret = m_imagePool.Init( name, LOGGER_LEVEL_INFO, m_poolSize, imgProp,
-                                    QC_BUFFER_USAGE_GPU, m_bufferFlags );
+                                    QC_MEMORY_ALLOCATOR_DMA_GPU, m_bufferCache );
         }
         else
         {
@@ -397,7 +397,7 @@ QCStatus_e SampleCL2DFlex::Init( std::string name, SampleConfig_t &config )
                     imgProp.actualHeight[1] = m_outputHeight / 2;
                     imgProp.planeBufSize[1] = 0;
                     ret = m_imagePool.Init( name, LOGGER_LEVEL_INFO, m_poolSize, imgProp,
-                                            QC_BUFFER_USAGE_GPU, m_bufferFlags );
+                                            QC_MEMORY_ALLOCATOR_DMA_GPU, m_bufferCache );
                 }
                 else if ( QC_IMAGE_FORMAT_UYVY == m_outputFormat )
                 {
@@ -407,7 +407,7 @@ QCStatus_e SampleCL2DFlex::Init( std::string name, SampleConfig_t &config )
                     imgProp.actualHeight[0] = m_outputHeight;
                     imgProp.planeBufSize[0] = 0;
                     ret = m_imagePool.Init( name, LOGGER_LEVEL_INFO, m_poolSize, imgProp,
-                                            QC_BUFFER_USAGE_GPU, m_bufferFlags );
+                                            QC_MEMORY_ALLOCATOR_DMA_GPU, m_bufferCache );
                 }
                 else
                 {
@@ -419,7 +419,7 @@ QCStatus_e SampleCL2DFlex::Init( std::string name, SampleConfig_t &config )
             {
                 ret = m_imagePool.Init( name, LOGGER_LEVEL_INFO, m_poolSize, imgProp.batchSize,
                                         m_outputWidth, m_outputHeight, m_outputFormat,
-                                        QC_BUFFER_USAGE_GPU, m_bufferFlags );
+                                        QC_MEMORY_ALLOCATOR_DMA_GPU, m_bufferCache );
             }
         }
     }

@@ -27,11 +27,11 @@ QCStatus_e SampleDataOnline::ParseConfig( SampleConfig_t &config )
     bool bCache = Get( config, "cache", true );
     if ( false == bCache )
     {
-        m_bufferFlags = 0;
+        m_bufferCache = QC_CACHEABLE_NON;
     }
     else
     {
-        m_bufferFlags = QC_BUFFER_FLAGS_CACHE_WB_WA;
+        m_bufferCache = QC_CACHEABLE;
     }
 
     m_port = Get( config, "port", 6666 );
@@ -197,14 +197,14 @@ QCStatus_e SampleDataOnline::ReceiveData( Meta &meta )
                     DataImageMeta *pImageMeta = (DataImageMeta *) &dataMeta;
                     ret = m_bufferPools[i].Init( m_name + std::to_string( i ), LOGGER_LEVEL_INFO,
                                                  m_poolSize, pImageMeta->imageProps,
-                                                 QC_BUFFER_USAGE_DEFAULT, m_bufferFlags );
+                                                 QC_MEMORY_ALLOCATOR_DMA, m_bufferCache );
                 }
                 else if ( QC_BUFFER_TYPE_TENSOR == dataMeta.dataType )
                 {
                     DataTensorMeta *pTensorMeta = (DataTensorMeta *) &dataMeta;
                     ret = m_bufferPools[i].Init(
                             m_name + "_" + pTensorMeta->name, LOGGER_LEVEL_INFO, m_poolSize,
-                            pTensorMeta->tensorProps, QC_BUFFER_USAGE_DEFAULT, m_bufferFlags );
+                            pTensorMeta->tensorProps, QC_MEMORY_ALLOCATOR_DMA, m_bufferCache );
                 }
                 else
                 {
@@ -233,10 +233,10 @@ QCStatus_e SampleDataOnline::ReceiveData( Meta &meta )
                 QC_ERROR( "Failed to get data buffer for input %u", i );
                 rv = -ENOENT;
             }
-            else if ( buffer->sharedBuffer.size != dataMeta.size )
+            else if ( buffer->GetDataSize() != static_cast<size_t>( dataMeta.size ) )
             {
                 QC_ERROR( "size mismatch for input %u, expect %u, given %u", i, dataMeta.size,
-                          buffer->sharedBuffer.size );
+                          buffer->GetDataSize() );
                 rv = -EINVAL;
             }
             else
@@ -287,7 +287,7 @@ QCStatus_e SampleDataOnline::ReceiveData( Meta &meta )
         auto &dataMeta = dataMetas[i];
         offset = 0;
         size = dataMeta.size;
-        pData = (uint8_t *) outputs.data( i );
+        pData = (uint8_t *) outputs.GetDataPtr( i );
         do
         {
             rv = recv( m_client, &pData[offset], size - offset, 0 );
@@ -481,7 +481,7 @@ void SampleDataOnline::ThreadSubMain()
             payloadSize = sizeof( DataMeta ) * frames.frames.size();
             for ( auto &frame : frames.frames )
             {
-                payloadSize += frame.size();
+                payloadSize += frame.GetDataSize();
             }
             m_payload.resize( sizeof( Meta ) + payloadSize );
             Meta *pMeta = (Meta *) m_payload.data();
@@ -493,19 +493,19 @@ void SampleDataOnline::ThreadSubMain()
             DataMeta *pDataMeta = (DataMeta *) &pMeta[1];
             for ( auto &frame : frames.frames )
             {
-                if ( QC_BUFFER_TYPE_IMAGE == frame.BufferType() )
+                if ( QC_BUFFER_TYPE_IMAGE == frame.GetBufferType() )
                 {
                     DataImageMeta *pImageMeta = (DataImageMeta *) pDataMeta;
                     pImageMeta->dataType = QC_BUFFER_TYPE_IMAGE;
-                    pImageMeta->size = frame.size();
-                    pImageMeta->imageProps = frame.buffer->sharedBuffer.imgProps;
+                    pImageMeta->size = frame.GetDataSize();
+                    pImageMeta->imageProps = frame.GetImageProps();
                 }
                 else
                 {
                     DataTensorMeta *pTensorMeta = (DataTensorMeta *) pDataMeta;
                     pTensorMeta->dataType = QC_BUFFER_TYPE_TENSOR;
-                    pTensorMeta->size = frame.size();
-                    pTensorMeta->tensorProps = frame.buffer->sharedBuffer.tensorProps;
+                    pTensorMeta->size = frame.GetDataSize();
+                    pTensorMeta->tensorProps = frame.GetTensorProps();
                     pTensorMeta->quantScale = frame.quantScale;
                     pTensorMeta->quantOffset = frame.quantOffset;
                     snprintf( pTensorMeta->name, sizeof( pTensorMeta->name ), "%s",
@@ -516,8 +516,8 @@ void SampleDataOnline::ThreadSubMain()
             pData = (uint8_t *) pDataMeta;
             for ( auto &frame : frames.frames )
             {
-                memcpy( pData, frame.data(), frame.size() );
-                pData += frame.size();
+                memcpy( pData, frame.GetDataPtr(), frame.GetDataSize() );
+                pData += frame.GetDataSize();
             }
 
             size_t offset = 0;

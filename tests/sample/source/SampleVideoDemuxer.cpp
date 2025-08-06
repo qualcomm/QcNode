@@ -10,8 +10,8 @@ namespace QC
 namespace sample
 {
 
-SampleVideoDemuxer::SampleVideoDemuxer(){};
-SampleVideoDemuxer::~SampleVideoDemuxer(){};
+SampleVideoDemuxer::SampleVideoDemuxer() {};
+SampleVideoDemuxer::~SampleVideoDemuxer() {};
 
 QCStatus_e SampleVideoDemuxer::ParseConfig( SampleConfig_t &config )
 {
@@ -91,7 +91,7 @@ QCStatus_e SampleVideoDemuxer::Init( std::string name, SampleConfig_t &config )
         imgProps.planeBufSize[0] = m_videoInfo.maxFrameSize;
         imgProps.format = m_videoInfo.format;
         ret = m_framePool.Init( name, LOGGER_LEVEL_INFO, m_poolSize, imgProps,
-                                QC_BUFFER_USAGE_DEFAULT );
+            QC_MEMORY_ALLOCATOR_DMA );
     }
 
     if ( QC_STATUS_OK == ret )
@@ -137,7 +137,7 @@ void SampleVideoDemuxer::ThreadMain()
         {
             if ( QC_STATUS_OK == ret )
             {
-                ret = m_vidcDemuxer.GetFrame( &buffer->sharedBuffer, frameInfo );
+                ret = m_vidcDemuxer.GetFrame( buffer->GetBuffer(), frameInfo );
             }
 
             if ( QC_STATUS_OK == ret )

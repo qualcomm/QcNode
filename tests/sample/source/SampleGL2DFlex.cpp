@@ -107,11 +107,11 @@ QCStatus_e SampleGL2DFlex::ParseConfig( SampleConfig_t &config )
     bool bCache = Get( config, "cache", true );
     if ( false == bCache )
     {
-        m_bufferFlags = 0;
+        m_bufferCache = QC_CACHEABLE_NON;
     }
     else
     {
-        m_bufferFlags = QC_BUFFER_FLAGS_CACHE_WB_WA;
+        m_bufferCache = QC_CACHEABLE;
     }
 
     m_inputTopicName = Get( config, "input_topic", "" );
@@ -146,8 +146,8 @@ QCStatus_e SampleGL2DFlex::Init( std::string name, SampleConfig_t &config )
     {
 
         ret = m_imagePool.Init( name, LOGGER_LEVEL_INFO, m_poolSize, m_config.numOfInputs,
-                                m_outputWidth, m_outputHeight, m_outputFormat, QC_BUFFER_USAGE_GPU,
-                                m_bufferFlags );
+                                m_outputWidth, m_outputHeight, m_outputFormat,
+                                QC_MEMORY_ALLOCATOR_DMA_GPU, m_bufferCache );
     }
 
     if ( QC_STATUS_OK == ret )

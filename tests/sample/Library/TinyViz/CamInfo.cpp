@@ -45,9 +45,13 @@ uint8_t *CamInfo::data( uint32_t batch )
     uint8_t *pData = nullptr;
     if ( nullptr != camFrame.buffer )
     {
-        uint32_t sizeOne = camFrame.buffer->sharedBuffer.size /
-                           camFrame.buffer->sharedBuffer.imgProps.batchSize;
-        pData = ( (uint8_t *) camFrame.buffer->sharedBuffer.data() ) + sizeOne * batch;
+        QCBufferDescriptorBase_t &bufDesc = camFrame.GetBuffer();
+        ImageDescriptor_t *pImage = dynamic_cast<ImageDescriptor_t *>( &bufDesc );
+        if ( nullptr != pImage )
+        {
+            uint32_t sizeOne = pImage->GetDataSize() / pImage->batchSize;
+            pData = ( (uint8_t *) pImage->GetDataPtr() ) + sizeOne * batch;
+        }
     }
     return pData;
 }
@@ -57,7 +61,12 @@ size_t CamInfo::size()
     size_t sz = 0;
     if ( nullptr != camFrame.buffer )
     {
-        sz = camFrame.buffer->sharedBuffer.size;
+        QCBufferDescriptorBase_t &bufDesc = camFrame.GetBuffer();
+        ImageDescriptor_t *pImage = dynamic_cast<ImageDescriptor_t *>( &bufDesc );
+        if ( nullptr != pImage )
+        {
+            sz = pImage->GetDataSize();
+        }
     }
     return sz;
 }
@@ -67,7 +76,12 @@ uint32_t CamInfo::batch()
     uint32_t batchSize = 1;
     if ( nullptr != camFrame.buffer )
     {
-        batchSize = camFrame.buffer->sharedBuffer.imgProps.batchSize;
+        QCBufferDescriptorBase_t &bufDesc = camFrame.GetBuffer();
+        ImageDescriptor_t *pImage = dynamic_cast<ImageDescriptor_t *>( &bufDesc );
+        if ( nullptr != pImage )
+        {
+            batchSize = pImage->batchSize;
+        }
     }
     return batchSize;
 }
@@ -78,7 +92,12 @@ uint32_t CamInfo::width()
 
     if ( nullptr != camFrame.buffer )
     {
-        w = camFrame.buffer->sharedBuffer.imgProps.width;
+        QCBufferDescriptorBase_t &bufDesc = camFrame.GetBuffer();
+        ImageDescriptor_t *pImage = dynamic_cast<ImageDescriptor_t *>( &bufDesc );
+        if ( nullptr != pImage )
+        {
+            w = pImage->width;
+        }
     }
 
     return w;
@@ -90,7 +109,12 @@ uint32_t CamInfo::height()
 
     if ( nullptr != camFrame.buffer )
     {
-        h = camFrame.buffer->sharedBuffer.imgProps.actualHeight[0];
+        QCBufferDescriptorBase_t &bufDesc = camFrame.GetBuffer();
+        ImageDescriptor_t *pImage = dynamic_cast<ImageDescriptor_t *>( &bufDesc );
+        if ( nullptr != pImage )
+        {
+            h = pImage->actualHeight[0];
+        }
     }
 
     return h;
@@ -103,7 +127,12 @@ uint32_t CamInfo::stride()
 
     if ( nullptr != camFrame.buffer )
     {
-        st = camFrame.buffer->sharedBuffer.imgProps.stride[0];
+        QCBufferDescriptorBase_t &bufDesc = camFrame.GetBuffer();
+        ImageDescriptor_t *pImage = dynamic_cast<ImageDescriptor_t *>( &bufDesc );
+        if ( nullptr != pImage )
+        {
+            st = pImage->stride[0];
+        }
     }
 
     return st;
@@ -115,7 +144,12 @@ QCImageFormat_e CamInfo::format()
 
     if ( nullptr != camFrame.buffer )
     {
-        fmt = camFrame.buffer->sharedBuffer.imgProps.format;
+        QCBufferDescriptorBase_t &bufDesc = camFrame.GetBuffer();
+        ImageDescriptor_t *pImage = dynamic_cast<ImageDescriptor_t *>( &bufDesc );
+        if ( nullptr != pImage )
+        {
+            fmt = pImage->format;
+        }
     }
 
     return fmt;

@@ -114,11 +114,11 @@ TEST( Memory, SANITY_ImageAllocateByWHF )
     status = ma.Allocate( ImageBasicProps_t( 3840, 2160, QC_IMAGE_FORMAT_UYVY ), imgDesc );
     ASSERT_EQ( QC_STATUS_OK, status );
     ASSERT_NE( nullptr, imgDesc.pBuf );
-    ASSERT_EQ( imgDesc.pBufBase, imgDesc.pBuf );
     ASSERT_EQ( 0, imgDesc.offset );
-    std::generate( (uint8_t *) imgDesc.pBuf, (uint8_t *) imgDesc.pBuf + imgDesc.size, std::rand );
-    ASSERT_EQ( imgDesc.size, imgDesc.dmaSize );
-    ASSERT_LE( 3840 * 2160 * 2, imgDesc.size );
+    std::generate( (uint8_t *) imgDesc.pBuf, (uint8_t *) imgDesc.pBuf + imgDesc.validSize,
+                   std::rand );
+    ASSERT_EQ( imgDesc.validSize, imgDesc.size );
+    ASSERT_LE( 3840 * 2160 * 2, imgDesc.validSize );
     ASSERT_LE( 3840 * 2160 * 2, imgDesc.planeBufSize[0] );
     ASSERT_EQ( 1, imgDesc.numPlanes );
     ASSERT_EQ( 1, imgDesc.batchSize );
@@ -129,7 +129,7 @@ TEST( Memory, SANITY_ImageAllocateByWHF )
     status = imgDesc.ImageToTensor( imgDescTs );
     ASSERT_EQ( QC_STATUS_OK, status ); /* supported as padding is 0 */
     ASSERT_EQ( 0, imgDescTs.offset );
-    ASSERT_LE( 3840 * 2160 * 2, imgDescTs.size );
+    ASSERT_LE( 3840 * 2160 * 2, imgDescTs.validSize );
     ASSERT_EQ( QC_BUFFER_TYPE_TENSOR, imgDescTs.type );
     ASSERT_EQ( 4, imgDescTs.numDims );
     ASSERT_EQ( 1, imgDescTs.dims[0] );
@@ -145,9 +145,10 @@ TEST( Memory, SANITY_ImageAllocateByWHF )
     ASSERT_EQ( QC_STATUS_OK, status );
     ASSERT_NE( nullptr, imgDesc.pBuf );
     ASSERT_EQ( 0, imgDesc.offset );
-    std::generate( (uint8_t *) imgDesc.pBuf, (uint8_t *) imgDesc.pBuf + imgDesc.size, std::rand );
-    ASSERT_EQ( imgDesc.size, imgDesc.dmaSize );
-    ASSERT_LE( 3840 * 2160 * 3 / 2, imgDesc.size );
+    std::generate( (uint8_t *) imgDesc.pBuf, (uint8_t *) imgDesc.pBuf + imgDesc.validSize,
+                   std::rand );
+    ASSERT_EQ( imgDesc.validSize, imgDesc.size );
+    ASSERT_LE( 3840 * 2160 * 3 / 2, imgDesc.validSize );
     ASSERT_EQ( 2, imgDesc.numPlanes );
     ASSERT_LE( 3840, imgDesc.stride[0] );
     ASSERT_LE( 2160, imgDesc.actualHeight[0] );
@@ -165,8 +166,8 @@ TEST( Memory, SANITY_ImageAllocateByWHF )
     ASSERT_EQ( QC_STATUS_OK, status );
     ASSERT_NE( nullptr, imgDesc.pBuf );
     ASSERT_EQ( 0, imgDesc.offset );
-    ASSERT_EQ( imgDesc.dmaSize, imgDesc.size );
-    ASSERT_LE( 1024 * 768 * 3, imgDesc.size );
+    ASSERT_EQ( imgDesc.size, imgDesc.validSize );
+    ASSERT_LE( 1024 * 768 * 3, imgDesc.validSize );
     ASSERT_EQ( 1, imgDesc.numPlanes );
     ASSERT_LE( 1024, imgDesc.stride[0] );
     ASSERT_LE( 768, imgDesc.actualHeight[0] );
@@ -178,9 +179,10 @@ TEST( Memory, SANITY_ImageAllocateByWHF )
     ASSERT_EQ( QC_STATUS_OK, status );
     ASSERT_NE( nullptr, imgDesc.pBuf );
     ASSERT_EQ( 0, imgDesc.offset );
-    std::generate( (uint8_t *) imgDesc.pBuf, (uint8_t *) imgDesc.pBuf + imgDesc.size, std::rand );
-    ASSERT_EQ( imgDesc.dmaSize, imgDesc.size );
-    ASSERT_LE( 1024 * 768 * 3 * 7, imgDesc.size );
+    std::generate( (uint8_t *) imgDesc.pBuf, (uint8_t *) imgDesc.pBuf + imgDesc.validSize,
+                   std::rand );
+    ASSERT_EQ( imgDesc.size, imgDesc.validSize );
+    ASSERT_LE( 1024 * 768 * 3 * 7, imgDesc.validSize );
     ASSERT_EQ( 1, imgDesc.numPlanes );
     ASSERT_LE( 1024, imgDesc.stride[0] );
     ASSERT_LE( 768, imgDesc.actualHeight[0] );
@@ -188,10 +190,11 @@ TEST( Memory, SANITY_ImageAllocateByWHF )
     /* testing get the middle batch of the shared image */
     status = imgDesc.GetImageDesc( imgDescM, 3 );
     ASSERT_EQ( QC_STATUS_OK, status );
-    ASSERT_EQ( (uint8_t *) imgDesc.pBufBase + imgDescM.size * 3, imgDescM.pBuf );
-    ASSERT_EQ( imgDescM.size * 3, imgDescM.offset );
-    ASSERT_EQ( imgDescM.dmaSize / 7, imgDescM.size );
-    ASSERT_LE( 1024 * 768 * 3, imgDescM.size );
+    ASSERT_EQ( (void *) ( (uintptr_t) imgDesc.pBuf + imgDescM.validSize * 3 ),
+               imgDescM.GetDataPtr() );
+    ASSERT_EQ( imgDescM.validSize * 3, imgDescM.offset );
+    ASSERT_EQ( imgDescM.size / 7, imgDescM.validSize );
+    ASSERT_LE( 1024 * 768 * 3, imgDescM.validSize );
     ASSERT_EQ( 1, imgDescM.numPlanes );
     ASSERT_LE( 1024 * 3, imgDescM.stride[0] );
     ASSERT_LE( 768, imgDescM.actualHeight[0] );
@@ -202,7 +205,7 @@ TEST( Memory, SANITY_ImageAllocateByWHF )
     {
         ASSERT_EQ( QC_STATUS_OK, status );
         ASSERT_EQ( 0, imgDescTs.offset );
-        ASSERT_LE( 1024 * 768 * 3 * 7, imgDescTs.size );
+        ASSERT_LE( 1024 * 768 * 3 * 7, imgDescTs.validSize );
         ASSERT_EQ( QC_BUFFER_TYPE_TENSOR, imgDescTs.type );
         ASSERT_EQ( 4, imgDescTs.numDims );
         ASSERT_EQ( 7, imgDescTs.dims[0] );
@@ -223,12 +226,12 @@ TEST( Memory, SANITY_ImageAllocateByWHF )
     imgProps.size = 1024;
     imgProps.cache = static_cast<QCAllocationCache_e>( 1234 );
     imgProps.alignment = 8096;
-    imgProps.usage = static_cast<QCBufferUsage_e>( 5678 );
+    imgProps.allocatorType = static_cast<QCMemoryAllocator_e>( 5678 );
     bufProps = imgProps;
     ASSERT_EQ( 1024, bufProps.size );
     ASSERT_EQ( 1234, bufProps.cache );
     ASSERT_EQ( 8096, bufProps.alignment );
-    ASSERT_EQ( 5678, bufProps.usage );
+    ASSERT_EQ( 5678, bufProps.allocatorType );
 }
 
 TEST( Memory, SANITY_ImageAllocateByProps )
@@ -250,9 +253,10 @@ TEST( Memory, SANITY_ImageAllocateByProps )
     ASSERT_EQ( QC_STATUS_OK, status );
     ASSERT_NE( nullptr, imgDesc.pBuf );
     ASSERT_EQ( 0, imgDesc.offset );
-    std::generate( (uint8_t *) imgDesc.pBuf, (uint8_t *) imgDesc.pBuf + imgDesc.size, std::rand );
-    ASSERT_EQ( imgDesc.dmaSize, imgDesc.size );
-    ASSERT_EQ( 3840 * 2160 * 2, imgDesc.size );
+    std::generate( (uint8_t *) imgDesc.pBuf, (uint8_t *) imgDesc.pBuf + imgDesc.validSize,
+                   std::rand );
+    ASSERT_EQ( imgDesc.size, imgDesc.validSize );
+    ASSERT_EQ( 3840 * 2160 * 2, imgDesc.validSize );
     ASSERT_EQ( 3840 * 2160 * 2, imgDesc.planeBufSize[0] );
     ASSERT_EQ( 1, imgDesc.numPlanes );
     ASSERT_EQ( 3840 * 2, imgDesc.stride[0] );
@@ -276,9 +280,10 @@ TEST( Memory, SANITY_ImageAllocateByProps )
     ASSERT_EQ( QC_STATUS_OK, status );
     ASSERT_NE( nullptr, imgDesc.pBuf );
     ASSERT_EQ( 0, imgDesc.offset );
-    std::generate( (uint8_t *) imgDesc.pBuf, (uint8_t *) imgDesc.pBuf + imgDesc.size, std::rand );
-    ASSERT_EQ( imgDesc.dmaSize, imgDesc.size );
-    ASSERT_EQ( 1920 * 1024 * 3 / 2, imgDesc.size );
+    std::generate( (uint8_t *) imgDesc.pBuf, (uint8_t *) imgDesc.pBuf + imgDesc.validSize,
+                   std::rand );
+    ASSERT_EQ( imgDesc.size, imgDesc.validSize );
+    ASSERT_EQ( 1920 * 1024 * 3 / 2, imgDesc.validSize );
     ASSERT_EQ( 2, imgDesc.numPlanes );
     ASSERT_EQ( 1920 * 1, imgDesc.stride[0] );
     ASSERT_EQ( 1024, imgDesc.actualHeight[0] );
@@ -308,10 +313,10 @@ TEST( Memory, SANITY_ImageAllocateRGBByProps )
     ASSERT_EQ( QC_STATUS_OK, status );
     ASSERT_NE( nullptr, imgDescAll.pBuf );
     ASSERT_EQ( 0, imgDescAll.offset );
-    std::generate( (uint8_t *) imgDescAll.pBuf, (uint8_t *) imgDescAll.pBuf + imgDescAll.size,
+    std::generate( (uint8_t *) imgDescAll.pBuf, (uint8_t *) imgDescAll.pBuf + imgDescAll.validSize,
                    std::rand );
-    ASSERT_EQ( imgDescAll.dmaSize, imgDescAll.size );
-    ASSERT_EQ( 3 * 1024 * 768 * 3, imgDescAll.size );
+    ASSERT_EQ( imgDescAll.size, imgDescAll.validSize );
+    ASSERT_EQ( 3 * 1024 * 768 * 3, imgDescAll.validSize );
     ASSERT_EQ( 1, imgDescAll.numPlanes );
     ASSERT_EQ( 3, imgDescAll.batchSize );
     ASSERT_EQ( 1024 * 3, imgDescAll.stride[0] );
@@ -320,10 +325,10 @@ TEST( Memory, SANITY_ImageAllocateRGBByProps )
     /* get the RGB image in the middle of imgDescAll */
     status = imgDescAll.GetImageDesc( imgDescMiddle, 1, 1 );
     ASSERT_EQ( QC_STATUS_OK, status );
-    ASSERT_EQ( ( (uint8_t *) imgDescAll.pBuf ) + 1024 * 768 * 3, imgDescMiddle.pBuf );
+    ASSERT_EQ( ( (uint8_t *) imgDescAll.pBuf ) + 1024 * 768 * 3, imgDescMiddle.GetDataPtr() );
     ASSERT_EQ( 1024 * 768 * 3, imgDescMiddle.offset );
-    ASSERT_EQ( imgDescAll.dmaSize / 3, imgDescMiddle.size );
-    ASSERT_EQ( 1024 * 768 * 3, imgDescMiddle.size );
+    ASSERT_EQ( imgDescAll.size / 3, imgDescMiddle.validSize );
+    ASSERT_EQ( 1024 * 768 * 3, imgDescMiddle.validSize );
     ASSERT_EQ( 1, imgDescMiddle.numPlanes );
     ASSERT_EQ( 1, imgDescMiddle.batchSize );
     ASSERT_EQ( 1024 * 3, imgDescMiddle.stride[0] );
@@ -351,8 +356,8 @@ TEST( Memory, SANITY_CompressedImageAllocateByProps )
     ASSERT_NE( nullptr, imgDesc.pBuf );
     ASSERT_EQ( 0, imgDesc.offset );
     std::generate( (uint8_t *) imgDesc.pBuf, (uint8_t *) imgDesc.pBuf + imgDesc.size, std::rand );
-    ASSERT_EQ( imgDesc.dmaSize, imgDesc.size );
-    ASSERT_EQ( 1024 * 64, imgDesc.size );
+    ASSERT_EQ( imgDesc.size, imgDesc.validSize );
+    ASSERT_EQ( 1024 * 64, imgDesc.validSize );
     ASSERT_EQ( 1, imgDesc.numPlanes );
     status = ma.Free( imgDesc );
     ASSERT_EQ( QC_STATUS_OK, status );
@@ -370,7 +375,7 @@ TEST( Memory, SANITY_TensorAllocate )
     ASSERT_EQ( 0, tensorDesc.offset );
     std::generate( (uint8_t *) tensorDesc.pBuf, (uint8_t *) tensorDesc.pBuf + tensorDesc.size,
                    std::rand );
-    ASSERT_EQ( tensorDesc.dmaSize, tensorDesc.size );
+    ASSERT_EQ( tensorDesc.validSize, tensorDesc.size );
     ASSERT_EQ( 1 * 128 * 128 * 10, tensorDesc.size );
     ASSERT_EQ( 4, tensorDesc.numDims );
     status = ta.Free( tensorDesc );
@@ -444,10 +449,10 @@ static std::string GetBufferTextInfo( const BufferDescriptor_t &bufDesc )
 static bool IsTheSameSharedBuffer( BufferDescriptor_t &bufferA, BufferDescriptor_t &bufferB )
 {
     bool bEqual = true;
-    if ( ( bufferA.pBuf != bufferB.pBuf ) || ( bufferA.pBufBase != bufferB.pBufBase ) ||
-         ( bufferA.dmaHandle != bufferB.dmaHandle ) || ( bufferA.dmaSize != bufferB.dmaSize ) ||
+    if ( ( bufferA.pBuf != bufferB.pBuf ) || ( bufferA.pBuf != bufferB.pBuf ) ||
+         ( bufferA.dmaHandle != bufferB.dmaHandle ) || ( bufferA.size != bufferB.size ) ||
          ( bufferA.id != bufferB.id ) || ( bufferA.pid != bufferB.pid ) ||
-         ( bufferA.usage != bufferB.usage ) || ( bufferA.cache != bufferB.cache ) )
+         ( bufferA.allocatorType != bufferB.allocatorType ) || ( bufferA.cache != bufferB.cache ) )
     {
         printf( "buffer buffer not equal\n" );
         bEqual = false;
@@ -513,15 +518,15 @@ static bool IsTheSameSharedBuffer( BufferDescriptor_t &bufferA, BufferDescriptor
 TEST( Memory, L2_Buffer )
 {
     QCStatus_e status;
-    BinaryAllocator ma("BINARY");
-    for ( int i = 0; i < (int) QC_BUFFER_USAGE_MAX; i++ )
+    BinaryAllocator ma( "BINARY" );
+    for ( int i = (int) QC_MEMORY_ALLOCATOR_DMA; i < (int) QC_MEMORY_ALLOCATOR_LAST; i++ )
     {
 
-        QCBufferUsage_e usage = (QCBufferUsage_e) i;
+        QCMemoryAllocator_e allocatorType = (QCMemoryAllocator_e) i;
         QCAllocationCache_e cache = QC_CACHEABLE_NON;
         BufferDescriptor_t bufDesc;
-        status = ma.Allocate( BufferProps_t( (size_t) 1024 * 1024 * 1024 * 256, usage, cache ),
-                              bufDesc );
+        status = ma.Allocate(
+                BufferProps_t( (size_t) 1024 * 1024 * 1024 * 256, allocatorType, cache ), bufDesc );
 #if !defined( __QNXNTO__ )
         if ( QC_STATUS_UNSUPPORTED == status )
         {
@@ -531,26 +536,28 @@ TEST( Memory, L2_Buffer )
 #endif
         ASSERT_EQ( QC_STATUS_NOMEM, status );
 
-        status = ma.Allocate( BufferProps_t( (size_t) 1024 * 1024 * 32, usage, cache ), bufDesc );
+        status = ma.Allocate( BufferProps_t( (size_t) 1024 * 1024 * 32, allocatorType, cache ),
+                              bufDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
 
         status = ma.Free( bufDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
     }
 
-    for ( int i = 0; i < (int) QC_BUFFER_USAGE_MAX; i++ )
+    for ( int i = (int) QC_MEMORY_ALLOCATOR_DMA; i < (int) QC_MEMORY_ALLOCATOR_LAST; i++ )
     {
-        QCBufferUsage_e usage = (QCBufferUsage_e) i;
+        QCMemoryAllocator_e allocatorType = (QCMemoryAllocator_e) i;
         QCAllocationCache_e cache = QC_CACHEABLE;
         BufferDescriptor_t bufDesc;
 #if defined( __QNXNTO__ )
         /* not do this for Linux, see device crashed */
-        status = ma.Allocate( BufferProps_t( (size_t) 1024 * 1024 * 1024 * 256, usage, cache ),
-                              bufDesc );
+        status = ma.Allocate(
+                BufferProps_t( (size_t) 1024 * 1024 * 1024 * 256, allocatorType, cache ), bufDesc );
         ASSERT_EQ( QC_STATUS_NOMEM, status );
 #endif
 
-        status = ma.Allocate( BufferProps_t( (size_t) 1024 * 1024 * 32, usage, cache ), bufDesc );
+        status = ma.Allocate( BufferProps_t( (size_t) 1024 * 1024 * 32, allocatorType, cache ),
+                              bufDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
 
         BufferDescriptor_t bufDesc2 = bufDesc;
@@ -562,11 +569,11 @@ TEST( Memory, L2_Buffer )
 
     {
         BufferDescriptor_t bufDesc;
-        status = ma.Allocate( BufferProps_t( (size_t) 1024 * 1024 * 64, QC_BUFFER_USAGE_MAX ),
+        status = ma.Allocate( BufferProps_t( (size_t) 1024 * 1024 * 64, QC_MEMORY_ALLOCATOR_LAST ),
                               bufDesc );
         ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
 
-        status = ma.Allocate( BufferProps_t( (size_t) 1024 * 1024 * 64, (QCBufferUsage_e) -2 ),
+        status = ma.Allocate( BufferProps_t( (size_t) 1024 * 1024 * 64, (QCMemoryAllocator_e) -2 ),
                               bufDesc );
         ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
     }
@@ -935,8 +942,8 @@ TEST( Memory, L2_Image2Tensor )
         ASSERT_EQ( QC_STATUS_OK, status );
         ASSERT_EQ( luma.offset, 0 );
         ASSERT_EQ( chroma.offset, 1920 * 1024 );
-        ASSERT_EQ( luma.size, 1920 * 1024 );
-        ASSERT_EQ( chroma.size, 1920 * 1024 / 2 );
+        ASSERT_EQ( luma.validSize, 1920 * 1024 );
+        ASSERT_EQ( chroma.validSize, 1920 * 1024 / 2 );
 
         status = bma.Free( imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
@@ -1005,8 +1012,8 @@ TEST( Memory, L2_Image2Tensor )
         ASSERT_EQ( QC_STATUS_OK, status );
         ASSERT_EQ( luma.offset, 0 );
         ASSERT_EQ( chroma.offset, 1920 * 1024 * 2 );
-        ASSERT_EQ( luma.size, 1920 * 1024 * 2 );
-        ASSERT_EQ( chroma.size, 1920 * 1024 );
+        ASSERT_EQ( luma.validSize, 1920 * 1024 * 2 );
+        ASSERT_EQ( chroma.validSize, 1920 * 1024 );
 
         status = bma.Free( imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );

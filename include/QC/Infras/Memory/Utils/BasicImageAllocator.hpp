@@ -28,8 +28,17 @@ public:
      * @brief Constructor for BasicImageAllocator.
      * @param[in] name The name of the image basic allocator.
      * @return None.
+     * @deprecated Will be removed
      */
     BasicImageAllocator( const std::string &name );
+
+    /**
+     * @brief Constructor for BasicImageAllocator.
+     * @param[in] nodeId The nodeId of the binary allocator.
+     * @param[in] logLevel The log level of the binary allocator.
+     * @return None.
+     */
+    BasicImageAllocator( const QCNodeID_t &nodeId, Logger_Level_e logLevel = LOGGER_LEVEL_ERROR );
 
     virtual ~BasicImageAllocator();
 
@@ -50,9 +59,6 @@ public:
      */
     virtual QCStatus_e Allocate( const QCBufferPropBase_t &request,
                                  QCBufferDescriptorBase_t &response );
-
-private:
-    QC_DECLARE_LOGGER();
 };
 
 }   // namespace Memory

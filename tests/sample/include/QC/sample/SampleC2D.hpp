@@ -54,7 +54,7 @@ private:
     uint32_t m_outputWidth;
     uint32_t m_outputHeight;
     uint32_t m_poolSize = 4;
-    QCBufferFlags_t m_bufferFlags = QC_BUFFER_FLAGS_CACHE_WB_WA;
+    QCAllocationCache_e m_bufferCache = QC_CACHEABLE;
 
     std::string m_inputTopicName;
     std::string m_outputTopicName;

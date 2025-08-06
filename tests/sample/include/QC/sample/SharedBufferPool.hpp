@@ -18,6 +18,8 @@
 #include "QC/Infras/Memory/ImageDescriptor.hpp"
 #include "QC/Infras/Memory/SharedBuffer.hpp"
 #include "QC/Infras/Memory/TensorDescriptor.hpp"
+#include "QC/Infras/Memory/Utils/ImageAllocator.hpp"
+#include "QC/Infras/Memory/Utils/TensorAllocator.hpp"
 
 namespace QC
 {
@@ -30,7 +32,13 @@ using namespace QC::Memory;
 typedef struct SharedBuffer
 {
 public:
-    SharedBuffer() : buffer( dummy ) { dummy.name = "dummy"; }
+    SharedBuffer() : buffer( dummy )
+    {
+        dummy.name = "dummy";
+        dummy.pBuf = nullptr;
+        dummy.size = 0;
+        dummy.type = QC_BUFFER_TYPE_MAX;
+    }
     std::reference_wrapper<QCBufferDescriptorBase_t> buffer;
     QCSharedBuffer_t sharedBuffer; /**< The QC shared buffer */
     uint64_t pubHandle; /**< The publish handle associated with shared buffer that to be used to
@@ -44,6 +52,66 @@ public:
      * descriptors */
     TensorDescriptor_t luma;
     TensorDescriptor_t chroma;
+
+    QCBufferDescriptorBase_t &GetBuffer() { return buffer; }
+
+    void *GetDataPtr()
+    {
+        QCBufferDescriptorBase_t &bufDesc = buffer;
+        return bufDesc.pBuf;
+    }
+
+    size_t GetDataSize()
+    {
+        QCBufferDescriptorBase_t &bufDesc = buffer;
+        return bufDesc.size;
+    }
+
+    QCBufferType_e GetBufferType()
+    {
+        QCBufferDescriptorBase_t &bufDesc = buffer;
+        return bufDesc.type;
+    }
+
+    QCImageProps_t GetImageProps()
+    {
+        QCImageProps_t imgProps = {
+                QC_IMAGE_FORMAT_MAX,
+                0,
+        };
+        QCBufferDescriptorBase_t &bufDesc = buffer;
+        ImageDescriptor_t *pImage = dynamic_cast<ImageDescriptor_t *>( &bufDesc );
+        if ( nullptr != pImage )
+        {
+            imgProps.format = pImage->format;
+            imgProps.width = pImage->width;
+            imgProps.height = pImage->height;
+            imgProps.batchSize = pImage->batchSize;
+            std::copy( pImage->stride, pImage->stride + pImage->numPlanes, imgProps.stride );
+            std::copy( pImage->actualHeight, pImage->actualHeight + pImage->numPlanes,
+                       imgProps.actualHeight );
+            std::copy( pImage->planeBufSize, pImage->planeBufSize + pImage->numPlanes,
+                       imgProps.planeBufSize );
+            imgProps.numPlanes = pImage->numPlanes;
+        }
+        return imgProps;
+    };
+    QCTensorProps_t GetTensorProps()
+    {
+        QCTensorProps_t tsProps = {
+                QC_TENSOR_TYPE_MAX,
+                { 0 },
+        };
+        QCBufferDescriptorBase_t &bufDesc = buffer;
+        TensorDescriptor_t *pTensor = dynamic_cast<TensorDescriptor_t *>( &bufDesc );
+        if ( nullptr != pTensor )
+        {
+            tsProps.type = pTensor->tensorType;
+            tsProps.numDims = pTensor->numDims;
+            std::copy( pTensor->dims, pTensor->dims + pTensor->numDims, tsProps.dims );
+        }
+        return tsProps;
+    };
 } SharedBuffer_t;
 
 /** @brief The QC shared buffer ping-pong pool */
@@ -61,8 +129,8 @@ public:
      * @param[in] width the image width
      * @param[in] height the image height
      * @param[in] format the image format
-     * @param[in] usage the DMA buffer usage
-     * @param[in] flags the DMA buffer flags
+     * @param[in] allocatorType The allocaor type used for allocation the buffer.
+     * @param[in] cache The cache type of the buffer.
      * @detdesc
      * It was by using the image width/height/format to allocate image buffers with best the best
      * strides/paddings that can be shared among CPU/GPU/VPU/HTP, etc
@@ -70,8 +138,8 @@ public:
      */
     QCStatus_e Init( std::string name, Logger_Level_e level, uint32_t number, uint32_t width,
                      uint32_t height, QCImageFormat_e format,
-                     QCBufferUsage_e usage = QC_BUFFER_USAGE_DEFAULT,
-                     QCBufferFlags_t flags = QC_BUFFER_FLAGS_CACHE_WB_WA );
+                     QCMemoryAllocator_e allocatorType = QC_MEMORY_ALLOCATOR_DMA,
+                     QCAllocationCache_e cache = QC_CACHEABLE );
 
     /**
      * @brief Do initialization of the shared memory ping-pong pool
@@ -82,8 +150,8 @@ public:
      * @param[in] width the image width
      * @param[in] height the image height
      * @param[in] format the image format
-     * @param[in] usage the DMA buffer usage
-     * @param[in] flags the DMA buffer flags
+     * @param[in] allocatorType The allocaor type used for allocation the buffer.
+     * @param[in] cache The cache type of the buffer.
      * @detdesc
      * It was by using the image batchSize/width/height/format to allocate batched image buffers
      * with best the best strides/paddings that can be shared among CPU/GPU/VPU/HTP, etc
@@ -91,40 +159,40 @@ public:
      */
     QCStatus_e Init( std::string name, Logger_Level_e level, uint32_t number, uint32_t batchSize,
                      uint32_t width, uint32_t height, QCImageFormat_e format,
-                     QCBufferUsage_e usage = QC_BUFFER_USAGE_DEFAULT,
-                     QCBufferFlags_t flags = QC_BUFFER_FLAGS_CACHE_WB_WA );
+                     QCMemoryAllocator_e allocatorType = QC_MEMORY_ALLOCATOR_DMA,
+                     QCAllocationCache_e cache = QC_CACHEABLE );
 
     /**
      * @brief Do initialization of the shared memory ping-pong pool
      * @param[in] name the shared memory pool name
      * @param[in] level the logger level
      * @param[in] imageProps the specified image properties
-     * @param[in] usage the DMA buffer usage
-     * @param[in] flags the DMA buffer flags
+     * @param[in] allocatorType The allocaor type used for allocation the buffer.
+     * @param[in] cache The cache type of the buffer.
      * @detdesc
      * It was by using the specified image properties to allocate image buffers.
      * @return QC_STATUS_OK on success, others on failure
      */
     QCStatus_e Init( std::string name, Logger_Level_e level, uint32_t number,
                      const QCImageProps_t &imageProps,
-                     QCBufferUsage_e usage = QC_BUFFER_USAGE_DEFAULT,
-                     QCBufferFlags_t flags = QC_BUFFER_FLAGS_CACHE_WB_WA );
+                     QCMemoryAllocator_e allocatorType = QC_MEMORY_ALLOCATOR_DMA,
+                     QCAllocationCache_e cache = QC_CACHEABLE );
 
     /**
      * @brief Do initialization of the shared memory ping-pong pool
      * @param[in] name the shared memory pool name
      * @param[in] level the logger level
      * @param[in] tensorProps the specified tensor properties
-     * @param[in] usage the DMA buffer usage
-     * @param[in] flags the DMA buffer flags
+     * @param[in] allocatorType The allocaor type used for allocation the buffer.
+     * @param[in] cache The cache type of the buffer.
      * @detdesc
      * It was by using the specified tensor properties to allocate tensor buffers.
      * @return QC_STATUS_OK on success, others on failure
      */
     QCStatus_e Init( std::string name, Logger_Level_e level, uint32_t number,
                      const QCTensorProps_t &tensorProps,
-                     QCBufferUsage_e usage = QC_BUFFER_USAGE_DEFAULT,
-                     QCBufferFlags_t flags = QC_BUFFER_FLAGS_CACHE_WB_WA );
+                     QCMemoryAllocator_e allocatorType = QC_MEMORY_ALLOCATOR_DMA,
+                     QCAllocationCache_e cache = QC_CACHEABLE );
 
     /**
      * @brief get shared buffers
@@ -162,6 +230,8 @@ private:
     std::string m_name;
     std::vector<SharedBufferInfo> m_queue;
     bool m_bIsInited = false;
+
+    BinaryAllocator *m_pAllocator = nullptr;
 };
 
 }   // namespace sample

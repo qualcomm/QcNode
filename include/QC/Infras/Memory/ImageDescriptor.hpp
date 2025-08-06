@@ -22,7 +22,7 @@ namespace Memory
  * @param size The total required buffer size.
  * @param alignment The alignment requirement of the buffer.
  * @param attr The attributes of the buffer.
- * @param usage The intended usage of the buffer.
+ * @param allocatorType The allocator type of the buffer.
  *
  * New Members:
  * @param format The image format.
@@ -48,16 +48,17 @@ public:
      * @param width The image width in pixels.
      * @param height The image height in pixels.
      * @param format The image format.
-     * @param usage The intended usage of the buffer, default is QC_BUFFER_USAGE_CAMERA.
+     * @param allocatorType The allocator type of the buffer, default is
+     * QC_MEMORY_ALLOCATOR_DMA_CAMERA.
      * @param cache The cache attributes of the buffer, default is QC_CACHEABLE.
      * @return None.
      * @note This constructor sets up the properties of the buffer with the given parameters, while
      * most other properties are set to their default suggested values.
      */
     ImageBasicProps( uint32_t width, uint32_t height, QCImageFormat_e format,
-                     QCBufferUsage_e usage = QC_BUFFER_USAGE_CAMERA,
+                     QCMemoryAllocator_e allocatorType = QC_MEMORY_ALLOCATOR_DMA_CAMERA,
                      QCAllocationCache_e cache = QC_CACHEABLE )
-        : BufferProps( 0, usage, cache ),
+        : BufferProps( 0, allocatorType, cache ),
           format( format ),
           batchSize( 1 ),
           width( width ),
@@ -71,16 +72,17 @@ public:
      * @param width The image width in pixels.
      * @param height The image height in pixels.
      * @param format The image format.
-     * @param usage The intended usage of the buffer, default is QC_BUFFER_USAGE_CAMERA.
+     * @param allocatorType The allocator type of the buffer, default is
+     * QC_MEMORY_ALLOCATOR_DMA_CAMERA.
      * @param cache The cache attributes of the buffer, default is QC_CACHEABLE.
      * @return None.
      * @note This constructor sets up the properties of the image with the given parameters, while
      * most other properties are set to their default suggested values.
      */
     ImageBasicProps( uint32_t batchSize, uint32_t width, uint32_t height, QCImageFormat_e format,
-                     QCBufferUsage_e usage = QC_BUFFER_USAGE_CAMERA,
+                     QCMemoryAllocator_e allocator = QC_MEMORY_ALLOCATOR_DMA_CAMERA,
                      QCAllocationCache_e cache = QC_CACHEABLE )
-        : BufferProps( 0, usage, cache ),
+        : BufferProps( 0, allocator, cache ),
           format( format ),
           batchSize( batchSize ),
           width( width ),
@@ -101,7 +103,7 @@ public:
  * @param size The total required buffer size.
  * @param alignment The alignment requirement of the buffer.
  * @param cache The cache attributes of the buffer.
- * @param usage The intended usage of the buffer.
+ * @param allocatorType The intended allocator type of the buffer.
  * @param format The image format.
  * @param batchSize The image batch size.
  * @param width The image width in pixels.
@@ -136,7 +138,8 @@ public:
      * @param actualHeights The actual height of the image in scanlines for each plane.
      * @param planeBufSizes The actual buffer size of the image for each plane, calculated as
      * (stride * actualHeight + padding size).
-     * @param usage The intended usage of the buffer, default is QC_BUFFER_USAGE_CAMERA.
+     * @param allocatorType The allocator type of the buffer, default is
+     * QC_MEMORY_ALLOCATOR_DMA_CAMERA.
      * @param cache The cache attributes of the buffer, default is QC_CACHEABLE.
      * @return None.
      * @note This constructor sets up the properties of the image with the given parameters, while
@@ -147,9 +150,10 @@ public:
      */
     ImageProps( uint32_t batchSize, uint32_t width, uint32_t height, QCImageFormat_e format,
                 std::vector<uint32_t> strides, std::vector<uint32_t> actualHeights,
-                std::vector<uint32_t> planeBufSizes, QCBufferUsage_e usage = QC_BUFFER_USAGE_CAMERA,
+                std::vector<uint32_t> planeBufSizes,
+                QCMemoryAllocator_e allocatorType = QC_MEMORY_ALLOCATOR_DMA_CAMERA,
                 QCAllocationCache_e cache = QC_CACHEABLE )
-        : ImageBasicProps( batchSize, width, height, format, usage, cache )
+        : ImageBasicProps( batchSize, width, height, format, allocatorType, cache )
     {
         numPlanes = static_cast<uint32_t>( strides.size() );
         std::copy( strides.begin(), strides.end(), stride );
@@ -170,17 +174,17 @@ public:
  *
  * Inherited Members from BufferDescriptor:
  * @param name The name of the buffer.
- * @param pBuf The virtual address of the actual buffer.
- * @param size The actual size of the buffer.
+ * @param pBuf The virtual address of the dma buffer.
+ * @param size The dma size of the buffer.
  * @param type The type of the buffer.
- * @param pBufBase The base virtual address of the DMA buffer.
- * @param dmaHandle The DMA handle of the buffer.
- * @param dmaSize The size of the DMA buffer.
+ * @param alignment The alignment of the buffer.
+ * @param cache The cache type of the buffer.
+ * @param allocatorType The allocaor type used for allocation the buffer.
+ * @param dmaHandle The dmaHandle of the buffer.
+ * @param pid The process ID of the buffer.
+ * @param validSize The size of valid data currently stored in the buffer.
  * @param offset The offset of the valid buffer within the shared buffer.
  * @param id The unique ID assigned by the buffer manager.
- * @param pid The process ID that allocated this buffer.
- * @param usage The intended usage of the buffer.
- * @param cache The cache attributes associated with the buffer.
  *
  * New Members:
  * @param format The image format.

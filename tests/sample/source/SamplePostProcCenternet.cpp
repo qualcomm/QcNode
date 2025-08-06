@@ -58,12 +58,12 @@ static const char *s_pSourceBboxDet = KernelCode( __kernel void BboxDet(
             uint reg_idx = ( y * width + x );
             float2 xyReg = convert_float2( vload2( reg_idx, reg ) );
             float2 whReg = convert_float2( vload2( reg_idx, wh ) );
-            float2 wh2 = ( float2 )( width, height );
-            xyReg = ( xyReg + regOffset ) * regScale + ( float2 )( x, y );
+            float2 wh2 = (float2) ( width, height );
+            xyReg = ( xyReg + regOffset ) * regScale + (float2) ( x, y );
             whReg = ( whReg + whOffset ) * whScale * 0.5f;
 
-            float4 imgWH4 = ( float4 )( imgWidth, imgHeight, imgWidth, imgHeight );
-            float4 roiXY4 = ( float4 )( roiX, roiY, roiX, roiY );
+            float4 imgWH4 = (float4) ( imgWidth, imgHeight, imgWidth, imgHeight );
+            float4 roiXY4 = (float4) ( roiX, roiY, roiX, roiY );
 
             coords.s01 = ( xyReg - whReg ) / wh2;
             coords.s23 = ( xyReg + whReg ) / wh2;
@@ -93,8 +93,8 @@ static float fastPow( float p )
     {
         uint32_t i;
         float f;
-    } v = { ( uint32_t )( ( 1 << 23 ) * ( clipp + 121.2740575f + 27.7280233f / ( 4.84252568f - z ) -
-                                          1.49012907f * z ) ) };
+    } v = { (uint32_t) ( ( 1 << 23 ) * ( clipp + 121.2740575f + 27.7280233f / ( 4.84252568f - z ) -
+                                         1.49012907f * z ) ) };
 
     return v.f;
 }
@@ -397,21 +397,23 @@ void SamplePostProcCenternet::PostProcCPU( DataFrames_t &tensors )
 
     Road2DObjects_t objs;
 
-    auto &hm_ = tensors.SharedBuffer( 0 );
-    auto &wh_ = tensors.SharedBuffer( 1 );
-    auto &offset_ = tensors.SharedBuffer( 2 );
+    QCBufferDescriptorBase_t &hmDesc = tensors.GetBuffer( 0 );
+    QCBufferDescriptorBase_t &whDesc = tensors.GetBuffer( 1 );
+    QCBufferDescriptorBase_t &regDesc = tensors.GetBuffer( 2 );
 
-    int H = (int) hm_.tensorProps.dims[1];
-    int W = (int) hm_.tensorProps.dims[2];
-    int classNum = (int) hm_.tensorProps.dims[3];
+    TensorDescriptor_t *pTsHmDesc = dynamic_cast<TensorDescriptor_t *>( &hmDesc );
 
-    uint8_t *hm = (uint8_t *) hm_.data();
+    int H = (int) pTsHmDesc->dims[1];
+    int W = (int) pTsHmDesc->dims[2];
+    int classNum = (int) pTsHmDesc->dims[3];
+
+    uint8_t *hm = (uint8_t *) hmDesc.pBuf;
     float hmScale = tensors.QuantScale( 0 );
     int32_t hmOffset = tensors.QuantOffset( 0 );
-    uint8_t *wh = (uint8_t *) wh_.data();
+    uint8_t *wh = (uint8_t *) whDesc.pBuf;
     float whScale = tensors.QuantScale( 1 );
     int32_t whOffset = tensors.QuantOffset( 1 );
-    uint8_t *reg = (uint8_t *) offset_.data();
+    uint8_t *reg = (uint8_t *) regDesc.pBuf;
     float regScale = tensors.QuantScale( 2 );
     int32_t regOffset = tensors.QuantOffset( 2 );
     const int kernel_size = 7;

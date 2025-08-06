@@ -179,7 +179,7 @@ private:
      * @var handle
      * @brief The internal handle value.
      */
-    uint64_t handle;
+    uint64_t handle = 0;
 } QCMemoryHandle_t;
 
 /**
