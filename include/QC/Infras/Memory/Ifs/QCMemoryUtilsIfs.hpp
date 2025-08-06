@@ -8,8 +8,8 @@
 
 #include "QC/Common/Types.hpp"
 #include "QC/Infras/Log/Logger.hpp"
-#include "QC/Infras/Memory/ImageDescriptor.hpp"
 #include "QC/Infras/Memory/Ifs/QCBufferDescriptorBase.hpp"
+#include "QC/Infras/Memory/ImageDescriptor.hpp"
 #include "QC/Infras/Memory/TensorDescriptor.hpp"
 
 namespace QC
@@ -48,23 +48,30 @@ public:
     virtual QCStatus_e MemoryUnMap( const QCBufferDescriptorBase_t &buff ) = 0;
 
     /**
-     * @brief Calculates the buffer size for a tensor.
-     * This method calculates the buffer size for a tensor based on its properties and returns a
-     * status code indicating success or failure.
+     * @brief Sets tensor descriptorvalues from tensor properties.
      * @param prop The tensor properties.
+     * @param desc The tensor descriptor.
      * @return The status of the buffer size calculation operation.
      */
-    virtual QCStatus_e SetTensorBuffSizeFromTensorProp( TensorProps_t &prop ) = 0;
+    virtual QCStatus_e SetTensorDescFromTensorProp( TensorProps_t &prop,
+                                                    TensorDescriptor_t &desc ) = 0;
 
     /**
-     * @brief Calculates the buffer size for an image.
-     * This method calculates the buffer size for an image based on its properties and returns a
-     * status code indicating success or failure.
-     * @param prop The image properties.
-     * @return The status of the buffer size calculation operation.
+     * @brief Sets the buffer descriptor values for an image.
+     * @param prop The image basic properties.
+     * @param desc The image descriptor.
+     * @return The status of the buffer descriptor setting operation.
      */
-    virtual QCStatus_e SetImageBuffSizeFromImageProp( ImageProps_t &prop ) = 0;
+    virtual QCStatus_e SetImageDescFromImageBasicProp( ImageBasicProps_t &prop,
+                                                       ImageDescriptor_t &desc ) = 0;
 
+    /**
+     * @brief Sets the buffer descriptor values for an image.
+     * @param prop The image properties.
+     * @param desc The image descriptor.
+     * @return The status of the buffer descriptor setting operation.
+     */
+    virtual QCStatus_e SetImageDescFromImageProp( ImageProps_t &prop, ImageDescriptor_t &desc ) = 0;
 };
 
 }   // namespace Memory

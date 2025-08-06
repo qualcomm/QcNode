@@ -9,6 +9,31 @@ namespace QC
 namespace Memory
 {
 
+#define PLANEDEF_HW_USAGE_FLAGS                                                                    \
+    ( (uint32_t) WFD_USAGE_OPENGL_ES2 | (uint32_t) WFD_USAGE_OPENGL_ES3 |                          \
+      (uint32_t) WFD_USAGE_CAPTURE | (uint32_t) WFD_USAGE_VIDEO | (uint32_t) WFD_USAGE_DISPLAY |   \
+      (uint32_t) WFD_USAGE_NATIVE )
+
+const char *UtilsBase::s_qcFormatToString[QC_IMAGE_FORMAT_MAX] = {
+        "RGB888",    /* QC_IMAGE_FORMAT_RGB888 */
+        "BGR888",    /* QC_IMAGE_FORMAT_BGR888 */
+        "UYVY",      /* QC_IMAGE_FORMAT_UYVY */
+        "NV12",      /* QC_IMAGE_FORMAT_NV12 */
+        "P010",      /* QC_IMAGE_FORMAT_P010 */
+        "NV12_UBWC", /* QC_IMAGE_FORMAT_NV12_UBWC */
+        "TP_UBWC"    /* QC_IMAGE_FORMAT_TP10_UBWC */
+};
+
+const PDColorFormat_e UtilsBase::s_qcFormatToApdfFormat[QC_IMAGE_FORMAT_MAX] = {
+        PD_FORMAT_RGB888, /* QC_IMAGE_FORMAT_RGB888 */
+        PD_FORMAT_RGB888, /* QC_IMAGE_FORMAT_BGR888 */
+        PD_FORMAT_UYVY,   /* QC_IMAGE_FORMAT_UYVY */
+        PD_FORMAT_NV12,   /* QC_IMAGE_FORMAT_NV12 */
+        PD_FORMAT_P010,   /* QC_IMAGE_FORMAT_P010 */
+        PD_FORMAT_NV12,   /* QC_IMAGE_FORMAT_NV12_UBWC */
+        PD_FORMAT_TP10    /* QC_IMAGE_FORMAT_TP10_UBWC */
+};
+
 const uint32_t UtilsBase::s_qcTensorTypeToDataSize[QC_TENSOR_TYPE_MAX] = {
         1, /* QC_TENSOR_TYPE_INT_8 */
         2, /* QC_TENSOR_TYPE_INT_16 */
@@ -86,18 +111,18 @@ QCStatus_e UtilsBase::MemoryUnMap( const QCBufferDescriptorBase_t &buff )
     return QC_STATUS_UNSUPPORTED;
 }
 
-QCStatus_e UtilsBase::SetTensorBuffSizeFromTensorProp( TensorProps_t &prop )
+
+QCStatus_e UtilsBase::SetTensorDescFromTensorProp( TensorProps_t &prop, TensorDescriptor_t &desc )
 {
     QCStatus_e status = QC_STATUS_OK;
 
     size_t size = 1;
     uint32_t i = 0;
-    prop.size = 0;
 
     if ( ( prop.numDims > QC_NUM_TENSOR_DIMS ) || ( prop.tensorType >= QC_TENSOR_TYPE_MAX ) ||
          ( prop.tensorType < QC_TENSOR_TYPE_INT_8 ) )
     {
-        QC_ERROR( "pTensorProps has invalid numDims or type" );
+        QC_ERROR( "Props has invalid numDims or type" );
         status = QC_STATUS_BAD_ARGUMENTS;
     }
     else
@@ -107,7 +132,7 @@ QCStatus_e UtilsBase::SetTensorBuffSizeFromTensorProp( TensorProps_t &prop )
         {
             if ( 0 == prop.dims[i] )
             {
-                QC_ERROR( "prop dims[%u] is 0", i );
+                QC_ERROR( "Props dims[%u] is 0", i );
                 status = QC_STATUS_BAD_ARGUMENTS;
                 break;
             }
@@ -121,14 +146,123 @@ QCStatus_e UtilsBase::SetTensorBuffSizeFromTensorProp( TensorProps_t &prop )
             size *= prop.dims[i];
         }
         size *= s_qcTensorTypeToDataSize[prop.tensorType];
+    }
+
+    if ( QC_STATUS_OK == status )
+    {
+        desc.type = QC_BUFFER_TYPE_TENSOR;
+        desc.numDims = prop.numDims;
+        desc.tensorType = prop.tensorType;
         prop.size = size;
+        std::copy( prop.dims, prop.dims + prop.numDims, desc.dims );
     }
 
     return status;
 }
 
+QCStatus_e UtilsBase::SetImageDescFromImageBasicProp( ImageBasicProps_t &prop,
+                                                      ImageDescriptor_t &desc )
+{
+    QCStatus_e status = QC_STATUS_OK;
 
-QCStatus_e UtilsBase::SetImageBuffSizeFromImageProp( ImageProps_t &prop )
+    uint32_t batchSize = prop.batchSize;
+    uint32_t width = prop.width;
+    uint32_t height = prop.height;
+    QCImageFormat_e format = prop.format;
+    size_t size = 0;
+    uint32_t nUsage = PLANEDEF_HW_USAGE_FLAGS;
+    FrameRes_t frameRes;
+    PlaneDef_t planeDef;
+    uint32_t numPlanes = 0;
+    PDColorFormat_e eColorFormat = PD_FORMAT_MAX;
+    PDStatus_e pdStatus;
+    uint32_t i = 0;
+    if ( ( 0 == batchSize ) || ( 0 == width ) || ( 0 == height ) ||
+         ( format >= QC_IMAGE_FORMAT_MAX ) || ( format < QC_IMAGE_FORMAT_RGB888 ) )
+    {
+        QC_ERROR( "invalid args: batchSize=%u, width=%u, height=%u, format=%d", batchSize, width,
+                  height, format );
+        status = QC_STATUS_BAD_ARGUMENTS;
+    }
+    else
+    {
+        eColorFormat = s_qcFormatToApdfFormat[format];
+    }
+
+    if ( QC_STATUS_OK == status )
+    {
+        if ( ( QC_IMAGE_FORMAT_NV12_UBWC == format ) || ( QC_IMAGE_FORMAT_TP10_UBWC == format ) )
+        {
+            nUsage = nUsage | (uint32_t) WFD_USAGE_COMPRESSION;
+        }
+
+        pdStatus = PDQueryNumPlanes( eColorFormat, nUsage, &numPlanes, 0 );
+        if ( ( PD_OK != pdStatus ) || ( 0 == numPlanes ) || ( numPlanes > QC_NUM_IMAGE_PLANES ) )
+        {
+            QC_ERROR( "failed to query plane numbers for image width=%u, height=%u, "
+                      "format=%d: %d",
+                      width, height, format, pdStatus );
+            status = QC_STATUS_FAIL;
+        }
+        else
+        {
+            frameRes.nWidthInPixels = width;
+            frameRes.nHeightInPixels = height;
+            desc.format = format;
+            desc.batchSize = batchSize;
+            desc.width = width;
+            desc.height = height;
+            desc.numPlanes = numPlanes;
+
+            QC_VERBOSE( "PlaneDef for image %ux%u format %s\n", width, height,
+                        s_qcFormatToString[format] );
+        }
+    }
+
+    for ( i = 0; i < numPlanes; i++ )
+    {
+        if ( QC_STATUS_OK != status )
+        {
+            break;
+        }
+        planeDef.nPlaneIndex = i + 1;
+        pdStatus = PDQueryPlaneDef( eColorFormat, nUsage, &frameRes, &planeDef, 0 );
+        if ( PD_OK == pdStatus )
+        {
+            QC_VERBOSE( " plane %u: nMinStride = %u, nMaxstride = %u nStrideMultiples = %u", i,
+                        planeDef.nMinStride, planeDef.nMaxstride, planeDef.nStrideMultiples );
+            QC_VERBOSE( "   nActualStride = %u nMinPlaneBufHeight = %u, nHeightMultiples = %u",
+                        planeDef.nActualStride, planeDef.nMinPlaneBufHeight,
+                        planeDef.nHeightMultiples );
+            QC_VERBOSE( "   nActualPlaneBufHeight = %u nActualBufSizeAlignment =%u,",
+                        planeDef.nActualPlaneBufHeight, planeDef.nActualBufSizeAlignment );
+            QC_VERBOSE( "   nBufAddrAlignment = %u nPlaneBufSize = %u, nPlanePaddingSize = %u",
+                        planeDef.nBufAddrAlignment, planeDef.nPlaneBufSize,
+                        planeDef.nPlanePaddingSize );
+            desc.stride[i] = planeDef.nActualStride;
+            desc.actualHeight[i] = planeDef.nActualPlaneBufHeight;
+            desc.planeBufSize[i] = planeDef.nPlaneBufSize + planeDef.nPlanePaddingSize;
+            size += (size_t) desc.planeBufSize[i];
+        }
+        else
+        {
+            QC_ERROR( "failed to query plane def for image width=%u, height=%u, format=%d: %d",
+                      width, height, format, pdStatus );
+            status = QC_STATUS_FAIL;
+        }
+    }
+
+    if ( QC_STATUS_OK == status )
+    {
+        size = size * batchSize;
+        prop.size = size;
+        desc.type = QC_BUFFER_TYPE_IMAGE;
+    }
+
+    return status;
+}
+
+QCStatus_e UtilsBase::SetImageDescFromImageProp( ImageProps_t &prop, ImageDescriptor_t &desc )
 {
     QCStatus_e status = QC_STATUS_OK;
 
@@ -137,7 +271,6 @@ QCStatus_e UtilsBase::SetImageBuffSizeFromImageProp( ImageProps_t &prop )
     uint32_t bpp = 0;
     uint32_t divider = 0;
 
-    // Check if the image properties are valid
     if ( ( 0 == prop.batchSize ) || ( 0 == prop.width ) || ( 0 == prop.height ) )
     {
         QC_ERROR( "invalid args: batchSize=%u, width=%u, height=%u", prop.batchSize, prop.width,
@@ -230,7 +363,6 @@ QCStatus_e UtilsBase::SetImageBuffSizeFromImageProp( ImageProps_t &prop )
                     break;
                 }
             }
-
             if ( QC_STATUS_OK == status )
             {
                 for ( i = 0; i < prop.numPlanes; i++ )
@@ -239,7 +371,6 @@ QCStatus_e UtilsBase::SetImageBuffSizeFromImageProp( ImageProps_t &prop )
                     {
                         size += (size_t) prop.planeBufSize[i];
                     }
-
                     else
                     {
                         size += (size_t) prop.stride[i] * prop.actualHeight[i];
@@ -250,14 +381,35 @@ QCStatus_e UtilsBase::SetImageBuffSizeFromImageProp( ImageProps_t &prop )
         }
         else
         {
-            size = prop.planeBufSize[0];
+            size = static_cast<size_t>( prop.planeBufSize[0] );
         }
     }
 
-    prop.size = size;
+    if ( QC_STATUS_OK == status )
+    {
+        prop.size = size;
+
+        desc.type = QC_BUFFER_TYPE_IMAGE;
+        desc.format = prop.format;
+        desc.batchSize = prop.batchSize;
+        desc.width = prop.width;
+        desc.height = prop.height;
+        desc.numPlanes = prop.numPlanes;
+        std::copy( prop.stride, prop.stride + prop.numPlanes, desc.stride );
+        std::copy( prop.actualHeight, prop.actualHeight + prop.numPlanes, desc.actualHeight );
+        std::copy( prop.planeBufSize, prop.planeBufSize + prop.numPlanes, desc.planeBufSize );
+        for ( i = 0; i < desc.numPlanes; i++ )
+        {
+            if ( 0 == desc.planeBufSize[i] )
+            {
+                desc.planeBufSize[i] = desc.stride[i] * desc.actualHeight[i];
+            }
+        }
+    }
 
     return status;
 }
+
 
 }   // namespace Memory
 }   // namespace QC

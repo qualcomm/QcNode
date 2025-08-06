@@ -12,15 +12,15 @@ class Test_DMABUFFAllocator : public testing::Test
 {
 
 protected:
-    void SetUp() override {
-        allocatorIfs = new DMABUFFAllocator( {"QC_MEMORY_ALLOCATOR_DMA"} , QC_MEMORY_ALLOCATOR_DMA );
+    void SetUp() override
+    {
+        allocatorIfs =
+                new DMABUFFAllocator( { "QC_MEMORY_ALLOCATOR_DMA" }, QC_MEMORY_ALLOCATOR_DMA );
     }
 
-    void TearDown() override {
-        allocatorIfs->~QCMemoryAllocatorIfs();
-    }
+    void TearDown() override { allocatorIfs->~QCMemoryAllocatorIfs(); }
 
-    QCMemoryAllocatorIfs* allocatorIfs;
+    QCMemoryAllocatorIfs *allocatorIfs;
 };
 
 TEST_F( Test_DMABUFFAllocator, SANITY_1 )
@@ -34,7 +34,7 @@ TEST_F( Test_DMABUFFAllocator, SANITY_1 )
     QCStatus_e status = allocatorIfs->Allocate( request, response );
     ASSERT_EQ( QC_STATUS_OK, status );
     ASSERT_EQ( (long long unsigned int) response.pBuf,
-                (long long unsigned int) response.pBuf & ( ~( request.alignment - 1 ) ) );
+               (long long unsigned int) response.pBuf & ( ~( request.alignment - 1 ) ) );
     ASSERT_EQ( response.size, 10 );
     ASSERT_EQ( response.cache, QC_CACHEABLE );
     status = allocatorIfs->Free( response );
@@ -52,7 +52,7 @@ TEST_F( Test_DMABUFFAllocator, SANITY_2 )
     QCStatus_e status = allocatorIfs->Allocate( request, response );
     ASSERT_EQ( QC_STATUS_OK, status );
     ASSERT_EQ( (long long unsigned int) response.pBuf,
-                (long long unsigned int) response.pBuf & ( ~( request.alignment - 1 ) ) );
+               (long long unsigned int) response.pBuf & ( ~( request.alignment - 1 ) ) );
     ASSERT_EQ( response.size, 128 );
     ASSERT_EQ( response.cache, QC_CACHEABLE );
     status = allocatorIfs->Free( response );
@@ -70,11 +70,88 @@ TEST_F( Test_DMABUFFAllocator, SANITY_3 )
     QCStatus_e status = allocatorIfs->Allocate( request, response );
     ASSERT_EQ( QC_STATUS_OK, status );
     ASSERT_EQ( (long long unsigned int) response.pBuf,
-                (long long unsigned int) response.pBuf & ( ~( request.alignment - 1 ) ) );
+               (long long unsigned int) response.pBuf & ( ~( request.alignment - 1 ) ) );
     ASSERT_EQ( response.size, 10 );
     ASSERT_EQ( response.cache, QC_CACHEABLE );
     status = allocatorIfs->Free( response );
     ASSERT_EQ( QC_STATUS_OK, status );
+}
+
+TEST_F( Test_DMABUFFAllocator, SANITY_4 )
+{
+    QCBufferPropBase_t request;
+    request.size = 10;
+    request.alignment = QC_MEMORY_DEFAULT_ALLIGNMENT;
+    request.cache = QC_CACHEABLE_NON;
+    QCBufferDescriptorBase_t response;
+
+    QCStatus_e status = allocatorIfs->Allocate( request, response );
+    ASSERT_EQ( QC_STATUS_UNSUPPORTED, status );
+    ASSERT_EQ( response.pBuf, nullptr );
+    ASSERT_EQ( response.size, 0 );
+    ASSERT_EQ( response.cache, QC_MEMORY_DEFAULT_CACHE_ATTRIBUTES );
+    status = allocatorIfs->Free( response );
+    ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
+
+    request.cache = QC_CACHEABLE;
+    request.size = 0;
+    status = allocatorIfs->Allocate( request, response );
+    ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
+}
+
+TEST_F( Test_DMABUFFAllocator, SANITY_5 )
+{
+    QCBufferPropBase_t request;
+    request.size = 10;
+    request.alignment = QC_MEMORY_DEFAULT_ALLIGNMENT;
+    request.cache = QC_CACHEABLE;
+    QCBufferDescriptorBase_t response;
+
+    QCStatus_e status = allocatorIfs->Allocate( request, response );
+    ASSERT_EQ( QC_STATUS_OK, status );
+    ASSERT_EQ( (long long unsigned int) response.pBuf,
+               (long long unsigned int) response.pBuf & ( ~( request.alignment - 1 ) ) );
+    ASSERT_EQ( response.size, 10 );
+    ASSERT_EQ( response.cache, QC_CACHEABLE );
+
+    uint64_t temp = response.dmaHandle;
+    response.dmaHandle = static_cast<uint64_t>( -1 );
+    status = allocatorIfs->Free( response );
+    ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
+
+    response.dmaHandle = temp;
+    response.size = 0;
+    status = allocatorIfs->Free( response );
+    ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
+
+    response.size = 10;
+
+    status = allocatorIfs->Free( response );
+    ASSERT_EQ( QC_STATUS_OK, status );
+}
+
+TEST_F( Test_DMABUFFAllocator, SANITY_6 )
+{
+    QCBufferPropBase_t request;
+    request.size = 10;
+    request.alignment = QC_MEMORY_DEFAULT_ALLIGNMENT * 2;
+    request.cache = QC_CACHEABLE;
+    QCBufferDescriptorBase_t response;
+
+    QCStatus_e status = allocatorIfs->Allocate( request, response );
+    ASSERT_EQ( QC_STATUS_UNSUPPORTED, status );
+}
+
+TEST_F( Test_DMABUFFAllocator, SANITY_7 )
+{
+    QCBufferPropBase_t request;
+    request.size = 0xFFFFFFFFFFFFFFFF;
+    request.alignment = QC_MEMORY_DEFAULT_ALLIGNMENT;
+    request.cache = QC_CACHEABLE;
+    QCBufferDescriptorBase_t response;
+
+    QCStatus_e status = allocatorIfs->Allocate( request, response );
+    ASSERT_EQ( QC_STATUS_NOMEM, status );
 }
 
 TEST_F( Test_DMABUFFAllocator, SANITY_multiple_allocations_1 )
@@ -100,28 +177,28 @@ TEST_F( Test_DMABUFFAllocator, SANITY_multiple_allocations_1 )
     QCStatus_e status = allocatorIfs->Allocate( request[0], response[0] );
     ASSERT_EQ( QC_STATUS_OK, status );
     ASSERT_EQ( (long long unsigned int) response[0].pBuf,
-                (long long unsigned int) response[0].pBuf & ( ~( request[0].alignment - 1 ) ) );
+               (long long unsigned int) response[0].pBuf & ( ~( request[0].alignment - 1 ) ) );
     ASSERT_EQ( response[0].size, request[0].size );
     ASSERT_EQ( response[0].cache, QC_CACHEABLE );
 
     status = allocatorIfs->Allocate( request[1], response[1] );
     ASSERT_EQ( QC_STATUS_OK, status );
     ASSERT_EQ( (long long unsigned int) response[1].pBuf,
-                (long long unsigned int) response[1].pBuf & ( ~( request[1].alignment - 1 ) ) );
+               (long long unsigned int) response[1].pBuf & ( ~( request[1].alignment - 1 ) ) );
     ASSERT_EQ( response[1].size, request[1].size );
     ASSERT_EQ( response[1].cache, QC_CACHEABLE );
 
     status = allocatorIfs->Allocate( request[2], response[2] );
     ASSERT_EQ( QC_STATUS_OK, status );
     ASSERT_EQ( (long long unsigned int) response[2].pBuf,
-                (long long unsigned int) response[2].pBuf & ( ~( request[2].alignment - 1 ) ) );
+               (long long unsigned int) response[2].pBuf & ( ~( request[2].alignment - 1 ) ) );
     ASSERT_EQ( response[2].size, request[2].size );
     ASSERT_EQ( response[2].cache, QC_CACHEABLE );
 
     status = allocatorIfs->Allocate( request[3], response[3] );
     ASSERT_EQ( QC_STATUS_OK, status );
     ASSERT_EQ( (long long unsigned int) response[3].pBuf,
-                (long long unsigned int) response[3].pBuf & ( ~( request[3].alignment - 1 ) ) );
+               (long long unsigned int) response[3].pBuf & ( ~( request[3].alignment - 1 ) ) );
     ASSERT_EQ( response[3].size, request[3].size );
     ASSERT_EQ( response[3].cache, QC_CACHEABLE );
     status = allocatorIfs->Free( response[3] );
@@ -160,28 +237,28 @@ TEST_F( Test_DMABUFFAllocator, SANITY_multiple_allocations_2 )
     QCStatus_e status = allocatorIfs->Allocate( request[0], response[0] );
     ASSERT_EQ( QC_STATUS_OK, status );
     ASSERT_EQ( (long long unsigned int) response[0].pBuf,
-                (long long unsigned int) response[0].pBuf & ( ~( request[0].alignment - 1 ) ) );
+               (long long unsigned int) response[0].pBuf & ( ~( request[0].alignment - 1 ) ) );
     ASSERT_EQ( response[0].size, request[0].size );
     ASSERT_EQ( response[0].cache, QC_CACHEABLE );
 
     status = allocatorIfs->Allocate( request[1], response[1] );
     ASSERT_EQ( QC_STATUS_OK, status );
     ASSERT_EQ( (long long unsigned int) response[1].pBuf,
-                (long long unsigned int) response[1].pBuf & ( ~( request[1].alignment - 1 ) ) );
+               (long long unsigned int) response[1].pBuf & ( ~( request[1].alignment - 1 ) ) );
     ASSERT_EQ( response[1].size, request[1].size );
     ASSERT_EQ( response[1].cache, QC_CACHEABLE );
 
     status = allocatorIfs->Allocate( request[2], response[2] );
     ASSERT_EQ( QC_STATUS_OK, status );
     ASSERT_EQ( (long long unsigned int) response[2].pBuf,
-                (long long unsigned int) response[2].pBuf & ( ~( request[2].alignment - 1 ) ) );
+               (long long unsigned int) response[2].pBuf & ( ~( request[2].alignment - 1 ) ) );
     ASSERT_EQ( response[2].size, request[2].size );
     ASSERT_EQ( response[2].cache, QC_CACHEABLE );
 
     status = allocatorIfs->Allocate( request[3], response[3] );
     ASSERT_EQ( QC_STATUS_OK, status );
     ASSERT_EQ( (long long unsigned int) response[3].pBuf,
-                (long long unsigned int) response[3].pBuf & ( ~( request[3].alignment - 1 ) ) );
+               (long long unsigned int) response[3].pBuf & ( ~( request[3].alignment - 1 ) ) );
     ASSERT_EQ( response[3].size, request[3].size );
     ASSERT_EQ( response[3].cache, QC_CACHEABLE );
 
@@ -205,4 +282,3 @@ TEST_F( Test_DMABUFFAllocator, SANITY_multiple_allocations_2 )
     status = allocatorIfs->Allocate( badRequest, response[1] );
     ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
 }
-
