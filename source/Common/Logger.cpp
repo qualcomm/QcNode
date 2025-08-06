@@ -75,8 +75,11 @@ QCStatus_e Logger::Init( const char *pName, Logger_Level_e level )
     }
     else
     {
+        m_createFnc = s_createFnc;
+        m_logFnc = s_logFnc;
+        m_destroyFnc = s_destroyFnc;
         m_level = DecideLoggerLevel( pName, level );
-        ret = s_createFnc( pName, m_level, &m_hHandle );
+        ret = m_createFnc( pName, m_level, &m_hHandle );
     }
 
     return ret;
@@ -89,7 +92,7 @@ void Logger::Log( Logger_Level_e level, const char *pFormat, ... )
     if ( ( level >= m_level ) && ( nullptr != m_hHandle ) )
     {
         va_start( args, pFormat );
-        s_logFnc( m_hHandle, level, pFormat, args );
+        m_logFnc( m_hHandle, level, pFormat, args );
         va_end( args );
     }
 }
@@ -98,7 +101,7 @@ void Logger::Log( Logger_Level_e level, const char *pFormat, va_list args )
 {
     if ( ( level >= m_level ) && ( nullptr != m_hHandle ) )
     {
-        s_logFnc( m_hHandle, level, pFormat, args );
+        m_logFnc( m_hHandle, level, pFormat, args );
     }
 }
 
@@ -112,7 +115,7 @@ QCStatus_e Logger::Deinit()
     }
     else
     {
-        s_destroyFnc( m_hHandle );
+        m_destroyFnc( m_hHandle );
         m_hHandle = nullptr;
     }
 

@@ -64,26 +64,39 @@ public:
     virtual ~QCBufferDescriptorBase() = default;
 
     // Overload operator< for MyKey
-    bool operator<(const QCBufferDescriptorBase& other) const {
+    bool operator<( const QCBufferDescriptorBase &other ) const
+    {
         bool result = false;
-        if (pBuf != other.pBuf) {
+        if ( pBuf != other.pBuf )
+        {
             result = pBuf < other.pBuf;
-        } else if (size != other.size) {
+        }
+        else if ( size != other.size )
+        {
             result = size < other.size;
-        } else if (dmaHandle != other.dmaHandle) {
+        }
+        else if ( dmaHandle != other.dmaHandle )
+        {
             result = dmaHandle < other.dmaHandle;
-        } else if (pid != other.pid) {
+        }
+        else if ( pid != other.pid )
+        {
             result = pid < other.pid;
-        } else if (alignment != other.alignment) {
+        }
+        else if ( alignment != other.alignment )
+        {
             result = alignment < other.alignment;
-        } else if (cache != other.cache) {
+        }
+        else if ( cache != other.cache )
+        {
             result = cache < other.cache;
-        } else if (allocatorType != other.allocatorType) {
+        }
+        else if ( allocatorType != other.allocatorType )
+        {
             result = allocatorType < other.allocatorType;
-        } else if (type != other.type) {
-            result = type < other.type;
-        } else if (name != other.name) {
-            result = name < other.name;
+        }
+        else
+        {
         }
         return result;
     }

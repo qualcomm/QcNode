@@ -362,6 +362,11 @@ SharedBufferPool::~SharedBufferPool()
             (void) m_pAllocator->Free( bufDesc );
         }
     }
+
+    if ( nullptr != m_pAllocator )
+    {
+        delete m_pAllocator;
+    }
 }
 }   // namespace sample
 }   // namespace QC

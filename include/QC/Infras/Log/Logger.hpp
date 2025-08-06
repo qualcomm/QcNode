@@ -261,6 +261,10 @@ private:
     Logger_Handle_t m_hHandle = nullptr;
     Logger_Level_e m_level = LOGGER_LEVEL_ERROR;
 
+    Logger_Log_t m_logFnc;
+    Logger_Create_t m_createFnc;
+    Logger_Destroy_t m_destroyFnc;
+
     static Logger_Log_t s_logFnc;
     static Logger_Create_t s_createFnc;
     static Logger_Destroy_t s_destroyFnc;

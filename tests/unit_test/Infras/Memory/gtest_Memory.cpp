@@ -833,12 +833,12 @@ TEST( Memory, L2_Image )
         ImageDescriptor_t imgDesc;
         auto status = bma.Allocate( ImageBasicProps( 1920, 2160, QC_IMAGE_FORMAT_UYVY ), imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
-        auto pid = imgDesc.pid;
-        imgDesc.pid = pid + 100;
+        pid_t pid = imgDesc.pid;
+        imgDesc.pid = static_cast<pid_t>( pid + 100 );
         status = ima.Free( imgDesc );
         ASSERT_EQ( QC_STATUS_OUT_OF_BOUND, status );
         imgDesc.pid = pid;
-        status = ima.Free( imgDesc );
+        status = bma.Free( imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
     }
 }
