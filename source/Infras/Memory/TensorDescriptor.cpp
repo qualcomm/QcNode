@@ -18,13 +18,12 @@ TensorDescriptor &TensorDescriptor::operator=( const BufferDescriptor &other )
         this->pBuf = other.pBuf;
         this->size = other.size;
         this->type = QC_BUFFER_TYPE_TENSOR;
-        this->pBufBase = other.pBufBase;
         this->dmaHandle = other.dmaHandle;
-        this->dmaSize = other.dmaSize;
+        this->validSize = other.validSize;
         this->offset = other.offset;
         this->id = other.id;
         this->pid = other.pid;
-        this->usage = other.usage;
+        this->allocatorType = other.allocatorType;
         this->cache = other.cache;
 
         const TensorDescriptor_t *pTensor = dynamic_cast<const TensorDescriptor_t *>( &other );
@@ -41,16 +40,23 @@ TensorDescriptor &TensorDescriptor::operator=( const BufferDescriptor &other )
 
 TensorDescriptor &TensorDescriptor::operator=( const QCSharedBuffer_t &other )
 {
-    this->pBuf = other.data();
-    this->size = other.size;
+    static const QCMemoryAllocator_e s_Usage2Allocator[] = {
+            QC_MEMORY_ALLOCATOR_DMA,        /* QC_BUFFER_USAGE_DEFAULT */
+            QC_MEMORY_ALLOCATOR_DMA_CAMERA, /* QC_BUFFER_USAGE_CAMERA */
+            QC_MEMORY_ALLOCATOR_DMA_GPU,    /* QC_BUFFER_USAGE_GPU */
+            QC_MEMORY_ALLOCATOR_DMA_VPU,    /* QC_BUFFER_USAGE_VPU */
+            QC_MEMORY_ALLOCATOR_DMA_EVA,    /* QC_BUFFER_USAGE_EVA */
+            QC_MEMORY_ALLOCATOR_DMA_HTP,    /* QC_BUFFER_USAGE_HTP */
+    };
+    this->pBuf = other.buffer.pData;
+    this->validSize = other.size;
     this->type = QC_BUFFER_TYPE_TENSOR;
-    this->pBufBase = other.buffer.pData;
     this->dmaHandle = other.buffer.dmaHandle;
-    this->dmaSize = other.buffer.size;
+    this->size = other.buffer.size;
     this->offset = other.offset;
     this->id = other.buffer.id;
     this->pid = other.buffer.pid;
-    this->usage = other.buffer.usage;
+    this->allocatorType = s_Usage2Allocator[other.buffer.usage];
     this->cache = QC_CACHEABLE;
     this->tensorType = other.tensorProps.type;
     std::copy( other.tensorProps.dims, other.tensorProps.dims + other.tensorProps.numDims,

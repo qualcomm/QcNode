@@ -101,244 +101,204 @@ QCStatus_e ConvertDtToProps( DataTree &dt, TensorProps_t &props )
     return ret;
 }
 
-TEST( QNN, SANITY_General )
+class QnnTest : public ::testing::Test
 {
-    QCStatus_e ret = QC_STATUS_OK;
-    std::string errors;
+protected:
+    void SetUp() override {}
+
+    void SetLogLevel( std::string level ) { dt.Set<std::string>( "static.logLevel", level ); }
+
+    void Init( std::string name, std::string loadType, std::string modelPath,
+               std::string processorType )
+    {
+        dt.Set<std::string>( "static.name", name );
+        dt.Set<uint32_t>( "static.id", 0 );
+        dt.Set<std::string>( "static.loadType", loadType );
+        dt.Set<std::string>( "static.modelPath", modelPath );
+        dt.Set<std::string>( "static.processorType", processorType );
+
+        config.buffers.clear();
+        config.callback = nullptr;
+
+        if ( "buffer" == loadType )
+        {
+            dt.Set<uint32_t>( "static.contextBufferId", 0 );
+            FILE *pFile = fopen( modelPath.c_str(), "rb" );
+            ASSERT_NE( pFile, nullptr );
+            fseek( pFile, 0, SEEK_END );
+            bufferSize = ftell( pFile );
+            fseek( pFile, 0, SEEK_SET );
+            buffer = std::shared_ptr<uint8_t>( new uint8_t[bufferSize] );
+            auto readSize = fread( buffer.get(), 1, bufferSize, pFile );
+            ASSERT_EQ( readSize, bufferSize );
+            fclose( pFile );
+            ctxBufDesc.name = modelPath;
+            ctxBufDesc.pBuf = buffer.get();
+            ctxBufDesc.size = bufferSize;
+            config.buffers.push_back( ctxBufDesc );
+        }
+
+        config.config = dt.Dump();
+        ret = qnn.Initialize( config );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+    }
+
+    void AllocateBuffers()
+    {
+        QCNodeConfigIfs &cfgIfs = qnn.GetConfigurationIfs();
+        const std::string &options = cfgIfs.GetOptions();
+        // printf( "options: %s\n", options.c_str() );
+        DataTree optionsDt;
+
+        std::vector<DataTree> inputDts;
+        std::vector<DataTree> outputDts;
+        ret = optionsDt.Load( options, errors );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+
+        ret = optionsDt.Get( "model.inputs", inputDts );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+        ret = optionsDt.Get( "model.outputs", outputDts );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+
+        pFrameDesc = new QCSharedFrameDescriptorNode( inputDts.size() + outputDts.size() + 1 );
+        uint32_t globalIdx = 0;
+        inputs.reserve( inputDts.size() );
+        for ( auto &inDt : inputDts )
+        {
+            TensorProps_t props;
+            ret = ConvertDtToProps( inDt, props );
+            ASSERT_EQ( QC_STATUS_OK, ret );
+            TensorDescriptor_t tensorDesc;
+            ret = ta.Allocate( props, tensorDesc );
+            ASSERT_EQ( QC_STATUS_OK, ret );
+            inputs.push_back( tensorDesc );
+            ret = pFrameDesc->SetBuffer( globalIdx, inputs.back() );
+            ASSERT_EQ( QC_STATUS_OK, ret );
+            globalIdx++;
+        }
+        outputs.reserve( outputDts.size() );
+        for ( auto &outDt : outputDts )
+        {
+            TensorProps_t props;
+            ret = ConvertDtToProps( outDt, props );
+            ASSERT_EQ( QC_STATUS_OK, ret );
+            TensorDescriptor_t tensorDesc;
+            ret = ta.Allocate( props, tensorDesc );
+            ASSERT_EQ( QC_STATUS_OK, ret );
+            outputs.push_back( tensorDesc );
+            ret = pFrameDesc->SetBuffer( globalIdx, outputs.back() );
+            ASSERT_EQ( QC_STATUS_OK, ret );
+            globalIdx++;
+        }
+    }
+
+    void Start()
+    {
+        ret = qnn.Start();
+        ASSERT_EQ( QC_STATUS_OK, ret );
+    }
+
+    void Execute()
+    {
+        ret = qnn.ProcessFrameDescriptor( *pFrameDesc );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+    }
+
+    void Stop()
+    {
+        ret = qnn.Stop();
+        ASSERT_EQ( QC_STATUS_OK, ret );
+    }
+
+    void Deinit()
+    {
+        ret = qnn.DeInitialize();
+        ASSERT_EQ( QC_STATUS_OK, ret );
+    }
+
+    void TearDown() override
+    {
+        (void) qnn.Stop();
+        (void) qnn.DeInitialize();
+        if ( nullptr != pFrameDesc )
+        {
+            delete pFrameDesc;
+            pFrameDesc = nullptr;
+        }
+
+        for ( size_t i = 0; i < inputs.size(); ++i )
+        {
+            ret = ta.Free( inputs[i] );
+            ASSERT_EQ( QC_STATUS_OK, ret );
+        }
+        inputs.clear();
+        for ( size_t i = 0; i < outputs.size(); ++i )
+        {
+            ret = ta.Free( outputs[i] );
+            ASSERT_EQ( QC_STATUS_OK, ret );
+        }
+        outputs.clear();
+    }
+
     Qnn qnn;
-    TensorAllocator ta( "TENSOR" );
+    QCNodeInit_t config;
+    TensorAllocator ta{ "TENSOR" };
+    std::string errors;
+    QCStatus_e ret = QC_STATUS_OK;
     DataTree dt;
-    dt.Set<std::string>( "static.name", "SANITY" );
-    dt.Set<uint32_t>( "static.id", 0 );
-    dt.Set<std::string>( "static.loadType", "binary" );
 
-    dt.Set<std::string>( "static.modelPath", "data/centernet/program.bin" );
-    dt.Set<std::string>( "static.processorType", "htp0" );
-
-    QCNodeInit_t config = { dt.Dump() };
-    ret = qnn.Initialize( config );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    ret = qnn.Start();
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-
-    QCNodeConfigIfs &cfgIfs = qnn.GetConfigurationIfs();
-    const std::string &options = cfgIfs.GetOptions();
-
-    printf( "options: %s\n", options.c_str() );
-    DataTree optionsDt;
-    std::vector<DataTree> inputDts;
-    std::vector<DataTree> outputDts;
-    ret = optionsDt.Load( options, errors );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    ret = optionsDt.Get( "model.inputs", inputDts );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-    ret = optionsDt.Get( "model.outputs", outputDts );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    QCSharedFrameDescriptorNode frameDesc( inputDts.size() + outputDts.size() + 1 );
-    uint32_t globalIdx = 0;
     std::vector<TensorDescriptor_t> inputs;
-    inputs.reserve( inputDts.size() );
-    for ( auto &inDt : inputDts )
-    {
-        TensorProps_t props;
-        ret = ConvertDtToProps( inDt, props );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        TensorDescriptor_t tensorDesc;
-        ret = ta.Allocate( props, tensorDesc );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        inputs.push_back( tensorDesc );
-        ret = frameDesc.SetBuffer( globalIdx, inputs.back() );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        globalIdx++;
-    }
     std::vector<TensorDescriptor_t> outputs;
-    outputs.reserve( outputDts.size() );
-    for ( auto &outDt : outputDts )
-    {
-        TensorProps_t props;
-        ret = ConvertDtToProps( outDt, props );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        TensorDescriptor_t tensorDesc;
-        ret = ta.Allocate( props, tensorDesc );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        outputs.push_back( tensorDesc );
-        ret = frameDesc.SetBuffer( globalIdx, outputs.back() );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        globalIdx++;
-    }
+    QCSharedFrameDescriptorNode *pFrameDesc = nullptr;
 
-    ret = qnn.ProcessFrameDescriptor( frameDesc );
-    ASSERT_EQ( QC_STATUS_OK, ret );
+    /* use to load from context buffer */
+    std::shared_ptr<uint8_t> buffer = nullptr;
+    uint64_t bufferSize{ 0 };
+    QCBufferDescriptorBase ctxBufDesc;
+};
 
-    ret = qnn.Stop();
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    ret = qnn.DeInitialize();
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    for ( size_t i = 0; i < inputs.size(); ++i )
-    {
-        ret = ta.Free( inputs[i] );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-    }
-    for ( size_t i = 0; i < outputs.size(); ++i )
-    {
-        ret = ta.Free( outputs[i] );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-    }
+TEST_F( QnnTest, SANITY_General )
+{
+    Init( "SANITY", "binary", "data/centernet/program.bin", "htp0" );
+    AllocateBuffers();
+    Start();
+    Execute();
+    Stop();
+    Deinit();
 }
 
-TEST( QNN, CreateModelFromBuffer )
+TEST_F( QnnTest, CreateModelFromBuffer )
 {
-    QCStatus_e ret = QC_STATUS_OK;
-    std::string errors;
-    Qnn qnn;
-    TensorAllocator ta( "TENSOR" );
-    DataTree dt;
-    dt.Set<std::string>( "static.name", "MODEL_FROM_BUF" );
-    dt.Set<uint32_t>( "static.id", 0 );
-    dt.Set<std::string>( "static.loadType", "buffer" );
-    dt.Set<std::string>( "static.processorType", "htp0" );
-    dt.Set<uint32_t>( "static.contextBufferId", 0 );
-    std::string modelPath = "data/centernet/program.bin";
-    uint64_t bufferSize{ 0 };
-    FILE *pFile = fopen( modelPath.c_str(), "rb" );
-    ASSERT_NE( pFile, nullptr );
-    fseek( pFile, 0, SEEK_END );
-    bufferSize = ftell( pFile );
-    fseek( pFile, 0, SEEK_SET );
-    std::shared_ptr<uint8_t> buffer = std::shared_ptr<uint8_t>( new uint8_t[bufferSize] );
-    auto readSize = fread( buffer.get(), 1, bufferSize, pFile );
-    ASSERT_EQ( readSize, bufferSize );
-    fclose( pFile );
-    QCBufferDescriptorBase ctxBufDesc;
-    QCNodeInit_t config = { dt.Dump() };
-    config.buffers.push_back( ctxBufDesc );
+    Init( "MODEL_FROM_BUF", "buffer", "data/centernet/program.bin", "htp0" );
+    AllocateBuffers();
+    Start();
+    Execute();
+    Stop();
+    Deinit();
 
     // buffer is null
-    ctxBufDesc.name = modelPath;
     ctxBufDesc.pBuf = nullptr;
     ctxBufDesc.size = bufferSize;
     ret = qnn.Initialize( config );
     ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
     // buffer size is 0
-    ctxBufDesc.name = modelPath;
     ctxBufDesc.pBuf = buffer.get();
     ctxBufDesc.size = 0;
     ret = qnn.Initialize( config );
     ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
 
     // buffer size is incorrect
-    ctxBufDesc.name = modelPath;
     ctxBufDesc.pBuf = buffer.get();
     ctxBufDesc.size = 8;
     ret = qnn.Initialize( config );
     ASSERT_EQ( QC_STATUS_FAIL, ret );
-
-    // correct loading
-    ctxBufDesc.name = modelPath;
-    ctxBufDesc.pBuf = buffer.get();
-    ctxBufDesc.size = bufferSize;
-    ret = qnn.Initialize( config );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    ret = qnn.Start();
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    QCNodeConfigIfs &cfgIfs = qnn.GetConfigurationIfs();
-    const std::string &options = cfgIfs.GetOptions();
-
-    DataTree optionsDt;
-    std::vector<DataTree> inputDts;
-    std::vector<DataTree> outputDts;
-    ret = optionsDt.Load( options, errors );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    ret = optionsDt.Get( "model.inputs", inputDts );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-    ret = optionsDt.Get( "model.outputs", outputDts );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    QCSharedFrameDescriptorNode frameDesc( inputDts.size() + outputDts.size() + 1 );
-    uint32_t globalIdx = 0;
-    std::vector<TensorDescriptor_t> inputs;
-    inputs.reserve( inputDts.size() );
-    for ( auto &inDt : inputDts )
-    {
-        TensorProps_t props;
-        ret = ConvertDtToProps( inDt, props );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        TensorDescriptor_t tensorDesc;
-        ret = ta.Allocate( props, tensorDesc );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        inputs.push_back( tensorDesc );
-        ret = frameDesc.SetBuffer( globalIdx, inputs.back() );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        globalIdx++;
-    }
-    std::vector<TensorDescriptor_t> outputs;
-    outputs.reserve( outputDts.size() );
-    for ( auto &outDt : outputDts )
-    {
-        TensorProps_t props;
-        ret = ConvertDtToProps( outDt, props );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        TensorDescriptor_t tensorDesc;
-        ret = ta.Allocate( props, tensorDesc );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        outputs.push_back( tensorDesc );
-        ret = frameDesc.SetBuffer( globalIdx, outputs.back() );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        globalIdx++;
-    }
-
-    ret = qnn.ProcessFrameDescriptor( frameDesc );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    ret = qnn.Stop();
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    ret = qnn.ProcessFrameDescriptor( frameDesc );
-    ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
-
-    ret = qnn.DeInitialize();
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    for ( size_t i = 0; i < inputs.size(); ++i )
-    {
-        ret = ta.Free( inputs[i] );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-    }
-    for ( size_t i = 0; i < outputs.size(); ++i )
-    {
-        ret = ta.Free( outputs[i] );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-    }
 }
 
-
-TEST( QNN, Perf )
+TEST_F( QnnTest, Perf )
 {
-    QCStatus_e ret = QC_STATUS_OK;
-    std::string errors;
-    Qnn qnn;
-    TensorAllocator ta( "TENSOR" );
-    DataTree dt;
-    dt.Set<std::string>( "static.name", "PERF" );
-    dt.Set<uint32_t>( "static.id", 0 );
-    dt.Set<std::string>( "static.loadType", "binary" );
-
-    dt.Set<std::string>( "static.modelPath", "data/centernet/program.bin" );
-    dt.Set<std::string>( "static.processorType", "htp0" );
-
-    QCNodeInit_t config = { dt.Dump() };
-    ret = qnn.Initialize( config );
-    ASSERT_EQ( QC_STATUS_OK, ret );
+    Init( "PERF", "binary", "data/centernet/program.bin", "htp0" );
+    AllocateBuffers();
 
     QCNodeConfigIfs &cfgIfs = qnn.GetConfigurationIfs();
     DataTree dtp;
@@ -349,54 +309,7 @@ TEST( QNN, Perf )
     ret = cfgIfs.VerifyAndSet( dtp.Dump(), errors );
     ASSERT_EQ( QC_STATUS_ALREADY, ret );
 
-    ret = qnn.Start();
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    const std::string &options = cfgIfs.GetOptions();
-
-    DataTree optionsDt;
-    std::vector<DataTree> inputDts;
-    std::vector<DataTree> outputDts;
-    ret = optionsDt.Load( options, errors );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    ret = optionsDt.Get( "model.inputs", inputDts );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-    ret = optionsDt.Get( "model.outputs", outputDts );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    QCSharedFrameDescriptorNode frameDesc( inputDts.size() + outputDts.size() + 1 );
-    uint32_t globalIdx = 0;
-    std::vector<TensorDescriptor_t> inputs;
-    inputs.reserve( inputDts.size() );
-    for ( auto &inDt : inputDts )
-    {
-        TensorProps_t props;
-        ret = ConvertDtToProps( inDt, props );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        TensorDescriptor_t tensorDesc;
-        ret = ta.Allocate( props, tensorDesc );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        inputs.push_back( tensorDesc );
-        ret = frameDesc.SetBuffer( globalIdx, inputs.back() );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        globalIdx++;
-    }
-    std::vector<TensorDescriptor_t> outputs;
-    outputs.reserve( outputDts.size() );
-    for ( auto &outDt : outputDts )
-    {
-        TensorProps_t props;
-        ret = ConvertDtToProps( outDt, props );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        TensorDescriptor_t tensorDesc;
-        ret = ta.Allocate( props, tensorDesc );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        outputs.push_back( tensorDesc );
-        ret = frameDesc.SetBuffer( globalIdx, outputs.back() );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        globalIdx++;
-    }
+    Start();
 
     Qnn_Perf_t perf = { 0, 0, 0, 0 };
     QCNodeMonitoringIfs &monitorIfs = qnn.GetMonitoringIfs();
@@ -404,8 +317,7 @@ TEST( QNN, Perf )
     ret = monitorIfs.Place( &perf, size );
     ASSERT_EQ( QC_STATUS_OUT_OF_BOUND, ret );
 
-    ret = qnn.ProcessFrameDescriptor( frameDesc );
-    ASSERT_EQ( QC_STATUS_OK, ret );
+    Execute();
 
     uint32_t size0 = 0u;
     ret = monitorIfs.Place( &perf, size0 );
@@ -424,119 +336,47 @@ TEST( QNN, Perf )
     ret = cfgIfs.VerifyAndSet( dtp.Dump(), errors );
     ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
 
-    ret = qnn.ProcessFrameDescriptor( frameDesc );
-    ASSERT_EQ( QC_STATUS_OK, ret );
+    Execute();
 
     ret = monitorIfs.Place( &perf, size );
     ASSERT_EQ( QC_STATUS_OUT_OF_BOUND, ret );
 
-    ret = qnn.Stop();
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    ret = qnn.DeInitialize();
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    for ( size_t i = 0; i < inputs.size(); ++i )
-    {
-        ret = ta.Free( inputs[i] );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-    }
-    for ( size_t i = 0; i < outputs.size(); ++i )
-    {
-        ret = ta.Free( outputs[i] );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-    }
+    Stop();
+    Deinit();
 }
 
-TEST( QNN, RegisterBuffer )
+TEST_F( QnnTest, RegisterBuffer )
 {
-    QCStatus_e ret = QC_STATUS_OK;
-    std::string errors;
-    Qnn qnn;
-    TensorAllocator ta( "TENSOR" );
-    DataTree dt;
-    dt.Set<std::string>( "static.name", "REGBUF" );
-    dt.Set<uint32_t>( "static.id", 0 );
-    dt.Set<std::string>( "static.loadType", "binary" );
+    Init( "MODEL_FROM_BUF", "binary", "data/centernet/program.bin", "htp0" );
+    AllocateBuffers();
+    Start();
+    Execute();
+    Stop();
+    Deinit();
 
-    dt.Set<std::string>( "static.modelPath", "data/centernet/program.bin" );
-    dt.Set<std::string>( "static.processorType", "htp0" );
-
-    QCNodeInit_t config = { dt.Dump() };
-    ret = qnn.Initialize( config );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    QCNodeConfigIfs &cfgIfs = qnn.GetConfigurationIfs();
-    const std::string &options = cfgIfs.GetOptions();
-
-    DataTree optionsDt;
-    std::vector<DataTree> inputDts;
-    std::vector<DataTree> outputDts;
-    ret = optionsDt.Load( options, errors );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    ret = optionsDt.Get( "model.inputs", inputDts );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-    ret = optionsDt.Get( "model.outputs", outputDts );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    std::vector<uint32_t> bufferIds;
-    QCSharedFrameDescriptorNode frameDesc( inputDts.size() + outputDts.size() + 1 );
     uint32_t globalIdx = 0;
-    std::vector<TensorDescriptor_t> inputs;
-    inputs.reserve( inputDts.size() );
-    for ( auto &inDt : inputDts )
+    std::vector<uint32_t> bufferIds;
+    for ( auto &bufDesc : inputs )
     {
-        TensorProps_t props;
-        ret = ConvertDtToProps( inDt, props );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        TensorDescriptor_t tensorDesc;
-        ret = ta.Allocate( props, tensorDesc );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        inputs.push_back( tensorDesc );
-        ret = frameDesc.SetBuffer( globalIdx, inputs.back() );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        config.buffers.push_back( inputs.back() );
+        config.buffers.push_back( bufDesc );
         bufferIds.push_back( globalIdx );
         globalIdx++;
     }
-    std::vector<TensorDescriptor_t> outputs;
-    outputs.reserve( outputDts.size() );
-    for ( auto &outDt : outputDts )
+    for ( auto &bufDesc : outputs )
     {
-        TensorProps_t props;
-        ret = ConvertDtToProps( outDt, props );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        TensorDescriptor_t tensorDesc;
-        ret = ta.Allocate( props, tensorDesc );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        outputs.push_back( tensorDesc );
-        ret = frameDesc.SetBuffer( globalIdx, outputs.back() );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        config.buffers.push_back( outputs.back() );
+        config.buffers.push_back( bufDesc );
         bufferIds.push_back( globalIdx );
         globalIdx++;
     }
-
-    ret = qnn.DeInitialize();
-    ASSERT_EQ( QC_STATUS_OK, ret );
 
     dt.Set<uint32_t>( "static.bufferIds", bufferIds );
     config.config = dt.Dump();
     ret = qnn.Initialize( config );
     ASSERT_EQ( QC_STATUS_OK, ret );
-
-    ret = qnn.Start();
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    ret = qnn.ProcessFrameDescriptor( frameDesc );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    ret = qnn.Stop();
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    ret = qnn.DeInitialize();
-    ASSERT_EQ( QC_STATUS_OK, ret );
+    Start();
+    Execute();
+    Stop();
+    Deinit();
 
     // give an invalid buffer id
     bufferIds.push_back( bufferIds.size() + 5 );
@@ -544,17 +384,6 @@ TEST( QNN, RegisterBuffer )
     config.config = dt.Dump();
     ret = qnn.Initialize( config );
     ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
-
-    for ( size_t i = 0; i < inputs.size(); ++i )
-    {
-        ret = ta.Free( inputs[i] );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-    }
-    for ( size_t i = 0; i < outputs.size(); ++i )
-    {
-        ret = ta.Free( outputs[i] );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-    }
 }
 
 TEST( QNN, LoadModel )
@@ -593,20 +422,8 @@ TEST( QNN, LoadModel )
     ASSERT_EQ( QC_STATUS_FAIL, ret );
 }
 
-TEST( QNN, StateMachine )
+TEST_F( QnnTest, StateMachine )
 {
-    QCStatus_e ret = QC_STATUS_OK;
-    std::string errors;
-    Qnn qnn;
-    TensorAllocator ta( "TENSOR" );
-    DataTree dt;
-    dt.Set<std::string>( "static.name", "StateMachine" );
-    dt.Set<uint32_t>( "static.id", 0 );
-    dt.Set<std::string>( "static.loadType", "binary" );
-
-    dt.Set<std::string>( "static.modelPath", "data/centernet/program.bin" );
-    dt.Set<std::string>( "static.processorType", "htp0" );
-
     QCNodeConfigIfs &cfgIfs = qnn.GetConfigurationIfs();
     const std::string &options = cfgIfs.GetOptions();
     ASSERT_EQ( "{}", options );
@@ -630,6 +447,30 @@ TEST( QNN, StateMachine )
     uint32_t size = sizeof( perf );
     ret = monitorIfs.Place( &perf, size );
     ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
+
+    QCObjectState_e state = qnn.GetState();
+    ASSERT_EQ( QC_OBJECT_STATE_INITIAL, state );
+
+    Init( "StateMachine", "binary", "data/centernet/program.bin", "htp0" );
+    state = qnn.GetState();
+    ASSERT_EQ( QC_OBJECT_STATE_READY, state );
+
+    AllocateBuffers();
+
+    ret = qnn.ProcessFrameDescriptor( *pFrameDesc );
+    ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
+
+    Start();
+    state = qnn.GetState();
+    ASSERT_EQ( QC_OBJECT_STATE_RUNNING, state );
+
+    Stop();
+    state = qnn.GetState();
+    ASSERT_EQ( QC_OBJECT_STATE_READY, state );
+
+    Deinit();
+    state = qnn.GetState();
+    ASSERT_EQ( QC_OBJECT_STATE_INITIAL, state );
 }
 
 TEST( QNN, LoadOpPackage )
@@ -987,13 +828,13 @@ TEST( QNN, DynamicBatchSize )
     for ( size_t i = 0; i < inputs.size(); ++i )
     {
         inputs[i].dims[0] = batchSize;
-        inputs[i].size = inputs[i].dmaSize / 10 * 3;
+        inputs[i].validSize = inputs[i].size / 10 * 3;
     }
 
     for ( size_t i = 0; i < outputs.size(); ++i )
     {
         outputs[i].dims[0] = batchSize;
-        outputs[i].size = outputs[i].dmaSize / 10 * 3;
+        outputs[i].validSize = outputs[i].size / 10 * 3;
     }
 
     ret = qnn.ProcessFrameDescriptor( frameDesc );
@@ -1218,7 +1059,7 @@ TEST( QNN, OneBufferMutipleTensors )
         ret = frameDesc.SetBuffer( globalIdx, outputs.back() );
         ASSERT_EQ( QC_STATUS_OK, ret );
         globalIdx++;
-        outputTotalSize += outputs.back().dmaSize;
+        outputTotalSize += outputs.back().size;
     }
     ret = qnn.ProcessFrameDescriptor( frameDesc );
     ASSERT_EQ( QC_STATUS_OK, ret );
@@ -1233,12 +1074,11 @@ TEST( QNN, OneBufferMutipleTensors )
     for ( size_t i = 0; i < outputs.size(); ++i )
     {
         outputs1[i] = outputs[i];
-        outputs1[i].dmaSize = bufDesc.dmaSize;
-        outputs1[i].pBuf = (void *) ( (uint8_t *) bufDesc.pBufBase + offset );
-        outputs1[i].pBufBase = bufDesc.pBufBase;
+        outputs1[i].pBuf = bufDesc.pBuf;
+        outputs1[i].size = bufDesc.size;
         outputs1[i].dmaHandle = bufDesc.dmaHandle;
         outputs1[i].offset = offset;
-        offset += outputs1[i].size;
+        offset += outputs1[i].validSize;
         ret = frameDesc1.SetBuffer( globalIdx1, outputs1[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
         globalIdx1++;
@@ -1249,8 +1089,8 @@ TEST( QNN, OneBufferMutipleTensors )
 
     for ( size_t i = 0; i < outputs.size(); ++i )
     {
-        std::string md5OneBuffer = MD5Sum( outputs1[i].pBuf, outputs1[i].size );
-        std::string md5Output = MD5Sum( outputs[i].pBuf, outputs[i].size );
+        std::string md5OneBuffer = MD5Sum( outputs1[i].GetDataPtr(), outputs1[i].GetDataSize() );
+        std::string md5Output = MD5Sum( outputs[i].GetDataPtr(), outputs[i].GetDataSize() );
         EXPECT_EQ( md5OneBuffer, md5Output );
     }
 
@@ -2094,6 +1934,38 @@ TEST( QNN, InitDeInitializeStress )
             ASSERT_EQ( QC_STATUS_OK, ret );
         }
     }
+}
+
+TEST_F( QnnTest, CovLogLevel )
+{
+    SetLogLevel( "VERBOSE" );
+    Init( "LOGLEVEL", "binary", "data/centernet/program.bin", "htp0" );
+    AllocateBuffers();
+    Start();
+    Execute();
+    Stop();
+    Deinit();
+
+    SetLogLevel( "DEBUG" );
+    Init( "LOGLEVEL", "binary", "data/centernet/program.bin", "htp0" );
+    Start();
+    Execute();
+    Stop();
+    Deinit();
+
+    SetLogLevel( "INFO" );
+    Init( "LOGLEVEL", "binary", "data/centernet/program.bin", "htp0" );
+    Start();
+    Execute();
+    Stop();
+    Deinit();
+
+    SetLogLevel( "WARN" );
+    Init( "LOGLEVEL", "binary", "data/centernet/program.bin", "htp0" );
+    Start();
+    Execute();
+    Stop();
+    Deinit();
 }
 
 #ifndef GTEST_QCNODE

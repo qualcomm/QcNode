@@ -13,22 +13,32 @@
 #include "QC/Common/Types.hpp"
 #include "QC/Infras/Log/Logger.hpp"
 #include "QC/Infras/Memory/BufferDescriptor.hpp"
-#include "QC/Infras/Memory/Ifs/QCMemoryAllocatorIfs.hpp"
+#include "QC/Infras/Memory/Ifs/QCMemoryManagerIfs.hpp"
+#include "QC/Node/Ifs/QCNodeDefs.hpp"
 
 namespace QC
 {
 namespace Memory
 {
 
-class BinaryAllocator : public QCMemoryAllocatorIfs
+class BinaryAllocator
 {
 public:
     /**
      * @brief Constructor for BinaryAllocator.
      * @param[in] name The name of the binary allocator.
      * @return None.
+     * @deprecated Will be removed
      */
     BinaryAllocator( const std::string &name );
+
+    /**
+     * @brief Constructor for BinaryAllocator.
+     * @param[in] nodeId The nodeId of the binary allocator.
+     * @param[in] logLevel The log level of the binary allocator.
+     * @return None.
+     */
+    BinaryAllocator( const QCNodeID_t &nodeId, Logger_Level_e logLevel = LOGGER_LEVEL_ERROR );
 
     virtual ~BinaryAllocator();
 
@@ -55,8 +65,11 @@ public:
      */
     virtual QCStatus_e Free( const QCBufferDescriptorBase_t &buffer );
 
-private:
+protected:
     QC_DECLARE_LOGGER();
+
+    QCNodeID_t m_nodeId;
+    QCMemoryHandle_t m_memoryHandle;
 };
 
 }   // namespace Memory

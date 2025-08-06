@@ -45,7 +45,8 @@ public:
      * @brief Constructor for TensorProps.
      * @param tensorType The tensor type.
      * @param dims The tensor dimensions.
-     * @param usage The intended usage of the buffer, default is QC_BUFFER_USAGE_CAMERA.
+     * @param allocatorType The allocator type of the buffer, default is
+     * QC_MEMORY_ALLOCATOR_DMA_HTP.
      * @param cache The cache attributes of the buffer, default is QC_CACHEABLE.
      * @return None.
      * @note This constructor sets up the properties of the tensor with the given parameters, while
@@ -54,9 +55,9 @@ public:
      * QC_NUM_TENSOR_DIMS.
      */
     TensorProps( QCTensorType_e tensorType, std::vector<uint32_t> dims,
-                 QCBufferUsage_e usage = QC_BUFFER_USAGE_CAMERA,
+                 QCMemoryAllocator_e allocatorType = QC_MEMORY_ALLOCATOR_DMA_HTP,
                  QCAllocationCache_e cache = QC_CACHEABLE )
-        : BufferProps( 0, usage, cache ),
+        : BufferProps( 0, allocatorType, cache ),
           tensorType( tensorType )
     {
         numDims = static_cast<uint32_t>( dims.size() );
@@ -74,17 +75,17 @@ public:
  *
  * Inherited Members from BufferDescriptor:
  * @param name The name of the buffer.
- * @param pBuf The virtual address of the actual buffer.
- * @param size The actual size of the buffer.
+ * @param pBuf The virtual address of the dma buffer.
+ * @param size The dma size of the buffer.
  * @param type The type of the buffer.
- * @param pBufBase The base virtual address of the DMA buffer.
- * @param dmaHandle The DMA handle of the buffer.
- * @param dmaSize The size of the DMA buffer.
+ * @param alignment The alignment of the buffer.
+ * @param cache The cache type of the buffer.
+ * @param allocatorType The allocaor type used for allocation the buffer.
+ * @param dmaHandle The dmaHandle of the buffer.
+ * @param pid The process ID of the buffer.
+ * @param validSize The size of valid data currently stored in the buffer.
  * @param offset The offset of the valid buffer within the shared buffer.
  * @param id The unique ID assigned by the buffer manager.
- * @param pid The process ID that allocated this buffer.
- * @param usage The intended usage of the buffer.
- * @param attr The attributes associated with the buffer.
  *
  * New Members:
  * @param tensorType The tensor type.

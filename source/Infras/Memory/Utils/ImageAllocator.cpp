@@ -69,15 +69,13 @@ static const char *s_qcFormatToString[QC_IMAGE_FORMAT_MAX] = {
         "TP_UBWC"    /* QC_IMAGE_FORMAT_TP10_UBWC */
 };
 
-BasicImageAllocator::BasicImageAllocator( const std::string &name ) : BinaryAllocator( name )
-{
-    (void) QC_LOGGER_INIT( GetConfiguration().name.c_str(), LOGGER_LEVEL_ERROR );
-};
+BasicImageAllocator::BasicImageAllocator( const std::string &name ) : BinaryAllocator( name ) {};
 
-BasicImageAllocator::~BasicImageAllocator()
-{
-    (void) QC_LOGGER_DEINIT();
-};
+BasicImageAllocator::BasicImageAllocator( const QCNodeID_t &nodeId, Logger_Level_e logLevel )
+    : BinaryAllocator( nodeId, logLevel )
+{}
+
+BasicImageAllocator::~BasicImageAllocator() {};
 
 QCStatus_e BasicImageAllocator::Allocate( const QCBufferPropBase_t &request,
                                           QCBufferDescriptorBase_t &response )
@@ -197,15 +195,13 @@ QCStatus_e BasicImageAllocator::Allocate( const QCBufferPropBase_t &request,
     return status;
 }
 
-ImageAllocator::ImageAllocator( const std::string &name ) : BinaryAllocator( name )
-{
-    (void) QC_LOGGER_INIT( GetConfiguration().name.c_str(), LOGGER_LEVEL_ERROR );
-};
+ImageAllocator::ImageAllocator( const std::string &name ) : BinaryAllocator( name ) {};
 
-ImageAllocator::~ImageAllocator()
-{
-    (void) QC_LOGGER_DEINIT();
-};
+ImageAllocator::ImageAllocator( const QCNodeID_t &nodeId, Logger_Level_e logLevel )
+    : BinaryAllocator( nodeId, logLevel )
+{}
+
+ImageAllocator::~ImageAllocator() {};
 
 QCStatus_e ImageAllocator::Allocate( const QCBufferPropBase_t &request,
                                      QCBufferDescriptorBase_t &response )

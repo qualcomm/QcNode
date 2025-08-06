@@ -10,11 +10,13 @@
 #include <thread>
 
 #include "QC/Common/Types.hpp"
+#include "QC/Infras/Memory/ImageDescriptor.hpp"
 #include "QC/component/VideoDecoder.hpp"
 #include "VidcDemuxer.hpp"
 #include "md5_utils.hpp"
 
 using namespace QC;
+using namespace QC::Memory;
 using namespace QC::component;
 using namespace QC::sample;
 using namespace QC::test::utils;
@@ -125,11 +127,13 @@ void VdTestDynamic( uint32_t bufferNum, QCImageFormat_e outFormat, char *videoFi
 
     VideoDecoder_InputFrame_t inputFrame;
     VideoDecoder_OutputFrame_t outputFrame;
+    ImageDescriptor_t imgDesc;
 
     for ( uint32_t i = 0; i < bufferNum; i++ )
     {
         inputFrame.sharedBuffer = inputBuffers[i];
-        ret = vidcDemuxer.GetFrame( &inputBuffers[i], frameInfo );
+        imgDesc = inputFrame.sharedBuffer;
+        ret = vidcDemuxer.GetFrame( imgDesc, frameInfo );
         ASSERT_EQ( QC_STATUS_OK, ret );
 
         inputFrame.timestampNs = frameInfo.startTime;
@@ -153,8 +157,8 @@ void VdTestDynamic( uint32_t bufferNum, QCImageFormat_e outFormat, char *videoFi
         uint32_t bufferIdx = i % bufferNum;
         inputFrame.sharedBuffer = inputBuffers[bufferIdx];
         outputFrame.sharedBuffer = outputBuffers[bufferIdx];
-
-        ret = vidcDemuxer.GetFrame( &inputBuffers[bufferIdx], frameInfo );
+        imgDesc = inputFrame.sharedBuffer;
+        ret = vidcDemuxer.GetFrame( imgDesc, frameInfo );
         ASSERT_EQ( QC_STATUS_OK, ret );
 
         inputFrame.timestampNs = frameInfo.startTime;

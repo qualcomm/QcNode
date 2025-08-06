@@ -143,6 +143,28 @@ public:
      * @brief The Process identifier number.
      * This value specifies the identification number given to a process. */
     pid_t pid;
+
+    /**
+     * @brief Returns a pointer to the buffer's data.
+     *
+     * This method provides access to the raw memory where the buffer's content is stored.
+     * The returned pointer may be used for reading or writing, depending on the buffer's usage
+     * context.
+     *
+     * @return void* Pointer to the beginning of the buffer's data.
+     */
+    virtual void *GetDataPtr() const { return pBuf; }
+
+    /**
+     * @brief Returns the size of valid data in the buffer.
+     *
+     * This method indicates how many bytes of meaningful data are currently stored in the buffer.
+     * It does not necessarily reflect the total allocated capacity.
+     *
+     * @return size_t Number of bytes of valid data in the buffer.
+     */
+    virtual size_t GetDataSize() const { return size; }
+
 } QCBufferDescriptorBase_t;
 
 }   // namespace Memory

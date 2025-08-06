@@ -79,16 +79,26 @@ QCSharedBuffer::QCSharedBuffer( const QCBufferDescriptorBase_t &other )
     const BufferDescriptor_t *pBuffer = dynamic_cast<const BufferDescriptor_t *>( &other );
     const TensorDescriptor_t *pTensor = dynamic_cast<const TensorDescriptor_t *>( &other );
     const ImageDescriptor_t *pImage = dynamic_cast<const ImageDescriptor_t *>( &other );
+    static const QCBufferUsage_e s_Allocator2Usage[] = {
+            QC_BUFFER_USAGE_MAX,     /* QC_MEMORY_ALLOCATOR_HEAP */
+            QC_BUFFER_USAGE_DEFAULT, /* QC_MEMORY_ALLOCATOR_DMA */
+            QC_BUFFER_USAGE_CAMERA,  /* QC_MEMORY_ALLOCATOR_DMA_CAMERA */
+            QC_BUFFER_USAGE_GPU,     /* QC_MEMORY_ALLOCATOR_DMA_GPU */
+            QC_BUFFER_USAGE_VPU,     /* QC_MEMORY_ALLOCATOR_DMA_VPU */
+            QC_BUFFER_USAGE_EVA,     /* QC_MEMORY_ALLOCATOR_DMA_EVA */
+            QC_BUFFER_USAGE_HTP,     /* QC_MEMORY_ALLOCATOR_DMA_HTP */
+            QC_BUFFER_USAGE_MAX,     /* QC_MEMORY_ALLOCATOR_LAST */
+    };
     if ( nullptr != pBuffer )
     {
-        this->buffer.pData = pBuffer->pBufBase;
-        this->buffer.size = pBuffer->dmaSize;
+        this->buffer.pData = pBuffer->pBuf;
+        this->buffer.size = pBuffer->size;
         this->buffer.dmaHandle = pBuffer->dmaHandle;
         this->buffer.id = pBuffer->id;
         this->buffer.pid = pBuffer->pid;
-        this->buffer.usage = pBuffer->usage;
+        this->buffer.usage = s_Allocator2Usage[pBuffer->allocatorType];
         this->buffer.flags = QC_BUFFER_FLAGS_CACHE_WB_WA;
-        this->size = pBuffer->size;
+        this->size = pBuffer->validSize;
         this->offset = pBuffer->offset;
         this->type = pBuffer->type;
     }

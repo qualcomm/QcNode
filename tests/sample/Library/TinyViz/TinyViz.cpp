@@ -420,7 +420,8 @@ bool TinyViz::renderCam( CamInfo &camInfo, SDL_Renderer *ren, size_t idx )
         std::lock_guard<std::mutex> guard( *camInfo.mutex );
         if ( nullptr == camInfo.data() )
         {
-            QC_DEBUG( "display buffer is not yet available. Skipped one frame." );
+            QC_DEBUG( "%s: display buffer is not yet available. Skipped one frame.",
+                      camInfo.camName.c_str() );
             return false;
         }
 

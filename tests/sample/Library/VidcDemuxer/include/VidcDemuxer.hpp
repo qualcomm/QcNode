@@ -21,14 +21,14 @@
 #endif
 #include "QC/Common/Types.hpp"
 #include "QC/Infras/Log/Logger.hpp"
-#include "QC/Infras/Memory/SharedBuffer.hpp"
-
-using namespace QC;
+#include "QC/Infras/Memory/ImageDescriptor.hpp"
 
 namespace QC
 {
 namespace sample
 {
+
+using namespace QC::Memory;
 
 typedef struct
 {
@@ -65,7 +65,7 @@ public:
 
     QCStatus_e Init( VidcDemuxer_Config_t *pConfig );
     QCStatus_e DeInit();
-    QCStatus_e GetFrame( QCSharedBuffer_t *pSharedBuffer, VidcDemuxer_FrameInfo_t &frameInfo );
+    QCStatus_e GetFrame( QCBufferDescriptorBase_t &bufDesc, VidcDemuxer_FrameInfo_t &frameInfo );
     QCStatus_e GetVideoInfo( VidcDemuxer_VideoInfo_t &videoInfo );
     QCStatus_e SetPlayTime( int64_t time );
 

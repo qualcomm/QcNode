@@ -102,17 +102,18 @@ void SampleRecorder::ThreadMain()
             if ( num < m_maxImages )
             {
                 PROFILER_BEGIN();
-                if ( QC_BUFFER_TYPE_IMAGE == frame.BufferType() )
+                QCBufferDescriptorBase_t &bufDesc = frame.GetBuffer();
+                ImageDescriptor_t *pImage = dynamic_cast<ImageDescriptor_t *>( &bufDesc );
+                if ( nullptr != pImage )
                 { /* for Image, dump the first one only */
-                    auto &buffer = frame.buffer->sharedBuffer;
-                    if ( buffer.imgProps.format < QC_IMAGE_FORMAT_MAX )
+                    if ( pImage->format < QC_IMAGE_FORMAT_MAX )
                     {
-                        uint32_t sizeOne = buffer.size / buffer.imgProps.batchSize;
-                        for ( uint32_t i = 0; i < buffer.imgProps.batchSize; i++ )
+                        uint32_t sizeOne = pImage->GetDataSize() / pImage->batchSize;
+                        for ( uint32_t i = 0; i < pImage->batchSize; i++ )
                         {
                             std::string path = "/tmp/" + m_name + "_" + std::to_string( num ) +
                                                "_" + std::to_string( i ) + ".raw";
-                            uint8_t *ptr = (uint8_t *) buffer.data() + sizeOne * i;
+                            uint8_t *ptr = (uint8_t *) pImage->GetDataPtr() + sizeOne * i;
                             FILE *fp = fopen( path.c_str(), "wb" );
                             if ( nullptr != fp )
                             {
@@ -128,33 +129,31 @@ void SampleRecorder::ThreadMain()
                                  "%u: frameId %" PRIu64 " timestamp %" PRIu64
                                  ": batch=%u resolution=%ux%u stride=%u actual_height=%u "
                                  "format=%d\n",
-                                 num, frame.frameId, frame.timestamp, buffer.imgProps.batchSize,
-                                 buffer.imgProps.width, buffer.imgProps.height,
-                                 buffer.imgProps.stride[0], buffer.imgProps.actualHeight[0],
-                                 buffer.imgProps.format );
+                                 num, frame.frameId, frame.timestamp, pImage->batchSize,
+                                 pImage->width, pImage->height, pImage->stride[0],
+                                 pImage->actualHeight[0], pImage->format );
                     }
                     else
                     { /* compressed image */
-                        fwrite( buffer.data(), buffer.size, 1, m_file );
+                        fwrite( pImage->GetDataPtr(), pImage->GetDataSize(), 1, m_file );
                         fprintf( m_meta,
                                  "%u: frameId %" PRIu64 " timestamp %" PRIu64
                                  ": resolution=%ux%u size=%" PRIu64 " format=%d\n",
-                                 num, frame.frameId, frame.timestamp, buffer.imgProps.width,
-                                 buffer.imgProps.height, buffer.size, buffer.imgProps.format );
+                                 num, frame.frameId, frame.timestamp, pImage->width, pImage->height,
+                                 pImage->size, pImage->format );
                     }
                 }
                 else
                 { /* for Tensor, dump all */
                     for ( size_t i = 0; i < frames.frames.size(); i++ )
                     {
-                        frame = frames.frames[i];
-                        auto &buffer = frame.buffer->sharedBuffer;
+                        QCBufferDescriptorBase_t &bufDesc = frames.GetBuffer( i );
                         std::string path = "/tmp/" + m_name + "_" + std::to_string( num ) + "_" +
                                            std::to_string( i ) + ".raw";
                         FILE *fp = fopen( path.c_str(), "wb" );
                         if ( nullptr != fp )
                         {
-                            fwrite( buffer.data(), buffer.size, 1, fp );
+                            fwrite( bufDesc.GetDataPtr(), bufDesc.GetDataSize(), 1, fp );
                             fclose( fp );
                         }
                         else

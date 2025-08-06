@@ -44,23 +44,36 @@ public:
     QCBufferDescriptorBase_t &GetBuffer() { return buffer->buffer; }
     void Workaound()
     {
-        /* workaround to update the QCNode new type buffer descriptor */
-        if ( QC_BUFFER_TYPE_IMAGE == buffer->sharedBuffer.type )
+        /* workaround to update the RideHal buffer tensor descriptor dims[0] */
+        QCBufferDescriptorBase_t &bufDesc = GetBuffer();
+        const TensorDescriptor_t *pTensor = dynamic_cast<const TensorDescriptor_t *>( &bufDesc );
+        if ( nullptr != pTensor )
         {
-            buffer->buffer = buffer->imgDesc;
-            buffer->imgDesc = buffer->sharedBuffer;
+            buffer->sharedBuffer.tensorProps.dims[0] = pTensor->dims[0];
         }
-        else
+
+        /* workaround for case that buffer not allocated by sample app */
+        if ( &bufDesc == &buffer->dummy )
         {
-            buffer->buffer = buffer->tensorDesc;
-            buffer->tensorDesc = buffer->sharedBuffer;
+            if ( QC_BUFFER_TYPE_IMAGE == buffer->sharedBuffer.type )
+            {
+                buffer->imgDesc = buffer->sharedBuffer;
+                buffer->buffer = buffer->imgDesc;
+            }
+            else
+            {
+                buffer->tensorDesc = buffer->sharedBuffer;
+                buffer->buffer = buffer->tensorDesc;
+            }
         }
     }
 
-    QCBufferType_e BufferType() { return buffer->sharedBuffer.type; }
+    QCBufferType_e GetBufferType() { return buffer->GetBufferType(); }
     QCSharedBuffer_t &SharedBuffer() { return buffer->sharedBuffer; }
-    void *data() { return buffer->sharedBuffer.data(); }
-    uint32_t size() { return buffer->sharedBuffer.size; }
+    void *GetDataPtr() { return buffer->GetDataPtr(); }
+    uint32_t GetDataSize() { return buffer->GetDataSize(); }
+    QCImageProps_t GetImageProps() { return buffer->GetImageProps(); };
+    QCTensorProps_t GetTensorProps() { return buffer->GetTensorProps(); };
 } DataFrame_t;
 
 typedef struct
@@ -70,10 +83,13 @@ typedef struct
 public:
     QCBufferDescriptorBase_t &GetBuffer( int index ) { return frames[index].GetBuffer(); }
 
-    QCBufferType_e BufferType( int index ) { return frames[index].BufferType(); }
+    QCBufferType_e GetBufferType( int index ) { return frames[index].GetBufferType(); }
     QCSharedBuffer_t &SharedBuffer( int index ) { return frames[index].SharedBuffer(); }
-    void *data( int index ) { return frames[index].data(); }
-    uint32_t size( int index ) { return frames[index].size(); }
+    void *GetDataPtr( int index ) { return frames[index].GetDataPtr(); }
+    uint32_t GetDataSize( int index ) { return frames[index].GetDataSize(); }
+
+    QCImageProps_t GetImageProps( int index ) { return frames[index].GetImageProps(); };
+    QCTensorProps_t GetTensorProps( int index ) { return frames[index].GetTensorProps(); };
 
     uint64_t FrameId( int index ) { return frames[index].frameId; };
     uint64_t Timestamp( int index ) { return frames[index].timestamp; };

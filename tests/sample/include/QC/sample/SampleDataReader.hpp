@@ -77,7 +77,7 @@ private:
     bool m_stop;
 
     DataPublisher<DataFrames_t> m_pub;
-    QCBufferFlags_t m_bufferFlags = QC_BUFFER_FLAGS_CACHE_WB_WA;
+    QCAllocationCache_e m_bufferCache = QC_CACHEABLE;
 
 };   // class SampleDataReader
 

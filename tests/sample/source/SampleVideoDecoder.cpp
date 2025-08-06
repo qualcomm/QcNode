@@ -14,7 +14,7 @@ void SampleVideoDecoder::OnDoneCb( const QCNodeEventInfo_t &eventInfo )
     auto &fd = eventInfo.frameDesc;
     auto &bufIn = fd.GetBuffer( QC_NODE_VIDEO_DECODER_INPUT_BUFF_ID );
     QCSharedVideoFrameDescriptor_t *pBufIn =
-                    dynamic_cast<QCSharedVideoFrameDescriptor_t *>( &bufIn );
+            dynamic_cast<QCSharedVideoFrameDescriptor_t *>( &bufIn );
     if ( nullptr != pBufIn )
     {
         InFrameCallback( *pBufIn, eventInfo );
@@ -22,7 +22,7 @@ void SampleVideoDecoder::OnDoneCb( const QCNodeEventInfo_t &eventInfo )
 
     auto &bufOut = fd.GetBuffer( QC_NODE_VIDEO_DECODER_OUTPUT_BUFF_ID );
     QCSharedVideoFrameDescriptor_t *pBufOut =
-                    dynamic_cast<QCSharedVideoFrameDescriptor_t *>( &bufOut );
+            dynamic_cast<QCSharedVideoFrameDescriptor_t *>( &bufOut );
     if ( nullptr != pBufOut )
     {
         OutFrameCallback( *pBufOut, eventInfo );
@@ -159,7 +159,8 @@ void SampleVideoDecoder::ThreadMain()
 {
     QCStatus_e ret;
 
-    QCSharedFrameDescriptorNode frameDesc( QC_NODE_VIDEO_DECODER_INPUT_BUFF_ID + 1 );   // for input only
+    QCSharedFrameDescriptorNode frameDesc( QC_NODE_VIDEO_DECODER_INPUT_BUFF_ID +
+                                           1 );   // for input only
 
     while ( false == m_stop )
     {
@@ -169,8 +170,9 @@ void SampleVideoDecoder::ThreadMain()
         {
             for ( auto &frame : frames.frames )
             {
-                QC_DEBUG( "Received frameId %" PRIu64 ", type %d, size %lu, timestamp %" PRIu64 "\n ",
-                          frame.frameId, frame.BufferType(), frame.size(), frame.timestamp );
+                QC_DEBUG( "Received frameId %" PRIu64 ", type %d, size %lu, timestamp %" PRIu64,
+                          frame.frameId, frame.GetBufferType(), frame.GetDataSize(),
+                          frame.timestamp );
 
                 QCSharedVideoFrameDescriptor_t frameSharedBuffer;
                 frameSharedBuffer.buffer = frame.SharedBuffer();

@@ -86,7 +86,8 @@ QCStatus_e ImageDescriptor::ImageToTensor( TensorDescriptor_t &tensorDesc ) cons
         tensorDesc.dims[1] = this->height;
         tensorDesc.dims[2] = this->width;
         tensorDesc.dims[3] = bpp;
-        tensorDesc.size = static_cast<size_t>( this->batchSize * this->height * this->width * bpp );
+        tensorDesc.validSize =
+                static_cast<size_t>( this->batchSize * this->height * this->width * bpp );
     }
     return status;
 }
@@ -162,8 +163,8 @@ QCStatus_e ImageDescriptor::ImageToTensor( TensorDescriptor_t &luma,
         luma.dims[1] = this->height;
         luma.dims[2] = this->width;
         luma.dims[3] = 1;
-        luma.size = static_cast<size_t>( this->height * this->width *
-                                         s_qcFormatToBytesPerPixel[this->format] );
+        luma.validSize = static_cast<size_t>( this->height * this->width *
+                                               s_qcFormatToBytesPerPixel[this->format] );
 
         chroma = *this;
         chroma.offset = this->offset + this->planeBufSize[0];
@@ -181,8 +182,8 @@ QCStatus_e ImageDescriptor::ImageToTensor( TensorDescriptor_t &luma,
         chroma.dims[1] = this->height / 2;
         chroma.dims[2] = this->width / 2;
         chroma.dims[3] = 2;
-        chroma.size = static_cast<size_t>( this->height * this->width *
-                                           s_qcFormatToBytesPerPixel[this->format] / 2 );
+        chroma.validSize = static_cast<size_t>( this->height * this->width *
+                                                 s_qcFormatToBytesPerPixel[this->format] / 2 );
     }
 
     return status;
@@ -223,10 +224,8 @@ QCStatus_e ImageDescriptor::GetImageDesc( ImageDescriptor &imageDesc, uint32_t b
     {
         singleImageSize = this->size / this->batchSize;
         imageDesc.batchSize = batchSize;
-        imageDesc.size = batchSize * singleImageSize;
+        imageDesc.validSize = batchSize * singleImageSize;
         imageDesc.offset = this->offset + batchOffset * singleImageSize;
-        imageDesc.pBuf =
-                static_cast<void *>( static_cast<uint8_t *>( this->pBufBase ) + imageDesc.offset );
     }
 
     return status;
@@ -240,13 +239,12 @@ ImageDescriptor &ImageDescriptor::operator=( const BufferDescriptor &other )
         this->pBuf = other.pBuf;
         this->size = other.size;
         this->type = QC_BUFFER_TYPE_IMAGE;
-        this->pBufBase = other.pBufBase;
         this->dmaHandle = other.dmaHandle;
-        this->dmaSize = other.dmaSize;
+        this->validSize = other.validSize;
         this->offset = other.offset;
         this->id = other.id;
         this->pid = other.pid;
-        this->usage = other.usage;
+        this->allocatorType = other.allocatorType;
         this->cache = other.cache;
         const ImageDescriptor_t *pImage = dynamic_cast<const ImageDescriptor_t *>( &other );
         if ( pImage )
@@ -267,16 +265,23 @@ ImageDescriptor &ImageDescriptor::operator=( const BufferDescriptor &other )
 
 ImageDescriptor &ImageDescriptor::operator=( const QCSharedBuffer_t &other )
 {
-    this->pBuf = other.data();
-    this->size = other.size;
+    static const QCMemoryAllocator_e s_Usage2Allocator[] = {
+            QC_MEMORY_ALLOCATOR_DMA,        /* QC_BUFFER_USAGE_DEFAULT */
+            QC_MEMORY_ALLOCATOR_DMA_CAMERA, /* QC_BUFFER_USAGE_CAMERA */
+            QC_MEMORY_ALLOCATOR_DMA_GPU,    /* QC_BUFFER_USAGE_GPU */
+            QC_MEMORY_ALLOCATOR_DMA_VPU,    /* QC_BUFFER_USAGE_VPU */
+            QC_MEMORY_ALLOCATOR_DMA_EVA,    /* QC_BUFFER_USAGE_EVA */
+            QC_MEMORY_ALLOCATOR_DMA_HTP,    /* QC_BUFFER_USAGE_HTP */
+    };
+    this->pBuf = other.buffer.pData;
+    this->validSize = other.size;
     this->type = QC_BUFFER_TYPE_IMAGE;
-    this->pBufBase = other.buffer.pData;
     this->dmaHandle = other.buffer.dmaHandle;
-    this->dmaSize = other.buffer.size;
+    this->size = other.buffer.size;
     this->offset = other.offset;
     this->id = other.buffer.id;
     this->pid = other.buffer.pid;
-    this->usage = other.buffer.usage;
+    this->allocatorType = s_Usage2Allocator[other.buffer.usage];
     this->cache = QC_CACHEABLE;
     this->format = other.imgProps.format;
     this->batchSize = other.imgProps.batchSize;
@@ -293,5 +298,4 @@ ImageDescriptor &ImageDescriptor::operator=( const QCSharedBuffer_t &other )
 }
 
 }   // namespace Memory
-
 }   // namespace QC

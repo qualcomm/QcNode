@@ -103,7 +103,7 @@ QCStatus_e SamplePlrPost::Init( std::string name, SampleConfig_t &config )
         };
 
         ret = m_objsPool.Init( name, LOGGER_LEVEL_INFO, m_poolSize, detTsProp,
-                               QC_BUFFER_USAGE_HTP );
+                               QC_MEMORY_ALLOCATOR_DMA_HTP );
     }
 
     if ( QC_STATUS_OK == ret )

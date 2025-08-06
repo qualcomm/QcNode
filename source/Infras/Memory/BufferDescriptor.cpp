@@ -17,13 +17,12 @@ BufferDescriptor &BufferDescriptor::operator=( BufferDescriptor &other )
         this->pBuf = other.pBuf;
         this->size = other.size;
         this->type = other.type;
-        this->pBufBase = other.pBufBase;
         this->dmaHandle = other.dmaHandle;
-        this->dmaSize = other.dmaSize;
+        this->validSize = other.validSize;
         this->offset = other.offset;
         this->id = other.id;
         this->pid = other.pid;
-        this->usage = other.usage;
+        this->allocatorType = other.allocatorType;
         this->cache = other.cache;
     }
     return *this;
