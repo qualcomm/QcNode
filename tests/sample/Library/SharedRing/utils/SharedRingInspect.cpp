@@ -85,57 +85,56 @@ static void DumpRing( std::string name, SharedRing_Ring_t *pRing )
             bAllZero ? "true" : "false" );
 }
 
-static std::string GetBufferTextInfo( const QCSharedBuffer_t *pSharedBuffer )
+static std::string GetBufferTextInfo( const SharedRing_BufferDesc_t &bufDesc )
 {
     std::string str = "";
     std::stringstream ss;
 
-    if ( QC_BUFFER_TYPE_RAW == pSharedBuffer->type )
+    if ( QC_BUFFER_TYPE_RAW == bufDesc.type )
     {
         str = "Raw";
     }
-    else if ( QC_BUFFER_TYPE_IMAGE == pSharedBuffer->type )
+    else if ( QC_BUFFER_TYPE_IMAGE == bufDesc.type )
     {
-        ss << "Image format=" << pSharedBuffer->imgProps.format
-           << " batch=" << pSharedBuffer->imgProps.batchSize
-           << " resolution=" << pSharedBuffer->imgProps.width << "x"
-           << pSharedBuffer->imgProps.height;
-        if ( pSharedBuffer->imgProps.format < QC_IMAGE_FORMAT_MAX )
+        ss << "Image name=" << bufDesc.name << " format=" << bufDesc.format
+           << " batch=" << bufDesc.batchSize << " resolution=" << bufDesc.width << "x"
+           << bufDesc.height;
+        if ( bufDesc.format < QC_IMAGE_FORMAT_MAX )
         {
             ss << " stride=[";
-            for ( uint32_t i = 0; i < pSharedBuffer->imgProps.numPlanes; i++ )
+            for ( uint32_t i = 0; i < bufDesc.numPlanes; i++ )
             {
-                ss << pSharedBuffer->imgProps.stride[i] << ", ";
+                ss << bufDesc.stride[i] << ", ";
             }
             ss << "] actual height=[";
-            for ( uint32_t i = 0; i < pSharedBuffer->imgProps.numPlanes; i++ )
+            for ( uint32_t i = 0; i < bufDesc.numPlanes; i++ )
             {
-                ss << pSharedBuffer->imgProps.actualHeight[i] << ", ";
+                ss << bufDesc.actualHeight[i] << ", ";
             }
             ss << "] plane size=[";
-            for ( uint32_t i = 0; i < pSharedBuffer->imgProps.numPlanes; i++ )
+            for ( uint32_t i = 0; i < bufDesc.numPlanes; i++ )
             {
-                ss << pSharedBuffer->imgProps.planeBufSize[i] << ", ";
+                ss << bufDesc.planeBufSize[i] << ", ";
             }
             ss << "]";
         }
         else
         {
             ss << " plane size=[";
-            for ( uint32_t i = 0; i < pSharedBuffer->imgProps.numPlanes; i++ )
+            for ( uint32_t i = 0; i < bufDesc.numPlanes; i++ )
             {
-                ss << pSharedBuffer->imgProps.planeBufSize[i] << ", ";
+                ss << bufDesc.planeBufSize[i] << ", ";
             }
             ss << "]";
         }
         str = ss.str();
     }
-    else if ( QC_BUFFER_TYPE_TENSOR == pSharedBuffer->type )
+    else if ( QC_BUFFER_TYPE_TENSOR == bufDesc.type )
     {
-        ss << "Tensor type=" << pSharedBuffer->tensorProps.type << " dims=[";
-        for ( uint32_t i = 0; i < pSharedBuffer->tensorProps.numDims; i++ )
+        ss << "Tensor name=" << bufDesc.name << " type=" << bufDesc.tensorType << " dims=[";
+        for ( uint32_t i = 0; i < bufDesc.numDims; i++ )
         {
-            ss << pSharedBuffer->tensorProps.dims[i] << ", ";
+            ss << bufDesc.dims[i] << ", ";
         }
         ss << "]";
         str = ss.str();
@@ -172,13 +171,13 @@ static void DumpDesc( std::string name, SharedRing_Desc_t *pDesc )
         bAllZero = IsAllZero( dataFrame.reserved, sizeof( dataFrame.reserved ) );
         printf( "    reserved(%" PRIu64 ") all is zero: %s\n", sizeof( dataFrame.reserved ),
                 bAllZero ? "true" : "false" );
-        auto &buf = dataFrame.buf;
-        printf( "    dma=%" PRIu64 " size=%" PRIu64 " pid=%" PRIu64 " usage=%d flags=%" PRIu32 "\n",
-                buf.buffer.dmaHandle, buf.buffer.size, buf.buffer.pid, buf.buffer.usage,
-                buf.buffer.flags );
-        printf( "    size=%" PRIu64 " offset=%" PRIu64 " type=%d\n", buf.size, buf.offset,
-                buf.type );
-        printf( "    %s\n", GetBufferTextInfo( &buf ).c_str() );
+        SharedRing_BufferDesc_t &bufDesc = dataFrame.bufDesc;
+        printf( "    dma=%" PRIu64 " size=%" PRIu64 " pid=%" PRIu64 " allocatorType=%d cache=%d\n",
+                bufDesc.dmaHandle, bufDesc.size, static_cast<uint64_t>( bufDesc.pid ),
+                bufDesc.allocatorType, bufDesc.cache );
+        printf( "    validSize=%" PRIu64 " offset=%" PRIu64 " type=%d\n", bufDesc.validSize,
+                bufDesc.offset, bufDesc.type );
+        printf( "    %s\n", GetBufferTextInfo( bufDesc ).c_str() );
     }
 }
 

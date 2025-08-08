@@ -32,18 +32,14 @@ QCStatus_e DMABUFFUtils::MemoryMap( const QCBufferDescriptorBase_t &orig,
     mapped.pBuf = nullptr;
     mapped.size = 0;
 
-    if ( nullptr == orig.pBuf )
-    {
-        QC_ERROR( "buff.pBuf is nullptr" );
-        status = QC_STATUS_BAD_ARGUMENTS;
-    }
-    else if ( 0 == orig.size )
+    if ( 0 == orig.size )
     {
         QC_ERROR( "0 == buff.size" );
         status = QC_STATUS_BAD_ARGUMENTS;
     }
     else
-    {}
+    {
+    }
 
     if ( QC_STATUS_OK == status )
     {

@@ -18,7 +18,7 @@ namespace Memory
  *
  * This class provides methods for allocating and freeing memory from the PMEM software package.
  */
-class PMEMUtils : public QCMemoryUtilsIfs
+class PMEMUtils : public UtilsBase
 {
 public:
     /**
@@ -26,7 +26,7 @@ public:
      * This constructor Intilizes members which do not require external parameters
      */
     PMEMUtils();
-    
+
     /**
      * @brief Destructor for the PMEMUtils class.
      * This destructor releases any resources allocated by the ManagerLocal object.

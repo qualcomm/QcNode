@@ -336,7 +336,7 @@ QCStatus_e SharedPublisher::Publish( DataFrames_t &data )
             pDesc->numDataFrames = (uint32_t) data.frames.size();
             for ( uint32_t i = 0; i < pDesc->numDataFrames; i++ )
             {
-                pDesc->dataFrames[i].buf = data.SharedBuffer( i );
+                pDesc->dataFrames[i].bufDesc = data.GetBuffer( i );
                 pDesc->dataFrames[i].frameId = data.FrameId( i );
                 pDesc->dataFrames[i].timestamp = data.Timestamp( i );
                 pDesc->dataFrames[i].quantScale = data.QuantScale( i );

@@ -78,6 +78,7 @@ QCStatus_e PMEMUtils::MemoryMap( const QCBufferDescriptorBase_t &orig,
         {
             mapped.pBuf = pAddr;
             mapped.size = pemeSize;
+            mapped.dmaHandle = orig.dmaHandle;
         }
     }
 

@@ -2,10 +2,22 @@
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
-
 #include "QC/sample/shared_ring/SharedSubscriber.hpp"
+#if defined( __QNXNTO__ )
+#include "QC/Infras/Memory/PMEMUtils.hpp"
+#else
+#include "QC/Infras/Memory/DMABUFFUtils.hpp"
+#endif
 #include <chrono>
+
 using namespace std::chrono_literals;
+
+
+#if defined( __QNXNTO__ )
+using MemUtils = QC::Memory::PMEMUtils;
+#else
+using MemUtils = QC::Memory::DMABUFFUtils;
+#endif
 
 namespace QC
 {
@@ -273,14 +285,16 @@ QCStatus_e SharedSubscriber::Receive( DataFrames_t &dataFrames, uint32_t timeout
             for ( uint32_t i = 0; i < pDesc->numDataFrames; i++ )
             {
                 DataFrame_t frame;
-                QCSharedBuffer_t sbuf;
-                uint64_t dmaHandle = pDesc->dataFrames[i].buf.buffer.dmaHandle;
+                SharedBuffer_t sbuf;
+                SharedRing_BufferDesc_t &bufDesc = pDesc->dataFrames[i].bufDesc;
+                uint64_t dmaHandle = bufDesc.dmaHandle;
                 auto it = m_buffers.find( dmaHandle );
                 if ( m_buffers.end() == it )
                 {
-                    ret = sbuf.Import( &pDesc->dataFrames[i].buf );
+                    ret = bufDesc.Import( sbuf );
                     if ( QC_STATUS_OK == ret )
                     {
+                        QC_INFO( "Import buffer %s", bufDesc.name );
                         m_buffers[dmaHandle] = sbuf;
                     }
                     else
@@ -302,7 +316,7 @@ QCStatus_e SharedSubscriber::Receive( DataFrames_t &dataFrames, uint32_t timeout
                         std::lock_guard<std::mutex> l( m_lock );
                         pSharedBuffer = &m_dataFrames[idx].bufs[i];
                     }
-                    pSharedBuffer->sharedBuffer = sbuf;
+                    *pSharedBuffer = sbuf;
                     pSharedBuffer->pubHandle = idx;
                     std::shared_ptr<SharedBuffer_t> buffer(
                             pSharedBuffer, [&]( SharedBuffer_t *pSharedBuffer ) {
@@ -361,7 +375,7 @@ QCStatus_e SharedSubscriber::Deinit()
     QCStatus_e ret = QC_STATUS_OK;
     QCStatus_e ret2;
 
-    if ( m_bStarted )
+    if ( true == m_bStarted )
     {
         QC_ERROR( "Not stopped" );
         ret = QC_STATUS_BAD_STATE;
@@ -392,6 +406,21 @@ QCStatus_e SharedSubscriber::Deinit()
             QC_ERROR( "Failed to close shared memory %s", m_shName.c_str() );
             ret = ret2;
         }
+
+        MemUtils memUtils;
+        for ( auto &it : m_buffers )
+        {
+            SharedBuffer_t sbuf = it.second;
+            QCBufferDescriptorBase_t &bufDesc = sbuf.buffer;
+            QC_INFO( "UnImport buffer %s", bufDesc.name.c_str() );
+            ret2 = memUtils.MemoryUnMap( bufDesc );
+            if ( QC_STATUS_OK != ret2 )
+            {
+                QC_ERROR( "Failed to UnImport buffer %s", bufDesc.name.c_str() );
+                ret = ret2;
+            }
+        }
+        m_buffers.clear();
 
         m_pRingMem = nullptr;
         m_pUsedRing = nullptr;

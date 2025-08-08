@@ -19,8 +19,7 @@
 
 #include "QC/Common/Types.hpp"
 #include "QC/Infras/Log/Logger.hpp"
-#include "QC/Infras/Memory/SharedBuffer.hpp"
-
+#include "QC/sample/SharedBufferPool.hpp"
 #include "QC/sample/shared_ring/SpinLock.hpp"
 
 namespace QC
@@ -59,9 +58,41 @@ using namespace QC::Memory;
 #define SHARED_RING_USED_DESTROYED 2
 #define SHARED_RING_USED_CORRUPTED 3
 
+typedef struct SharedRing_BufferDesc
+{
+public:
+    SharedRing_BufferDesc( const QCBufferDescriptorBase_t &other );
+
+    QCStatus_e Import( SharedBuffer_t &sharedBuffer );
+
+    char name[SHARED_RING_NAME_MAX];
+    size_t size;
+    QCAlignment_t alignment;
+    QCAllocationCache_e cache;
+    QCMemoryAllocator_e allocatorType;
+    QCBufferType_e type;
+    uint64_t dmaHandle;
+    pid_t pid;
+    size_t validSize;
+    size_t offset;
+
+    QCImageFormat_e format;
+    uint32_t batchSize;
+    uint32_t width;
+    uint32_t height;
+    uint32_t stride[QC_NUM_IMAGE_PLANES];
+    uint32_t actualHeight[QC_NUM_IMAGE_PLANES];
+    uint32_t planeBufSize[QC_NUM_IMAGE_PLANES];
+    uint32_t numPlanes;
+
+    QCTensorType_e tensorType;
+    uint32_t dims[QC_NUM_TENSOR_DIMS];
+    uint32_t numDims;
+} SharedRing_BufferDesc_t;
+
 typedef struct SharedRing_DataFrame
 {
-    QCSharedBuffer_t buf;
+    SharedRing_BufferDesc_t bufDesc;
 
     /* Extra DataFrame information for Image and Tensor */
     uint64_t frameId;

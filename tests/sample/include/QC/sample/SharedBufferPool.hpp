@@ -38,6 +38,57 @@ public:
         dummy.size = 0;
         dummy.type = QC_BUFFER_TYPE_MAX;
     }
+
+    SharedBuffer( const SharedBuffer &other ) : buffer( dummy )
+    {
+        if ( this != &other )
+        {
+            QCBufferDescriptorBase_t &bufDesc = other.buffer;
+            if ( &bufDesc == &other.imgDesc )
+            {
+                this->imgDesc = other.imgDesc;
+                this->buffer = this->imgDesc;
+                this->sharedBuffer = other.imgDesc;
+            }
+            else if ( &bufDesc == &other.tensorDesc )
+            {
+                this->tensorDesc = other.tensorDesc;
+                this->buffer = this->tensorDesc;
+                this->sharedBuffer = other.tensorDesc;
+            }
+            else
+            {
+                /* dummy, donothing */
+            }
+        }
+    }
+
+    SharedBuffer &operator=( const SharedBuffer &other )
+    {
+        if ( this != &other )
+        {
+            QCBufferDescriptorBase_t &bufDesc = other.buffer;
+            if ( &bufDesc == &other.imgDesc )
+            {
+                this->imgDesc = other.imgDesc;
+                this->buffer = this->imgDesc;
+                this->sharedBuffer = other.imgDesc;
+            }
+            else if ( &bufDesc == &other.tensorDesc )
+            {
+                this->tensorDesc = other.tensorDesc;
+                this->buffer = this->tensorDesc;
+                this->sharedBuffer = other.tensorDesc;
+            }
+            else
+            {
+                /* dummy, donothing */
+            }
+        }
+
+        return *this;
+    }
+
     std::reference_wrapper<QCBufferDescriptorBase_t> buffer;
     QCSharedBuffer_t sharedBuffer; /**< The QC shared buffer */
     uint64_t pubHandle; /**< The publish handle associated with shared buffer that to be used to

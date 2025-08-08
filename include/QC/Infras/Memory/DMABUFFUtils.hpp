@@ -18,7 +18,7 @@ namespace Memory
  *
  * This class provides methods for allocating and freeing memory from the DMABUFF software package.
  */
-class DMABUFFUtils : public QCMemoryUtilsIfs
+class DMABUFFUtils : public UtilsBase
 {
 public:
     /**
@@ -31,7 +31,7 @@ public:
      * This destructor releases any resources allocated by the ManagerLocal object.
      */
     ~DMABUFFUtils();
-    
+
     /**
      * @brief Maps a buffer into memory.
      * This method maps a buffer into memory and returns a status code indicating success or
