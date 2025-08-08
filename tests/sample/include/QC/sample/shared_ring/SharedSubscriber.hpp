@@ -6,6 +6,7 @@
 #ifndef QC_SAMPLE_SHARED_SUBSCRIBER_HPP
 #define QC_SAMPLE_SHARED_SUBSCRIBER_HPP
 
+#include "QC/sample/SharedBufferPool.hpp"
 #include "QC/sample/shared_ring/SharedMemory.hpp"
 #include "QC/sample/shared_ring/SharedSemaphore.hpp"
 #include "QC/sample/shared_ring/SpinLock.hpp"
@@ -68,7 +69,7 @@ private:
 
     std::mutex m_lock;
 
-    std::map<uint64_t, QCSharedBuffer> m_buffers;
+    std::map<uint64_t, SharedBuffer_t> m_buffers;
     std::map<uint16_t, DataFrmes> m_dataFrames;
 
     uint32_t m_queueDepth = 2;
