@@ -11,7 +11,7 @@ namespace QC
 namespace sample
 {
 
-SampleC2D::SampleC2D() {}
+SampleC2D::SampleC2D() : m_c2d( m_logger ) {}
 SampleC2D::~SampleC2D() {}
 
 QCStatus_e SampleC2D::ParseConfig( SampleConfig_t &config )
@@ -208,15 +208,21 @@ void SampleC2D::ThreadMain()
             std::shared_ptr<SharedBuffer_t> buffer = m_imagePool.Get();
             if ( nullptr != buffer )
             {
-                std::vector<QCSharedBuffer_t> inputs;
+                std::vector<ImageDescriptor_t> inputs;
                 for ( auto &frame : frames.frames )
                 {
-                    inputs.push_back( frame.buffer->sharedBuffer );
+                    QCBufferDescriptorBase_t &bufDesc = frame.GetBuffer();
+                    ImageDescriptor_t *pImage = dynamic_cast<ImageDescriptor_t *>( &bufDesc );
+                    inputs.push_back( *pImage );
                 }
 
                 PROFILER_BEGIN();
                 TRACE_BEGIN( frames.FrameId( 0 ) );
-                ret = m_c2d.Execute( inputs.data(), inputs.size(), &buffer->sharedBuffer );
+                {
+                    QCBufferDescriptorBase_t &bufDesc = buffer->GetBuffer();
+                    ImageDescriptor_t *pImage = dynamic_cast<ImageDescriptor_t *>( &bufDesc );
+                    ret = m_c2d.Execute( inputs.data(), inputs.size(), pImage );
+                }
                 if ( QC_STATUS_OK == ret )
                 {
                     PROFILER_END();

@@ -3,14 +3,11 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#ifndef _QC_SAMPLE_C2D_HPP_
-#define _QC_SAMPLE_C2D_HPP_
+#ifndef QC_SAMPLE_C2D_HPP
+#define QC_SAMPLE_C2D_HPP
 
-#include "QC/component/C2D.hpp"
+#include "C2D.hpp"
 #include "QC/sample/SampleIF.hpp"
-
-using namespace QC;
-using namespace QC::component;
 
 namespace QC
 {
@@ -72,4 +69,4 @@ private:
 }   // namespace sample
 }   // namespace QC
 
-#endif   // _QC_SAMPLE_C2D_HPP_
+#endif   // QC_SAMPLE_C2D_HPP

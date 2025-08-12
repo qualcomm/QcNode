@@ -25,10 +25,6 @@ set( TARGET_LIBRARIES
     QCNodeNodeVideoDecoder
 )
 
-if ( ENABLE_C2D )
-  list( APPEND TARGET_LIBRARIES QCNodeC2D )
-endif()
-
 if ( ENABLE_EVA )
   list( APPEND TARGET_LIBRARIES
             QCNodeOpticalFlow

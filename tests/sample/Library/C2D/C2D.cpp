@@ -7,100 +7,92 @@
 #include <cstring>
 #include <memory>
 
-#include "QC/component/C2D.hpp"
+#include "C2D.hpp"
 
 namespace QC
 {
-namespace component
+namespace sample
 {
 
-C2D::C2D() {}
+C2D::C2D( Logger &logger ) : m_logger( logger ) {}
 
 C2D::~C2D() {}
 
-QCStatus_e C2D::Init( const char *pName, const C2D_Config_t *pConfig, Logger_Level_e level )
+QCStatus_e C2D::Init( const char *pName, const C2D_Config_t *pConfig )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
-    ret = ComponentIF::Init( pName, level );
-    if ( QC_STATUS_OK != ret )
+    m_numOfInputs = pConfig->numOfInputs;
+    if ( m_numOfInputs > QC_MAX_INPUTS )
     {
-        QC_ERROR( "ComponentIF::Init failed" );
+        ret = QC_STATUS_OUT_OF_BOUND;
+        QC_ERROR( "Number of Inputs exceeds maximum limit" );
     }
-    else
+
+    if ( QC_STATUS_OK == ret )
     {
-        m_numOfInputs = pConfig->numOfInputs;
-        if ( m_numOfInputs > QC_MAX_INPUTS )
+        for ( uint32_t i = 0; i < m_numOfInputs; i++ )
         {
-            ret = QC_STATUS_OUT_OF_BOUND;
-            QC_ERROR( "Number of Inputs exceeds maximum limit" );
+            m_inputResolutions[i].width = pConfig->inputConfigs[i].inputResolution.width;
+            m_inputResolutions[i].height = pConfig->inputConfigs[i].inputResolution.height;
+            m_inputFormats[i] = pConfig->inputConfigs[i].inputFormat;
+
+            if ( pConfig->inputConfigs[i].ROI.topX >= 0 &&
+                 pConfig->inputConfigs[i].ROI.topX <= m_inputResolutions[i].width )
+            {
+                m_rois[i].topX = pConfig->inputConfigs[i].ROI.topX;
+            }
+            else
+            {
+                ret = QC_STATUS_BAD_ARGUMENTS;
+                QC_ERROR( "ROI topX of input %u is out of range", i );
+                break;
+            }
+
+            if ( pConfig->inputConfigs[i].ROI.topY >= 0 &&
+                 pConfig->inputConfigs[i].ROI.topY <= m_inputResolutions[i].height )
+            {
+                m_rois[i].topY = pConfig->inputConfigs[i].ROI.topY;
+            }
+            else
+            {
+                ret = QC_STATUS_BAD_ARGUMENTS;
+                QC_ERROR( "ROI topY of input %u is out of range", i );
+                break;
+            }
+
+            if ( pConfig->inputConfigs[i].ROI.width >= 0 &&
+                 pConfig->inputConfigs[i].ROI.width <=
+                         m_inputResolutions[i].width - m_rois[i].topX )
+            {
+                m_rois[i].width = pConfig->inputConfigs[i].ROI.width;
+            }
+            else
+            {
+                ret = QC_STATUS_BAD_ARGUMENTS;
+                QC_ERROR( "ROI width of input %u is out of range", i );
+                break;
+            }
+
+            if ( pConfig->inputConfigs[i].ROI.height >= 0 &&
+                 pConfig->inputConfigs[i].ROI.height <=
+                         m_inputResolutions[i].height - m_rois[i].topY )
+            {
+                m_rois[i].height = pConfig->inputConfigs[i].ROI.height;
+            }
+            else
+            {
+                ret = QC_STATUS_BAD_ARGUMENTS;
+                QC_ERROR( "ROI height of input %u is out of range", i );
+                break;
+            }
         }
 
+        /* Complete initialization */
         if ( QC_STATUS_OK == ret )
         {
-            for ( uint32_t i = 0; i < m_numOfInputs; i++ )
-            {
-                m_inputResolutions[i].width = pConfig->inputConfigs[i].inputResolution.width;
-                m_inputResolutions[i].height = pConfig->inputConfigs[i].inputResolution.height;
-                m_inputFormats[i] = pConfig->inputConfigs[i].inputFormat;
-
-                if ( pConfig->inputConfigs[i].ROI.topX >= 0 &&
-                     pConfig->inputConfigs[i].ROI.topX <= m_inputResolutions[i].width )
-                {
-                    m_rois[i].topX = pConfig->inputConfigs[i].ROI.topX;
-                }
-                else
-                {
-                    ret = QC_STATUS_BAD_ARGUMENTS;
-                    QC_ERROR( "ROI topX of input %u is out of range", i );
-                    break;
-                }
-
-                if ( pConfig->inputConfigs[i].ROI.topY >= 0 &&
-                     pConfig->inputConfigs[i].ROI.topY <= m_inputResolutions[i].height )
-                {
-                    m_rois[i].topY = pConfig->inputConfigs[i].ROI.topY;
-                }
-                else
-                {
-                    ret = QC_STATUS_BAD_ARGUMENTS;
-                    QC_ERROR( "ROI topY of input %u is out of range", i );
-                    break;
-                }
-
-                if ( pConfig->inputConfigs[i].ROI.width >= 0 &&
-                     pConfig->inputConfigs[i].ROI.width <=
-                             m_inputResolutions[i].width - m_rois[i].topX )
-                {
-                    m_rois[i].width = pConfig->inputConfigs[i].ROI.width;
-                }
-                else
-                {
-                    ret = QC_STATUS_BAD_ARGUMENTS;
-                    QC_ERROR( "ROI width of input %u is out of range", i );
-                    break;
-                }
-
-                if ( pConfig->inputConfigs[i].ROI.height >= 0 &&
-                     pConfig->inputConfigs[i].ROI.height <=
-                             m_inputResolutions[i].height - m_rois[i].topY )
-                {
-                    m_rois[i].height = pConfig->inputConfigs[i].ROI.height;
-                }
-                else
-                {
-                    ret = QC_STATUS_BAD_ARGUMENTS;
-                    QC_ERROR( "ROI height of input %u is out of range", i );
-                    break;
-                }
-            }
-
-            /* Complete initialization */
-            if ( QC_STATUS_OK == ret )
-            {
-                m_state = QC_OBJECT_STATE_READY;
-                QC_INFO( "Component C2D is initialized" );
-            }
+            m_state = QC_OBJECT_STATE_READY;
+            QC_INFO( "Component C2D is initialized" );
         }
     }
 
@@ -177,24 +169,16 @@ QCStatus_e C2D::Deinit()
         m_inputBufferSurfaceMap.clear();
         m_outputBufferSurfaceMap.clear();
 
-        ret = ComponentIF::Deinit();
-        if ( QC_STATUS_OK == ret )
-        {
-            /* Complete deinitialization */
-            m_state = QC_OBJECT_STATE_INITIAL;
-            QC_INFO( "Component C2D is deinitialized" );
-        }
-        else
-        {
-            QC_ERROR( "ComponentIF::Deinit failed" );
-        }
+        /* Complete deinitialization */
+        m_state = QC_OBJECT_STATE_INITIAL;
+        QC_INFO( "Component C2D is deinitialized" );
     }
 
     return ret;
 }
 
-QCStatus_e C2D::Execute( const QCSharedBuffer_t *pInputs, uint32_t numInputs,
-                         const QCSharedBuffer_t *pOutput )
+QCStatus_e C2D::Execute( const ImageDescriptor_t *pInputs, uint32_t numInputs,
+                         const ImageDescriptor_t *pOutput )
 {
     QCStatus_e ret = QC_STATUS_OK;
     uint32_t targetSurfaceId = 0;
@@ -234,30 +218,30 @@ QCStatus_e C2D::Execute( const QCSharedBuffer_t *pInputs, uint32_t numInputs,
     {
         for ( size_t i = 0; i < m_numOfInputs; i++ )
         {
-            if ( pInputs[i].imgProps.format != m_inputFormats[i] )
+            if ( pInputs[i].format != m_inputFormats[i] )
             {
                 ret = QC_STATUS_BAD_ARGUMENTS;
                 QC_ERROR( "Input %u format is not correct: %d != %d", i, (int) m_inputFormats[i],
-                          (int) pOutput->imgProps.format );
+                          (int) pOutput->format );
             }
-            else if ( pInputs[i].imgProps.width != m_inputResolutions[i].width )
+            else if ( pInputs[i].width != m_inputResolutions[i].width )
             {
                 ret = QC_STATUS_BAD_ARGUMENTS;
                 QC_ERROR( "Input %u width is not correct: %u != %u", i, m_inputResolutions[i].width,
-                          pInputs[i].imgProps.width );
+                          pInputs[i].width );
             }
-            else if ( pInputs[i].imgProps.height != m_inputResolutions[i].height )
+            else if ( pInputs[i].height != m_inputResolutions[i].height )
             {
                 ret = QC_STATUS_BAD_ARGUMENTS;
                 QC_ERROR( "Input %u height is not correct: %u != %u", i,
-                          m_inputResolutions[i].height, pInputs[i].imgProps.height );
+                          m_inputResolutions[i].height, pInputs[i].height );
             }
         }
-        if ( pOutput->imgProps.batchSize != m_numOfInputs )
+        if ( pOutput->batchSize != m_numOfInputs )
         {
             ret = QC_STATUS_BAD_ARGUMENTS;
             QC_ERROR( "Output batch size is not correct, numOfInputs %u != batchSize %u",
-                      m_numOfInputs, pOutput->imgProps.batchSize );
+                      m_numOfInputs, pOutput->batchSize );
         }
     }
 
@@ -302,7 +286,7 @@ QCStatus_e C2D::Execute( const QCSharedBuffer_t *pInputs, uint32_t numInputs,
     return ret;
 }
 
-QCStatus_e C2D::RegisterInputBuffers( const QCSharedBuffer_t *pInputBuffer,
+QCStatus_e C2D::RegisterInputBuffers( const ImageDescriptor_t *pInputBuffer,
                                       uint32_t numOfInputBuffers )
 {
     QCStatus_e ret = QC_STATUS_OK;
@@ -317,7 +301,7 @@ QCStatus_e C2D::RegisterInputBuffers( const QCSharedBuffer_t *pInputBuffer,
     {
         for ( size_t i = 0; i < numOfInputBuffers; i++ )
         {
-            bufferAddr = pInputBuffer[i].data();
+            bufferAddr = pInputBuffer[i].GetDataPtr();
             if ( m_inputBufferSurfaceMap.find( bufferAddr ) != m_inputBufferSurfaceMap.end() )
             {
                 continue;
@@ -337,7 +321,7 @@ QCStatus_e C2D::RegisterInputBuffers( const QCSharedBuffer_t *pInputBuffer,
     return ret;
 }
 
-QCStatus_e C2D::RegisterOutputBuffers( const QCSharedBuffer_t *pOutputBuffer,
+QCStatus_e C2D::RegisterOutputBuffers( const ImageDescriptor_t *pOutputBuffer,
                                        uint32_t numOfOutputBuffers )
 {
     QCStatus_e ret = QC_STATUS_OK;
@@ -345,7 +329,7 @@ QCStatus_e C2D::RegisterOutputBuffers( const QCSharedBuffer_t *pOutputBuffer,
     void *bufferAddr = nullptr;
     uint32_t targetSurfaceId = 0;
     bool isSource = false;
-    uint32_t outputSize = pOutputBuffer->size / pOutputBuffer->imgProps.batchSize;
+    uint32_t outputSize = pOutputBuffer->size / pOutputBuffer->batchSize;
 
     if ( QC_STATUS_OK == ret )
     {
@@ -353,7 +337,8 @@ QCStatus_e C2D::RegisterOutputBuffers( const QCSharedBuffer_t *pOutputBuffer,
         {
             for ( size_t k = 0; k < m_numOfInputs; k++ )
             {
-                bufferAddr = (void *) ( (uint8_t *) pOutputBuffer[i].data() + k * outputSize );
+                bufferAddr =
+                        (void *) ( (uint8_t *) pOutputBuffer[i].GetDataPtr() + k * outputSize );
                 if ( m_outputBufferSurfaceMap.find( bufferAddr ) != m_outputBufferSurfaceMap.end() )
                 {
                     continue;
@@ -374,7 +359,7 @@ QCStatus_e C2D::RegisterOutputBuffers( const QCSharedBuffer_t *pOutputBuffer,
     return ret;
 }
 
-QCStatus_e C2D::DeregisterInputBuffers( const QCSharedBuffer_t *pInputBuffer,
+QCStatus_e C2D::DeregisterInputBuffers( const ImageDescriptor_t *pInputBuffer,
                                         uint32_t numOfInputBuffers )
 {
     QCStatus_e ret = QC_STATUS_OK;
@@ -390,7 +375,7 @@ QCStatus_e C2D::DeregisterInputBuffers( const QCSharedBuffer_t *pInputBuffer,
     {
         for ( size_t i = 0; i < numOfInputBuffers; i++ )
         {
-            bufferAddr = pInputBuffer[i].data();
+            bufferAddr = pInputBuffer[i].GetDataPtr();
 
             if ( m_inputBufferSurfaceMap.find( bufferAddr ) != m_inputBufferSurfaceMap.end() )
             {
@@ -409,13 +394,13 @@ QCStatus_e C2D::DeregisterInputBuffers( const QCSharedBuffer_t *pInputBuffer,
     return ret;
 }
 
-QCStatus_e C2D::DeregisterOutputBuffers( const QCSharedBuffer_t *pOutputBuffer,
+QCStatus_e C2D::DeregisterOutputBuffers( const ImageDescriptor_t *pOutputBuffer,
                                          uint32_t numOfOutputBuffers )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
     void *bufferAddr = nullptr;
-    uint32_t outputSize = pOutputBuffer->size / pOutputBuffer->imgProps.batchSize;
+    uint32_t outputSize = pOutputBuffer->size / pOutputBuffer->batchSize;
 
     if ( numOfOutputBuffers > m_outputBufferSurfaceMap.size() )
     {
@@ -429,7 +414,8 @@ QCStatus_e C2D::DeregisterOutputBuffers( const QCSharedBuffer_t *pOutputBuffer,
         {
             for ( size_t k = 0; k < m_numOfInputs; k++ )
             {
-                bufferAddr = (void *) ( (uint8_t *) pOutputBuffer[i].data() + k * outputSize );
+                bufferAddr =
+                        (void *) ( (uint8_t *) pOutputBuffer[i].GetDataPtr() + k * outputSize );
                 if ( m_outputBufferSurfaceMap.find( bufferAddr ) != m_outputBufferSurfaceMap.end() )
                 {
                     auto c2dStatus = c2dDestroySurface( m_outputBufferSurfaceMap[bufferAddr] );
@@ -447,12 +433,12 @@ QCStatus_e C2D::DeregisterOutputBuffers( const QCSharedBuffer_t *pOutputBuffer,
     return ret;
 }
 
-QCStatus_e C2D::GetSourceSurface( const QCSharedBuffer_t *pSharedBuffer, uint32_t inputIdx,
+QCStatus_e C2D::GetSourceSurface( const ImageDescriptor_t *pSharedBuffer, uint32_t inputIdx,
                                   C2D_OBJECT &c2dObject )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
-    void *bufferAddr = pSharedBuffer->data();
+    void *bufferAddr = pSharedBuffer->GetDataPtr();
     uint32_t sourceSurfaceId = 0;
 
     /* Check if input buffer is registered */
@@ -468,13 +454,13 @@ QCStatus_e C2D::GetSourceSurface( const QCSharedBuffer_t *pSharedBuffer, uint32_
     return ret;
 }
 
-QCStatus_e C2D::GetTargetSurface( const QCSharedBuffer_t *pSharedBuffer, uint32_t batchIdx,
+QCStatus_e C2D::GetTargetSurface( const ImageDescriptor_t *pSharedBuffer, uint32_t batchIdx,
                                   uint32_t *surfaceId )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
-    uint32_t outputSize = pSharedBuffer->size / m_numOfInputs;
-    void *bufferAddr = (void *) ( (uint8_t *) pSharedBuffer->data() + batchIdx * outputSize );
+    uint32_t outputSize = pSharedBuffer->validSize / m_numOfInputs;
+    void *bufferAddr = (void *) ( (uint8_t *) pSharedBuffer->GetDataPtr() + batchIdx * outputSize );
 
     /* Check if output buffer is registered */
     if ( m_outputBufferSurfaceMap.find( bufferAddr ) == m_outputBufferSurfaceMap.end() )
@@ -489,20 +475,20 @@ QCStatus_e C2D::GetTargetSurface( const QCSharedBuffer_t *pSharedBuffer, uint32_
     return ret;
 }
 
-QCStatus_e C2D::CreateSourceSurface( const QCSharedBuffer_t *pSharedBuffer, uint32_t inputIdx,
+QCStatus_e C2D::CreateSourceSurface( const ImageDescriptor_t *pSharedBuffer, uint32_t inputIdx,
                                      C2D_OBJECT &c2dObject )
 {
     QCStatus_e ret = QC_STATUS_OK;
-    uint32_t width = pSharedBuffer->imgProps.width;
-    uint32_t height = pSharedBuffer->imgProps.height;
-    uint32_t stride0 = pSharedBuffer->imgProps.stride[0];
-    uint32_t stride1 = pSharedBuffer->imgProps.stride[1];
-    uint32_t planeBufSize0 = pSharedBuffer->imgProps.planeBufSize[0];
-    QCImageFormat_e format = pSharedBuffer->imgProps.format;
+    uint32_t width = pSharedBuffer->width;
+    uint32_t height = pSharedBuffer->height;
+    uint32_t stride0 = pSharedBuffer->stride[0];
+    uint32_t stride1 = pSharedBuffer->stride[1];
+    uint32_t planeBufSize0 = pSharedBuffer->planeBufSize[0];
+    QCImageFormat_e format = pSharedBuffer->format;
 
     uint32_t surfaceId = 0;
     bool isSource = true;
-    void *bufferAddr = pSharedBuffer->data();
+    void *bufferAddr = pSharedBuffer->GetDataPtr();
 
     switch ( format )
     {
@@ -551,20 +537,20 @@ QCStatus_e C2D::CreateSourceSurface( const QCSharedBuffer_t *pSharedBuffer, uint
     return ret;
 }
 
-QCStatus_e C2D::CreateTargetSurface( const QCSharedBuffer_t *pSharedBuffer, uint32_t batchIdx,
+QCStatus_e C2D::CreateTargetSurface( const ImageDescriptor_t *pSharedBuffer, uint32_t batchIdx,
                                      uint32_t *surfaceId )
 {
     QCStatus_e ret = QC_STATUS_OK;
-    uint32_t width = pSharedBuffer->imgProps.width;
-    uint32_t height = pSharedBuffer->imgProps.height;
-    uint32_t stride0 = pSharedBuffer->imgProps.stride[0];
-    uint32_t stride1 = pSharedBuffer->imgProps.stride[1];
-    uint32_t planeBufSize0 = pSharedBuffer->imgProps.planeBufSize[0];
-    QCImageFormat_e format = pSharedBuffer->imgProps.format;
+    uint32_t width = pSharedBuffer->width;
+    uint32_t height = pSharedBuffer->height;
+    uint32_t stride0 = pSharedBuffer->stride[0];
+    uint32_t stride1 = pSharedBuffer->stride[1];
+    uint32_t planeBufSize0 = pSharedBuffer->planeBufSize[0];
+    QCImageFormat_e format = pSharedBuffer->format;
 
     bool isSource = false;
     uint32_t outputSize = pSharedBuffer->size / m_numOfInputs;
-    void *bufferAddr = (void *) ( (uint8_t *) pSharedBuffer->data() + batchIdx * outputSize );
+    void *bufferAddr = (void *) ( (uint8_t *) pSharedBuffer->GetDataPtr() + batchIdx * outputSize );
 
     switch ( format )
     {
@@ -682,5 +668,5 @@ uint32_t C2D::GetC2DFormatType( QCImageFormat_e format )
     return c2dFormat;
 }
 
-}   // namespace component
+}   // namespace sample
 }   // namespace QC
