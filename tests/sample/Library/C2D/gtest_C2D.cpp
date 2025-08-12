@@ -7,12 +7,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "QC/component/C2D.hpp"
+#include "C2D.hpp"
+#include "QC/sample/BufferManager.hpp"
 #include "md5_utils.hpp"
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
 
 using namespace QC;
-using namespace QC::component;
+using namespace QC::sample;
+using namespace QC::Memory;
 using namespace QC::test::utils;
 
 static void readTXT( char *file_path, char *data_list[] )
@@ -79,25 +81,28 @@ void C2DTestNormal( C2D_Config_t *c2dConfig, QCImageFormat_e outputFormat, uint3
                     uint32_t outputHeight )
 {
     QCStatus_e ret = QC_STATUS_OK;
-
-    C2D C2DObj;
+    BufferManager bufMgr( { "C2D", QC_NODE_TYPE_CUSTOM_0, 0 } );
+    Logger logger;
+    logger.Init( "C2D", LOGGER_LEVEL_ERROR );
+    C2D C2DObj( logger );
     char pName[5] = "C2D";
     uint32_t numInputs = c2dConfig->numOfInputs;
-    QCSharedBuffer_t inputs[numInputs];
-    QCSharedBuffer_t output;
+    ImageDescriptor_t inputs[numInputs];
+    ImageDescriptor_t output;
 
     ret = C2DObj.Init( pName, c2dConfig );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
     for ( size_t i = 0; i < numInputs; i++ )
     {
-        ret = inputs[i].Allocate( c2dConfig->inputConfigs[i].inputResolution.width,
-                                  c2dConfig->inputConfigs[i].inputResolution.height,
-                                  c2dConfig->inputConfigs[i].inputFormat );
+        ret = bufMgr.Allocate( ImageBasicProps_t( c2dConfig->inputConfigs[i].inputResolution.width,
+                                                  c2dConfig->inputConfigs[i].inputResolution.height,
+                                                  c2dConfig->inputConfigs[i].inputFormat ),
+                               inputs[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
 
-    ret = output.Allocate( outputWidth, outputHeight, outputFormat );
+    ret = bufMgr.Allocate( ImageBasicProps_t( outputWidth, outputHeight, outputFormat ), output );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
     for ( size_t i = 0; i < numInputs; i++ )
@@ -129,18 +134,22 @@ void C2DTestNormal( C2D_Config_t *c2dConfig, QCImageFormat_e outputFormat, uint3
 
     ret = C2DObj.Deinit();
     ASSERT_EQ( QC_STATUS_OK, ret );
+
+    logger.Deinit();
 }
 
 void C2DTestAccuracy( C2D_Config_t *c2dConfig, QCImageFormat_e outputFormat, uint32_t outputWidth,
                       uint32_t outputHeight, char *data_list_file, char *golden_list_file )
 {
     QCStatus_e ret = QC_STATUS_OK;
-
-    C2D C2DObj;
+    BufferManager bufMgr( { "C2D", QC_NODE_TYPE_CUSTOM_0, 0 } );
+    Logger logger;
+    logger.Init( "C2D", LOGGER_LEVEL_ERROR );
+    C2D C2DObj( logger );
     char pName[5] = "C2D";
     uint32_t numInputs = c2dConfig->numOfInputs;
-    QCSharedBuffer_t inputs[numInputs];
-    QCSharedBuffer_t output;
+    ImageDescriptor_t inputs[numInputs];
+    ImageDescriptor_t output;
 
     char *data_list[numInputs];
     char *golden_list[numInputs];
@@ -155,18 +164,20 @@ void C2DTestAccuracy( C2D_Config_t *c2dConfig, QCImageFormat_e outputFormat, uin
 
     for ( size_t i = 0; i < numInputs; i++ )
     {
-        ret = inputs[i].Allocate( c2dConfig->inputConfigs[i].inputResolution.width,
-                                  c2dConfig->inputConfigs[i].inputResolution.height,
-                                  c2dConfig->inputConfigs[i].inputFormat );
+        ret = bufMgr.Allocate( ImageBasicProps_t( c2dConfig->inputConfigs[i].inputResolution.width,
+                                                  c2dConfig->inputConfigs[i].inputResolution.height,
+                                                  c2dConfig->inputConfigs[i].inputFormat ),
+                               inputs[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
 
-        loadRawData( data_list[i], inputs[i].data(), inputs[i].size );
+        loadRawData( data_list[i], inputs[i].GetDataPtr(), inputs[i].size );
     }
 
-    ret = output.Allocate( numInputs, outputWidth, outputHeight, outputFormat );
+    ret = bufMgr.Allocate( ImageBasicProps_t( numInputs, outputWidth, outputHeight, outputFormat ),
+                           output );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
-    memset( output.data(), 0, output.size );
+    memset( output.GetDataPtr(), 0, output.size );
 
     uint32_t outputSize = output.size / numInputs;
     for ( size_t i = 0; i < numInputs; i++ )
@@ -192,7 +203,7 @@ void C2DTestAccuracy( C2D_Config_t *c2dConfig, QCImageFormat_e outputFormat, uin
 
     for ( size_t i = 0; i < numInputs; i++ )
     {
-        pOutputData = (void *) ( (uint8_t *) output.data() + i * outputSize );
+        pOutputData = (void *) ( (uint8_t *) output.GetDataPtr() + i * outputSize );
         std::string md5OutputGolden = MD5Sum( pOutputData, outputSize );
         std::string md5OutputData = MD5Sum( golden_data[i], outputSize );
         EXPECT_EQ( md5OutputGolden, md5OutputData );
@@ -217,18 +228,22 @@ void C2DTestAccuracy( C2D_Config_t *c2dConfig, QCImageFormat_e outputFormat, uin
 
     ret = C2DObj.Deinit();
     ASSERT_EQ( QC_STATUS_OK, ret );
+
+    logger.Deinit();
 }
 
 void C2DTestPerf( C2D_Config_t *c2dConfig, QCImageFormat_e outputFormat, uint32_t outputWidth,
                   uint32_t outputHeight, char *data_list_file, uint32_t times )
 {
     QCStatus_e ret = QC_STATUS_OK;
-
-    C2D C2DObj;
+    BufferManager bufMgr( { "C2D", QC_NODE_TYPE_CUSTOM_0, 0 } );
+    Logger logger;
+    logger.Init( "C2D", LOGGER_LEVEL_ERROR );
+    C2D C2DObj( logger );
     char pName[5] = "C2D";
     uint32_t numInputs = c2dConfig->numOfInputs;
-    QCSharedBuffer_t inputs[numInputs];
-    QCSharedBuffer_t output;
+    ImageDescriptor_t inputs[numInputs];
+    ImageDescriptor_t output;
 
     char *data_list[numInputs];
     void *pOutputData = nullptr;
@@ -240,15 +255,17 @@ void C2DTestPerf( C2D_Config_t *c2dConfig, QCImageFormat_e outputFormat, uint32_
 
     for ( size_t i = 0; i < numInputs; i++ )
     {
-        ret = inputs[i].Allocate( c2dConfig->inputConfigs[i].inputResolution.width,
-                                  c2dConfig->inputConfigs[i].inputResolution.height,
-                                  c2dConfig->inputConfigs[i].inputFormat );
+        ret = bufMgr.Allocate( ImageBasicProps_t( c2dConfig->inputConfigs[i].inputResolution.width,
+                                                  c2dConfig->inputConfigs[i].inputResolution.height,
+                                                  c2dConfig->inputConfigs[i].inputFormat ),
+                               inputs[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
 
-        loadRawData( data_list[i], inputs[i].data(), inputs[i].size );
+        loadRawData( data_list[i], inputs[i].GetDataPtr(), inputs[i].size );
     }
 
-    ret = output.Allocate( numInputs, outputWidth, outputHeight, outputFormat );
+    ret = bufMgr.Allocate( ImageBasicProps_t( numInputs, outputWidth, outputHeight, outputFormat ),
+                           output );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
     for ( size_t i = 0; i < numInputs; i++ )
@@ -288,6 +305,8 @@ void C2DTestPerf( C2D_Config_t *c2dConfig, QCImageFormat_e outputFormat, uint32_
 
     ret = C2DObj.Deinit();
     ASSERT_EQ( QC_STATUS_OK, ret );
+
+    logger.Deinit();
 }
 
 TEST( C2D, SANITY_C2D_ConvertUYVYtoRGB )
@@ -487,7 +506,10 @@ TEST( C2D, SANITY_C2D_RegDeregBuffer )
 
     QCStatus_e ret = QC_STATUS_OK;
 
-    C2D C2DObj;
+    BufferManager bufMgr( { "C2D", QC_NODE_TYPE_CUSTOM_0, 0 } );
+    Logger logger;
+    logger.Init( "C2D", LOGGER_LEVEL_ERROR );
+    C2D C2DObj( logger );
     C2D_Config_t C2DConfig;
     C2D_Config_t *pC2DConfig = &C2DConfig;
     char pName[5] = "C2D";
@@ -499,8 +521,8 @@ TEST( C2D, SANITY_C2D_RegDeregBuffer )
     uint32_t inputBufferNum = 1;
     uint32_t outputBufferNum = 1;
 
-    QCSharedBuffer_t inputs[pC2DConfig->numOfInputs];
-    QCSharedBuffer_t output;
+    ImageDescriptor_t inputs[pC2DConfig->numOfInputs];
+    ImageDescriptor_t output;
 
     for ( size_t i = 0; i < pC2DConfig->numOfInputs; i++ )
     {
@@ -512,13 +534,16 @@ TEST( C2D, SANITY_C2D_RegDeregBuffer )
         pC2DConfig->inputConfigs[i].ROI.width = 1080;
         pC2DConfig->inputConfigs[i].ROI.height = 720;
 
-        ret = inputs[i].Allocate( pC2DConfig->inputConfigs[i].inputResolution.width,
-                                  pC2DConfig->inputConfigs[i].inputResolution.height,
-                                  pC2DConfig->inputConfigs[i].inputFormat );
+        ret = bufMgr.Allocate(
+                ImageBasicProps_t( pC2DConfig->inputConfigs[i].inputResolution.width,
+                                   pC2DConfig->inputConfigs[i].inputResolution.height,
+                                   pC2DConfig->inputConfigs[i].inputFormat ),
+                inputs[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
 
-    ret = output.Allocate( C2DOutputWidth, C2DOutputHeight, C2DOutputFormat );
+    ret = bufMgr.Allocate( ImageBasicProps_t( C2DOutputWidth, C2DOutputHeight, C2DOutputFormat ),
+                           output );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = C2DObj.Init( pName, pC2DConfig );
@@ -553,13 +578,18 @@ TEST( C2D, SANITY_C2D_RegDeregBuffer )
 
     ret = C2DObj.Deinit();
     ASSERT_EQ( QC_STATUS_OK, ret );
+
+    logger.Deinit();
 }
 
 TEST( C2D, FAILURE_C2D_UnInitialized )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
-    C2D C2DObj;
+    BufferManager bufMgr( { "C2D", QC_NODE_TYPE_CUSTOM_0, 0 } );
+    Logger logger;
+    logger.Init( "C2D", LOGGER_LEVEL_ERROR );
+    C2D C2DObj( logger );
     C2D_Config_t C2DConfig;
     C2D_Config_t *pC2DConfig = &C2DConfig;
     char pName[5] = "C2D";
@@ -580,14 +610,16 @@ TEST( C2D, FAILURE_C2D_UnInitialized )
     uint32_t C2DOutputWidth = 600;
     uint32_t C2DOutputHeight = 600;
 
-    QCSharedBuffer_t inputs[C2DConfig.numOfInputs];
-    ret = inputs[0].Allocate( C2DConfig.inputConfigs[0].inputResolution.width,
-                              C2DConfig.inputConfigs[0].inputResolution.height,
-                              C2DConfig.inputConfigs[0].inputFormat );
+    ImageDescriptor_t inputs[C2DConfig.numOfInputs];
+    ret = bufMgr.Allocate( ImageBasicProps_t( C2DConfig.inputConfigs[0].inputResolution.width,
+                                              C2DConfig.inputConfigs[0].inputResolution.height,
+                                              C2DConfig.inputConfigs[0].inputFormat ),
+                           inputs[0] );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
-    QCSharedBuffer_t output;
-    ret = output.Allocate( C2DOutputWidth, C2DOutputHeight, C2DOutputFormat );
+    ImageDescriptor_t output;
+    ret = bufMgr.Allocate( ImageBasicProps_t( C2DOutputWidth, C2DOutputHeight, C2DOutputFormat ),
+                           output );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = C2DObj.Start();
@@ -601,6 +633,8 @@ TEST( C2D, FAILURE_C2D_UnInitialized )
 
     ret = C2DObj.Deinit();
     ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
+
+    logger.Deinit();
 }
 
 TEST( C2D, FAILURE_C2D_TopXBadArgs )
@@ -608,7 +642,10 @@ TEST( C2D, FAILURE_C2D_TopXBadArgs )
 
     QCStatus_e ret = QC_STATUS_OK;
 
-    C2D C2DObj;
+    BufferManager bufMgr( { "C2D", QC_NODE_TYPE_CUSTOM_0, 0 } );
+    Logger logger;
+    logger.Init( "C2D", LOGGER_LEVEL_ERROR );
+    C2D C2DObj( logger );
     C2D_Config_t C2DConfig;
     C2D_Config_t *pC2DConfig = &C2DConfig;
     char pName[5] = "C2D";
@@ -629,14 +666,16 @@ TEST( C2D, FAILURE_C2D_TopXBadArgs )
     uint32_t C2DOutputWidth = 600;
     uint32_t C2DOutputHeight = 600;
 
-    QCSharedBuffer_t inputs[C2DConfig.numOfInputs];
-    ret = inputs[0].Allocate( C2DConfig.inputConfigs[0].inputResolution.width,
-                              C2DConfig.inputConfigs[0].inputResolution.height,
-                              C2DConfig.inputConfigs[0].inputFormat );
+    ImageDescriptor_t inputs[C2DConfig.numOfInputs];
+    ret = bufMgr.Allocate( ImageBasicProps_t( C2DConfig.inputConfigs[0].inputResolution.width,
+                                              C2DConfig.inputConfigs[0].inputResolution.height,
+                                              C2DConfig.inputConfigs[0].inputFormat ),
+                           inputs[0] );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
-    QCSharedBuffer_t output;
-    ret = output.Allocate( C2DOutputWidth, C2DOutputHeight, C2DOutputFormat );
+    ImageDescriptor_t output;
+    ret = bufMgr.Allocate( ImageBasicProps_t( C2DOutputWidth, C2DOutputHeight, C2DOutputFormat ),
+                           output );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = C2DObj.Init( pName, pC2DConfig );
@@ -653,6 +692,8 @@ TEST( C2D, FAILURE_C2D_TopXBadArgs )
 
     ret = C2DObj.Deinit();
     ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
+
+    logger.Deinit();
 }
 
 TEST( C2D, FAILURE_C2D_TopYBadArgs )
@@ -660,7 +701,10 @@ TEST( C2D, FAILURE_C2D_TopYBadArgs )
 
     QCStatus_e ret = QC_STATUS_OK;
 
-    C2D C2DObj;
+    BufferManager bufMgr( { "C2D", QC_NODE_TYPE_CUSTOM_0, 0 } );
+    Logger logger;
+    logger.Init( "C2D", LOGGER_LEVEL_ERROR );
+    C2D C2DObj( logger );
     C2D_Config_t C2DConfig;
     C2D_Config_t *pC2DConfig = &C2DConfig;
     char pName[5] = "C2D";
@@ -681,14 +725,16 @@ TEST( C2D, FAILURE_C2D_TopYBadArgs )
     uint32_t C2DOutputWidth = 600;
     uint32_t C2DOutputHeight = 600;
 
-    QCSharedBuffer_t inputs[C2DConfig.numOfInputs];
-    ret = inputs[0].Allocate( C2DConfig.inputConfigs[0].inputResolution.width,
-                              C2DConfig.inputConfigs[0].inputResolution.height,
-                              C2DConfig.inputConfigs[0].inputFormat );
+    ImageDescriptor_t inputs[C2DConfig.numOfInputs];
+    ret = bufMgr.Allocate( ImageBasicProps_t( C2DConfig.inputConfigs[0].inputResolution.width,
+                                              C2DConfig.inputConfigs[0].inputResolution.height,
+                                              C2DConfig.inputConfigs[0].inputFormat ),
+                           inputs[0] );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
-    QCSharedBuffer_t output;
-    ret = output.Allocate( C2DOutputWidth, C2DOutputHeight, C2DOutputFormat );
+    ImageDescriptor_t output;
+    ret = bufMgr.Allocate( ImageBasicProps_t( C2DOutputWidth, C2DOutputHeight, C2DOutputFormat ),
+                           output );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = C2DObj.Init( pName, pC2DConfig );
@@ -705,6 +751,8 @@ TEST( C2D, FAILURE_C2D_TopYBadArgs )
 
     ret = C2DObj.Deinit();
     ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
+
+    logger.Deinit();
 }
 
 TEST( C2D, FAILURE_C2D_ROIWidthBadArgs )
@@ -712,7 +760,10 @@ TEST( C2D, FAILURE_C2D_ROIWidthBadArgs )
 
     QCStatus_e ret = QC_STATUS_OK;
 
-    C2D C2DObj;
+    BufferManager bufMgr( { "C2D", QC_NODE_TYPE_CUSTOM_0, 0 } );
+    Logger logger;
+    logger.Init( "C2D", LOGGER_LEVEL_ERROR );
+    C2D C2DObj( logger );
     C2D_Config_t C2DConfig;
     C2D_Config_t *pC2DConfig = &C2DConfig;
     char pName[5] = "C2D";
@@ -733,14 +784,16 @@ TEST( C2D, FAILURE_C2D_ROIWidthBadArgs )
     uint32_t C2DOutputWidth = 600;
     uint32_t C2DOutputHeight = 600;
 
-    QCSharedBuffer_t inputs[C2DConfig.numOfInputs];
-    ret = inputs[0].Allocate( C2DConfig.inputConfigs[0].inputResolution.width,
-                              C2DConfig.inputConfigs[0].inputResolution.height,
-                              C2DConfig.inputConfigs[0].inputFormat );
+    ImageDescriptor_t inputs[C2DConfig.numOfInputs];
+    ret = bufMgr.Allocate( ImageBasicProps_t( C2DConfig.inputConfigs[0].inputResolution.width,
+                                              C2DConfig.inputConfigs[0].inputResolution.height,
+                                              C2DConfig.inputConfigs[0].inputFormat ),
+                           inputs[0] );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
-    QCSharedBuffer_t output;
-    ret = output.Allocate( C2DOutputWidth, C2DOutputHeight, C2DOutputFormat );
+    ImageDescriptor_t output;
+    ret = bufMgr.Allocate( ImageBasicProps_t( C2DOutputWidth, C2DOutputHeight, C2DOutputFormat ),
+                           output );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = C2DObj.Init( pName, pC2DConfig );
@@ -763,7 +816,10 @@ TEST( C2D, FAILURE_C2D_ROIHeightBadArgs )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
-    C2D C2DObj;
+    BufferManager bufMgr( { "C2D", QC_NODE_TYPE_CUSTOM_0, 0 } );
+    Logger logger;
+    logger.Init( "C2D", LOGGER_LEVEL_ERROR );
+    C2D C2DObj( logger );
     C2D_Config_t C2DConfig;
     C2D_Config_t *pC2DConfig = &C2DConfig;
     char pName[5] = "C2D";
@@ -784,14 +840,16 @@ TEST( C2D, FAILURE_C2D_ROIHeightBadArgs )
     uint32_t C2DOutputWidth = 600;
     uint32_t C2DOutputHeight = 600;
 
-    QCSharedBuffer_t inputs[C2DConfig.numOfInputs];
-    ret = inputs[0].Allocate( C2DConfig.inputConfigs[0].inputResolution.width,
-                              C2DConfig.inputConfigs[0].inputResolution.height,
-                              C2DConfig.inputConfigs[0].inputFormat );
+    ImageDescriptor_t inputs[C2DConfig.numOfInputs];
+    ret = bufMgr.Allocate( ImageBasicProps_t( C2DConfig.inputConfigs[0].inputResolution.width,
+                                              C2DConfig.inputConfigs[0].inputResolution.height,
+                                              C2DConfig.inputConfigs[0].inputFormat ),
+                           inputs[0] );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
-    QCSharedBuffer_t output;
-    ret = output.Allocate( C2DOutputWidth, C2DOutputHeight, C2DOutputFormat );
+    ImageDescriptor_t output;
+    ret = bufMgr.Allocate( ImageBasicProps_t( C2DOutputWidth, C2DOutputHeight, C2DOutputFormat ),
+                           output );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = C2DObj.Init( pName, pC2DConfig );
@@ -808,13 +866,17 @@ TEST( C2D, FAILURE_C2D_ROIHeightBadArgs )
 
     ret = C2DObj.Deinit();
     ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
+
+    logger.Deinit();
 }
 
 TEST( C2D, FAILURE_C2D_InputNumError )
 {
     QCStatus_e ret = QC_STATUS_OK;
-
-    C2D C2DObj;
+    BufferManager bufMgr( { "C2D", QC_NODE_TYPE_CUSTOM_0, 0 } );
+    Logger logger;
+    logger.Init( "C2D", LOGGER_LEVEL_ERROR );
+    C2D C2DObj( logger );
     C2D_Config_t C2DConfig;
     C2D_Config_t *pC2DConfig = &C2DConfig;
     char pName[5] = "C2D";
@@ -835,14 +897,16 @@ TEST( C2D, FAILURE_C2D_InputNumError )
     uint32_t C2DOutputWidth = 600;
     uint32_t C2DOutputHeight = 600;
 
-    QCSharedBuffer_t inputs[C2DConfig.numOfInputs];
-    ret = inputs[0].Allocate( C2DConfig.inputConfigs[0].inputResolution.width,
-                              C2DConfig.inputConfigs[0].inputResolution.height,
-                              C2DConfig.inputConfigs[0].inputFormat );
+    ImageDescriptor_t inputs[C2DConfig.numOfInputs];
+    ret = bufMgr.Allocate( ImageBasicProps_t( C2DConfig.inputConfigs[0].inputResolution.width,
+                                              C2DConfig.inputConfigs[0].inputResolution.height,
+                                              C2DConfig.inputConfigs[0].inputFormat ),
+                           inputs[0] );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
-    QCSharedBuffer_t output;
-    ret = output.Allocate( C2DOutputWidth, C2DOutputHeight, C2DOutputFormat );
+    ImageDescriptor_t output;
+    ret = bufMgr.Allocate( ImageBasicProps_t( C2DOutputWidth, C2DOutputHeight, C2DOutputFormat ),
+                           output );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = C2DObj.Init( pName, pC2DConfig );
@@ -859,13 +923,17 @@ TEST( C2D, FAILURE_C2D_InputNumError )
 
     ret = C2DObj.Deinit();
     ASSERT_EQ( QC_STATUS_OK, ret );
+
+    logger.Deinit();
 }
 
 TEST( C2D, FAILURE_C2D_GetSourceSurf )
 {
     QCStatus_e ret = QC_STATUS_OK;
-
-    C2D C2DObj;
+    BufferManager bufMgr( { "C2D", QC_NODE_TYPE_CUSTOM_0, 0 } );
+    Logger logger;
+    logger.Init( "C2D", LOGGER_LEVEL_ERROR );
+    C2D C2DObj( logger );
     C2D_Config_t C2DConfig;
     C2D_Config_t *pC2DConfig = &C2DConfig;
     char pName[5] = "C2D";
@@ -886,15 +954,16 @@ TEST( C2D, FAILURE_C2D_GetSourceSurf )
     uint32_t C2DOutputWidth = 600;
     uint32_t C2DOutputHeight = 600;
 
-    QCSharedBuffer_t inputs[C2DConfig.numOfInputs];
-    ret = inputs[0].Allocate( C2DConfig.inputConfigs[0].inputResolution.width,
-                              C2DConfig.inputConfigs[0].inputResolution.height,
-                              C2DConfig.inputConfigs[0].inputFormat );
+    ImageDescriptor_t inputs[C2DConfig.numOfInputs];
+    ret = bufMgr.Allocate( ImageBasicProps_t( C2DConfig.inputConfigs[0].inputResolution.width,
+                                              C2DConfig.inputConfigs[0].inputResolution.height,
+                                              C2DConfig.inputConfigs[0].inputFormat ),
+                           inputs[0] );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
-    QCSharedBuffer_t output;
-    ret = output.Allocate( C2DConfig.numOfInputs, C2DOutputWidth, C2DOutputHeight,
-                           C2DOutputFormat );
+    ImageDescriptor_t output;
+    ret = bufMgr.Allocate( ImageBasicProps_t( C2DOutputWidth, C2DOutputHeight, C2DOutputFormat ),
+                           output );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = C2DObj.Init( pName, pC2DConfig );
@@ -911,6 +980,8 @@ TEST( C2D, FAILURE_C2D_GetSourceSurf )
 
     ret = C2DObj.Deinit();
     ASSERT_EQ( QC_STATUS_OK, ret );
+
+    logger.Deinit();
 }
 
 TEST( C2D, FAILURE_C2D_RegInputBufferFormat )
@@ -918,7 +989,10 @@ TEST( C2D, FAILURE_C2D_RegInputBufferFormat )
 
     QCStatus_e ret = QC_STATUS_OK;
 
-    C2D C2DObj;
+    BufferManager bufMgr( { "C2D", QC_NODE_TYPE_CUSTOM_0, 0 } );
+    Logger logger;
+    logger.Init( "C2D", LOGGER_LEVEL_ERROR );
+    C2D C2DObj( logger );
     C2D_Config_t C2DConfig;
     C2D_Config_t *pC2DConfig = &C2DConfig;
     char pName[5] = "C2D";
@@ -930,8 +1004,8 @@ TEST( C2D, FAILURE_C2D_RegInputBufferFormat )
     uint32_t inputBufferNum = 1;
     uint32_t outputBufferNum = 1;
 
-    QCSharedBuffer_t inputs[pC2DConfig->numOfInputs];
-    QCSharedBuffer_t output;
+    ImageDescriptor_t inputs[pC2DConfig->numOfInputs];
+    ImageDescriptor_t output;
 
     for ( size_t i = 0; i < pC2DConfig->numOfInputs; i++ )
     {
@@ -949,13 +1023,16 @@ TEST( C2D, FAILURE_C2D_RegInputBufferFormat )
 
     for ( size_t i = 0; i < pC2DConfig->numOfInputs; i++ )
     {
-        ret = inputs[i].Allocate( pC2DConfig->inputConfigs[i].inputResolution.width,
-                                  pC2DConfig->inputConfigs[i].inputResolution.height,
-                                  QC_IMAGE_FORMAT_RGB888 );
+        ret = bufMgr.Allocate(
+                ImageBasicProps_t( pC2DConfig->inputConfigs[i].inputResolution.width,
+                                   pC2DConfig->inputConfigs[i].inputResolution.height,
+                                   QC_IMAGE_FORMAT_RGB888 ),
+                inputs[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
 
-    ret = output.Allocate( C2DOutputWidth, C2DOutputHeight, C2DOutputFormat );
+    ret = bufMgr.Allocate( ImageBasicProps_t( C2DOutputWidth, C2DOutputHeight, C2DOutputFormat ),
+                           output );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
     for ( size_t i = 0; i < pC2DConfig->numOfInputs; i++ )
@@ -987,13 +1064,18 @@ TEST( C2D, FAILURE_C2D_RegInputBufferFormat )
 
     ret = C2DObj.Deinit();
     ASSERT_EQ( QC_STATUS_OK, ret );
+
+    logger.Deinit();
 }
 
 TEST( C2D, FAILURE_C2D_RegInputBufferRes )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
-    C2D C2DObj;
+    BufferManager bufMgr( { "C2D", QC_NODE_TYPE_CUSTOM_0, 0 } );
+    Logger logger;
+    logger.Init( "C2D", LOGGER_LEVEL_ERROR );
+    C2D C2DObj( logger );
     C2D_Config_t C2DConfig;
     C2D_Config_t *pC2DConfig = &C2DConfig;
     char pName[5] = "C2D";
@@ -1005,8 +1087,8 @@ TEST( C2D, FAILURE_C2D_RegInputBufferRes )
     uint32_t inputBufferNum = 1;
     uint32_t outputBufferNum = 1;
 
-    QCSharedBuffer_t inputs[pC2DConfig->numOfInputs];
-    QCSharedBuffer_t output;
+    ImageDescriptor_t inputs[pC2DConfig->numOfInputs];
+    ImageDescriptor_t output;
 
     for ( size_t i = 0; i < pC2DConfig->numOfInputs; i++ )
     {
@@ -1024,11 +1106,14 @@ TEST( C2D, FAILURE_C2D_RegInputBufferRes )
 
     for ( size_t i = 0; i < pC2DConfig->numOfInputs; i++ )
     {
-        ret = inputs[i].Allocate( 1000, 1000, pC2DConfig->inputConfigs[i].inputFormat );
+        ret = bufMgr.Allocate(
+                ImageBasicProps_t( 1000, 1000, pC2DConfig->inputConfigs[i].inputFormat ),
+                inputs[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
 
-    ret = output.Allocate( C2DOutputWidth, C2DOutputHeight, C2DOutputFormat );
+    ret = bufMgr.Allocate( ImageBasicProps_t( C2DOutputWidth, C2DOutputHeight, C2DOutputFormat ),
+                           output );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
     for ( size_t i = 0; i < pC2DConfig->numOfInputs; i++ )
@@ -1060,13 +1145,17 @@ TEST( C2D, FAILURE_C2D_RegInputBufferRes )
 
     ret = C2DObj.Deinit();
     ASSERT_EQ( QC_STATUS_OK, ret );
+
+    logger.Deinit();
 }
 
 TEST( C2D, FAILURE_C2D_DeRegInputBuffer )
 {
     QCStatus_e ret = QC_STATUS_OK;
-
-    C2D C2DObj;
+    BufferManager bufMgr( { "C2D", QC_NODE_TYPE_CUSTOM_0, 0 } );
+    Logger logger;
+    logger.Init( "C2D", LOGGER_LEVEL_ERROR );
+    C2D C2DObj( logger );
     C2D_Config_t C2DConfig;
     C2D_Config_t *pC2DConfig = &C2DConfig;
     char pName[5] = "C2D";
@@ -1078,8 +1167,8 @@ TEST( C2D, FAILURE_C2D_DeRegInputBuffer )
     uint32_t inputBufferNum = 1;
     uint32_t outputBufferNum = 1;
 
-    QCSharedBuffer_t inputs[pC2DConfig->numOfInputs];
-    QCSharedBuffer_t output;
+    ImageDescriptor_t inputs[pC2DConfig->numOfInputs];
+    ImageDescriptor_t output;
 
     for ( size_t i = 0; i < pC2DConfig->numOfInputs; i++ )
     {
@@ -1097,13 +1186,16 @@ TEST( C2D, FAILURE_C2D_DeRegInputBuffer )
 
     for ( size_t i = 0; i < pC2DConfig->numOfInputs; i++ )
     {
-        ret = inputs[i].Allocate( pC2DConfig->inputConfigs[i].inputResolution.width,
-                                  pC2DConfig->inputConfigs[i].inputResolution.height,
-                                  pC2DConfig->inputConfigs[i].inputFormat );
+        ret = bufMgr.Allocate(
+                ImageBasicProps_t( pC2DConfig->inputConfigs[i].inputResolution.width,
+                                   pC2DConfig->inputConfigs[i].inputResolution.height,
+                                   pC2DConfig->inputConfigs[i].inputFormat ),
+                inputs[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
 
-    ret = output.Allocate( C2DOutputWidth, C2DOutputHeight, C2DOutputFormat );
+    ret = bufMgr.Allocate( ImageBasicProps_t( C2DOutputWidth, C2DOutputHeight, C2DOutputFormat ),
+                           output );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
     for ( size_t i = 0; i < pC2DConfig->numOfInputs; i++ )
@@ -1140,8 +1232,10 @@ TEST( C2D, FAILURE_C2D_DeRegInputBuffer )
 TEST( C2D, FAILURE_C2D_DeRegOutputBuffer )
 {
     QCStatus_e ret = QC_STATUS_OK;
-
-    C2D C2DObj;
+    BufferManager bufMgr( { "C2D", QC_NODE_TYPE_CUSTOM_0, 0 } );
+    Logger logger;
+    logger.Init( "C2D", LOGGER_LEVEL_ERROR );
+    C2D C2DObj( logger );
     C2D_Config_t C2DConfig;
     C2D_Config_t *pC2DConfig = &C2DConfig;
     char pName[5] = "C2D";
@@ -1153,8 +1247,8 @@ TEST( C2D, FAILURE_C2D_DeRegOutputBuffer )
     uint32_t inputBufferNum = 1;
     uint32_t outputBufferNum = 1;
 
-    QCSharedBuffer_t inputs[pC2DConfig->numOfInputs];
-    QCSharedBuffer_t output;
+    ImageDescriptor_t inputs[pC2DConfig->numOfInputs];
+    ImageDescriptor_t output;
 
     for ( size_t i = 0; i < pC2DConfig->numOfInputs; i++ )
     {
@@ -1172,13 +1266,16 @@ TEST( C2D, FAILURE_C2D_DeRegOutputBuffer )
 
     for ( size_t i = 0; i < pC2DConfig->numOfInputs; i++ )
     {
-        ret = inputs[i].Allocate( pC2DConfig->inputConfigs[i].inputResolution.width,
-                                  pC2DConfig->inputConfigs[i].inputResolution.height,
-                                  pC2DConfig->inputConfigs[i].inputFormat );
+        ret = bufMgr.Allocate(
+                ImageBasicProps_t( pC2DConfig->inputConfigs[i].inputResolution.width,
+                                   pC2DConfig->inputConfigs[i].inputResolution.height,
+                                   pC2DConfig->inputConfigs[i].inputFormat ),
+                inputs[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
 
-    ret = output.Allocate( C2DOutputWidth, C2DOutputHeight, C2DOutputFormat );
+    ret = bufMgr.Allocate( ImageBasicProps_t( C2DOutputWidth, C2DOutputHeight, C2DOutputFormat ),
+                           output );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
     for ( size_t i = 0; i < pC2DConfig->numOfInputs; i++ )

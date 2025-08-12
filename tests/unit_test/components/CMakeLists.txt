@@ -1,6 +1,3 @@
-if ( ENABLE_C2D )
-  add_subdirectory(C2D)
-endif()
 add_subdirectory(Camera)
 add_subdirectory(Common)
 add_subdirectory(VideoEncoder)

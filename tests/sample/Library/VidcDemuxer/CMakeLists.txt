@@ -31,6 +31,4 @@ set_property( TARGET VidcDemuxer PROPERTY POSITION_INDEPENDENT_CODE ON )
 
 target_link_libraries( VidcDemuxer PUBLIC ${TARGET_LIBRARIES} )
 
-install( TARGETS VidcDemuxer DESTINATION lib )
-
 

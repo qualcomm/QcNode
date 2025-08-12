@@ -12,12 +12,15 @@
 #include <unordered_map>
 #include <vector>
 
-#include "QC/component/ComponentIF.hpp"
+#include "QC/Infras/Log/Logger.hpp"
+#include "QC/Infras/Memory/ImageDescriptor.hpp"
 
 namespace QC
 {
-namespace component
+namespace sample
 {
+
+using namespace QC::Memory;
 
 /*=================================================================================================
 ** Typedefs
@@ -59,7 +62,7 @@ typedef struct
  * @brief Component C2D
  * @brief C2D convert 1 camera frame into another format normalize
  */
-class C2D final : public ComponentIF
+class C2D
 {
 
     /*=================================================================================================
@@ -67,7 +70,7 @@ class C2D final : public ComponentIF
     =================================================================================================*/
 
 public:
-    C2D();
+    C2D( Logger &logger );
     ~C2D();
 
     /**
@@ -75,11 +78,9 @@ public:
      * @brief Initialize the C2D component
      * @param[in] name the component unique instance name
      * @param[in] pConfig the C2D configuration paramaters
-     * @param[in] level the logger message level
      * @return QC_STATUS_OK on success, others on failure
      */
-    QCStatus_e Init( const char *pName, const C2D_Config_t *pConfig,
-                     Logger_Level_e level = LOGGER_LEVEL_ERROR );
+    QCStatus_e Init( const char *pName, const C2D_Config_t *pConfig );
 
     /**
      * @cond C2D::Start @endcond
@@ -110,8 +111,8 @@ public:
      * @param[out] pOutput the output shared buffer
      * @return QC_STATUS_OK on success, others on failure
      */
-    QCStatus_e Execute( const QCSharedBuffer_t *pInputs, uint32_t numInputs,
-                        const QCSharedBuffer_t *pOutput );
+    QCStatus_e Execute( const ImageDescriptor_t *pInputs, uint32_t numInputs,
+                        const ImageDescriptor_t *pOutput );
 
     /**
      * @cond C2D::RegisterInputBuffers @endcond
@@ -122,7 +123,7 @@ public:
      * @note This API is optional but recommended to call after input buffers allocation finished.
      * If skip to do this, the Execute API will register input buffers automatically.
      */
-    QCStatus_e RegisterInputBuffers( const QCSharedBuffer_t *pInputBuffer,
+    QCStatus_e RegisterInputBuffers( const ImageDescriptor_t *pInputBuffer,
                                      uint32_t numOfInputBuffers );
 
     /**
@@ -134,7 +135,7 @@ public:
      * @note This API is optional but recommended to call after output buffers allocation finished.
      * If skip to do this, the Execute API will register output buffers automatically.
      */
-    QCStatus_e RegisterOutputBuffers( const QCSharedBuffer_t *pOutputBuffer,
+    QCStatus_e RegisterOutputBuffers( const ImageDescriptor_t *pOutputBuffer,
                                       uint32_t numOfOutputBuffers );
 
     /**
@@ -144,7 +145,7 @@ public:
      * @param[in] numOfInputBuffers the number of shared buffers
      * @return QC_STATUS_OK on success, others on failure
      */
-    QCStatus_e DeregisterInputBuffers( const QCSharedBuffer_t *pInputBuffer,
+    QCStatus_e DeregisterInputBuffers( const ImageDescriptor_t *pInputBuffer,
                                        uint32_t numOfInputBuffers );
 
     /**
@@ -154,7 +155,7 @@ public:
      * @param[in] numOfOutputBuffers the number of shared buffers
      * @return QC_STATUS_OK on success, others on failure
      */
-    QCStatus_e DeregisterOutputBuffers( const QCSharedBuffer_t *pOutputBuffer,
+    QCStatus_e DeregisterOutputBuffers( const ImageDescriptor_t *pOutputBuffer,
                                         uint32_t numOfOutputBuffers );
 
 private:
@@ -167,7 +168,7 @@ private:
      * @param[out] c2dObject the blit object structure that specifies the surface
      * @return QC_STATUS_OK on success, others on failure
      */
-    QCStatus_e GetSourceSurface( const QCSharedBuffer_t *pSharedBuffer, uint32_t inputIdx,
+    QCStatus_e GetSourceSurface( const ImageDescriptor_t *pSharedBuffer, uint32_t inputIdx,
                                  C2D_OBJECT &c2dObject );
     /**
      * @cond C2D::GetTargetSurface @endcond
@@ -178,7 +179,7 @@ private:
      * @param[out] surfaceId the field that identifies the surface index
      * @return QC_STATUS_OK on success, others on failure
      */
-    QCStatus_e GetTargetSurface( const QCSharedBuffer_t *pSharedBuffer, uint32_t batchIdx,
+    QCStatus_e GetTargetSurface( const ImageDescriptor_t *pSharedBuffer, uint32_t batchIdx,
                                  uint32_t *surfaceId );
     /**
      * @cond C2D::CreateSourceSurface @endcond
@@ -188,7 +189,7 @@ private:
      * @param[out] c2dObject the blit object structure that specifies the surface
      * @return QC_STATUS_OK on success, others on failure
      */
-    QCStatus_e CreateSourceSurface( const QCSharedBuffer_t *pSharedBuffer, uint32_t inputIdx,
+    QCStatus_e CreateSourceSurface( const ImageDescriptor_t *pSharedBuffer, uint32_t inputIdx,
                                     C2D_OBJECT &c2dObject );
     /**
      * @cond C2D::CreateTargetSurface @endcond
@@ -198,7 +199,7 @@ private:
      * @param[out] surfaceId the field that identifies the surface index
      * @return QC_STATUS_OK on success, others on failure
      */
-    QCStatus_e CreateTargetSurface( const QCSharedBuffer_t *pSharedBuffer, uint32_t batchIdx,
+    QCStatus_e CreateTargetSurface( const ImageDescriptor_t *pSharedBuffer, uint32_t batchIdx,
                                     uint32_t *surfaceId );
     /**
      * @cond C2D::CreateYUVSurface @endcond
@@ -248,9 +249,12 @@ private:
     std::unordered_map<void *, C2D_OBJECT> m_inputBufferSurfaceMap;
     std::unordered_map<void *, uint32_t> m_outputBufferSurfaceMap;
 
+    Logger &m_logger;
+    QCObjectState_e m_state = QC_OBJECT_STATE_INITIAL;
+
 };   // class C2D
 
-}   // namespace component
+}   // namespace sample
 }   // namespace QC
 
 #endif   // QC_C2D_HPP

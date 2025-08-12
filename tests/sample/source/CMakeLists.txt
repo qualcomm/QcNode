@@ -23,10 +23,6 @@ set( QCNODE_SAMPLE_SOURCES
     SampleGL2DFlex.cpp
 )
 
-if ( ENABLE_C2D )
-  list( APPEND QCNODE_SAMPLE_SOURCES SampleC2D.cpp )
-endif()
-
 if ( ENABLE_EVA )
   list( APPEND QCNODE_SAMPLE_SOURCES
             SampleOpticalFlow.cpp
@@ -58,6 +54,11 @@ if( NOT TARGET TinyViz )
 else()
   list( APPEND QCNODE_SAMPLE_SOURCES SampleTinyViz.cpp )
   list( APPEND TARGET_LIBRARIES TinyViz )
+endif()
+
+if ( ENABLE_C2D )
+  list( APPEND QCNODE_SAMPLE_SOURCES SampleC2D.cpp )
+  list( APPEND TARGET_LIBRARIES SampleC2D )
 endif()
 
 if( DEFINED ENV{QNN_SDK_ROOT} )
