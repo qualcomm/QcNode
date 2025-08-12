@@ -145,7 +145,7 @@ QCStatus_e SampleGL2DFlex::Init( std::string name, SampleConfig_t &config )
     if ( QC_STATUS_OK == ret )
     {
 
-        ret = m_imagePool.Init( name, LOGGER_LEVEL_INFO, m_poolSize, m_config.numOfInputs,
+        ret = m_imagePool.Init( name, m_nodeId, LOGGER_LEVEL_INFO, m_poolSize, m_config.numOfInputs,
                                 m_outputWidth, m_outputHeight, m_outputFormat,
                                 QC_MEMORY_ALLOCATOR_DMA_GPU, m_bufferCache );
     }

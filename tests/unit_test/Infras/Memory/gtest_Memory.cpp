@@ -2,9 +2,7 @@
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 #include "QC/Infras/Memory/SharedBuffer.hpp"
-#include "QC/Infras/Memory/Utils/BasicImageAllocator.hpp"
-#include "QC/Infras/Memory/Utils/BinaryAllocator.hpp"
-#include "QC/Infras/Memory/Utils/ImageAllocator.hpp"
+#include "QC/sample/BufferManager.hpp"
 #include "gtest/gtest.h"
 #include <algorithm>
 #include <chrono>
@@ -15,6 +13,7 @@
 
 using namespace QC;
 using namespace QC::Memory;
+using namespace QC::sample;
 using namespace std::chrono_literals;
 
 typedef struct SharedBuffer
@@ -92,26 +91,26 @@ TEST( Memory, SANITY_BufferTypeCast )
 TEST( Memory, SANITY_BinaryAllocate )
 {
     QCStatus_e status;
-    BinaryAllocator ma( "BINARY" );
+    BufferManager bufMgr( { "BINARY", QC_NODE_TYPE_CUSTOM_0, 0 } );
     BufferDescriptor_t bufDesc;
 
-    status = ma.Allocate( BufferProps_t( 1024 * 1024 ), bufDesc );
+    status = bufMgr.Allocate( BufferProps_t( 1024 * 1024 ), bufDesc );
     ASSERT_EQ( QC_STATUS_OK, status );
 
-    status = ma.Free( bufDesc );
+    status = bufMgr.Free( bufDesc );
     ASSERT_EQ( QC_STATUS_OK, status );
 }
 
 TEST( Memory, SANITY_ImageAllocateByWHF )
 {
     QCStatus_e status;
-    BasicImageAllocator ma( "IMAGE" );
+    BufferManager bufMgr( { "IMAGE", QC_NODE_TYPE_CUSTOM_0, 0 } );
     ImageDescriptor_t imgDesc;
     ImageDescriptor_t imgDescM;
     TensorDescriptor_t imgDescTs;
 
     /* testing allocate image for UYVY */
-    status = ma.Allocate( ImageBasicProps_t( 3840, 2160, QC_IMAGE_FORMAT_UYVY ), imgDesc );
+    status = bufMgr.Allocate( ImageBasicProps_t( 3840, 2160, QC_IMAGE_FORMAT_UYVY ), imgDesc );
     ASSERT_EQ( QC_STATUS_OK, status );
     ASSERT_NE( nullptr, imgDesc.pBuf );
     ASSERT_EQ( 0, imgDesc.offset );
@@ -137,11 +136,11 @@ TEST( Memory, SANITY_ImageAllocateByWHF )
     ASSERT_EQ( 3840, imgDescTs.dims[2] );
     ASSERT_EQ( 2, imgDescTs.dims[3] );
 
-    status = ma.Free( imgDesc );
+    status = bufMgr.Free( imgDesc );
     ASSERT_EQ( QC_STATUS_OK, status );
 
     /* testing allocate image for NV12 */
-    status = ma.Allocate( ImageBasicProps_t( 3840, 2160, QC_IMAGE_FORMAT_NV12 ), imgDesc );
+    status = bufMgr.Allocate( ImageBasicProps_t( 3840, 2160, QC_IMAGE_FORMAT_NV12 ), imgDesc );
     ASSERT_EQ( QC_STATUS_OK, status );
     ASSERT_NE( nullptr, imgDesc.pBuf );
     ASSERT_EQ( 0, imgDesc.offset );
@@ -158,11 +157,11 @@ TEST( Memory, SANITY_ImageAllocateByWHF )
     status = imgDesc.ImageToTensor( imgDescTs );
     ASSERT_EQ( QC_STATUS_UNSUPPORTED, status ); /* not supported as format */
 
-    status = ma.Free( imgDesc );
+    status = bufMgr.Free( imgDesc );
     ASSERT_EQ( QC_STATUS_OK, status );
 
     /* testing allocate image for RGB */
-    status = ma.Allocate( ImageBasicProps_t( 1024, 768, QC_IMAGE_FORMAT_RGB888 ), imgDesc );
+    status = bufMgr.Allocate( ImageBasicProps_t( 1024, 768, QC_IMAGE_FORMAT_RGB888 ), imgDesc );
     ASSERT_EQ( QC_STATUS_OK, status );
     ASSERT_NE( nullptr, imgDesc.pBuf );
     ASSERT_EQ( 0, imgDesc.offset );
@@ -171,11 +170,11 @@ TEST( Memory, SANITY_ImageAllocateByWHF )
     ASSERT_EQ( 1, imgDesc.numPlanes );
     ASSERT_LE( 1024, imgDesc.stride[0] );
     ASSERT_LE( 768, imgDesc.actualHeight[0] );
-    status = ma.Free( imgDesc );
+    status = bufMgr.Free( imgDesc );
     ASSERT_EQ( QC_STATUS_OK, status );
 
     /* testing allocate batched image for RGB */
-    status = ma.Allocate( ImageBasicProps_t( 7, 1024, 768, QC_IMAGE_FORMAT_RGB888 ), imgDesc );
+    status = bufMgr.Allocate( ImageBasicProps_t( 7, 1024, 768, QC_IMAGE_FORMAT_RGB888 ), imgDesc );
     ASSERT_EQ( QC_STATUS_OK, status );
     ASSERT_NE( nullptr, imgDesc.pBuf );
     ASSERT_EQ( 0, imgDesc.offset );
@@ -218,7 +217,7 @@ TEST( Memory, SANITY_ImageAllocateByWHF )
         ASSERT_EQ( QC_STATUS_UNSUPPORTED, status );
     }
 
-    status = ma.Free( imgDesc );
+    status = bufMgr.Free( imgDesc );
     ASSERT_EQ( QC_STATUS_OK, status );
 
     BufferProps_t bufProps;
@@ -237,7 +236,7 @@ TEST( Memory, SANITY_ImageAllocateByWHF )
 TEST( Memory, SANITY_ImageAllocateByProps )
 {
     QCStatus_e status;
-    ImageAllocator ma( "IMAGE" );
+    BufferManager bufMgr( { "IMAGE", QC_NODE_TYPE_CUSTOM_0, 0 } );
     ImageDescriptor_t imgDesc;
     ImageProps_t imgProp;
 
@@ -249,7 +248,7 @@ TEST( Memory, SANITY_ImageAllocateByProps )
     imgProp.actualHeight[0] = 2160;
     imgProp.numPlanes = 1;
     imgProp.planeBufSize[0] = 0; /* auto calculated the required size by stride*actualHeight */
-    status = ma.Allocate( imgProp, imgDesc );
+    status = bufMgr.Allocate( imgProp, imgDesc );
     ASSERT_EQ( QC_STATUS_OK, status );
     ASSERT_NE( nullptr, imgDesc.pBuf );
     ASSERT_EQ( 0, imgDesc.offset );
@@ -261,7 +260,7 @@ TEST( Memory, SANITY_ImageAllocateByProps )
     ASSERT_EQ( 1, imgDesc.numPlanes );
     ASSERT_EQ( 3840 * 2, imgDesc.stride[0] );
     ASSERT_EQ( 2160, imgDesc.actualHeight[0] );
-    status = ma.Free( imgDesc );
+    status = bufMgr.Free( imgDesc );
     ASSERT_EQ( QC_STATUS_OK, status );
 
 
@@ -276,7 +275,7 @@ TEST( Memory, SANITY_ImageAllocateByProps )
     imgProp.numPlanes = 2;
     imgProp.planeBufSize[0] = 0;
     imgProp.planeBufSize[1] = 0;
-    status = ma.Allocate( imgProp, imgDesc );
+    status = bufMgr.Allocate( imgProp, imgDesc );
     ASSERT_EQ( QC_STATUS_OK, status );
     ASSERT_NE( nullptr, imgDesc.pBuf );
     ASSERT_EQ( 0, imgDesc.offset );
@@ -287,14 +286,14 @@ TEST( Memory, SANITY_ImageAllocateByProps )
     ASSERT_EQ( 2, imgDesc.numPlanes );
     ASSERT_EQ( 1920 * 1, imgDesc.stride[0] );
     ASSERT_EQ( 1024, imgDesc.actualHeight[0] );
-    status = ma.Free( imgDesc );
+    status = bufMgr.Free( imgDesc );
     ASSERT_EQ( QC_STATUS_OK, status );
 }
 
 TEST( Memory, SANITY_ImageAllocateRGBByProps )
 {
     QCStatus_e status;
-    ImageAllocator ma( "IMAGE" );
+    BufferManager bufMgr( { "IMAGE", QC_NODE_TYPE_CUSTOM_0, 0 } );
     ImageDescriptor_t imgDescAll;
     ImageDescriptor_t imgDescMiddle;
     ImageProps_t imgProp;
@@ -309,7 +308,7 @@ TEST( Memory, SANITY_ImageAllocateRGBByProps )
     imgProp.planeBufSize[0] = 0;
 
     // testing allocated a batched RGB image
-    status = ma.Allocate( imgProp, imgDescAll );
+    status = bufMgr.Allocate( imgProp, imgDescAll );
     ASSERT_EQ( QC_STATUS_OK, status );
     ASSERT_NE( nullptr, imgDescAll.pBuf );
     ASSERT_EQ( 0, imgDescAll.offset );
@@ -334,14 +333,14 @@ TEST( Memory, SANITY_ImageAllocateRGBByProps )
     ASSERT_EQ( 1024 * 3, imgDescMiddle.stride[0] );
     ASSERT_EQ( 768, imgDescMiddle.actualHeight[0] );
 
-    status = ma.Free( imgDescAll );
+    status = bufMgr.Free( imgDescAll );
     ASSERT_EQ( QC_STATUS_OK, status );
 }
 
 TEST( Memory, SANITY_CompressedImageAllocateByProps )
 {
     QCStatus_e status;
-    ImageAllocator ma( "IMAGE" );
+    BufferManager bufMgr( { "IMAGE", QC_NODE_TYPE_CUSTOM_0, 0 } );
     ImageDescriptor_t imgDesc;
     ImageProps_t imgProp;
 
@@ -351,7 +350,7 @@ TEST( Memory, SANITY_CompressedImageAllocateByProps )
     imgProp.height = 2160;
     imgProp.numPlanes = 1;
     imgProp.planeBufSize[0] = 1024 * 64;
-    status = ma.Allocate( imgProp, imgDesc );
+    status = bufMgr.Allocate( imgProp, imgDesc );
     ASSERT_EQ( QC_STATUS_OK, status );
     ASSERT_NE( nullptr, imgDesc.pBuf );
     ASSERT_EQ( 0, imgDesc.offset );
@@ -359,17 +358,17 @@ TEST( Memory, SANITY_CompressedImageAllocateByProps )
     ASSERT_EQ( imgDesc.size, imgDesc.validSize );
     ASSERT_EQ( 1024 * 64, imgDesc.validSize );
     ASSERT_EQ( 1, imgDesc.numPlanes );
-    status = ma.Free( imgDesc );
+    status = bufMgr.Free( imgDesc );
     ASSERT_EQ( QC_STATUS_OK, status );
 }
 
 TEST( Memory, SANITY_TensorAllocate )
 {
-    TensorAllocator ta( "TENSOR" );
+    BufferManager bufMgr( { "TENSOR", QC_NODE_TYPE_CUSTOM_0, 0 } );
     TensorDescriptor_t tensorDesc;
     TensorProps_t tensorProp( QC_TENSOR_TYPE_UFIXED_POINT_8, { 1, 128, 128, 10 } );
 
-    auto status = ta.Allocate( tensorProp, tensorDesc );
+    auto status = bufMgr.Allocate( tensorProp, tensorDesc );
     ASSERT_EQ( QC_STATUS_OK, status );
     ASSERT_NE( nullptr, tensorDesc.pBuf );
     ASSERT_EQ( 0, tensorDesc.offset );
@@ -378,7 +377,7 @@ TEST( Memory, SANITY_TensorAllocate )
     ASSERT_EQ( tensorDesc.validSize, tensorDesc.size );
     ASSERT_EQ( 1 * 128 * 128 * 10, tensorDesc.size );
     ASSERT_EQ( 4, tensorDesc.numDims );
-    status = ta.Free( tensorDesc );
+    status = bufMgr.Free( tensorDesc );
     ASSERT_EQ( QC_STATUS_OK, status );
 }
 
@@ -518,14 +517,14 @@ static bool IsTheSameSharedBuffer( BufferDescriptor_t &bufferA, BufferDescriptor
 TEST( Memory, L2_Buffer )
 {
     QCStatus_e status;
-    BinaryAllocator ma( "BINARY" );
+    BufferManager bufMgr( { "BINARY", QC_NODE_TYPE_CUSTOM_0, 0 } );
     for ( int i = (int) QC_MEMORY_ALLOCATOR_DMA; i < (int) QC_MEMORY_ALLOCATOR_LAST; i++ )
     {
 
         QCMemoryAllocator_e allocatorType = (QCMemoryAllocator_e) i;
         QCAllocationCache_e cache = QC_CACHEABLE_NON;
         BufferDescriptor_t bufDesc;
-        status = ma.Allocate(
+        status = bufMgr.Allocate(
                 BufferProps_t( (size_t) 1024 * 1024 * 1024 * 256, allocatorType, cache ), bufDesc );
 #if !defined( __QNXNTO__ )
         if ( QC_STATUS_UNSUPPORTED == status )
@@ -536,11 +535,11 @@ TEST( Memory, L2_Buffer )
 #endif
         ASSERT_EQ( QC_STATUS_NOMEM, status );
 
-        status = ma.Allocate( BufferProps_t( (size_t) 1024 * 1024 * 32, allocatorType, cache ),
-                              bufDesc );
+        status = bufMgr.Allocate( BufferProps_t( (size_t) 1024 * 1024 * 32, allocatorType, cache ),
+                                  bufDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
 
-        status = ma.Free( bufDesc );
+        status = bufMgr.Free( bufDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
     }
 
@@ -551,30 +550,30 @@ TEST( Memory, L2_Buffer )
         BufferDescriptor_t bufDesc;
 #if defined( __QNXNTO__ )
         /* not do this for Linux, see device crashed */
-        status = ma.Allocate(
+        status = bufMgr.Allocate(
                 BufferProps_t( (size_t) 1024 * 1024 * 1024 * 256, allocatorType, cache ), bufDesc );
         ASSERT_EQ( QC_STATUS_NOMEM, status );
 #endif
 
-        status = ma.Allocate( BufferProps_t( (size_t) 1024 * 1024 * 32, allocatorType, cache ),
-                              bufDesc );
+        status = bufMgr.Allocate( BufferProps_t( (size_t) 1024 * 1024 * 32, allocatorType, cache ),
+                                  bufDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
 
         BufferDescriptor_t bufDesc2 = bufDesc;
         ASSERT_EQ( IsTheSameSharedBuffer( bufDesc, bufDesc2 ), true );
 
-        status = ma.Free( bufDesc );
+        status = bufMgr.Free( bufDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
     }
 
     {
         BufferDescriptor_t bufDesc;
-        status = ma.Allocate( BufferProps_t( (size_t) 1024 * 1024 * 64, QC_MEMORY_ALLOCATOR_LAST ),
-                              bufDesc );
+        status = bufMgr.Allocate(
+                BufferProps_t( (size_t) 1024 * 1024 * 64, QC_MEMORY_ALLOCATOR_LAST ), bufDesc );
         ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
 
-        status = ma.Allocate( BufferProps_t( (size_t) 1024 * 1024 * 64, (QCMemoryAllocator_e) -2 ),
-                              bufDesc );
+        status = bufMgr.Allocate(
+                BufferProps_t( (size_t) 1024 * 1024 * 64, (QCMemoryAllocator_e) -2 ), bufDesc );
         ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
     }
 
@@ -627,87 +626,86 @@ static void InitImageProps( ImageProps_t &imgProp )
 
 TEST( Memory, L2_Image )
 {
-    ImageAllocator ima( "IMA" );
-    BasicImageAllocator bma( "BMA" );
+    BufferManager bufMgr( { "IMAGE", QC_NODE_TYPE_CUSTOM_0, 0 } );
     {
         ImageDescriptor_t imgDesc;
         auto status =
-                bma.Allocate( ImageBasicProps( 0, 1920, 2160, QC_IMAGE_FORMAT_UYVY ), imgDesc );
+                bufMgr.Allocate( ImageBasicProps( 0, 1920, 2160, QC_IMAGE_FORMAT_UYVY ), imgDesc );
         ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status ); /* invalid batch size */
 
-        status = bma.Allocate( ImageBasicProps( 1, 0, 2160, QC_IMAGE_FORMAT_UYVY ), imgDesc );
+        status = bufMgr.Allocate( ImageBasicProps( 1, 0, 2160, QC_IMAGE_FORMAT_UYVY ), imgDesc );
         ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status ); /* invalid width */
 
-        status = bma.Allocate( ImageBasicProps( 1, 1920, 0, QC_IMAGE_FORMAT_UYVY ), imgDesc );
+        status = bufMgr.Allocate( ImageBasicProps( 1, 1920, 0, QC_IMAGE_FORMAT_UYVY ), imgDesc );
         ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status ); /* invalid height */
 
-        status = bma.Allocate( ImageBasicProps( 1, 1920, 1024, QC_IMAGE_FORMAT_MAX ), imgDesc );
+        status = bufMgr.Allocate( ImageBasicProps( 1, 1920, 1024, QC_IMAGE_FORMAT_MAX ), imgDesc );
         ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status ); /* invalid format */
 
-        status = bma.Allocate( ImageBasicProps( 1, 1920, 1024, (QCImageFormat_e) -5 ), imgDesc );
+        status = bufMgr.Allocate( ImageBasicProps( 1, 1920, 1024, (QCImageFormat_e) -5 ), imgDesc );
         ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status ); /* invalid format */
 
-        status = bma.Allocate( ImageBasicProps( 1, 4096 * 4, 4096 * 4, QC_IMAGE_FORMAT_UYVY ),
-                               imgDesc );
+        status = bufMgr.Allocate( ImageBasicProps( 1, 4096 * 4, 4096 * 4, QC_IMAGE_FORMAT_UYVY ),
+                                  imgDesc );
         ASSERT_EQ( QC_STATUS_FAIL, status ); /* with large image as not supported by apdf */
 
         ImageProps_t imgProp;
 
         InitImageProps( imgProp );
         imgProp.batchSize = 0;
-        status = ima.Allocate( imgProp, imgDesc );
+        status = bufMgr.Allocate( imgProp, imgDesc );
         ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status ); /* pImgProps with invalid batch size */
 
         InitImageProps( imgProp );
         imgProp.width = 0;
-        status = ima.Allocate( imgProp, imgDesc );
+        status = bufMgr.Allocate( imgProp, imgDesc );
         ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status ); /* pImgProps with invalid width */
 
         InitImageProps( imgProp );
         imgProp.height = 0;
-        status = ima.Allocate( imgProp, imgDesc );
+        status = bufMgr.Allocate( imgProp, imgDesc );
         ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status ); /* pImgProps with invalid height */
 
         InitImageProps( imgProp );
         imgProp.stride[0] = 0;
-        status = ima.Allocate( imgProp, imgDesc );
+        status = bufMgr.Allocate( imgProp, imgDesc );
         ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status ); /* pImgProps with invalid stride */
 
         InitImageProps( imgProp );
         imgProp.actualHeight[0] = 0;
-        status = ima.Allocate( imgProp, imgDesc );
+        status = bufMgr.Allocate( imgProp, imgDesc );
         ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status ); /* pImgProps with invalid actualHeight */
 
         InitImageProps( imgProp );
         imgProp.numPlanes = 0;
-        status = ima.Allocate( imgProp, imgDesc );
+        status = bufMgr.Allocate( imgProp, imgDesc );
         ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status ); /* pImgProps with invalid numPlanes */
 
         InitImageProps( imgProp );
         imgProp.format = QC_IMAGE_FORMAT_MAX;
-        status = ima.Allocate( imgProp, imgDesc );
+        status = bufMgr.Allocate( imgProp, imgDesc );
         ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status ); /* pImgProps with invalid foramt */
 
         InitImageProps( imgProp );
         imgProp.format = (QCImageFormat_e) -5;
-        status = ima.Allocate( imgProp, imgDesc );
+        status = bufMgr.Allocate( imgProp, imgDesc );
         ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status ); /* pImgProps with invalid foramt */
 
         InitImageProps( imgProp );
         imgProp.format = (QCImageFormat_e) ( (int) QC_IMAGE_FORMAT_COMPRESSED_MIN - 1 );
-        status = ima.Allocate( imgProp, imgDesc );
+        status = bufMgr.Allocate( imgProp, imgDesc );
         ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status ); /* pImgProps with invalid foramt */
 
         InitImageProps( imgProp );
         imgProp.format = QC_IMAGE_FORMAT_COMPRESSED_MAX;
-        status = ima.Allocate( imgProp, imgDesc );
+        status = bufMgr.Allocate( imgProp, imgDesc );
         ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status ); /* pImgProps with invalid foramt */
 
         InitImageProps( imgProp );
         imgProp.format = QC_IMAGE_FORMAT_COMPRESSED_H265;
         imgProp.numPlanes = 1;
         imgProp.planeBufSize[0] = 0;
-        status = ima.Allocate( imgProp, imgDesc );
+        status = bufMgr.Allocate( imgProp, imgDesc );
         ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status ); /* pImgProps with invalid size */
     }
 
@@ -739,10 +737,10 @@ TEST( Memory, L2_Image )
         imgProp.planeBufSize[0] = 0;
         imgProp.planeBufSize[1] = 0;
 
-        auto status = ima.Allocate( imgProp, imgDesc );
+        auto status = bufMgr.Allocate( imgProp, imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
 
-        status = ima.Free( imgDesc );
+        status = bufMgr.Free( imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
     }
 
@@ -751,10 +749,10 @@ TEST( Memory, L2_Image )
         ImageDescriptor_t imgDesc;
         QCImageFormat_e format = (QCImageFormat_e) i;
 
-        auto status = bma.Allocate( ImageBasicProps( 1, 1920, 2160, format ), imgDesc );
+        auto status = bufMgr.Allocate( ImageBasicProps( 1, 1920, 2160, format ), imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
 
-        status = bma.Free( imgDesc );
+        status = bufMgr.Free( imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
     }
 
@@ -769,7 +767,7 @@ TEST( Memory, L2_Image )
         status = imgDesc.ImageToTensor( imgDescTs );
         ASSERT_EQ( QC_STATUS_INVALID_BUF, status );
 
-        status = bma.Allocate( ImageBasicProps( 3840, 2160, QC_IMAGE_FORMAT_UYVY ), imgDesc );
+        status = bufMgr.Allocate( ImageBasicProps( 3840, 2160, QC_IMAGE_FORMAT_UYVY ), imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
 
         ImageDescriptor_t imgDesc2 = imgDesc;
@@ -781,7 +779,7 @@ TEST( Memory, L2_Image )
         status = imgDesc.GetImageDesc( imgDesc3, 0, 3 );
         ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
 
-        status = bma.Free( imgDesc );
+        status = bufMgr.Free( imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
     }
 
@@ -797,13 +795,13 @@ TEST( Memory, L2_Image )
         imgProp.stride[0] = 1024 * 3;
         imgProp.actualHeight[0] = 768;
         imgProp.numPlanes = 1;
-        auto status = ima.Allocate( imgProp, imgDesc );
+        auto status = bufMgr.Allocate( imgProp, imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
 
         status = imgDesc.ImageToTensor( imgDescTs );
         ASSERT_EQ( QC_STATUS_UNSUPPORTED, status );
 
-        status = ima.Free( imgDesc );
+        status = bufMgr.Free( imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
     }
 
@@ -819,26 +817,27 @@ TEST( Memory, L2_Image )
         imgProp.stride[0] = 1024 * 3;
         imgProp.actualHeight[0] = 768;
         imgProp.numPlanes = 1;
-        auto status = ima.Allocate( imgProp, imgDesc );
+        auto status = bufMgr.Allocate( imgProp, imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
 
         status = imgDesc.ImageToTensor( imgDescTs );
         ASSERT_EQ( QC_STATUS_UNSUPPORTED, status );
 
-        status = ima.Free( imgDesc );
+        status = bufMgr.Free( imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
     }
 
     {
         ImageDescriptor_t imgDesc;
-        auto status = bma.Allocate( ImageBasicProps( 1920, 2160, QC_IMAGE_FORMAT_UYVY ), imgDesc );
+        auto status =
+                bufMgr.Allocate( ImageBasicProps( 1920, 2160, QC_IMAGE_FORMAT_UYVY ), imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
         pid_t pid = imgDesc.pid;
         imgDesc.pid = static_cast<pid_t>( pid + 100 );
-        status = ima.Free( imgDesc );
+        status = bufMgr.Free( imgDesc );
         ASSERT_EQ( QC_STATUS_OUT_OF_BOUND, status );
         imgDesc.pid = pid;
-        status = bma.Free( imgDesc );
+        status = bufMgr.Free( imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
     }
 }
@@ -846,7 +845,7 @@ TEST( Memory, L2_Image )
 TEST( Memory, L2_Tensor )
 {
     QCStatus_e status;
-    TensorAllocator tsa( "TSA" );
+    BufferManager bufMgr( { "bufMgr", QC_NODE_TYPE_CUSTOM_0, 0 } );
     for ( uint32_t i = 0; i < (uint32_t) QC_TENSOR_TYPE_MAX; i++ )
     {
         TensorDescriptor_t tsDesc;
@@ -854,14 +853,14 @@ TEST( Memory, L2_Tensor )
                                   { i + 1, 1024 * ( i + 1 ) / QC_TENSOR_TYPE_MAX,
                                     1024 * ( QC_TENSOR_TYPE_MAX - i ) / QC_TENSOR_TYPE_MAX, 10 } );
 
-        status = tsa.Allocate( tensorProp, tsDesc );
+        status = bufMgr.Allocate( tensorProp, tsDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
         ASSERT_EQ( QC_BUFFER_TYPE_TENSOR, tsDesc.type );
 
         TensorDescriptor_t tsDesc2 = tsDesc;
         ASSERT_EQ( IsTheSameSharedBuffer( tsDesc, tsDesc2 ), true );
 
-        status = tsa.Free( tsDesc );
+        status = bufMgr.Free( tsDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
     }
 
@@ -870,25 +869,25 @@ TEST( Memory, L2_Tensor )
         TensorProps_t tensorProp( QC_TENSOR_TYPE_UFIXED_POINT_8, { 1, 1024, 768, 3 } );
         tensorProp.numDims = QC_NUM_TENSOR_DIMS + 3;
 
-        status = tsa.Allocate( tensorProp, tsDesc );
+        status = bufMgr.Allocate( tensorProp, tsDesc );
         ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
 
         tensorProp.numDims = 4;
         tensorProp.dims[2] = 0;
 
-        status = tsa.Allocate( tensorProp, tsDesc );
+        status = bufMgr.Allocate( tensorProp, tsDesc );
         ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
 
         tensorProp.numDims = 4;
         tensorProp.dims[2] = 768;
         tensorProp.tensorType = QC_TENSOR_TYPE_MAX;
 
-        status = tsa.Allocate( tensorProp, tsDesc );
+        status = bufMgr.Allocate( tensorProp, tsDesc );
         ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
 
         tensorProp.tensorType = (QCTensorType_e) -3;
 
-        status = tsa.Allocate( tensorProp, tsDesc );
+        status = bufMgr.Allocate( tensorProp, tsDesc );
         ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
     }
 }
@@ -896,8 +895,7 @@ TEST( Memory, L2_Tensor )
 TEST( Memory, L2_Image2Tensor )
 {
     QCStatus_e status;
-    ImageAllocator ima( "IMA" );
-    BasicImageAllocator bma( "BMA" );
+    BufferManager bufMgr( { "IMAGE", QC_NODE_TYPE_CUSTOM_0, 0 } );
     {
         ImageDescriptor_t imgDesc;
         TensorDescriptor_t tensor;
@@ -910,19 +908,19 @@ TEST( Memory, L2_Image2Tensor )
         imgProp.actualHeight[0] = 1028;
         imgProp.numPlanes = 1;
         imgProp.planeBufSize[0] = 0;
-        status = ima.Allocate( imgProp, imgDesc );
+        status = bufMgr.Allocate( imgProp, imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
         status = imgDesc.ImageToTensor( tensor );
         ASSERT_EQ( QC_STATUS_UNSUPPORTED, status );
-        status = ima.Free( imgDesc );
+        status = bufMgr.Free( imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
 
         imgProp.actualHeight[0] = 1024;
-        status = ima.Allocate( imgProp, imgDesc );
+        status = bufMgr.Allocate( imgProp, imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
         status = imgDesc.ImageToTensor( tensor );
         ASSERT_EQ( QC_STATUS_OK, status );
-        status = ima.Free( imgDesc );
+        status = bufMgr.Free( imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
     }
 
@@ -935,7 +933,7 @@ TEST( Memory, L2_Image2Tensor )
         status = imgDesc.ImageToTensor( luma, chroma );
         ASSERT_EQ( QC_STATUS_INVALID_BUF, status );
 
-        status = bma.Allocate( ImageBasicProps_t( 1920, 1024, QC_IMAGE_FORMAT_NV12 ), imgDesc );
+        status = bufMgr.Allocate( ImageBasicProps_t( 1920, 1024, QC_IMAGE_FORMAT_NV12 ), imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
 
         status = imgDesc.ImageToTensor( luma, chroma );
@@ -945,14 +943,14 @@ TEST( Memory, L2_Image2Tensor )
         ASSERT_EQ( luma.validSize, 1920 * 1024 );
         ASSERT_EQ( chroma.validSize, 1920 * 1024 / 2 );
 
-        status = bma.Free( imgDesc );
+        status = bufMgr.Free( imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
 
-        status = bma.Allocate( ImageBasicProps_t( 1921, 1024, QC_IMAGE_FORMAT_NV12 ), imgDesc );
+        status = bufMgr.Allocate( ImageBasicProps_t( 1921, 1024, QC_IMAGE_FORMAT_NV12 ), imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
         status = imgDesc.ImageToTensor( luma, chroma );
         ASSERT_EQ( QC_STATUS_UNSUPPORTED, status );
-        status = bma.Free( imgDesc );
+        status = bufMgr.Free( imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
 
 
@@ -968,32 +966,34 @@ TEST( Memory, L2_Image2Tensor )
         imgProp.numPlanes = 2;
         imgProp.planeBufSize[0] = 0;
         imgProp.planeBufSize[1] = 0;
-        status = ima.Allocate( imgProp, imgDesc );
+        status = bufMgr.Allocate( imgProp, imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
         status = imgDesc.ImageToTensor( luma, chroma );
         ASSERT_EQ( QC_STATUS_UNSUPPORTED, status );
-        status = ima.Free( imgDesc );
+        status = bufMgr.Free( imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
 
-        status = bma.Allocate( ImageBasicProps_t( 1920, 1025, QC_IMAGE_FORMAT_NV12 ), imgDesc );
+        status = bufMgr.Allocate( ImageBasicProps_t( 1920, 1025, QC_IMAGE_FORMAT_NV12 ), imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
         status = imgDesc.ImageToTensor( luma, chroma );
         ASSERT_EQ( QC_STATUS_UNSUPPORTED, status );
-        status = bma.Free( imgDesc );
+        status = bufMgr.Free( imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
 
-        status = bma.Allocate( ImageBasicProps_t( 2, 1920, 1024, QC_IMAGE_FORMAT_NV12 ), imgDesc );
+        status = bufMgr.Allocate( ImageBasicProps_t( 2, 1920, 1024, QC_IMAGE_FORMAT_NV12 ),
+                                  imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
         status = imgDesc.ImageToTensor( luma, chroma );
         ASSERT_EQ( QC_STATUS_UNSUPPORTED, status );
-        status = bma.Free( imgDesc );
+        status = bufMgr.Free( imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
 
-        status = bma.Allocate( ImageBasicProps_t( 1920, 1024, QC_IMAGE_FORMAT_RGB888 ), imgDesc );
+        status =
+                bufMgr.Allocate( ImageBasicProps_t( 1920, 1024, QC_IMAGE_FORMAT_RGB888 ), imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
         status = imgDesc.ImageToTensor( luma, chroma );
         ASSERT_EQ( QC_STATUS_UNSUPPORTED, status );
-        status = bma.Free( imgDesc );
+        status = bufMgr.Free( imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
     }
 
@@ -1005,7 +1005,7 @@ TEST( Memory, L2_Image2Tensor )
         status = imgDesc.ImageToTensor( luma, chroma );
         ASSERT_EQ( QC_STATUS_INVALID_BUF, status );
 
-        status = bma.Allocate( ImageBasicProps_t( 1920, 1024, QC_IMAGE_FORMAT_P010 ), imgDesc );
+        status = bufMgr.Allocate( ImageBasicProps_t( 1920, 1024, QC_IMAGE_FORMAT_P010 ), imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
 
         status = imgDesc.ImageToTensor( luma, chroma );
@@ -1015,14 +1015,14 @@ TEST( Memory, L2_Image2Tensor )
         ASSERT_EQ( luma.validSize, 1920 * 1024 * 2 );
         ASSERT_EQ( chroma.validSize, 1920 * 1024 );
 
-        status = bma.Free( imgDesc );
+        status = bufMgr.Free( imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
 
-        status = bma.Allocate( ImageBasicProps_t( 1921, 1024, QC_IMAGE_FORMAT_P010 ), imgDesc );
+        status = bufMgr.Allocate( ImageBasicProps_t( 1921, 1024, QC_IMAGE_FORMAT_P010 ), imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
         status = imgDesc.ImageToTensor( luma, chroma );
         ASSERT_EQ( QC_STATUS_UNSUPPORTED, status );
-        status = bma.Free( imgDesc );
+        status = bufMgr.Free( imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
 
         ImageProps_t imgProp;
@@ -1038,25 +1038,26 @@ TEST( Memory, L2_Image2Tensor )
         imgProp.planeBufSize[0] = 0;
         imgProp.planeBufSize[1] = 0;
 
-        status = ima.Allocate( imgProp, imgDesc );
+        status = bufMgr.Allocate( imgProp, imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
         status = imgDesc.ImageToTensor( luma, chroma );
         ASSERT_EQ( QC_STATUS_UNSUPPORTED, status );
-        status = ima.Free( imgDesc );
+        status = bufMgr.Free( imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
 
-        status = bma.Allocate( ImageBasicProps_t( 1920, 1025, QC_IMAGE_FORMAT_P010 ), imgDesc );
+        status = bufMgr.Allocate( ImageBasicProps_t( 1920, 1025, QC_IMAGE_FORMAT_P010 ), imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
         status = imgDesc.ImageToTensor( luma, chroma );
         ASSERT_EQ( QC_STATUS_UNSUPPORTED, status );
-        status = bma.Free( imgDesc );
+        status = bufMgr.Free( imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
 
-        status = bma.Allocate( ImageBasicProps_t( 2, 1920, 1024, QC_IMAGE_FORMAT_P010 ), imgDesc );
+        status = bufMgr.Allocate( ImageBasicProps_t( 2, 1920, 1024, QC_IMAGE_FORMAT_P010 ),
+                                  imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
         status = imgDesc.ImageToTensor( luma, chroma );
         ASSERT_EQ( QC_STATUS_UNSUPPORTED, status );
-        status = bma.Free( imgDesc );
+        status = bufMgr.Free( imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
     }
 }

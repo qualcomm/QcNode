@@ -1,7 +1,7 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
-#include "QC/Infras/Memory/BufferManager.hpp"
+#include "QC/Infras/Log/Logger.hpp"
 #include "QC/Infras/Memory/SharedBuffer.hpp"
 #include "gtest/gtest.h"
 #include <algorithm>
@@ -569,7 +569,7 @@ TEST_F( Buffer, L2_Image )
         ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret ); /* pImgProps with invalid foramt */
 
         InitImageProps( imgProp );
-        imgProp.format = ( QCImageFormat_e )( (int) QC_IMAGE_FORMAT_COMPRESSED_MIN - 1 );
+        imgProp.format = (QCImageFormat_e) ( (int) QC_IMAGE_FORMAT_COMPRESSED_MIN - 1 );
         ret = sharedBuffer.Allocate( &imgProp );
         ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret ); /* pImgProps with invalid foramt */
 
@@ -797,60 +797,6 @@ TEST_F( Buffer, L2_Tensor )
 
         ret = sharedBuffer.Allocate( &tensorProp );
         ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
-    }
-}
-
-TEST_F( Buffer, L2_BufferManager )
-{
-    BufferManager *pBufferManager = BufferManager::GetDefaultBufferManager();
-    ASSERT_NE( nullptr, pBufferManager );
-
-    {
-        QCSharedBuffer_t sharedBuffer;
-        auto ret = sharedBuffer.Allocate( 1920, 1024, QC_IMAGE_FORMAT_UYVY );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-
-        QCSharedBuffer_t sharedBuffer2;
-
-        ret = pBufferManager->GetSharedBuffer( sharedBuffer.buffer.id, nullptr );
-        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
-
-        ret = pBufferManager->GetSharedBuffer( sharedBuffer.buffer.id, &sharedBuffer2 );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        ASSERT_EQ( IsTheSameSharedBuffer( sharedBuffer, sharedBuffer2 ), true );
-
-        ret = sharedBuffer.Free();
-        ASSERT_EQ( QC_STATUS_OK, ret );
-
-        ret = pBufferManager->GetSharedBuffer( sharedBuffer.buffer.id, &sharedBuffer2 );
-        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
-
-        ret = pBufferManager->GetSharedBuffer( 0xdeadbeef, &sharedBuffer2 );
-        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
-    }
-
-    {
-        QCSharedBuffer_t sharedBuffer;
-        QCTensorProps_t tensorProp = { QC_TENSOR_TYPE_UFIXED_POINT_8, { 1, 512, 512, 10 }, 4 };
-
-        auto ret = sharedBuffer.Allocate( &tensorProp );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-
-        ret = pBufferManager->Deregister( sharedBuffer.buffer.id );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-
-        ret = sharedBuffer.Free();
-        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
-
-        ret = pBufferManager->Register( nullptr );
-        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
-    }
-
-    {
-        BufferManager bufMgr;
-
-        auto ret = bufMgr.Init( nullptr, LOGGER_LEVEL_ERROR );
-        ASSERT_EQ( QC_STATUS_OK, ret );
     }
 }
 

@@ -67,6 +67,13 @@ QCStatus_e QnnConfig::VerifyStaticConfig( DataTree &dt, std::string &errors )
         status = QC_STATUS_BAD_ARGUMENTS;
     }
 
+    std::string type = dt.Get<std::string>( "type", "QNN" );
+    if ( "QNN" != type )
+    {
+        errors += "the type is not QNN, ";
+        status = QC_STATUS_BAD_ARGUMENTS;
+    }
+
     uint32_t id = dt.Get<uint32_t>( "id", UINT32_MAX );
     if ( UINT32_MAX == id )
     {
@@ -215,6 +222,7 @@ QCStatus_e QnnConfig::ParseStaticConfig( DataTree &dt, std::string &errors )
     {
         config.nodeId.name = dt.Get<std::string>( "name", "" );
         config.nodeId.id = dt.Get<uint32_t>( "id", UINT32_MAX );
+        config.nodeId.type = QC_NODE_TYPE_QNN;
         std::string processorType = dt.Get<std::string>( "processorType", "htp0" );
         if ( "htp0" == processorType )
         {

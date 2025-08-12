@@ -105,7 +105,7 @@ QCStatus_e SampleOpticalFlow::Init( std::string name, SampleConfig_t &config )
                                         { 1, ALIGN_S( height, 8 ), ALIGN_S( width * 2, 128 ), 1 },
                                         4 };
 
-        ret = m_mvPool.Init( name + ".mv", LOGGER_LEVEL_INFO, m_poolSize, mvMapTsProp,
+        ret = m_mvPool.Init( name + ".mv", m_nodeId, LOGGER_LEVEL_INFO, m_poolSize, mvMapTsProp,
                              QC_MEMORY_ALLOCATOR_DMA_EVA );
     }
 
@@ -115,8 +115,8 @@ QCStatus_e SampleOpticalFlow::Init( std::string name, SampleConfig_t &config )
                                          { 1, ALIGN_S( height, 8 ), ALIGN_S( width, 128 ), 1 },
                                          4 };
 
-        ret = m_mvConfPool.Init( name + ".mvConf", LOGGER_LEVEL_INFO, m_poolSize, mvConfTsProp,
-                                 QC_MEMORY_ALLOCATOR_DMA_EVA );
+        ret = m_mvConfPool.Init( name + ".mvConf", m_nodeId, LOGGER_LEVEL_INFO, m_poolSize,
+                                 mvConfTsProp, QC_MEMORY_ALLOCATOR_DMA_EVA );
     }
 
     if ( QC_STATUS_OK == ret )

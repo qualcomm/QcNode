@@ -90,7 +90,7 @@ QCStatus_e SampleVideoDemuxer::Init( std::string name, SampleConfig_t &config )
         imgProps.numPlanes = 1;
         imgProps.planeBufSize[0] = m_videoInfo.maxFrameSize;
         imgProps.format = m_videoInfo.format;
-        ret = m_framePool.Init( name, LOGGER_LEVEL_INFO, m_poolSize, imgProps,
+        ret = m_framePool.Init( name, m_nodeId, LOGGER_LEVEL_INFO, m_poolSize, imgProps,
             QC_MEMORY_ALLOCATOR_DMA );
     }
 

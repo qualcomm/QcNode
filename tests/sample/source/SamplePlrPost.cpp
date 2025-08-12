@@ -102,7 +102,7 @@ QCStatus_e SamplePlrPost::Init( std::string name, SampleConfig_t &config )
                 2,
         };
 
-        ret = m_objsPool.Init( name, LOGGER_LEVEL_INFO, m_poolSize, detTsProp,
+        ret = m_objsPool.Init( name, m_nodeId, LOGGER_LEVEL_INFO, m_poolSize, detTsProp,
                                QC_MEMORY_ALLOCATOR_DMA_HTP );
     }
 

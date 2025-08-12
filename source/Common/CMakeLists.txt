@@ -5,7 +5,6 @@ set( COMMON_HEADERS ${HEADERS_DIR}/QC/Common/Types.hpp )
 
 set( COMMON_SOURCES
     Buffer.cpp
-    BufferManager.cpp
     Image.cpp
     Tensor.cpp
     Logger.cpp
@@ -32,8 +31,7 @@ target_include_directories( QCNodeCommon PUBLIC ${HEADERS_DIR} )
 target_link_libraries( QCNodeCommon PUBLIC ${TARGET_LIBRARIES} )
 
 install( FILES ${COMMON_HEADERS} DESTINATION include/QC/Common )
-install( FILES ${PROJECT_SOURCE_DIR}/include/QC/Infras/Memory/BufferManager.hpp
-               ${PROJECT_SOURCE_DIR}/include/QC/Infras/Memory/SharedBuffer.hpp
+install( FILES ${PROJECT_SOURCE_DIR}/include/QC/Infras/Memory/SharedBuffer.hpp
                DESTINATION include/QC/Infras/Memory )
 install( FILES ${PROJECT_SOURCE_DIR}/include/QC/Infras/Log/Logger.hpp DESTINATION include/QC/Infras/Log )
 

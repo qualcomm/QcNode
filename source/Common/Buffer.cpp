@@ -1,9 +1,8 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
-
+#include "QC/Infras/Log/Logger.hpp"
 #include "QC/Infras/Memory/BufferDescriptor.hpp"
-#include "QC/Infras/Memory/BufferManager.hpp"
 #include "QC/Infras/Memory/ImageDescriptor.hpp"
 #include "QC/Infras/Memory/SharedBuffer.hpp"
 #include "QC/Infras/Memory/TensorDescriptor.hpp"
@@ -131,14 +130,7 @@ QCStatus_e QCSharedBuffer::Allocate( size_t size, QCBufferUsage_e usage, QCBuffe
     QCStatus_e ret = QC_STATUS_OK;
     void *pData = nullptr;
     uint64_t dmaHandle = 0;
-    BufferManager *pBufferManager = BufferManager::GetDefaultBufferManager();
-
-    if ( nullptr == pBufferManager )
-    {
-        QC_LOG_ERROR( "Failed to get buffer manager" );
-        ret = QC_STATUS_BAD_STATE;
-    }
-    else if ( nullptr != this->buffer.pData )
+    if ( nullptr != this->buffer.pData )
     {
         QC_LOG_ERROR( "buffer is already allocated" );
         ret = QC_STATUS_ALREADY;
@@ -158,11 +150,6 @@ QCStatus_e QCSharedBuffer::Allocate( size_t size, QCBufferUsage_e usage, QCBuffe
             this->size = size;
         }
 
-        if ( QC_STATUS_OK == ret )
-        {
-            ret = pBufferManager->Register( this );
-        }
-
         if ( QC_STATUS_OK != ret )
         {
             if ( nullptr != pData )
@@ -179,14 +166,9 @@ QCStatus_e QCSharedBuffer::Allocate( size_t size, QCBufferUsage_e usage, QCBuffe
 QCStatus_e QCSharedBuffer::Free()
 {
     QCStatus_e ret = QC_STATUS_OK;
-    BufferManager *pBufferManager = BufferManager::GetDefaultBufferManager();
     pid_t pid = getpid();
 
-    if ( nullptr == pBufferManager )
-    {
-        ret = QC_STATUS_BAD_STATE;
-    }
-    else if ( nullptr == this->buffer.pData )
+    if ( nullptr == this->buffer.pData )
     {
         QC_LOG_ERROR( "buffer not allocated" );
         ret = QC_STATUS_INVALID_BUF;
@@ -199,11 +181,6 @@ QCStatus_e QCSharedBuffer::Free()
     else
     {
         /* OK */
-    }
-
-    if ( QC_STATUS_OK == ret )
-    {
-        ret = pBufferManager->Deregister( this->buffer.id );
     }
 
     if ( QC_STATUS_OK == ret )
@@ -224,14 +201,9 @@ QCStatus_e QCSharedBuffer::Import( const QCSharedBuffer *pSharedBuffer )
     QCStatus_e ret = QC_STATUS_OK;
     void *pData = nullptr;
     uint64_t dmaHandle = 0;
-    BufferManager *pBufferManager = BufferManager::GetDefaultBufferManager();
     pid_t pid = getpid();
 
-    if ( nullptr == pBufferManager )
-    {
-        ret = QC_STATUS_BAD_STATE;
-    }
-    else if ( nullptr == pSharedBuffer )
+    if ( nullptr == pSharedBuffer )
     {
         QC_LOG_ERROR( "pSharedBuffer is nullptr" );
         ret = QC_STATUS_BAD_ARGUMENTS;
@@ -263,11 +235,6 @@ QCStatus_e QCSharedBuffer::Import( const QCSharedBuffer *pSharedBuffer )
             this->buffer.dmaHandle = dmaHandle;
         }
 
-        if ( QC_STATUS_OK == ret )
-        {
-            ret = pBufferManager->Register( this );
-        }
-
         if ( QC_STATUS_OK != ret )
         {
             if ( nullptr != pData )
@@ -285,14 +252,9 @@ QCStatus_e QCSharedBuffer::Import( const QCSharedBuffer *pSharedBuffer )
 QCStatus_e QCSharedBuffer::UnImport()
 {
     QCStatus_e ret = QC_STATUS_OK;
-    BufferManager *pBufferManager = BufferManager::GetDefaultBufferManager();
     pid_t pid = getpid();
 
-    if ( nullptr == pBufferManager )
-    {
-        ret = QC_STATUS_BAD_STATE;
-    }
-    else if ( nullptr == this->buffer.pData )
+    if ( nullptr == this->buffer.pData )
     {
         QC_LOG_ERROR( "buffer not mapped" );
         ret = QC_STATUS_INVALID_BUF;
@@ -305,11 +267,6 @@ QCStatus_e QCSharedBuffer::UnImport()
     else
     {
         /* OK */
-    }
-
-    if ( QC_STATUS_OK == ret )
-    {
-        ret = pBufferManager->Deregister( this->buffer.id );
     }
 
     if ( QC_STATUS_OK == ret )

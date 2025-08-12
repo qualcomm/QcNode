@@ -729,6 +729,7 @@ QCStatus_e ManagerLocal::ReclaimResources( const QCMemoryHandle_t &handle )
                         QC_ERROR( "allocatorPtr->Free(QCBufferDescriptorBase_t) returned error %d",
                                   localStatus );
                         status = localStatus;
+                        break;
                     }
                     else
                     {

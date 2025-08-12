@@ -1,9 +1,7 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
-
-
-#include "QC/Infras/Memory/BufferManager.hpp"
+#include "QC/Infras/Log/Logger.hpp"
 #include "QC/Infras/Memory/SharedBuffer.hpp"
 
 #include <fcntl.h>

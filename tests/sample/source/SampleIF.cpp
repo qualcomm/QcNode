@@ -16,7 +16,16 @@ std::map<std::string, Sample_CreateFunction_t> SampleIF::s_SampleMap;
 std::mutex SampleIF::s_locks[QC_PROCESSOR_MAX];
 
 std::mutex SampleIF::s_bufMapLock;
-std::map<std::string, std::vector<QCSharedBuffer_t>> SampleIF::s_bufferMaps;
+std::map<std::string, std::vector<std::reference_wrapper<QCBufferDescriptorBase_t>>>
+        SampleIF::s_bufferMaps;
+
+std::atomic<uint32_t> SampleIF::s_nodeId( 0 );
+
+
+SampleIF::SampleIF()
+{
+    m_nodeId.id = s_nodeId.fetch_add( 1, std::memory_order_relaxed );
+}
 
 SampleIF *SampleIF::Create( std::string name )
 {
@@ -47,11 +56,13 @@ void SampleIF::RegisterSample( std::string name, Sample_CreateFunction_t createF
     }
 }
 
-QCStatus_e SampleIF::Init( std::string name )
+QCStatus_e SampleIF::Init( std::string name, QCNodeType_e type )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
     m_name = name;
+    m_nodeId.name = name;
+    m_nodeId.type = type;
     ret = QC_LOGGER_INIT( name.c_str(), LOGGER_LEVEL_INFO );
 
     m_profiler.Init( name );
@@ -190,7 +201,7 @@ QCStatus_e SampleIF::Unlock()
     return ret;
 }
 
-const char *SampleIF::GetName()
+const char *SampleIF::GetName() const
 {
     return m_name.c_str();
 }
@@ -607,14 +618,15 @@ bool SampleIF::Get( SampleConfig_t &config, std::string key, bool defaultV )
     return ret;
 }
 
-QCStatus_e SampleIF::RegisterBuffers( std::string name, const QCSharedBuffer_t *pBuffers,
-                                      uint32_t numBuffers )
+QCStatus_e
+SampleIF::RegisterBuffers( std::string name,
+                           std::vector<std::reference_wrapper<QCBufferDescriptorBase_t>> buffers )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
-    if ( ( nullptr == pBuffers ) || ( 0 >= numBuffers ) )
+    if ( 0 == buffers.size() )
     {
-        QC_LOG_ERROR( "invalid parameter pBuffers: %p, numBuffers: %u", pBuffers, numBuffers );
+        QC_LOG_ERROR( "invalid parameter buffers: numBuffers: %" PRIu64, buffers.size() );
         ret = QC_STATUS_FAIL;
     }
     else
@@ -623,9 +635,6 @@ QCStatus_e SampleIF::RegisterBuffers( std::string name, const QCSharedBuffer_t *
         auto it = s_bufferMaps.find( name );
         if ( it == s_bufferMaps.end() )
         {
-            std::vector<QCSharedBuffer_t> buffers;
-            buffers.resize( numBuffers );
-            memcpy( buffers.data(), pBuffers, numBuffers * sizeof( QCSharedBuffer_t ) );
             s_bufferMaps[name] = buffers;
             QC_LOG_INFO( "regsiter buffers %s", name.c_str() );
         }
@@ -639,37 +648,23 @@ QCStatus_e SampleIF::RegisterBuffers( std::string name, const QCSharedBuffer_t *
     return ret;
 }
 
-QCStatus_e SampleIF::GetBuffers( std::string name, QCSharedBuffer_t *pBuffers, uint32_t numBuffers )
+QCStatus_e
+SampleIF::GetBuffers( std::string name,
+                      std::vector<std::reference_wrapper<QCBufferDescriptorBase_t>> &buffers )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
-    if ( ( nullptr == pBuffers ) || ( 0 >= numBuffers ) )
+
+    std::lock_guard<std::mutex> guard( s_bufMapLock );
+    auto it = s_bufferMaps.find( name );
+    if ( it != s_bufferMaps.end() )
     {
-        QC_LOG_ERROR( "invalid parameter pBuffers: %p, numBuffers: %u", pBuffers, numBuffers );
-        ret = QC_STATUS_FAIL;
+        buffers = it->second;
     }
     else
     {
-        std::lock_guard<std::mutex> guard( s_bufMapLock );
-        auto it = s_bufferMaps.find( name );
-        if ( it != s_bufferMaps.end() )
-        {
-            std::vector<QCSharedBuffer_t> &buffers = it->second;
-            if ( buffers.size() == (size_t) numBuffers )
-            {
-                memcpy( pBuffers, buffers.data(), numBuffers * sizeof( QCSharedBuffer_t ) );
-            }
-            else
-            {
-                QC_LOG_ERROR( "buffers %s number is %" PRIu64, name.c_str(), buffers.size() );
-                ret = QC_STATUS_FAIL;
-            }
-        }
-        else
-        {
-            QC_LOG_ERROR( "buffers %s not found in map", name.c_str() );
-            ret = QC_STATUS_FAIL;
-        }
+        QC_LOG_ERROR( "buffers %s not found in map", name.c_str() );
+        ret = QC_STATUS_FAIL;
     }
 
     return ret;

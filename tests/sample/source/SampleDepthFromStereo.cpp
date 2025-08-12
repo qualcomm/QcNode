@@ -85,7 +85,7 @@ QCStatus_e SampleDepthFromStereo::Init( std::string name, SampleConfig_t &config
                                        { 1, ALIGN_S( height, 2 ), ALIGN_S( width, 128 ), 1 },
                                        4 };
 
-        ret = m_dispPool.Init( name + ".disp", LOGGER_LEVEL_INFO, m_poolSize, dispTsProp,
+        ret = m_dispPool.Init( name + ".disp", m_nodeId, LOGGER_LEVEL_INFO, m_poolSize, dispTsProp,
                                QC_MEMORY_ALLOCATOR_DMA_EVA, m_bufferCache );
     }
 
@@ -95,7 +95,7 @@ QCStatus_e SampleDepthFromStereo::Init( std::string name, SampleConfig_t &config
                                        { 1, ALIGN_S( height, 2 ), ALIGN_S( width, 128 ), 1 },
                                        4 };
 
-        ret = m_confPool.Init( name + ".conf", LOGGER_LEVEL_INFO, m_poolSize, confTsProp,
+        ret = m_confPool.Init( name + ".conf", m_nodeId, LOGGER_LEVEL_INFO, m_poolSize, confTsProp,
                                QC_MEMORY_ALLOCATOR_DMA_EVA, m_bufferCache );
     }
 

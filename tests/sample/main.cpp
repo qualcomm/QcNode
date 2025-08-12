@@ -239,5 +239,12 @@ int main( int argc, char *argv[] )
             printf( "Deinit %s OK\n", sample->GetName() );
         }
     }
+
+    for ( int i = (int) samples.size() - 1; i >= 0; i-- )
+    {
+        auto sample = samples[i];
+        delete sample;
+    }
+
     return 0;
 }

@@ -1,4 +1,5 @@
 
+add_subdirectory(BufferManager)
 add_subdirectory(SharedRing)
 add_subdirectory(TinyViz)
 

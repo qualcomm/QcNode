@@ -1,13 +1,6 @@
 
 set( HEADERS_DIR ${PROJECT_SOURCE_DIR}/include )
 
-set( MEMORY_UTILS_HEADERS
-        ${HEADERS_DIR}/QC/Infras/Memory/Utils/BinaryAllocator.hpp
-        ${HEADERS_DIR}/QC/Infras/Memory/Utils/TensorAllocator.hpp
-        ${HEADERS_DIR}/QC/Infras/Memory/Utils/BasicImageAllocator.hpp
-        ${HEADERS_DIR}/QC/Infras/Memory/Utils/ImageAllocator.hpp
-)
-
 set( MEMORY_HEADERS
         ${HEADERS_DIR}/QC/Infras/Memory/BufferDescriptor.hpp
         ${HEADERS_DIR}/QC/Infras/Memory/ImageDescriptor.hpp
@@ -24,9 +17,6 @@ set( MEMORY_HEADERS
 )
 
 set( MEMORY_SOURCES
-    Utils/BinaryAllocator.cpp
-    Utils/ImageAllocator.cpp
-    Utils/TensorAllocator.cpp
     BufferDescriptor.cpp
     ImageDescriptor.cpp
     TensorDescriptor.cpp
@@ -70,5 +60,4 @@ target_include_directories( QCNodeMemory PUBLIC ${HEADERS_DIR} )
 
 target_link_libraries( QCNodeMemory PUBLIC ${TARGET_LIBRARIES} )
 
-install( FILES ${MEMORY_UTILS_HEADERS} DESTINATION include/QC/Infras/Memory/Utils )
 install( FILES ${MEMORY_HEADERS} DESTINATION include/QC/Infras/Memory )
