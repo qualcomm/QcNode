@@ -51,7 +51,7 @@ if( NOT TARGET QCNode )
   endif()
 endif()
 
-set( TARGET_LIBRARIES QCNode SharedRing )
+set( TARGET_LIBRARIES QCNode SharedRing BufferManager )
 
 if( NOT TARGET TinyViz )
   message(STATUS "build sample without TinyViz")

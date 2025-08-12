@@ -195,16 +195,17 @@ QCStatus_e SampleDataOnline::ReceiveData( Meta &meta )
                 if ( QC_BUFFER_TYPE_IMAGE == dataMeta.dataType )
                 {
                     DataImageMeta *pImageMeta = (DataImageMeta *) &dataMeta;
-                    ret = m_bufferPools[i].Init( m_name + std::to_string( i ), LOGGER_LEVEL_INFO,
-                                                 m_poolSize, pImageMeta->imageProps,
-                                                 QC_MEMORY_ALLOCATOR_DMA, m_bufferCache );
+                    ret = m_bufferPools[i].Init(
+                            m_name + std::to_string( i ), m_nodeId, LOGGER_LEVEL_INFO, m_poolSize,
+                            pImageMeta->imageProps, QC_MEMORY_ALLOCATOR_DMA, m_bufferCache );
                 }
                 else if ( QC_BUFFER_TYPE_TENSOR == dataMeta.dataType )
                 {
                     DataTensorMeta *pTensorMeta = (DataTensorMeta *) &dataMeta;
-                    ret = m_bufferPools[i].Init(
-                            m_name + "_" + pTensorMeta->name, LOGGER_LEVEL_INFO, m_poolSize,
-                            pTensorMeta->tensorProps, QC_MEMORY_ALLOCATOR_DMA, m_bufferCache );
+                    ret = m_bufferPools[i].Init( m_name + "_" + pTensorMeta->name, m_nodeId,
+                                                 LOGGER_LEVEL_INFO, m_poolSize,
+                                                 pTensorMeta->tensorProps, QC_MEMORY_ALLOCATOR_DMA,
+                                                 m_bufferCache );
                 }
                 else
                 {

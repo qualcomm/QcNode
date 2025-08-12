@@ -8,8 +8,8 @@
 #include <string>
 #include <thread>
 
-#include "QC/Infras/Memory/Utils/TensorAllocator.hpp"
 #include "QC/Node/QNN.hpp"
+#include "QC/sample/BufferManager.hpp"
 #include "accuracy.hpp"
 #include "md5_utils.hpp"
 #include "gtest/gtest.h"
@@ -21,6 +21,7 @@ using namespace QC;
 using namespace QC::Node;
 using namespace QC::test::utils;
 using namespace QC::Memory;
+using namespace QC::sample;
 
 #if defined( __QNXNTO__ )
 #define QNN_GTEST_ENABLE_ASYNC
@@ -169,7 +170,7 @@ protected:
             ret = ConvertDtToProps( inDt, props );
             ASSERT_EQ( QC_STATUS_OK, ret );
             TensorDescriptor_t tensorDesc;
-            ret = ta.Allocate( props, tensorDesc );
+            ret = bufMgr.Allocate( props, tensorDesc );
             ASSERT_EQ( QC_STATUS_OK, ret );
             inputs.push_back( tensorDesc );
             ret = pFrameDesc->SetBuffer( globalIdx, inputs.back() );
@@ -183,7 +184,7 @@ protected:
             ret = ConvertDtToProps( outDt, props );
             ASSERT_EQ( QC_STATUS_OK, ret );
             TensorDescriptor_t tensorDesc;
-            ret = ta.Allocate( props, tensorDesc );
+            ret = bufMgr.Allocate( props, tensorDesc );
             ASSERT_EQ( QC_STATUS_OK, ret );
             outputs.push_back( tensorDesc );
             ret = pFrameDesc->SetBuffer( globalIdx, outputs.back() );
@@ -228,13 +229,13 @@ protected:
 
         for ( size_t i = 0; i < inputs.size(); ++i )
         {
-            ret = ta.Free( inputs[i] );
+            ret = bufMgr.Free( inputs[i] );
             ASSERT_EQ( QC_STATUS_OK, ret );
         }
         inputs.clear();
         for ( size_t i = 0; i < outputs.size(); ++i )
         {
-            ret = ta.Free( outputs[i] );
+            ret = bufMgr.Free( outputs[i] );
             ASSERT_EQ( QC_STATUS_OK, ret );
         }
         outputs.clear();
@@ -242,7 +243,7 @@ protected:
 
     Qnn qnn;
     QCNodeInit_t config;
-    TensorAllocator ta{ "TENSOR" };
+    BufferManager bufMgr = BufferManager( { "TENSOR", QC_NODE_TYPE_QNN, 0 } );
     std::string errors;
     QCStatus_e ret = QC_STATUS_OK;
     DataTree dt;
@@ -478,7 +479,7 @@ TEST( QNN, LoadOpPackage )
     QCStatus_e ret = QC_STATUS_OK;
     std::string errors;
     Qnn qnn;
-    TensorAllocator ta( "TENSOR" );
+    BufferManager bufMgr( { "TENSOR", QC_NODE_TYPE_QNN, 0 } );
     DataTree dt;
     dt.Set<std::string>( "static.name", "OP_PKG" );
     dt.Set<uint32_t>( "static.id", 0 );
@@ -542,7 +543,7 @@ TEST( QNN, LoadOpPackage )
         ret = ConvertDtToProps( inDt, props );
         ASSERT_EQ( QC_STATUS_OK, ret );
         TensorDescriptor_t tensorDesc;
-        ret = ta.Allocate( props, tensorDesc );
+        ret = bufMgr.Allocate( props, tensorDesc );
         ASSERT_EQ( QC_STATUS_OK, ret );
         inputs.push_back( tensorDesc );
         ret = frameDesc.SetBuffer( globalIdx, inputs.back() );
@@ -557,7 +558,7 @@ TEST( QNN, LoadOpPackage )
         ret = ConvertDtToProps( outDt, props );
         ASSERT_EQ( QC_STATUS_OK, ret );
         TensorDescriptor_t tensorDesc;
-        ret = ta.Allocate( props, tensorDesc );
+        ret = bufMgr.Allocate( props, tensorDesc );
         ASSERT_EQ( QC_STATUS_OK, ret );
         outputs.push_back( tensorDesc );
         ret = frameDesc.SetBuffer( globalIdx, outputs.back() );
@@ -576,12 +577,12 @@ TEST( QNN, LoadOpPackage )
 
     for ( size_t i = 0; i < inputs.size(); ++i )
     {
-        ret = ta.Free( inputs[i] );
+        ret = bufMgr.Free( inputs[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
     for ( size_t i = 0; i < outputs.size(); ++i )
     {
-        ret = ta.Free( outputs[i] );
+        ret = bufMgr.Free( outputs[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
 }
@@ -650,7 +651,7 @@ TEST( QNN, CreateModelFromSo )
     QCStatus_e ret = QC_STATUS_OK;
     std::string errors;
     Qnn qnn;
-    TensorAllocator ta( "TENSOR" );
+    BufferManager bufMgr( { "TENSOR", QC_NODE_TYPE_QNN, 0 } );
     DataTree dt;
     dt.Set<std::string>( "static.name", "FROM_SO" );
     dt.Set<uint32_t>( "static.id", 0 );
@@ -702,7 +703,7 @@ TEST( QNN, CreateModelFromSo )
         ret = ConvertDtToProps( inDt, props );
         ASSERT_EQ( QC_STATUS_OK, ret );
         TensorDescriptor_t tensorDesc;
-        ret = ta.Allocate( props, tensorDesc );
+        ret = bufMgr.Allocate( props, tensorDesc );
         ASSERT_EQ( QC_STATUS_OK, ret );
         inputs.push_back( tensorDesc );
         ret = frameDesc.SetBuffer( globalIdx, inputs.back() );
@@ -717,7 +718,7 @@ TEST( QNN, CreateModelFromSo )
         ret = ConvertDtToProps( outDt, props );
         ASSERT_EQ( QC_STATUS_OK, ret );
         TensorDescriptor_t tensorDesc;
-        ret = ta.Allocate( props, tensorDesc );
+        ret = bufMgr.Allocate( props, tensorDesc );
         ASSERT_EQ( QC_STATUS_OK, ret );
         outputs.push_back( tensorDesc );
         ret = frameDesc.SetBuffer( globalIdx, outputs.back() );
@@ -739,12 +740,12 @@ TEST( QNN, CreateModelFromSo )
 
     for ( size_t i = 0; i < inputs.size(); ++i )
     {
-        ret = ta.Free( inputs[i] );
+        ret = bufMgr.Free( inputs[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
     for ( size_t i = 0; i < outputs.size(); ++i )
     {
-        ret = ta.Free( outputs[i] );
+        ret = bufMgr.Free( outputs[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
 }
@@ -754,7 +755,7 @@ TEST( QNN, DynamicBatchSize )
     QCStatus_e ret = QC_STATUS_OK;
     std::string errors;
     Qnn qnn;
-    TensorAllocator ta( "TENSOR" );
+    BufferManager bufMgr( { "TENSOR", QC_NODE_TYPE_QNN, 0 } );
     DataTree dt;
     dt.Set<std::string>( "static.name", "DYN_BATCH" );
     dt.Set<uint32_t>( "static.id", 0 );
@@ -796,7 +797,7 @@ TEST( QNN, DynamicBatchSize )
         ASSERT_EQ( QC_STATUS_OK, ret );
         props.dims[0] = batchSize;
         TensorDescriptor_t tensorDesc;
-        ret = ta.Allocate( props, tensorDesc );
+        ret = bufMgr.Allocate( props, tensorDesc );
         ASSERT_EQ( QC_STATUS_OK, ret );
         inputs.push_back( tensorDesc );
         ret = frameDesc.SetBuffer( globalIdx, inputs.back() );
@@ -813,7 +814,7 @@ TEST( QNN, DynamicBatchSize )
         ASSERT_EQ( QC_STATUS_OK, ret );
         props.dims[0] = batchSize;
         TensorDescriptor_t tensorDesc;
-        ret = ta.Allocate( props, tensorDesc );
+        ret = bufMgr.Allocate( props, tensorDesc );
         ASSERT_EQ( QC_STATUS_OK, ret );
         outputs.push_back( tensorDesc );
         ret = frameDesc.SetBuffer( globalIdx, outputs.back() );
@@ -848,12 +849,12 @@ TEST( QNN, DynamicBatchSize )
 
     for ( size_t i = 0; i < inputs.size(); ++i )
     {
-        ret = ta.Free( inputs[i] );
+        ret = bufMgr.Free( inputs[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
     for ( size_t i = 0; i < outputs.size(); ++i )
     {
-        ret = ta.Free( outputs[i] );
+        ret = bufMgr.Free( outputs[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
 }
@@ -863,7 +864,7 @@ TEST( QNN, BufferFree )
     QCStatus_e ret = QC_STATUS_OK;
     std::string errors;
     Qnn qnn;
-    TensorAllocator ta( "TENSOR" );
+    BufferManager bufMgr( { "TENSOR", QC_NODE_TYPE_QNN, 0 } );
     DataTree dt;
     dt.Set<std::string>( "static.name", "BUF_FREE" );
     dt.Set<uint32_t>( "static.id", 0 );
@@ -904,7 +905,7 @@ TEST( QNN, BufferFree )
         ret = ConvertDtToProps( inDt, props );
         ASSERT_EQ( QC_STATUS_OK, ret );
         TensorDescriptor_t tensorDesc;
-        ret = ta.Allocate( props, tensorDesc );
+        ret = bufMgr.Allocate( props, tensorDesc );
         ASSERT_EQ( QC_STATUS_OK, ret );
         inputs.push_back( tensorDesc );
         ret = frameDesc.SetBuffer( globalIdx, inputs.back() );
@@ -919,7 +920,7 @@ TEST( QNN, BufferFree )
         ret = ConvertDtToProps( outDt, props );
         ASSERT_EQ( QC_STATUS_OK, ret );
         TensorDescriptor_t tensorDesc;
-        ret = ta.Allocate( props, tensorDesc );
+        ret = bufMgr.Allocate( props, tensorDesc );
         ASSERT_EQ( QC_STATUS_OK, ret );
         outputs.push_back( tensorDesc );
         ret = frameDesc.SetBuffer( globalIdx, outputs.back() );
@@ -940,9 +941,9 @@ TEST( QNN, BufferFree )
         TensorProps_t props;
         ret = ConvertDtToProps( inDt, props );
         ASSERT_EQ( QC_STATUS_OK, ret );
-        ret = ta.Free( inputs[i] );
+        ret = bufMgr.Free( inputs[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
-        ret = ta.Allocate( props, inputs[i] );
+        ret = bufMgr.Allocate( props, inputs[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
         ret = frameDesc.SetBuffer( globalIdx, inputs[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
@@ -954,9 +955,9 @@ TEST( QNN, BufferFree )
         TensorProps_t props;
         ret = ConvertDtToProps( outDt, props );
         ASSERT_EQ( QC_STATUS_OK, ret );
-        ret = ta.Free( outputs[i] );
+        ret = bufMgr.Free( outputs[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
-        ret = ta.Allocate( props, outputs[i] );
+        ret = bufMgr.Allocate( props, outputs[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
         ret = frameDesc.SetBuffer( globalIdx, outputs[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
@@ -977,12 +978,12 @@ TEST( QNN, BufferFree )
 
     for ( size_t i = 0; i < inputs.size(); ++i )
     {
-        ret = ta.Free( inputs[i] );
+        ret = bufMgr.Free( inputs[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
     for ( size_t i = 0; i < outputs.size(); ++i )
     {
-        ret = ta.Free( outputs[i] );
+        ret = bufMgr.Free( outputs[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
 }
@@ -992,8 +993,7 @@ TEST( QNN, OneBufferMutipleTensors )
     QCStatus_e ret = QC_STATUS_OK;
     std::string errors;
     Qnn qnn;
-    TensorAllocator ta( "TENSOR" );
-    BinaryAllocator ba( "BINARY" );
+    BufferManager bufMgr( { "TENSOR", QC_NODE_TYPE_QNN, 0 } );
     DataTree dt;
     dt.Set<std::string>( "static.name", "ONE_BUF_MUL_TS" );
     dt.Set<uint32_t>( "static.id", 0 );
@@ -1034,7 +1034,7 @@ TEST( QNN, OneBufferMutipleTensors )
         ret = ConvertDtToProps( inDt, props );
         ASSERT_EQ( QC_STATUS_OK, ret );
         TensorDescriptor_t tensorDesc;
-        ret = ta.Allocate( props, tensorDesc );
+        ret = bufMgr.Allocate( props, tensorDesc );
         ASSERT_EQ( QC_STATUS_OK, ret );
         inputs.push_back( tensorDesc );
         ret = frameDesc.SetBuffer( globalIdx, inputs.back() );
@@ -1053,7 +1053,7 @@ TEST( QNN, OneBufferMutipleTensors )
         ret = ConvertDtToProps( outDt, props );
         ASSERT_EQ( QC_STATUS_OK, ret );
         TensorDescriptor_t tensorDesc;
-        ret = ta.Allocate( props, tensorDesc );
+        ret = bufMgr.Allocate( props, tensorDesc );
         ASSERT_EQ( QC_STATUS_OK, ret );
         outputs.push_back( tensorDesc );
         ret = frameDesc.SetBuffer( globalIdx, outputs.back() );
@@ -1069,7 +1069,7 @@ TEST( QNN, OneBufferMutipleTensors )
     outputs1.resize( outputDts.size() );
     size_t offset = 0u;
     BufferDescriptor_t bufDesc;
-    ret = ba.Allocate( BufferProps_t( outputTotalSize ), bufDesc );
+    ret = bufMgr.Allocate( BufferProps_t( outputTotalSize ), bufDesc );
     ASSERT_EQ( QC_STATUS_OK, ret );
     for ( size_t i = 0; i < outputs.size(); ++i )
     {
@@ -1102,16 +1102,16 @@ TEST( QNN, OneBufferMutipleTensors )
 
     for ( size_t i = 0; i < inputs.size(); ++i )
     {
-        ret = ta.Free( inputs[i] );
+        ret = bufMgr.Free( inputs[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
     for ( size_t i = 0; i < outputs.size(); ++i )
     {
-        ret = ta.Free( outputs[i] );
+        ret = bufMgr.Free( outputs[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
 
-    ret = ba.Free( bufDesc );
+    ret = bufMgr.Free( bufDesc );
     ASSERT_EQ( QC_STATUS_OK, ret );
 }
 
@@ -1120,7 +1120,7 @@ TEST( QNN, TestAccuracy )
     QCStatus_e ret = QC_STATUS_OK;
     std::string errors;
     Qnn qnn;
-    TensorAllocator ta( "TENSOR" );
+    BufferManager bufMgr( { "TENSOR", QC_NODE_TYPE_QNN, 0 } );
     DataTree dt;
     dt.Set<std::string>( "static.name", "ACCURACY" );
     dt.Set<uint32_t>( "static.id", 0 );
@@ -1160,7 +1160,7 @@ TEST( QNN, TestAccuracy )
         ret = ConvertDtToProps( inDt, props );
         ASSERT_EQ( QC_STATUS_OK, ret );
         TensorDescriptor_t tensorDesc;
-        ret = ta.Allocate( props, tensorDesc );
+        ret = bufMgr.Allocate( props, tensorDesc );
         ASSERT_EQ( QC_STATUS_OK, ret );
         inputs.push_back( tensorDesc );
         ret = frameDesc.SetBuffer( globalIdx, inputs.back() );
@@ -1175,7 +1175,7 @@ TEST( QNN, TestAccuracy )
         ret = ConvertDtToProps( outDt, props );
         ASSERT_EQ( QC_STATUS_OK, ret );
         TensorDescriptor_t tensorDesc;
-        ret = ta.Allocate( props, tensorDesc );
+        ret = bufMgr.Allocate( props, tensorDesc );
         ASSERT_EQ( QC_STATUS_OK, ret );
         outputs.push_back( tensorDesc );
         ret = frameDesc.SetBuffer( globalIdx, outputs.back() );
@@ -1224,12 +1224,12 @@ TEST( QNN, TestAccuracy )
 
     for ( size_t i = 0; i < inputs.size(); ++i )
     {
-        ret = ta.Free( inputs[i] );
+        ret = bufMgr.Free( inputs[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
     for ( size_t i = 0; i < outputs.size(); ++i )
     {
-        ret = ta.Free( outputs[i] );
+        ret = bufMgr.Free( outputs[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
 }
@@ -1239,7 +1239,7 @@ TEST( QNN, TwoModelWithSameBuffer )
     QCStatus_e ret = QC_STATUS_OK;
     std::string errors;
     Qnn qnn0, qnn1;
-    TensorAllocator ta( "TENSOR" );
+    BufferManager bufMgr( { "TENSOR", QC_NODE_TYPE_QNN, 0 } );
     DataTree dt;
     dt.Set<std::string>( "static.name", "QNN0" );
     dt.Set<uint32_t>( "static.id", 0 );
@@ -1287,7 +1287,7 @@ TEST( QNN, TwoModelWithSameBuffer )
         ret = ConvertDtToProps( inDt, props );
         ASSERT_EQ( QC_STATUS_OK, ret );
         TensorDescriptor_t tensorDesc;
-        ret = ta.Allocate( props, tensorDesc );
+        ret = bufMgr.Allocate( props, tensorDesc );
         ASSERT_EQ( QC_STATUS_OK, ret );
         inputs.push_back( tensorDesc );
         ret = frameDesc.SetBuffer( globalIdx, inputs.back() );
@@ -1302,7 +1302,7 @@ TEST( QNN, TwoModelWithSameBuffer )
         ret = ConvertDtToProps( outDt, props );
         ASSERT_EQ( QC_STATUS_OK, ret );
         TensorDescriptor_t tensorDesc;
-        ret = ta.Allocate( props, tensorDesc );
+        ret = bufMgr.Allocate( props, tensorDesc );
         ASSERT_EQ( QC_STATUS_OK, ret );
         outputs.push_back( tensorDesc );
         ret = frameDesc.SetBuffer( globalIdx, outputs.back() );
@@ -1332,12 +1332,12 @@ TEST( QNN, TwoModelWithSameBuffer )
     ASSERT_EQ( QC_STATUS_OK, ret );
     for ( size_t i = 0; i < inputs.size(); ++i )
     {
-        ret = ta.Free( inputs[i] );
+        ret = bufMgr.Free( inputs[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
     for ( size_t i = 0; i < outputs.size(); ++i )
     {
-        ret = ta.Free( outputs[i] );
+        ret = bufMgr.Free( outputs[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
 }
@@ -1349,7 +1349,7 @@ TEST( QNN, AsyncExecute )
     std::mutex mtx;
     std::string errors;
     Qnn qnn;
-    TensorAllocator ta( "TENSOR" );
+    BufferManager bufMgr( { "TENSOR", QC_NODE_TYPE_QNN, 0 } );
     DataTree dt;
     dt.Set<std::string>( "static.name", "ASYNC" );
     dt.Set<uint32_t>( "static.id", 0 );
@@ -1394,7 +1394,7 @@ TEST( QNN, AsyncExecute )
         ret = ConvertDtToProps( inDt, props );
         ASSERT_EQ( QC_STATUS_OK, ret );
         TensorDescriptor_t tensorDesc;
-        ret = ta.Allocate( props, tensorDesc );
+        ret = bufMgr.Allocate( props, tensorDesc );
         ASSERT_EQ( QC_STATUS_OK, ret );
         inputs.push_back( tensorDesc );
         ret = frameDesc.SetBuffer( globalIdx, inputs.back() );
@@ -1409,7 +1409,7 @@ TEST( QNN, AsyncExecute )
         ret = ConvertDtToProps( outDt, props );
         ASSERT_EQ( QC_STATUS_OK, ret );
         TensorDescriptor_t tensorDesc;
-        ret = ta.Allocate( props, tensorDesc );
+        ret = bufMgr.Allocate( props, tensorDesc );
         ASSERT_EQ( QC_STATUS_OK, ret );
         outputs.push_back( tensorDesc );
         ret = frameDesc.SetBuffer( globalIdx, outputs.back() );
@@ -1472,12 +1472,12 @@ TEST( QNN, AsyncExecute )
 
     for ( size_t i = 0; i < inputs.size(); ++i )
     {
-        ret = ta.Free( inputs[i] );
+        ret = bufMgr.Free( inputs[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
     for ( size_t i = 0; i < outputs.size(); ++i )
     {
-        ret = ta.Free( outputs[i] );
+        ret = bufMgr.Free( outputs[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
 }
@@ -1488,7 +1488,7 @@ TEST( QNN, InputOutputCheck )
     QCStatus_e ret = QC_STATUS_OK;
     std::string errors;
     Qnn qnn;
-    TensorAllocator ta( "IOCHK" );
+    BufferManager bufMgr( { "IOCHK", QC_NODE_TYPE_QNN, 0 } );
     DataTree dt;
     dt.Set<std::string>( "static.name", "ACCURACY" );
     dt.Set<uint32_t>( "static.id", 0 );
@@ -1529,7 +1529,7 @@ TEST( QNN, InputOutputCheck )
         ret = ConvertDtToProps( inDt, props );
         ASSERT_EQ( QC_STATUS_OK, ret );
         TensorDescriptor_t tensorDesc;
-        ret = ta.Allocate( props, tensorDesc );
+        ret = bufMgr.Allocate( props, tensorDesc );
         ASSERT_EQ( QC_STATUS_OK, ret );
         inputs.push_back( tensorDesc );
         ret = frameDesc.SetBuffer( globalIdx, inputs.back() );
@@ -1544,7 +1544,7 @@ TEST( QNN, InputOutputCheck )
         ret = ConvertDtToProps( outDt, props );
         ASSERT_EQ( QC_STATUS_OK, ret );
         TensorDescriptor_t tensorDesc;
-        ret = ta.Allocate( props, tensorDesc );
+        ret = bufMgr.Allocate( props, tensorDesc );
         ASSERT_EQ( QC_STATUS_OK, ret );
         outputs.push_back( tensorDesc );
         ret = frameDesc.SetBuffer( globalIdx, outputs.back() );
@@ -1626,12 +1626,12 @@ TEST( QNN, InputOutputCheck )
 
     for ( size_t i = 0; i < inputs.size(); ++i )
     {
-        ret = ta.Free( inputs[i] );
+        ret = bufMgr.Free( inputs[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
     for ( size_t i = 0; i < outputs.size(); ++i )
     {
-        ret = ta.Free( outputs[i] );
+        ret = bufMgr.Free( outputs[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
 }
@@ -1641,7 +1641,7 @@ TEST( QNN, ExecuteWithRegDeRegEachTime )
     QCStatus_e ret = QC_STATUS_OK;
     std::string errors;
     Qnn qnn;
-    TensorAllocator ta( "TENSOR" );
+    BufferManager bufMgr( { "TENSOR", QC_NODE_TYPE_QNN, 0 } );
     DataTree dt;
     dt.Set<std::string>( "static.name", "SANITY" );
     dt.Set<uint32_t>( "static.id", 0 );
@@ -1679,7 +1679,7 @@ TEST( QNN, ExecuteWithRegDeRegEachTime )
         ret = ConvertDtToProps( inDt, props );
         ASSERT_EQ( QC_STATUS_OK, ret );
         TensorDescriptor_t tensorDesc;
-        ret = ta.Allocate( props, tensorDesc );
+        ret = bufMgr.Allocate( props, tensorDesc );
         ASSERT_EQ( QC_STATUS_OK, ret );
         inputs.push_back( tensorDesc );
         ret = frameDesc.SetBuffer( globalIdx, inputs.back() );
@@ -1694,7 +1694,7 @@ TEST( QNN, ExecuteWithRegDeRegEachTime )
         ret = ConvertDtToProps( outDt, props );
         ASSERT_EQ( QC_STATUS_OK, ret );
         TensorDescriptor_t tensorDesc;
-        ret = ta.Allocate( props, tensorDesc );
+        ret = bufMgr.Allocate( props, tensorDesc );
         ASSERT_EQ( QC_STATUS_OK, ret );
         outputs.push_back( tensorDesc );
         ret = frameDesc.SetBuffer( globalIdx, outputs.back() );
@@ -1727,12 +1727,12 @@ TEST( QNN, ExecuteWithRegDeRegEachTime )
 
     for ( size_t i = 0; i < inputs.size(); ++i )
     {
-        ret = ta.Free( inputs[i] );
+        ret = bufMgr.Free( inputs[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
     for ( size_t i = 0; i < outputs.size(); ++i )
     {
-        ret = ta.Free( outputs[i] );
+        ret = bufMgr.Free( outputs[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
 }
@@ -1742,7 +1742,7 @@ TEST( QNN, ExecuteWithAllocBufferEachTime )
     QCStatus_e ret = QC_STATUS_OK;
     std::string errors;
     Qnn qnn;
-    TensorAllocator ta( "TENSOR" );
+    BufferManager bufMgr( { "TENSOR", QC_NODE_TYPE_QNN, 0 } );
     DataTree dt;
     dt.Set<std::string>( "static.name", "SANITY" );
     dt.Set<uint32_t>( "static.id", 0 );
@@ -1789,7 +1789,7 @@ TEST( QNN, ExecuteWithAllocBufferEachTime )
             ret = ConvertDtToProps( inDt, props );
             ASSERT_EQ( QC_STATUS_OK, ret );
             TensorDescriptor_t tensorDesc;
-            ret = ta.Allocate( props, tensorDesc );
+            ret = bufMgr.Allocate( props, tensorDesc );
             ASSERT_EQ( QC_STATUS_OK, ret );
             inputs.push_back( tensorDesc );
             ret = frameDesc.SetBuffer( globalIdx, inputs.back() );
@@ -1804,7 +1804,7 @@ TEST( QNN, ExecuteWithAllocBufferEachTime )
             ret = ConvertDtToProps( outDt, props );
             ASSERT_EQ( QC_STATUS_OK, ret );
             TensorDescriptor_t tensorDesc;
-            ret = ta.Allocate( props, tensorDesc );
+            ret = bufMgr.Allocate( props, tensorDesc );
             ASSERT_EQ( QC_STATUS_OK, ret );
             outputs.push_back( tensorDesc );
             ret = frameDesc.SetBuffer( globalIdx, outputs.back() );
@@ -1822,12 +1822,12 @@ TEST( QNN, ExecuteWithAllocBufferEachTime )
 
         for ( size_t i = 0; i < inputs.size(); ++i )
         {
-            ret = ta.Free( inputs[i] );
+            ret = bufMgr.Free( inputs[i] );
             ASSERT_EQ( QC_STATUS_OK, ret );
         }
         for ( size_t i = 0; i < outputs.size(); ++i )
         {
-            ret = ta.Free( outputs[i] );
+            ret = bufMgr.Free( outputs[i] );
             ASSERT_EQ( QC_STATUS_OK, ret );
         }
     }
@@ -1841,7 +1841,7 @@ TEST( QNN, InitDeInitializeStress )
     QCStatus_e ret = QC_STATUS_OK;
     std::string errors;
     Qnn qnn;
-    TensorAllocator ta( "TENSOR" );
+    BufferManager bufMgr( { "TENSOR", QC_NODE_TYPE_QNN, 0 } );
     DataTree dt;
     dt.Set<std::string>( "static.name", "SANITY" );
     dt.Set<uint32_t>( "static.id", 0 );
@@ -1891,7 +1891,7 @@ TEST( QNN, InitDeInitializeStress )
             ret = ConvertDtToProps( inDt, props );
             ASSERT_EQ( QC_STATUS_OK, ret );
             TensorDescriptor_t tensorDesc;
-            ret = ta.Allocate( props, tensorDesc );
+            ret = bufMgr.Allocate( props, tensorDesc );
             ASSERT_EQ( QC_STATUS_OK, ret );
             inputs.push_back( tensorDesc );
             ret = frameDesc.SetBuffer( globalIdx, inputs.back() );
@@ -1906,7 +1906,7 @@ TEST( QNN, InitDeInitializeStress )
             ret = ConvertDtToProps( outDt, props );
             ASSERT_EQ( QC_STATUS_OK, ret );
             TensorDescriptor_t tensorDesc;
-            ret = ta.Allocate( props, tensorDesc );
+            ret = bufMgr.Allocate( props, tensorDesc );
             ASSERT_EQ( QC_STATUS_OK, ret );
             outputs.push_back( tensorDesc );
             ret = frameDesc.SetBuffer( globalIdx, outputs.back() );
@@ -1925,12 +1925,12 @@ TEST( QNN, InitDeInitializeStress )
 
         for ( size_t i = 0; i < inputs.size(); ++i )
         {
-            ret = ta.Free( inputs[i] );
+            ret = bufMgr.Free( inputs[i] );
             ASSERT_EQ( QC_STATUS_OK, ret );
         }
         for ( size_t i = 0; i < outputs.size(); ++i )
         {
-            ret = ta.Free( outputs[i] );
+            ret = bufMgr.Free( outputs[i] );
             ASSERT_EQ( QC_STATUS_OK, ret );
         }
     }

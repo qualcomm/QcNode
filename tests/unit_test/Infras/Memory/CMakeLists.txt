@@ -17,5 +17,5 @@ else()
         gtest_QCMemoryUtilsBase.cpp)
 endif()
 
-target_link_libraries( gtest_Memory gtest QCNodeCommon QCNodeMemory )
+target_link_libraries( gtest_Memory gtest QCNodeCommon QCNodeMemory BufferManager )
 install(TARGETS gtest_Memory DESTINATION bin)

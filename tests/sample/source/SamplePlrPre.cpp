@@ -128,7 +128,7 @@ QCStatus_e SamplePlrPre::Init( std::string name, SampleConfig_t &config )
                     2,
             };
         }
-        ret = m_coordsPool.Init( name + ".coords", LOGGER_LEVEL_INFO, m_poolSize, outPlrsTsProp,
+        ret = m_coordsPool.Init( name + ".coords", m_nodeId, LOGGER_LEVEL_INFO, m_poolSize, outPlrsTsProp,
                                  QC_MEMORY_ALLOCATOR_DMA_HTP );
     }
 
@@ -139,7 +139,7 @@ QCStatus_e SamplePlrPre::Init( std::string name, SampleConfig_t &config )
                 { maxPlrNum, maxPointNumPerPlr, outputFeatureDimNum, 0 },
                 3,
         };
-        ret = m_featuresPool.Init( name + ".features", LOGGER_LEVEL_INFO, m_poolSize,
+        ret = m_featuresPool.Init( name + ".features", m_nodeId, LOGGER_LEVEL_INFO, m_poolSize,
                                    outFeatureTsProp, QC_MEMORY_ALLOCATOR_DMA_HTP );
     }
 

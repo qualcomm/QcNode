@@ -18,8 +18,7 @@
 #include "QC/Infras/Memory/ImageDescriptor.hpp"
 #include "QC/Infras/Memory/SharedBuffer.hpp"
 #include "QC/Infras/Memory/TensorDescriptor.hpp"
-#include "QC/Infras/Memory/Utils/ImageAllocator.hpp"
-#include "QC/Infras/Memory/Utils/TensorAllocator.hpp"
+#include "QC/sample/BufferManager.hpp"
 
 namespace QC
 {
@@ -124,6 +123,7 @@ public:
     /**
      * @brief Do initialization of the shared memory ping-pong pool
      * @param[in] name the shared memory pool name
+     * @param[in] nodeId the nodeId to be used to create the shared memory pool
      * @param[in] level the logger level
      * @param[in] number the number of the ping-pong shared buffers
      * @param[in] width the image width
@@ -136,14 +136,15 @@ public:
      * strides/paddings that can be shared among CPU/GPU/VPU/HTP, etc
      * @return QC_STATUS_OK on success, others on failure
      */
-    QCStatus_e Init( std::string name, Logger_Level_e level, uint32_t number, uint32_t width,
-                     uint32_t height, QCImageFormat_e format,
+    QCStatus_e Init( std::string name, QCNodeID_t nodeId, Logger_Level_e level, uint32_t number,
+                     uint32_t width, uint32_t height, QCImageFormat_e format,
                      QCMemoryAllocator_e allocatorType = QC_MEMORY_ALLOCATOR_DMA,
                      QCAllocationCache_e cache = QC_CACHEABLE );
 
     /**
      * @brief Do initialization of the shared memory ping-pong pool
      * @param[in] name the shared memory pool name
+     * @param[in] nodeId the nodeId to be used to create the shared memory pool
      * @param[in] level the logger level
      * @param[in] batchSize the image batch size
      * @param[in] number the number of the ping-pong shared buffers
@@ -157,14 +158,15 @@ public:
      * with best the best strides/paddings that can be shared among CPU/GPU/VPU/HTP, etc
      * @return QC_STATUS_OK on success, others on failure
      */
-    QCStatus_e Init( std::string name, Logger_Level_e level, uint32_t number, uint32_t batchSize,
-                     uint32_t width, uint32_t height, QCImageFormat_e format,
+    QCStatus_e Init( std::string name, QCNodeID_t nodeId, Logger_Level_e level, uint32_t number,
+                     uint32_t batchSize, uint32_t width, uint32_t height, QCImageFormat_e format,
                      QCMemoryAllocator_e allocatorType = QC_MEMORY_ALLOCATOR_DMA,
                      QCAllocationCache_e cache = QC_CACHEABLE );
 
     /**
      * @brief Do initialization of the shared memory ping-pong pool
      * @param[in] name the shared memory pool name
+     * @param[in] nodeId the nodeId to be used to create the shared memory pool
      * @param[in] level the logger level
      * @param[in] imageProps the specified image properties
      * @param[in] allocatorType The allocaor type used for allocation the buffer.
@@ -173,7 +175,7 @@ public:
      * It was by using the specified image properties to allocate image buffers.
      * @return QC_STATUS_OK on success, others on failure
      */
-    QCStatus_e Init( std::string name, Logger_Level_e level, uint32_t number,
+    QCStatus_e Init( std::string name, QCNodeID_t nodeId, Logger_Level_e level, uint32_t number,
                      const QCImageProps_t &imageProps,
                      QCMemoryAllocator_e allocatorType = QC_MEMORY_ALLOCATOR_DMA,
                      QCAllocationCache_e cache = QC_CACHEABLE );
@@ -181,6 +183,7 @@ public:
     /**
      * @brief Do initialization of the shared memory ping-pong pool
      * @param[in] name the shared memory pool name
+     * @param[in] nodeId the nodeId to be used to create the shared memory pool
      * @param[in] level the logger level
      * @param[in] tensorProps the specified tensor properties
      * @param[in] allocatorType The allocaor type used for allocation the buffer.
@@ -189,18 +192,20 @@ public:
      * It was by using the specified tensor properties to allocate tensor buffers.
      * @return QC_STATUS_OK on success, others on failure
      */
-    QCStatus_e Init( std::string name, Logger_Level_e level, uint32_t number,
+    QCStatus_e Init( std::string name, QCNodeID_t nodeId, Logger_Level_e level, uint32_t number,
                      const QCTensorProps_t &tensorProps,
                      QCMemoryAllocator_e allocatorType = QC_MEMORY_ALLOCATOR_DMA,
                      QCAllocationCache_e cache = QC_CACHEABLE );
 
     /**
-     * @brief get shared buffers
-     * @param pBuffers pointer to hold the shared buffers
-     * @param numBuffers number of shared buffers
-     * @return QC_STATUS_OK on success, others on failure
+     * @brief Retrieves a list of shared buffer descriptors.
+     *
+     * @param[out] buffers A reference to a vector that will be populated with references to shared
+     * buffer descriptors.
+     * @return QC_STATUS_OK on success; otherwise, returns an appropriate error code indicating the
+     * failure reason.
      */
-    QCStatus_e GetBuffers( QCSharedBuffer_t *pBuffers, uint32_t numBuffers );
+    QCStatus_e GetBuffers( std::vector<std::reference_wrapper<QCBufferDescriptorBase_t>> &buffers );
 
     /**
      * @brief Get a free shared buffer
@@ -215,7 +220,7 @@ public:
     QCStatus_e Deinit();
 
 private:
-    QCStatus_e Init( std::string name, Logger_Level_e level, uint32_t number );
+    QCStatus_e Init( std::string name, QCNodeID_t nodeId, Logger_Level_e level, uint32_t number );
     void Deleter( SharedBuffer_t *ptrToDelete );
 
     QCStatus_e Register( void );
@@ -231,7 +236,7 @@ private:
     std::vector<SharedBufferInfo> m_queue;
     bool m_bIsInited = false;
 
-    BinaryAllocator *m_pAllocator = nullptr;
+    BufferManager *m_pBufMgr = nullptr;
 };
 
 }   // namespace sample

@@ -121,7 +121,8 @@ QCStatus_e SampleQnn::ParseConfig( SampleConfig_t &config )
 
     DataTree dt;
     dt.Set<std::string>( "name", m_name );
-    dt.Set<uint32_t>( "id", 0 ); /* TODO: */
+    dt.Set<uint32_t>( "id", m_nodeId.id );
+    dt.Set<std::string>( "type", "QNN" );
     dt.Set<std::string>( "modelPath", Get( config, "model_path", "" ) );
     dt.Set<std::string>( "loadType", "binary" );
     dt.Set<std::string>( "processorType", Get( config, "processor", "htp0" ) );
@@ -188,7 +189,7 @@ QCStatus_e SampleQnn::Init( std::string name, SampleConfig_t &config )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
-    ret = SampleIF::Init( name );
+    ret = SampleIF::Init( name, QC_NODE_TYPE_QNN );
     if ( QC_STATUS_OK == ret )
     {
         ret = ParseConfig( config );
@@ -271,8 +272,8 @@ QCStatus_e SampleQnn::Init( std::string name, SampleConfig_t &config )
         for ( int i = 0; i < outputNum; ++i )
         {
             ret = m_tensorPools[index].Init(
-                    "Qnn." + name + "." + std::to_string( index ), LOGGER_LEVEL_INFO, m_poolSize,
-                    m_outputsInfo[i].properties, QC_MEMORY_ALLOCATOR_DMA_HTP );
+                    "Qnn." + name + "." + std::to_string( index ), m_nodeId, LOGGER_LEVEL_INFO,
+                    m_poolSize, m_outputsInfo[i].properties, QC_MEMORY_ALLOCATOR_DMA_HTP );
             index += 1;
             if ( QC_STATUS_OK != ret )
             {

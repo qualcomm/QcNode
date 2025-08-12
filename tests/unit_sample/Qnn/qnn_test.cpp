@@ -20,12 +20,13 @@
 
 
 #include "QC/Common/DataTree.hpp"
-#include "QC/Infras/Memory/Utils/TensorAllocator.hpp"
 #include "QC/Node/QNN.hpp"
+#include "QC/sample/BufferManager.hpp"
 
 using namespace QC::Node;
 using namespace QC::Memory;
 using namespace QC;
+using namespace QC::sample;
 
 
 static bool s_bDisableDumpingOutputs = false;
@@ -113,10 +114,14 @@ typedef struct
     boolean bAsync = false;
 } QnnTest_Parameters_t;
 
+static uint32_t s_nodeId = 0;
+
 class QnnTestRunner
 {
 public:
-    QnnTestRunner() : m_ta( "QnnTest" ) {}
+    QnnTestRunner()
+        : m_bufMgr( { "TENSOR" + std::to_string( s_nodeId ), QC_NODE_TYPE_QNN, s_nodeId++ } )
+    {}
     ~QnnTestRunner() {}
 
     QCStatus_e ConvertDtToInfo( DataTree &dt, QnnTest_TensorInfo_t &info )
@@ -283,7 +288,7 @@ public:
                     GetTensorInfoStr( info ).c_str() );
             TensorProps_t tensorProperties = info.properties;
             tensorProperties.dims[0] = tensorProperties.dims[0] * batchMultiplier;
-            ret = m_ta.Allocate( tensorProperties, m_inputBuffers[i] );
+            ret = m_bufMgr.Allocate( tensorProperties, m_inputBuffers[i] );
             if ( QC_STATUS_OK == ret )
             {
                 if ( i < inputs.size() )
@@ -336,7 +341,7 @@ public:
                     GetTensorInfoStr( info ).c_str() );
             TensorProps_t tensorProperties = info.properties;
             tensorProperties.dims[0] = tensorProperties.dims[0] * batchMultiplier;
-            ret = m_ta.Allocate( tensorProperties, m_outputBuffers[i] );
+            ret = m_bufMgr.Allocate( tensorProperties, m_outputBuffers[i] );
             if ( QC_STATUS_OK != ret )
             {
                 printf( "[%s] Failed to allocate buffer for output %" PRIu64 "\n", name.c_str(),
@@ -507,7 +512,7 @@ private:
     std::condition_variable m_condVar;
     std::mutex m_lock;
 
-    TensorAllocator m_ta;
+    BufferManager m_bufMgr;
 
     QCSharedFrameDescriptorNode *m_pFrameDesc;
 };

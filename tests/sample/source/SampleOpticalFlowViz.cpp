@@ -36,7 +36,7 @@ static const char *s_pSourceMvColor = KernelCode(
                                       uint4 imageStride, uchar confThreshold, uint ncols,
                                       uchar nTransparency ) {
             const int MVCOLOR_MAXCOLS = 60;
-            uint2 pos = ( uint2 )( get_global_id( 0 ), get_global_id( 1 ) );
+            uint2 pos = (uint2) ( get_global_id( 0 ), get_global_id( 1 ) );
 
             short sx = pMv[pos.y * ( imageStride.s1 >> 1 ) + pos.x];
             short sy = pMv[( imageStride.s0 + pos.y ) * ( imageStride.s1 >> 1 ) + pos.x];
@@ -44,8 +44,7 @@ static const char *s_pSourceMvColor = KernelCode(
 
             if ( ( confThreshold != 0 ) && ( confValue <= confThreshold ) )
             {
-                vstore3( ( uchar3 )( nTransparency ), 0,
-                         pRgb + imageStride.s3 * pos.y + pos.x * 3 );
+                vstore3( (uchar3) ( nTransparency ), 0, pRgb + imageStride.s3 * pos.y + pos.x * 3 );
             }
             else
             {
@@ -63,19 +62,19 @@ static const char *s_pSourceMvColor = KernelCode(
                 {
                     float3 col0 = convert_float3( vload3( k0, pColorWheel ) ) / 255.0;
                     float3 col1 = convert_float3( vload3( k1, pColorWheel ) ) / 255.0;
-                    float3 col = ( float3 )( 1 - f ) * col0 + ( (float3) f * col1 );
+                    float3 col = (float3) ( 1 - f ) * col0 + ( (float3) f * col1 );
 
                     if ( rad <= 1 )
                     {
-                        col = (float3) 1 - ( float3 )( rad ) * ( (float3) 1 - col );
+                        col = (float3) 1 - (float3) ( rad ) * ( (float3) 1 - col );
                     }
                     else
                     {
-                        col = col * ( float3 )( 0.75 );
+                        col = col * (float3) ( 0.75 );
                     }
 
                     uchar3 p = convert_uchar3_sat( col * (float3) 255.0 );
-                    vstore3( ( uchar3 )( p.s2, p.s1, p.s0 ), 0,
+                    vstore3( (uchar3) ( p.s2, p.s1, p.s0 ), 0,
                              pRgb + imageStride.s3 * pos.y + pos.x * 3 );
                 }
             }
@@ -213,7 +212,7 @@ QCStatus_e SampleOpticalFlowViz::MvComputeColor( float fx, float fy, uint8_t *pi
                     col *= .75;   // out of range
                 }
 
-                pix[2 - b] = ( uint8_t )( 255.0 * col );
+                pix[2 - b] = (uint8_t) ( 255.0 * col );
             }
         }
     }
@@ -242,7 +241,7 @@ QCStatus_e SampleOpticalFlowViz::Init( std::string name, SampleConfig_t &config 
         imgProp.actualHeight[0] = m_height;
         imgProp.numPlanes = 1;
         imgProp.planeBufSize[0] = 0;
-        ret = m_rgbPool.Init( name + ".rgb", LOGGER_LEVEL_INFO, m_poolSize, imgProp );
+        ret = m_rgbPool.Init( name + ".rgb", m_nodeId, LOGGER_LEVEL_INFO, m_poolSize, imgProp );
     }
 
     if ( QC_STATUS_OK == ret )
@@ -349,11 +348,11 @@ QCStatus_e SampleOpticalFlowViz::ConvertToRgbCPU( QCSharedBuffer_t *pMv, QCShare
                 /* collect live max mvx and mvy */
                 if ( abs( fx ) > (float) m_sLiveMaxMvValue.nMvX )
                 {
-                    m_sLiveMaxMvValue.nMvX = ( uint32_t )( abs( fx ) + 1 );
+                    m_sLiveMaxMvValue.nMvX = (uint32_t) ( abs( fx ) + 1 );
                 }
                 if ( abs( fy ) > (float) m_sLiveMaxMvValue.nMvY )
                 {
-                    m_sLiveMaxMvValue.nMvY = ( uint32_t )( abs( fy ) + 1 );
+                    m_sLiveMaxMvValue.nMvY = (uint32_t) ( abs( fy ) + 1 );
                 }
 
                 uint32_t nMvMag = ( fx ) * ( fx ) + ( fy ) * ( fy );

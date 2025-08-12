@@ -189,16 +189,16 @@ QCStatus_e SampleDataReader::Init( std::string name, SampleConfig_t &config )
         {
             if ( DATA_READER_TYPE_IMAGE == m_configs[i].type )
             {
-                ret = m_bufferPools[i].Init( name + std::to_string( i ), LOGGER_LEVEL_INFO,
-                                             m_poolSize, m_configs[i].width, m_configs[i].height,
-                                             m_configs[i].format, QC_MEMORY_ALLOCATOR_DMA_CAMERA,
-                                             m_bufferCache );
+                ret = m_bufferPools[i].Init( name + std::to_string( i ), m_nodeId,
+                                             LOGGER_LEVEL_INFO, m_poolSize, m_configs[i].width,
+                                             m_configs[i].height, m_configs[i].format,
+                                             QC_MEMORY_ALLOCATOR_DMA_CAMERA, m_bufferCache );
             }
             else
             {
-                ret = m_bufferPools[i].Init( name + std::to_string( i ), LOGGER_LEVEL_INFO,
-                                             m_poolSize, m_configs[i].tensorProps,
-                                             QC_MEMORY_ALLOCATOR_DMA_HTP, m_bufferCache );
+                ret = m_bufferPools[i].Init(
+                        name + std::to_string( i ), m_nodeId, LOGGER_LEVEL_INFO, m_poolSize,
+                        m_configs[i].tensorProps, QC_MEMORY_ALLOCATOR_DMA_HTP, m_bufferCache );
             }
         }
     }

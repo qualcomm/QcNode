@@ -48,7 +48,7 @@ static const char *s_pSourceDispColor = KernelCode(   //
                                         uchar confThreshold,                 //
                                         ushort disparityMax,                 //
                                         uchar nTransparency ) {
-            uint2 pos = ( uint2 )( get_global_id( 0 ), get_global_id( 1 ) );
+            uint2 pos = (uint2) ( get_global_id( 0 ), get_global_id( 1 ) );
             ushort disp = pDisparity[pos.y * dispStride + pos.x];
             uchar confValue = pConf[pos.y * confStride + pos.x];
             if ( confValue >= confThreshold )
@@ -67,17 +67,20 @@ static const char *s_pSourceDispColor = KernelCode(   //
 
                 // calculte the relative RGB values according to the depth disparity
                 float weight = 1.0 - ( val - cumulativeWeights[i] ) * relativeWeights[i];
-                uchar r = ( uchar )(
-                        ( weight * colors[i][0] + ( 1.0 - weight ) * colors[i + 1][0] ) * 255.0 );
-                uchar g = ( uchar )(
-                        ( weight * colors[i][1] + ( 1.0 - weight ) * colors[i + 1][1] ) * 255.0 );
-                uchar b = ( uchar )(
-                        ( weight * colors[i][2] + ( 1.0 - weight ) * colors[i + 1][2] ) * 255.0 );
-                vstore3( ( uchar3 )( r, g, b ), 0, pRgb + rgbStride * pos.y + pos.x * 3 );
+                uchar r =
+                        (uchar) ( ( weight * colors[i][0] + ( 1.0 - weight ) * colors[i + 1][0] ) *
+                                  255.0 );
+                uchar g =
+                        (uchar) ( ( weight * colors[i][1] + ( 1.0 - weight ) * colors[i + 1][1] ) *
+                                  255.0 );
+                uchar b =
+                        (uchar) ( ( weight * colors[i][2] + ( 1.0 - weight ) * colors[i + 1][2] ) *
+                                  255.0 );
+                vstore3( (uchar3) ( r, g, b ), 0, pRgb + rgbStride * pos.y + pos.x * 3 );
             }
             else
             {
-                vstore3( ( uchar3 )( nTransparency ), 0, pRgb + rgbStride * pos.y + pos.x * 3 );
+                vstore3( (uchar3) ( nTransparency ), 0, pRgb + rgbStride * pos.y + pos.x * 3 );
             }
         } );
 
@@ -146,7 +149,7 @@ QCStatus_e SampleDepthFromStereoViz::Init( std::string name, SampleConfig_t &con
         imgProp.actualHeight[0] = m_height;
         imgProp.numPlanes = 1;
         imgProp.planeBufSize[0] = 0;
-        ret = m_rgbPool.Init( name + ".rgb", LOGGER_LEVEL_INFO, m_poolSize, imgProp );
+        ret = m_rgbPool.Init( name + ".rgb", m_nodeId, LOGGER_LEVEL_INFO, m_poolSize, imgProp );
     }
 
     if ( QC_STATUS_OK == ret )
@@ -246,15 +249,15 @@ QCStatus_e SampleDepthFromStereoViz::ConvertToRgbCPU( QCSharedBuffer_t *pDispari
 
                 // calculte the relative RGB values according to the depth disparity
                 float weight = 1.0 - ( val - m_cumulativeWeights[i] ) * m_relativeWeights[i];
-                pColorPix[0] = ( uint8_t )(
-                        ( weight * m_colors[i][0] + ( 1.0 - weight ) * m_colors[i + 1][0] ) *
-                        255.0 );
-                pColorPix[1] = ( uint8_t )(
-                        ( weight * m_colors[i][1] + ( 1.0 - weight ) * m_colors[i + 1][1] ) *
-                        255.0 );
-                pColorPix[2] = ( uint8_t )(
-                        ( weight * m_colors[i][2] + ( 1.0 - weight ) * m_colors[i + 1][2] ) *
-                        255.0 );
+                pColorPix[0] = (uint8_t) ( ( weight * m_colors[i][0] +
+                                             ( 1.0 - weight ) * m_colors[i + 1][0] ) *
+                                           255.0 );
+                pColorPix[1] = (uint8_t) ( ( weight * m_colors[i][1] +
+                                             ( 1.0 - weight ) * m_colors[i + 1][1] ) *
+                                           255.0 );
+                pColorPix[2] = (uint8_t) ( ( weight * m_colors[i][2] +
+                                             ( 1.0 - weight ) * m_colors[i + 1][2] ) *
+                                           255.0 );
             }
             else
             {
