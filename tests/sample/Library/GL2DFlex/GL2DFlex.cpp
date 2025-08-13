@@ -7,11 +7,11 @@
 #include <cstring>
 #include <memory>
 
-#include "QC/component/GL2DFlex.hpp"
+#include "GL2DFlex.hpp"
 
 namespace QC
 {
-namespace component
+namespace sample
 {
 
 static const char *s_pVertShaderText = "#version 320 es\n"
@@ -51,12 +51,11 @@ int GL2DFlex::s_drmDevFd = 0;
 struct gbm_device *GL2DFlex::s_gbmDev = nullptr;
 uint32_t GL2DFlex::s_devRefCnt = 0;
 
-GL2DFlex::GL2DFlex() {}
+GL2DFlex::GL2DFlex( Logger &logger ) : m_logger( logger ) {}
 
 GL2DFlex::~GL2DFlex() {}
 
-QCStatus_e GL2DFlex::Init( const char *pName, const GL2DFlex_Config_t *pConfig,
-                           Logger_Level_e level )
+QCStatus_e GL2DFlex::Init( const char *pName, const GL2DFlex_Config_t *pConfig )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
@@ -70,10 +69,10 @@ QCStatus_e GL2DFlex::Init( const char *pName, const GL2DFlex_Config_t *pConfig,
     float gl_bottomX = 0.0f;
     float gl_bottomY = 0.0f;
 
-    ret = ComponentIF::Init( pName, level );
-    if ( QC_STATUS_OK != ret )
+    if ( QC_OBJECT_STATE_INITIAL != m_state )
     {
-        QC_ERROR( "ComponentIF::Init failed" );
+        QC_ERROR( "GL2DFlex not in initial state!" );
+        ret = QC_STATUS_BAD_STATE;
     }
     else
     {
@@ -327,23 +326,15 @@ QCStatus_e GL2DFlex::Deinit()
 #endif
     }
 
-    ret = ComponentIF::Deinit();
-    if ( QC_STATUS_OK == ret )
-    {
-        /* Complete deinitialization */
-        m_state = QC_OBJECT_STATE_INITIAL;
-        QC_INFO( "Component GL2DFlex is deinitialized" );
-    }
-    else
-    {
-        QC_ERROR( "ComponentIF::Deinit failed" );
-    }
+    /* Complete deinitialization */
+    m_state = QC_OBJECT_STATE_INITIAL;
+    QC_INFO( "Component GL2DFlex is deinitialized" );
 
     return ret;
 }
 
-QCStatus_e GL2DFlex::Execute( const QCSharedBuffer_t *pInputs, uint32_t numInputs,
-                              const QCSharedBuffer_t *pOutput )
+QCStatus_e GL2DFlex::Execute( const ImageDescriptor_t *pInputs, uint32_t numInputs,
+                              const ImageDescriptor_t *pOutput )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
@@ -376,52 +367,52 @@ QCStatus_e GL2DFlex::Execute( const QCSharedBuffer_t *pInputs, uint32_t numInput
     {
         for ( size_t i = 0; i < m_numOfInputs; i++ )
         {
-            if ( pInputs[i].imgProps.format != m_inputFormats[i] )
+            if ( pInputs[i].format != m_inputFormats[i] )
             {
                 ret = QC_STATUS_BAD_ARGUMENTS;
                 QC_ERROR( "Input %u format is not correct: %d != %d", i, (int) m_outputFormat,
-                          (int) pOutput->imgProps.format );
+                          (int) pOutput->format );
             }
-            else if ( pInputs[i].imgProps.width != m_inputResolutions[i].width )
+            else if ( pInputs[i].width != m_inputResolutions[i].width )
             {
                 ret = QC_STATUS_BAD_ARGUMENTS;
                 QC_ERROR( "Input %u width is not correct: %u != %u", i, m_inputResolutions[i].width,
-                          pInputs[i].imgProps.width );
+                          pInputs[i].width );
             }
-            else if ( pInputs[i].imgProps.height != m_inputResolutions[i].height )
+            else if ( pInputs[i].height != m_inputResolutions[i].height )
             {
                 ret = QC_STATUS_BAD_ARGUMENTS;
                 QC_ERROR( "Input %u height is not correct: %u != %u", i,
-                          m_inputResolutions[i].height, pInputs[i].imgProps.height );
+                          m_inputResolutions[i].height, pInputs[i].height );
             }
         }
     }
 
     if ( QC_STATUS_OK == ret )
     {
-        if ( pOutput->imgProps.format != m_outputFormat )
+        if ( pOutput->format != m_outputFormat )
         {
             ret = QC_STATUS_BAD_ARGUMENTS;
             QC_ERROR( "Output format is not correct: %d != %d", (int) m_outputFormat,
-                      (int) pOutput->imgProps.format );
+                      (int) pOutput->format );
         }
-        else if ( pOutput->imgProps.width != m_outputResolution.width )
+        else if ( pOutput->width != m_outputResolution.width )
         {
             ret = QC_STATUS_BAD_ARGUMENTS;
             QC_ERROR( "Output width is not correct: %u != %u", m_outputResolution.width,
-                      pOutput->imgProps.width );
+                      pOutput->width );
         }
-        else if ( pOutput->imgProps.height != m_outputResolution.height )
+        else if ( pOutput->height != m_outputResolution.height )
         {
             ret = QC_STATUS_BAD_ARGUMENTS;
             QC_ERROR( "Output height is not correct: %u != %u", m_outputResolution.height,
-                      pOutput->imgProps.height );
+                      pOutput->height );
         }
-        else if ( pOutput->imgProps.batchSize != m_numOfInputs )
+        else if ( pOutput->batchSize != m_numOfInputs )
         {
             ret = QC_STATUS_BAD_ARGUMENTS;
             QC_ERROR( "Output batch size is not correct, numOfInputs %u != batchSize %u",
-                      m_numOfInputs, pOutput->imgProps.batchSize );
+                      m_numOfInputs, pOutput->batchSize );
         }
     }
 
@@ -458,7 +449,7 @@ QCStatus_e GL2DFlex::Execute( const QCSharedBuffer_t *pInputs, uint32_t numInput
     return ret;
 }
 
-QCStatus_e GL2DFlex::RegisterInputBuffers( const QCSharedBuffer_t *pInputBuffers,
+QCStatus_e GL2DFlex::RegisterInputBuffers( const ImageDescriptor_t *pInputBuffers,
                                            uint32_t numOfInputBuffers )
 {
     QCStatus_e ret = QC_STATUS_OK;
@@ -468,7 +459,7 @@ QCStatus_e GL2DFlex::RegisterInputBuffers( const QCSharedBuffer_t *pInputBuffers
 
     for ( size_t i = 0; i < numOfInputBuffers; i++ )
     {
-        bufferAddr = pInputBuffers[i].data();
+        bufferAddr = pInputBuffers[i].GetDataPtr();
         if ( m_inputImageMap.find( bufferAddr ) == m_inputImageMap.end() )
         {
             ret = CreateGLInputImage( &pInputBuffers[i], inputInfo );
@@ -483,20 +474,20 @@ QCStatus_e GL2DFlex::RegisterInputBuffers( const QCSharedBuffer_t *pInputBuffers
     return ret;
 }
 
-QCStatus_e GL2DFlex::RegisterOutputBuffers( const QCSharedBuffer_t *pOutputBuffers,
+QCStatus_e GL2DFlex::RegisterOutputBuffers( const ImageDescriptor_t *pOutputBuffers,
                                             uint32_t numOfOutputBuffers )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
     void *bufferAddr = nullptr;
-    size_t outputSize = pOutputBuffers->size / pOutputBuffers->imgProps.batchSize;
+    size_t outputSize = pOutputBuffers->size / pOutputBuffers->batchSize;
     std::shared_ptr<GL_ImageInfo_t> outputInfo = std::make_shared<GL_ImageInfo_t>();
 
     for ( size_t i = 0; i < numOfOutputBuffers; i++ )
     {
         for ( size_t k = 0; k < m_numOfInputs; k++ )
         {
-            bufferAddr = (void *) ( (uint8_t *) pOutputBuffers[i].data() + k * outputSize );
+            bufferAddr = (void *) ( (uint8_t *) pOutputBuffers[i].GetDataPtr() + k * outputSize );
             if ( m_outputImageMap.find( bufferAddr ) == m_outputImageMap.end() )
             {
                 ret = CreateGLOutputImage( &pOutputBuffers[i], outputInfo );
@@ -513,7 +504,7 @@ QCStatus_e GL2DFlex::RegisterOutputBuffers( const QCSharedBuffer_t *pOutputBuffe
     return ret;
 }
 
-QCStatus_e GL2DFlex::DeregisterInputBuffers( const QCSharedBuffer_t *pInputBuffers,
+QCStatus_e GL2DFlex::DeregisterInputBuffers( const ImageDescriptor_t *pInputBuffers,
                                              uint32_t numOfInputBuffers )
 {
     QCStatus_e ret = QC_STATUS_OK;
@@ -530,7 +521,7 @@ QCStatus_e GL2DFlex::DeregisterInputBuffers( const QCSharedBuffer_t *pInputBuffe
         EGLBoolean rc = EGL_FALSE;
         for ( size_t i = 0; i < numOfInputBuffers; i++ )
         {
-            bufferAddr = pInputBuffers[i].data();
+            bufferAddr = pInputBuffers[i].GetDataPtr();
             if ( m_inputImageMap.find( bufferAddr ) != m_inputImageMap.end() )
             {
                 if ( m_inputImageMap[bufferAddr]->image != nullptr )
@@ -559,13 +550,13 @@ QCStatus_e GL2DFlex::DeregisterInputBuffers( const QCSharedBuffer_t *pInputBuffe
     return ret;
 }
 
-QCStatus_e GL2DFlex::DeregisterOutputBuffers( const QCSharedBuffer_t *pOutputBuffers,
+QCStatus_e GL2DFlex::DeregisterOutputBuffers( const ImageDescriptor_t *pOutputBuffers,
                                               uint32_t numOfOutputBuffers )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
     void *bufferAddr = nullptr;
-    uint32_t outputSize = pOutputBuffers->size / pOutputBuffers->imgProps.batchSize;
+    uint32_t outputSize = pOutputBuffers->size / pOutputBuffers->batchSize;
 
     if ( numOfOutputBuffers > m_outputImageMap.size() )
     {
@@ -580,7 +571,8 @@ QCStatus_e GL2DFlex::DeregisterOutputBuffers( const QCSharedBuffer_t *pOutputBuf
         {
             for ( size_t k = 0; k < m_numOfInputs; k++ )
             {
-                bufferAddr = (void *) ( (uint8_t *) pOutputBuffers[i].data() + k * outputSize );
+                bufferAddr =
+                        (void *) ( (uint8_t *) pOutputBuffers[i].GetDataPtr() + k * outputSize );
                 if ( m_outputImageMap.find( bufferAddr ) != m_outputImageMap.end() )
                 {
                     if ( m_outputImageMap[bufferAddr]->image != nullptr )
@@ -858,12 +850,12 @@ QCStatus_e GL2DFlex::CreateGLPipeline()
 }
 
 
-QCStatus_e GL2DFlex::GetInputImageInfo( const QCSharedBuffer_t *pInputBuffer,
+QCStatus_e GL2DFlex::GetInputImageInfo( const ImageDescriptor_t *pInputBuffer,
                                         std::shared_ptr<GL_ImageInfo_t> &inputInfo )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
-    void *bufferAddr = pInputBuffer->data();
+    void *bufferAddr = pInputBuffer->GetDataPtr();
 
     if ( m_inputImageMap.find( bufferAddr ) == m_inputImageMap.end() )
     {
@@ -878,14 +870,14 @@ QCStatus_e GL2DFlex::GetInputImageInfo( const QCSharedBuffer_t *pInputBuffer,
 }
 
 
-QCStatus_e GL2DFlex::GetOutputImageInfo( const QCSharedBuffer_t *pOutputBuffer,
+QCStatus_e GL2DFlex::GetOutputImageInfo( const ImageDescriptor_t *pOutputBuffer,
                                          std::shared_ptr<GL_ImageInfo_t> &outputInfo,
                                          uint32_t batchIdx )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
     uint32_t outputSize = pOutputBuffer->size / m_numOfInputs;
-    void *bufferAddr = (void *) ( (uint8_t *) pOutputBuffer->data() + batchIdx * outputSize );
+    void *bufferAddr = (void *) ( (uint8_t *) pOutputBuffer->GetDataPtr() + batchIdx * outputSize );
 
     if ( m_outputImageMap.find( bufferAddr ) == m_outputImageMap.end() )
     {
@@ -900,17 +892,17 @@ QCStatus_e GL2DFlex::GetOutputImageInfo( const QCSharedBuffer_t *pOutputBuffer,
 }
 
 
-QCStatus_e GL2DFlex::CreateGLInputImage( const QCSharedBuffer_t *pBuffer,
+QCStatus_e GL2DFlex::CreateGLInputImage( const ImageDescriptor_t *pBuffer,
                                          std::shared_ptr<GL_ImageInfo_t> &inputInfo )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
-    void *bufferAddr = pBuffer->data();
-    QCImageFormat_e format = pBuffer->imgProps.format;
-    uint32_t width = pBuffer->imgProps.width;
-    uint32_t height = pBuffer->imgProps.height;
-    uint32_t stride = pBuffer->imgProps.stride[0];
-    uint32_t handle = pBuffer->buffer.dmaHandle;
+    void *bufferAddr = pBuffer->GetDataPtr();
+    QCImageFormat_e format = pBuffer->format;
+    uint32_t width = pBuffer->width;
+    uint32_t height = pBuffer->height;
+    uint32_t stride = pBuffer->stride[0];
+    uint32_t handle = pBuffer->dmaHandle;
     size_t offset = pBuffer->offset;
     size_t size = pBuffer->size;
 
@@ -954,14 +946,14 @@ QCStatus_e GL2DFlex::CreateGLInputImage( const QCSharedBuffer_t *pBuffer,
                                      (EGLint) GetEGLFormatType( format ),
 #ifdef EGLIMAGE_WITH_UVA
                                      EGL_IMAGE_EXT_BUFFER_BASE_ADDR_LOW_QCOM,
-                                     ( EGLint )( ( uint64_t )(uintptr_t) bufferAddr & 0xFFFFFFFF ),
+                                     (EGLint) ( (uint64_t) (uintptr_t) bufferAddr & 0xFFFFFFFF ),
                                      EGL_IMAGE_EXT_BUFFER_BASE_ADDR_HIGH_QCOM,
-                                     ( EGLint )( ( uint64_t )(uintptr_t) bufferAddr >> 32 ),
+                                     (EGLint) ( (uint64_t) (uintptr_t) bufferAddr >> 32 ),
 #else
                                      EGL_IMAGE_EXT_BUFFER_DESCRIPTOR_LOW_QCOM,
-                                     ( EGLint )( ( uint64_t )(uintptr_t) handle & 0xFFFFFFFF ),
+                                     (EGLint) ( (uint64_t) (uintptr_t) handle & 0xFFFFFFFF ),
                                      EGL_IMAGE_EXT_BUFFER_DESCRIPTOR_HIGH_QCOM,
-                                     ( EGLint )( ( uint64_t )(uintptr_t) handle >> 32 ),
+                                     (EGLint) ( (uint64_t) (uintptr_t) handle >> 32 ),
                                      EGL_IMAGE_EXT_BUFFER_MEMORY_TYPE_QCOM,
                                      EGL_IMAGE_EXT_BUFFER_MEMORY_TYPE_ION_QCOM,
 #endif
@@ -1040,17 +1032,17 @@ QCStatus_e GL2DFlex::CreateGLInputImage( const QCSharedBuffer_t *pBuffer,
 }
 
 
-QCStatus_e GL2DFlex::CreateGLOutputImage( const QCSharedBuffer_t *pBuffer,
+QCStatus_e GL2DFlex::CreateGLOutputImage( const ImageDescriptor_t *pBuffer,
                                           std::shared_ptr<GL_ImageInfo_t> &outputInfo )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
-    void *bufferAddr = pBuffer->data();
-    QCImageFormat_e format = pBuffer->imgProps.format;
-    uint32_t width = pBuffer->imgProps.width;
-    uint32_t height = pBuffer->imgProps.height;
-    uint32_t stride = pBuffer->imgProps.stride[0];
-    uint32_t handle = pBuffer->buffer.dmaHandle;
+    void *bufferAddr = pBuffer->GetDataPtr();
+    QCImageFormat_e format = pBuffer->format;
+    uint32_t width = pBuffer->width;
+    uint32_t height = pBuffer->height;
+    uint32_t stride = pBuffer->stride[0];
+    uint32_t handle = pBuffer->dmaHandle;
     size_t offset = pBuffer->offset;
     size_t size = pBuffer->size;
 
@@ -1094,14 +1086,14 @@ QCStatus_e GL2DFlex::CreateGLOutputImage( const QCSharedBuffer_t *pBuffer,
                                      (EGLint) GetEGLFormatType( format ),
 #ifdef EGLIMAGE_WITH_UVA
                                      EGL_IMAGE_EXT_BUFFER_BASE_ADDR_LOW_QCOM,
-                                     ( EGLint )( ( uint64_t )(uintptr_t) bufferAddr & 0xFFFFFFFF ),
+                                     (EGLint) ( (uint64_t) (uintptr_t) bufferAddr & 0xFFFFFFFF ),
                                      EGL_IMAGE_EXT_BUFFER_BASE_ADDR_HIGH_QCOM,
-                                     ( EGLint )( ( uint64_t )(uintptr_t) bufferAddr >> 32 ),
+                                     (EGLint) ( (uint64_t) (uintptr_t) bufferAddr >> 32 ),
 #else
                                      EGL_IMAGE_EXT_BUFFER_DESCRIPTOR_LOW_QCOM,
-                                     ( EGLint )( ( uint64_t )(uintptr_t) handle & 0xFFFFFFFF ),
+                                     (EGLint) ( (uint64_t) (uintptr_t) handle & 0xFFFFFFFF ),
                                      EGL_IMAGE_EXT_BUFFER_DESCRIPTOR_HIGH_QCOM,
-                                     ( EGLint )( ( uint64_t )(uintptr_t) handle >> 32 ),
+                                     (EGLint) ( (uint64_t) (uintptr_t) handle >> 32 ),
                                      EGL_IMAGE_EXT_BUFFER_MEMORY_TYPE_QCOM,
                                      EGL_IMAGE_EXT_BUFFER_MEMORY_TYPE_ION_QCOM,
 #endif
@@ -1444,5 +1436,5 @@ inline QCStatus_e GL2DFlex::GLErrorCheck()
     return ret;
 }
 
-}   // namespace component
+}   // namespace sample
 }   // namespace QC

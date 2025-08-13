@@ -3,7 +3,7 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 #include "QC/Infras/Memory/UtilsBase.hpp"
-
+#include <algorithm>
 
 #include "gtest/gtest.h"
 

@@ -11,7 +11,7 @@ namespace QC
 namespace sample
 {
 
-SampleGL2DFlex::SampleGL2DFlex() {}
+SampleGL2DFlex::SampleGL2DFlex() : m_GL2DFlex( m_logger ) {}
 SampleGL2DFlex::~SampleGL2DFlex() {}
 
 QCStatus_e SampleGL2DFlex::ParseConfig( SampleConfig_t &config )
@@ -144,7 +144,6 @@ QCStatus_e SampleGL2DFlex::Init( std::string name, SampleConfig_t &config )
 
     if ( QC_STATUS_OK == ret )
     {
-
         ret = m_imagePool.Init( name, m_nodeId, LOGGER_LEVEL_INFO, m_poolSize, m_config.numOfInputs,
                                 m_outputWidth, m_outputHeight, m_outputFormat,
                                 QC_MEMORY_ALLOCATOR_DMA_GPU, m_bufferCache );
@@ -201,10 +200,12 @@ void SampleGL2DFlex::ThreadMain()
             std::shared_ptr<SharedBuffer_t> buffer = m_imagePool.Get();
             if ( nullptr != buffer )
             {
-                std::vector<QCSharedBuffer_t> inputs;
+                std::vector<ImageDescriptor_t> inputs;
                 for ( auto &frame : frames.frames )
                 {
-                    inputs.push_back( frame.buffer->sharedBuffer );
+                    QCBufferDescriptorBase_t &bufDesc = frame.GetBuffer();
+                    ImageDescriptor_t *pImage = dynamic_cast<ImageDescriptor_t *>( &bufDesc );
+                    inputs.push_back( *pImage );
                 }
 
                 PROFILER_BEGIN();
@@ -213,7 +214,11 @@ void SampleGL2DFlex::ThreadMain()
                 void *pOutputData = buffer->sharedBuffer.data();
                 memset( pOutputData, 0, buffer->sharedBuffer.size );
 
-                ret = m_GL2DFlex.Execute( inputs.data(), inputs.size(), &buffer->sharedBuffer );
+                {
+                    QCBufferDescriptorBase_t &bufDesc = buffer->GetBuffer();
+                    ImageDescriptor_t *pImage = dynamic_cast<ImageDescriptor_t *>( &bufDesc );
+                    ret = m_GL2DFlex.Execute( inputs.data(), inputs.size(), pImage );
+                }
                 if ( QC_STATUS_OK == ret )
                 {
                     PROFILER_END();

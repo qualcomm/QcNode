@@ -10,3 +10,5 @@ endif()
 if ( ENABLE_C2D )
   add_subdirectory(C2D)
 endif()
+
+add_subdirectory(GL2DFlex)

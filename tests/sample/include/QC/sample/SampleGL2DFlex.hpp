@@ -6,11 +6,8 @@
 #ifndef QC_SAMPLE_GL2DFLEX_HPP
 #define QC_SAMPLE_GL2DFLEX_HPP
 
-#include "QC/component/GL2DFlex.hpp"
+#include "GL2DFlex.hpp"
 #include "QC/sample/SampleIF.hpp"
-
-using namespace QC;
-using namespace QC::component;
 
 namespace QC
 {

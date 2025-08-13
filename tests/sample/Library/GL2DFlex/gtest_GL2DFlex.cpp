@@ -6,34 +6,40 @@
 #include "gtest/gtest.h"
 #include <stdio.h>
 
-#include "QC/component/GL2DFlex.hpp"
+#include "GL2DFlex.hpp"
+#include "QC/sample/BufferManager.hpp"
 
 using namespace QC;
-using namespace QC::component;
+using namespace QC::sample;
+using namespace QC::Memory;
 
 void GL2DFlexTestNormal( GL2DFlex_Config_t *pConfig, QCImageFormat_e outputFormat,
                          uint32_t outputWidth, uint32_t outputHeight )
 {
     QCStatus_e ret = QC_STATUS_OK;
-
-    GL2DFlex GL2DFlexObj;
+    BufferManager bufMgr( { "GL2DFlex", QC_NODE_TYPE_CUSTOM_0, 0 } );
+    Logger logger;
+    logger.Init( "GL2DFLEX", LOGGER_LEVEL_ERROR );
+    GL2DFlex GL2DFlexObj( logger );
     char pName[12] = "GL2DFlex";
     uint32_t numInputs = pConfig->numOfInputs;
-    QCSharedBuffer_t inputs[numInputs];
-    QCSharedBuffer_t output;
+    ImageDescriptor_t inputs[numInputs];
+    ImageDescriptor_t output;
 
     for ( size_t i = 0; i < numInputs; i++ )
     {
-        ret = inputs[i].Allocate( pConfig->inputConfigs[i].inputResolution.width,
-                                  pConfig->inputConfigs[i].inputResolution.height,
-                                  pConfig->inputConfigs[i].inputFormat );
+        ret = bufMgr.Allocate( ImageBasicProps_t( pConfig->inputConfigs[i].inputResolution.width,
+                                                  pConfig->inputConfigs[i].inputResolution.height,
+                                                  pConfig->inputConfigs[i].inputFormat ),
+                               inputs[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
     pConfig->outputFormat = outputFormat;
     pConfig->outputResolution.width = outputWidth;
     pConfig->outputResolution.height = outputHeight;
 
-    ret = output.Allocate( outputWidth, outputHeight, pConfig->outputFormat );
+    ret = bufMgr.Allocate( ImageBasicProps_t( outputWidth, outputHeight, pConfig->outputFormat ),
+                           output );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = GL2DFlexObj.Init( pName, pConfig );
@@ -68,6 +74,8 @@ void GL2DFlexTestNormal( GL2DFlex_Config_t *pConfig, QCImageFormat_e outputForma
 
     ret = GL2DFlexObj.Deinit();
     ASSERT_EQ( QC_STATUS_OK, ret );
+
+    logger.Deinit();
 }
 
 TEST( GL2DFlex, SANITY_ConvertNV12toRGB )
@@ -193,8 +201,10 @@ TEST( GL2DFlex, SANITY_ROI_BOUND )
 TEST( GL2DFlex, SANITY_RegDeregMultiBuffer )
 {
     QCStatus_e ret = QC_STATUS_OK;
-
-    GL2DFlex GL2DFlexObj;
+    BufferManager bufMgr( { "GL2DFlex", QC_NODE_TYPE_CUSTOM_0, 0 } );
+    Logger logger;
+    logger.Init( "GL2DFLEX", LOGGER_LEVEL_ERROR );
+    GL2DFlex GL2DFlexObj( logger );
     GL2DFlex_Config_t GL2DFlexConfig;
     GL2DFlex_Config_t *pConfig = &GL2DFlexConfig;
     char pName[12] = "GL2DFlex";
@@ -205,8 +215,8 @@ TEST( GL2DFlex, SANITY_RegDeregMultiBuffer )
     uint32_t outputHeight = 720;
     uint32_t bufferNum = 4;
 
-    QCSharedBuffer_t inputBuffers[pConfig->numOfInputs][bufferNum];
-    QCSharedBuffer_t outputBuffers[bufferNum];
+    ImageDescriptor_t inputBuffers[pConfig->numOfInputs][bufferNum];
+    ImageDescriptor_t outputBuffers[bufferNum];
 
     for ( size_t i = 0; i < pConfig->numOfInputs; i++ )
     {
@@ -219,9 +229,11 @@ TEST( GL2DFlex, SANITY_RegDeregMultiBuffer )
         pConfig->inputConfigs[i].ROI.height = 720;
         for ( size_t k = 0; k < bufferNum; k++ )
         {
-            ret = inputBuffers[i][k].Allocate( pConfig->inputConfigs[i].inputResolution.width,
-                                               pConfig->inputConfigs[i].inputResolution.height,
-                                               pConfig->inputConfigs[i].inputFormat );
+            ret = bufMgr.Allocate(
+                    ImageBasicProps_t( pConfig->inputConfigs[i].inputResolution.width,
+                                       pConfig->inputConfigs[i].inputResolution.height,
+                                       pConfig->inputConfigs[i].inputFormat ),
+                    inputBuffers[i][k] );
             ASSERT_EQ( QC_STATUS_OK, ret );
         }
     }
@@ -231,13 +243,14 @@ TEST( GL2DFlex, SANITY_RegDeregMultiBuffer )
     pConfig->outputResolution.height = outputHeight;
     for ( size_t k = 0; k < bufferNum; k++ )
     {
-        ret = outputBuffers[k].Allocate( pConfig->numOfInputs, outputWidth, outputHeight,
-                                         outputFormat );
+        ret = bufMgr.Allocate(
+                ImageBasicProps_t( pConfig->numOfInputs, outputWidth, outputHeight, outputFormat ),
+                outputBuffers[k] );
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
 
-    QCSharedBuffer_t *inputs[pConfig->numOfInputs];
-    QCSharedBuffer_t *output;
+    ImageDescriptor_t *inputs[pConfig->numOfInputs];
+    ImageDescriptor_t *output;
 
     ret = GL2DFlexObj.Init( pName, pConfig );
     ASSERT_EQ( QC_STATUS_OK, ret );
@@ -283,8 +296,9 @@ TEST( GL2DFlex, SANITY_RegDeregMultiBuffer )
 
     ret = GL2DFlexObj.Deinit();
     ASSERT_EQ( QC_STATUS_OK, ret );
-}
 
+    logger.Deinit();
+}
 
 #ifndef GTEST_QCNODE
 int main( int argc, char **argv )
