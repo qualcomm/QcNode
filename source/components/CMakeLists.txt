@@ -33,6 +33,5 @@ if ( ENABLE_EVA )
   add_subdirectory(OpticalFlow)
   add_subdirectory(DepthFromStereo)
 endif()
-add_subdirectory(GL2DFlex)
 
 

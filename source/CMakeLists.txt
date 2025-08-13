@@ -18,7 +18,6 @@ set( TARGET_LIBRARIES
     QCNodeVideoEncoder
     QCNodeVideoDecoder
     QCNodeCL2DFlex
-    QCNodeGL2DFlex
     QCNodeBase
     QCNodeNodeCamera
     QCNodeNodeVideoEncoder

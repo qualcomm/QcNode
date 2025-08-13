@@ -42,12 +42,15 @@
 #include <xf86drm.h>
 #endif
 
-#include "QC/component/ComponentIF.hpp"
+#include "QC/Infras/Log/Logger.hpp"
+#include "QC/Infras/Memory/ImageDescriptor.hpp"
 
 namespace QC
 {
-namespace component
+namespace sample
 {
+
+using namespace QC::Memory;
 
 /*=================================================================================================
 ** Typedefs
@@ -91,7 +94,7 @@ typedef struct
  * @brief Component GL2DFlex
  * @brief GL2DFlex converts camera frames to another image format and do cropping and resizing
  */
-class GL2DFlex final : public ComponentIF
+class GL2DFlex
 {
 
     /*=================================================================================================
@@ -99,7 +102,7 @@ class GL2DFlex final : public ComponentIF
     =================================================================================================*/
 
 public:
-    GL2DFlex();
+    GL2DFlex( Logger &logger );
     ~GL2DFlex();
 
     /**
@@ -110,8 +113,7 @@ public:
      * @param[in] level the logger message level
      * @return QC_STATUS_OK on success, others on failure
      */
-    QCStatus_e Init( const char *pName, const GL2DFlex_Config_t *pConfig,
-                     Logger_Level_e level = LOGGER_LEVEL_ERROR );
+    QCStatus_e Init( const char *pName, const GL2DFlex_Config_t *pConfig );
 
     /**
      * @cond GL2DFlex::Start @endcond
@@ -142,8 +144,8 @@ public:
      * @param[out] pOutput the output shared buffer
      * @return QC_STATUS_OK on success, others on failure
      */
-    QCStatus_e Execute( const QCSharedBuffer_t *pInputs, uint32_t numInputs,
-                        const QCSharedBuffer_t *pOutput );
+    QCStatus_e Execute( const ImageDescriptor_t *pInputs, uint32_t numInputs,
+                        const ImageDescriptor_t *pOutput );
 
     /**
      * @cond GL2DFlex::RegisterInputBuffers @endcond
@@ -155,7 +157,7 @@ public:
      * finished. If skip to do this, the Execute API will register input buffers automatically.
      * This API need to be called in the same thread with Execute API
      */
-    QCStatus_e RegisterInputBuffers( const QCSharedBuffer_t *pInputBuffers,
+    QCStatus_e RegisterInputBuffers( const ImageDescriptor_t *pInputBuffers,
                                      uint32_t numOfInputBuffers );
 
     /**
@@ -168,7 +170,7 @@ public:
      * finished. If skip to do this, the Execute API will register output buffers automatically.
      * This API need to be called in the same thread with Execute API
      */
-    QCStatus_e RegisterOutputBuffers( const QCSharedBuffer_t *pOutputBuffers,
+    QCStatus_e RegisterOutputBuffers( const ImageDescriptor_t *pOutputBuffers,
                                       uint32_t numOfOutputBuffers );
 
     /**
@@ -178,7 +180,7 @@ public:
      * @param[in] numOfInputBuffers the number of shared buffers
      * @return QC_STATUS_OK on success, others on failure
      */
-    QCStatus_e DeregisterInputBuffers( const QCSharedBuffer_t *pInputBuffers,
+    QCStatus_e DeregisterInputBuffers( const ImageDescriptor_t *pInputBuffers,
                                        uint32_t numOfInputBuffers );
 
     /**
@@ -188,7 +190,7 @@ public:
      * @param[in] numOfOutputBuffers the number of shared buffers
      * @return QC_STATUS_OK on success, others on failure
      */
-    QCStatus_e DeregisterOutputBuffers( const QCSharedBuffer_t *pOutputBuffers,
+    QCStatus_e DeregisterOutputBuffers( const ImageDescriptor_t *pOutputBuffers,
                                         uint32_t numOfOutputBuffers );
 
 
@@ -217,16 +219,16 @@ private:
     QCStatus_e CreateGLPipeline();
 
 
-    QCStatus_e GetInputImageInfo( const QCSharedBuffer_t *pInputBuffer,
+    QCStatus_e GetInputImageInfo( const ImageDescriptor_t *pInputBuffer,
                                   std::shared_ptr<GL_ImageInfo_t> &inputInfo );
 
-    QCStatus_e GetOutputImageInfo( const QCSharedBuffer_t *pOutputBuffer,
+    QCStatus_e GetOutputImageInfo( const ImageDescriptor_t *pOutputBuffer,
                                    std::shared_ptr<GL_ImageInfo_t> &outputInfo, uint32_t batchIdx );
 
-    QCStatus_e CreateGLInputImage( const QCSharedBuffer_t *pBuffer,
+    QCStatus_e CreateGLInputImage( const ImageDescriptor_t *pBuffer,
                                    std::shared_ptr<GL_ImageInfo_t> &inputInfo );
 
-    QCStatus_e CreateGLOutputImage( const QCSharedBuffer_t *pBuffer,
+    QCStatus_e CreateGLOutputImage( const ImageDescriptor_t *pBuffer,
                                     std::shared_ptr<GL_ImageInfo_t> &outputInfo );
 
     QCStatus_e Draw( std::shared_ptr<GL_ImageInfo_t> &inputInfo,
@@ -268,9 +270,12 @@ private:
     std::unordered_map<void *, std::shared_ptr<GL_ImageInfo_t>> m_inputImageMap;
     std::unordered_map<void *, std::shared_ptr<GL_ImageInfo_t>> m_outputImageMap;
 
+    Logger &m_logger;
+    QCObjectState_e m_state = QC_OBJECT_STATE_INITIAL;
+
 };   // class GL2DFLEX
 
-}   // namespace component
+}   // namespace sample
 }   // namespace QC
 
 #endif   // QC_GL2DFLEX_HPP

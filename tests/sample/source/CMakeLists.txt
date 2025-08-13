@@ -61,6 +61,8 @@ if ( ENABLE_C2D )
   list( APPEND TARGET_LIBRARIES SampleC2D )
 endif()
 
+list( APPEND TARGET_LIBRARIES SampleGL2DFlex )
+
 if( DEFINED ENV{QNN_SDK_ROOT} )
     set( QNN_SDK_ROOT $ENV{QNN_SDK_ROOT} )
 endif()

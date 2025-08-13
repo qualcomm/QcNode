@@ -655,7 +655,8 @@ uint32_t C2D::GetC2DFormatType( QCImageFormat_e format )
             c2dFormat = C2D_COLOR_FORMAT_420_P010;
             break;
         case QC_IMAGE_FORMAT_RGB888:
-            c2dFormat = C2D_RGB_FORMAT( C2D_COLOR_FORMAT_888_RGB | C2D_FORMAT_SWAP_ENDIANNESS );
+            c2dFormat = C2D_RGB_FORMAT( (uint32_t) C2D_COLOR_FORMAT_888_RGB |
+                                        (uint32_t) C2D_FORMAT_SWAP_ENDIANNESS );
             break;
         case QC_IMAGE_FORMAT_BGR888:
             c2dFormat = C2D_RGB_FORMAT( C2D_COLOR_FORMAT_888_RGB );
