@@ -11,15 +11,17 @@
 #include <memory>
 #include <unistd.h>
 
-#include "FadasPlr.hpp"
-#include "QC/component/ComponentIF.hpp"
-#include "fadas.h"
+#include "FadasPlrPostProc.hpp"
+#include "QC/Infras/Log/Logger.hpp"
+#include "QC/Infras/Memory/TensorDescriptor.hpp"
+#include "QC/sample/BufferManager.hpp"
 
 namespace QC
 {
-namespace component
+namespace sample
 {
 using namespace QC::libs::FadasIface;
+using namespace QC::Memory;
 
 typedef struct
 {
@@ -66,6 +68,8 @@ typedef struct
      * class labels before mapping point cloud points to 3D bounding box.
      * NOTE: This flag will be used only if bMapPtsToBBox is set to true. */
     bool bBBoxFilter;
+
+    uint32_t nodeId; /**< a unique instance ID used by buffer manager */
 } PostCenterPoint_Config_t;
 
 typedef struct
@@ -92,11 +96,11 @@ typedef struct
  * @brief PostCenterPoint
  * Extracts and filters bounding boxes from the center point network output.
  */
-class PostCenterPoint : public ComponentIF
+class PostCenterPoint
 {
 
 public:
-    PostCenterPoint();
+    PostCenterPoint( Logger &logger );
     ~PostCenterPoint();
 
     /**
@@ -106,8 +110,7 @@ public:
      * @param[in] level the logger message level
      * @return QC_STATUS_OK on success, others on failure
      */
-    QCStatus_e Init( const char *pName, const PostCenterPoint_Config_t *pConfig,
-                     Logger_Level_e level = LOGGER_LEVEL_ERROR );
+    QCStatus_e Init( const char *pName, const PostCenterPoint_Config_t *pConfig );
 
     /**
      * @brief Register buffers for PostCenterPoint
@@ -120,7 +123,7 @@ public:
      * registration once, in case the buffer hasn’t been registered before.
      * @return QC_STATUS_OK on success, others on failure
      */
-    QCStatus_e RegisterBuffers( const QCSharedBuffer_t *pBuffers, uint32_t numBuffers,
+    QCStatus_e RegisterBuffers( const TensorDescriptor_t *pBuffers, uint32_t numBuffers,
                                 FadasBufType_e bufferType );
 
     /**
@@ -155,10 +158,10 @@ public:
      *     width  = ( maxXRange - minXRange ) / pillarXSize / stride
      * @return QC_STATUS_OK on success, others on failure
      */
-    QCStatus_e Execute( const QCSharedBuffer_t *pHeatmap, const QCSharedBuffer_t *pXY,
-                        const QCSharedBuffer_t *pZ, const QCSharedBuffer_t *pSize,
-                        const QCSharedBuffer_t *pTheta, const QCSharedBuffer_t *pInPts,
-                        QCSharedBuffer_t *pDetections );
+    QCStatus_e Execute( const TensorDescriptor_t *pHeatmap, const TensorDescriptor_t *pXY,
+                        const TensorDescriptor_t *pZ, const TensorDescriptor_t *pSize,
+                        const TensorDescriptor_t *pTheta, const TensorDescriptor_t *pInPts,
+                        TensorDescriptor_t *pDetections );
 
     /**
      * @brief Stop the PostCenterPoint pipeline
@@ -176,7 +179,7 @@ public:
      * were previously registered.
      * @return QC_STATUS_OK on success, others on failure
      */
-    QCStatus_e DeRegisterBuffers( const QCSharedBuffer_t *pBuffers, uint32_t numBuffers );
+    QCStatus_e DeRegisterBuffers( const TensorDescriptor_t *pBuffers, uint32_t numBuffers );
 
     /**
      * @brief Deinitialize the PostCenterPoint pipeline
@@ -185,10 +188,10 @@ public:
     QCStatus_e Deinit();
 
 private:
-    QCStatus_e RegisterBuffersToFadas( const QCSharedBuffer_t *pBuffers, uint32_t numBuffers,
+    QCStatus_e RegisterBuffersToFadas( const TensorDescriptor_t *pBuffers, uint32_t numBuffers,
                                        FadasBufType_e bufferType );
 
-    QCStatus_e DeRegisterBuffersToFadas( const QCSharedBuffer_t *pBuffers, uint32_t numBuffers );
+    QCStatus_e DeRegisterBuffersToFadas( const TensorDescriptor_t *pBuffers, uint32_t numBuffers );
 
 private:
     PostCenterPoint_Config_t m_config;
@@ -198,14 +201,18 @@ private:
     uint32_t m_height;
     uint32_t m_width;
 
-    QCSharedBuffer_t m_BBoxList;
-    QCSharedBuffer_t m_labels;
-    QCSharedBuffer_t m_scores;
-    QCSharedBuffer_t m_metadata;
+    TensorDescriptor_t m_BBoxList;
+    TensorDescriptor_t m_labels;
+    TensorDescriptor_t m_scores;
+    TensorDescriptor_t m_metadata;
+
+    BufferManager *m_pBufMgr = nullptr;
+    Logger &m_logger;
+    QCObjectState_e m_state = QC_OBJECT_STATE_INITIAL;
 
 };   // class PostCenterPoint
 
-}   // namespace component
+}   // namespace sample
 }   // namespace QC
 
 #endif   // QC_POST_CENTERPOINT_HPP

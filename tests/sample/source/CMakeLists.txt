@@ -63,6 +63,10 @@ endif()
 
 list( APPEND TARGET_LIBRARIES SampleGL2DFlex )
 
+if ( ENABLE_FADAS )
+  list( APPEND TARGET_LIBRARIES SamplePostCenterPoint )
+endif()
+
 if( DEFINED ENV{QNN_SDK_ROOT} )
     set( QNN_SDK_ROOT $ENV{QNN_SDK_ROOT} )
 endif()

@@ -12,3 +12,7 @@ if ( ENABLE_C2D )
 endif()
 
 add_subdirectory(GL2DFlex)
+
+if ( ENABLE_FADAS )
+  add_subdirectory(PostCenterPoint)
+endif()
