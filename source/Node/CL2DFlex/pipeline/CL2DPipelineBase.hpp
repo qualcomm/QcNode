@@ -74,17 +74,14 @@ public:
 
     void DeinitLogger();
 
-    virtual QCStatus_e Init( uint32_t inputId, cl_kernel *pKernel, CL2DFlex_Config_t *pConfig,
-                             OpenclSrv *pOpenclSrvObj ) = 0;
+    virtual QCStatus_e
+    Init( uint32_t inputId, cl_kernel *pKernel, CL2DFlex_Config_t *pConfig,
+          OpenclSrv *pOpenclSrvObj,
+          std::vector<std::reference_wrapper<QCBufferDescriptorBase>> &buffers ) = 0;
 
     virtual QCStatus_e Deinit() = 0;
 
-    virtual QCStatus_e Execute( const QCSharedBuffer_t *pInput,
-                                const QCSharedBuffer_t *pOutput ) = 0;
-    virtual QCStatus_e ExecuteWithROI( const QCSharedBuffer_t *pInput,
-                                       const QCSharedBuffer_t *pOutput,
-                                       const CL2DFlex_ROIConfig_t *pROIs,
-                                       const uint32_t numROIs ) = 0;
+    virtual QCStatus_e Execute( ImageDescriptor_t &input, ImageDescriptor_t &output ) = 0;
 
 protected:
     std::string m_name;

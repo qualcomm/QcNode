@@ -70,12 +70,6 @@ public:
     QCObjectState_e GetState();
 
 private:
-    QCStatus_e RegisterBuffers( const QCSharedBuffer_t *pBuffers, uint32_t numBuffers );
-    QCStatus_e DeRegisterBuffers( const QCSharedBuffer_t *pBuffers, uint32_t numBuffers );
-    QCStatus_e Execute( const QCSharedBuffer_t *pInputs, const uint32_t numInputs,
-                        const QCSharedBuffer_t *pOutput );
-    QCStatus_e ExecuteWithROI( const QCSharedBuffer_t *pInput, const QCSharedBuffer_t *pOutput,
-                               const CL2DFlex_ROIConfig_t *pROIs, const uint32_t numROIs );
     QCStatus_e SetupGlobalBufferIdMap();
 
 private:
@@ -90,12 +84,6 @@ private:
 
     uint32_t m_inputNum;
     uint32_t m_outputNum = 1;
-
-public:
-    uint32_t m_mapXBufferIds[QC_MAX_INPUTS];
-    uint32_t m_mapYBufferIds[QC_MAX_INPUTS];
-    CL2DFlex_ROIConfig_t m_ROIs[QC_CL2DFLEX_ROI_NUMBER_MAX];
-    uint32_t m_numOfROIs;
 
 };   // class CL2DFlexImpl
 

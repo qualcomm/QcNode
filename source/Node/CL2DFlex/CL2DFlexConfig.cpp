@@ -41,10 +41,10 @@ QCStatus_e CL2DFlexConfig::VerifyStaticConfig( DataTree &dt, std::string &errors
 
     std::vector<DataTree> inputDts;
     (void) dt.Get( "inputs", inputDts );
-    m_numOfInputs = 0;
+    uint32_t numOfInputs = 0;
     for ( DataTree &idt : inputDts )
     {
-        m_numOfInputs++;
+        numOfInputs++;
 
         std::string mode = idt.Get<std::string>( "workMode", "resize_nearest" );
         if ( ( "convert" != mode ) && ( "resize_nearest" != mode ) &&
@@ -55,25 +55,44 @@ QCStatus_e CL2DFlexConfig::VerifyStaticConfig( DataTree &dt, std::string &errors
             errors += "the mode is invalid, ";
             status = QC_STATUS_BAD_ARGUMENTS;
         }
+        if ( ( "letterbox_nearest_multiple" == mode ) || ( "resize_nearest_multiple" == mode ) )
+        {
+            if ( !dt.Exists( "numOfROIs" ) )
+            {
+                errors += "multiple work mode without number of ROIs, ";
+                status = QC_STATUS_BAD_ARGUMENTS;
+            }
+            else
+            {
+                uint32_t numOfROIs = dt.Get<uint32_t>( "numOfROIs", UINT32_MAX );
+                if ( QC_CL2DFLEX_ROI_NUMBER_MAX < numOfROIs )
+                {
+                    errors += "ROIs number invalid, ";
+                    status = QC_STATUS_BAD_ARGUMENTS;
+                }
+            }
+        }
+        if ( ( "letterbox_nearest_multiple" == mode ) || ( "resize_nearest_multiple" == mode ) )
+        {
+            if ( !dt.Exists( "ROIsBufferId" ) )
+            {
+                errors += "multiple work mode without ROIs buffer ID, ";
+                status = QC_STATUS_BAD_ARGUMENTS;
+            }
+        }
+        if ( "remap_nearest" == mode )
+        {
+            if ( ( !idt.Exists( "mapXBufferId" ) ) || ( !idt.Exists( "mapYBufferId" ) ) )
+            {
+                errors += "remap work mode without mapX and mapY buffer ID, ";
+                status = QC_STATUS_BAD_ARGUMENTS;
+            }
+        }
     }
 
-    if ( QC_MAX_INPUTS < m_numOfInputs )
+    if ( QC_MAX_INPUTS < numOfInputs )
     {
         errors += "inputs number invalid, ";
-        status = QC_STATUS_BAD_ARGUMENTS;
-    }
-
-    m_pCL2DFlexImpl->m_numOfROIs = 0;
-    std::vector<DataTree> roiDts;
-    (void) dt.Get( "ROIs", roiDts );
-    for ( DataTree &idt : roiDts )
-    {
-        m_pCL2DFlexImpl->m_numOfROIs++;
-    }
-
-    if ( QC_CL2DFLEX_ROI_NUMBER_MAX < m_pCL2DFlexImpl->m_numOfROIs )
-    {
-        errors += "ROIs number invalid, ";
         status = QC_STATUS_BAD_ARGUMENTS;
     }
 
@@ -124,7 +143,6 @@ QCStatus_e CL2DFlexConfig::ParseStaticConfig( DataTree &dt, std::string &errors 
         config.nodeId.name = dt.Get<std::string>( "name", "" );
         config.nodeId.id = dt.Get<uint32_t>( "id", UINT32_MAX );
 
-        config.params.numOfInputs = m_numOfInputs;
         config.params.outputWidth = dt.Get<uint32_t>( "outputWidth", 1024 );
         config.params.outputHeight = dt.Get<uint32_t>( "outputHeight", 1024 );
         config.params.outputFormat = dt.GetImageFormat( "outputFormat", QC_IMAGE_FORMAT_RGB888 );
@@ -155,13 +173,17 @@ QCStatus_e CL2DFlexConfig::ParseStaticConfig( DataTree &dt, std::string &errors 
             {
                 config.params.workModes[inputId] = CL2DFLEX_WORK_MODE_LETTERBOX_NEAREST;
             }
-            else if ( "letterbox_nearest_multiple" == mode )
+            else if ( ( "letterbox_nearest_multiple" == mode ) && ( 0 == inputId ) )
             {
                 config.params.workModes[inputId] = CL2DFLEX_WORK_MODE_LETTERBOX_NEAREST_MULTIPLE;
+                config.params.numOfROIs = dt.Get<uint32_t>( "numOfROIs", UINT32_MAX );
+                config.params.ROIsBufferId = dt.Get<uint32_t>( "ROIsBufferId", UINT32_MAX );
             }
-            else if ( "resize_nearest_multiple" == mode )
+            else if ( ( "resize_nearest_multiple" == mode ) && ( 0 == inputId ) )
             {
                 config.params.workModes[inputId] = CL2DFLEX_WORK_MODE_RESIZE_NEAREST_MULTIPLE;
+                config.params.numOfROIs = dt.Get<uint32_t>( "numOfROIs", UINT32_MAX );
+                config.params.ROIsBufferId = dt.Get<uint32_t>( "ROIsBufferId", UINT32_MAX );
             }
             else if ( "convert_ubwc" == mode )
             {
@@ -170,8 +192,10 @@ QCStatus_e CL2DFlexConfig::ParseStaticConfig( DataTree &dt, std::string &errors 
             else if ( "remap_nearest" == mode )
             {
                 config.params.workModes[inputId] = CL2DFLEX_WORK_MODE_REMAP_NEAREST;
-                m_pCL2DFlexImpl->m_mapXBufferIds[inputId] = idt.Get<uint32_t>( "mapX", UINT32_MAX );
-                m_pCL2DFlexImpl->m_mapYBufferIds[inputId] = idt.Get<uint32_t>( "mapY", UINT32_MAX );
+                config.params.remapTable[inputId].mapXBufferId =
+                        idt.Get<uint32_t>( "mapXBufferId", UINT32_MAX );
+                config.params.remapTable[inputId].mapYBufferId =
+                        idt.Get<uint32_t>( "mapYBufferId", UINT32_MAX );
             }
             else
             {
@@ -181,17 +205,7 @@ QCStatus_e CL2DFlexConfig::ParseStaticConfig( DataTree &dt, std::string &errors 
             inputId++;
         }
 
-        std::vector<DataTree> roiDts;
-        uint32_t roiId = 0;
-        (void) dt.Get( "ROIs", roiDts );
-        for ( DataTree &idt : roiDts )
-        {
-            m_pCL2DFlexImpl->m_ROIs[roiId].x = idt.Get<uint32_t>( "roiX", 0 );
-            m_pCL2DFlexImpl->m_ROIs[roiId].y = idt.Get<uint32_t>( "roiY", 0 );
-            m_pCL2DFlexImpl->m_ROIs[roiId].width = idt.Get<uint32_t>( "roiWidth", 0 );
-            m_pCL2DFlexImpl->m_ROIs[roiId].height = idt.Get<uint32_t>( "roiHeight", 0 );
-            roiId++;
-        }
+        config.params.numOfInputs = inputId;
 
         config.bufferIds = dt.Get<uint32_t>( "bufferIds", std::vector<uint32_t>{} );
 

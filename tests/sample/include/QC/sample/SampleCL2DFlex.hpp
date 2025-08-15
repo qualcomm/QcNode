@@ -74,10 +74,12 @@ private:
     bool m_bEnableUndistortion = false;
     bool m_bExecuteWithROIs = false;
     uint32_t m_roiNumber = 1;
-    CL2DFlex_ROIConfig_t m_ROIs[QC_MAX_INPUTS];
+    TensorDescriptor_t m_ROIsBufferDesc;
 
-    QCSharedBufferDescriptor_t m_mapXBufferDesc[QC_MAX_INPUTS];
-    QCSharedBufferDescriptor_t m_mapYBufferDesc[QC_MAX_INPUTS];
+    TensorDescriptor_t m_mapXBufferDesc[QC_MAX_INPUTS];
+    TensorDescriptor_t m_mapYBufferDesc[QC_MAX_INPUTS];
+
+    BufferManager *m_pBufMgr = nullptr;
 };   // class SampleCL2DFlex
 
 }   // namespace sample

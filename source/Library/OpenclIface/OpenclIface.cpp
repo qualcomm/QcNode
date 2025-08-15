@@ -345,7 +345,7 @@ QCStatus_e OpenclSrv::RegBuf( const QCBuffer_t *pBuffer, cl_mem *pBufferCL )
         {
 #if defined( __QNXNTO__ )
             cl_mem_pmem_host_ptr clBufHostPtr = { 0 };
-            clBufHostPtr.pmem_handle = (uintptr_t) pBuffer->dmaHandle;
+            clBufHostPtr.pmem_handle = static_cast<uintptr_t>( pBuffer->dmaHandle );
             clBufHostPtr.ext_host_ptr.allocation_type = CL_MEM_PMEM_HOST_PTR_QCOM;
             clBufHostPtr.ext_host_ptr.host_cache_policy = CL_MEM_HOST_IOCOHERENT_QCOM;
             clBufHostPtr.pmem_hostptr = pBuffer->pData;
@@ -354,7 +354,7 @@ QCStatus_e OpenclSrv::RegBuf( const QCBuffer_t *pBuffer, cl_mem *pBufferCL )
                                     pBuffer->size, &clBufHostPtr, &retCL );
 #else
             cl_mem_dmabuf_host_ptr clBufHostPtr = { 0 };
-            clBufHostPtr.dmabuf_filedesc = (int) pBuffer->dmaHandle;
+            clBufHostPtr.dmabuf_filedesc = static_cast<int>( pBuffer->dmaHandle );
             clBufHostPtr.ext_host_ptr.allocation_type = CL_MEM_DMABUF_HOST_PTR_QCOM;
             clBufHostPtr.ext_host_ptr.host_cache_policy = CL_MEM_HOST_UNCACHED_QCOM;
             clBufHostPtr.dmabuf_hostptr = pBuffer->pData;
@@ -383,6 +383,50 @@ QCStatus_e OpenclSrv::RegBuf( const QCBuffer_t *pBuffer, cl_mem *pBufferCL )
     return ret;
 }
 
+QCStatus_e OpenclSrv::RegBufferDesc( QCBufferDescriptorBase_t &buffer, cl_mem &bufferCL )
+{
+    QCStatus_e ret = QC_STATUS_OK;
+    cl_int retCL = CL_SUCCESS;
+
+    auto it = m_bufferMap.find( buffer.pBuf );
+    if ( it == m_bufferMap.end() )
+    {
+#if defined( __QNXNTO__ )
+        cl_mem_pmem_host_ptr clBufHostPtr = { 0 };
+        clBufHostPtr.pmem_handle = static_cast<uintptr_t>( buffer.dmaHandle );
+        clBufHostPtr.ext_host_ptr.allocation_type = CL_MEM_PMEM_HOST_PTR_QCOM;
+        clBufHostPtr.ext_host_ptr.host_cache_policy = CL_MEM_HOST_IOCOHERENT_QCOM;
+        clBufHostPtr.pmem_hostptr = buffer.pBuf;
+        bufferCL = clCreateBuffer( m_context, CL_MEM_USE_HOST_PTR | CL_MEM_EXT_HOST_PTR_QCOM,
+                                   buffer.size, &clBufHostPtr, &retCL );
+#else
+        cl_mem_dmabuf_host_ptr clBufHostPtr = { 0 };
+        clBufHostPtr.dmabuf_filedesc = static_cast<int>( buffer.dmaHandle );
+        clBufHostPtr.ext_host_ptr.allocation_type = CL_MEM_DMABUF_HOST_PTR_QCOM;
+        clBufHostPtr.ext_host_ptr.host_cache_policy = CL_MEM_HOST_UNCACHED_QCOM;
+        clBufHostPtr.dmabuf_hostptr = buffer.pBuf;
+        bufferCL = clCreateBuffer( m_context, CL_MEM_USE_HOST_PTR | CL_MEM_EXT_HOST_PTR_QCOM,
+                                   buffer.size, &clBufHostPtr, &retCL );
+#endif
+
+        if ( CL_SUCCESS != retCL )
+        {
+            QC_ERROR( "Unable to create CL buffer, retCL = %d", retCL );
+            ret = QC_STATUS_FAIL;
+        }
+        else
+        {
+            m_bufferMap[buffer.pBuf] = { bufferCL };
+        }
+    }
+    else
+    {
+        bufferCL = it->second.clMem;
+    }
+
+    return ret;
+}
+
 QCStatus_e OpenclSrv::RegImage( void *pData, uint64_t dmaHandle, cl_mem *pBufferCL,
                                 cl_image_format *pFormat, cl_image_desc *pDesc )
 {
@@ -401,7 +445,7 @@ QCStatus_e OpenclSrv::RegImage( void *pData, uint64_t dmaHandle, cl_mem *pBuffer
         {
 #if defined( __QNXNTO__ )
             cl_mem_pmem_host_ptr clBufHostPtr = { { 0 } };
-            clBufHostPtr.pmem_handle = (uintptr_t) 0;
+            clBufHostPtr.pmem_handle = static_cast<uintptr_t>( 0 );
             clBufHostPtr.ext_host_ptr.allocation_type = CL_MEM_PMEM_HOST_PTR_QCOM;
             clBufHostPtr.ext_host_ptr.host_cache_policy = CL_MEM_HOST_IOCOHERENT_QCOM;
             clBufHostPtr.pmem_hostptr = pData;
@@ -410,7 +454,7 @@ QCStatus_e OpenclSrv::RegImage( void *pData, uint64_t dmaHandle, cl_mem *pBuffer
                     pFormat, pDesc, &clBufHostPtr, &retCL );
 #else
             cl_mem_dmabuf_host_ptr clBufHostPtr = { { 0 } };
-            clBufHostPtr.dmabuf_filedesc = (int) dmaHandle;
+            clBufHostPtr.dmabuf_filedesc = static_cast<int>( dmaHandle );
             clBufHostPtr.ext_host_ptr.allocation_type = CL_MEM_DMABUF_HOST_PTR_QCOM;
             clBufHostPtr.ext_host_ptr.host_cache_policy = CL_MEM_HOST_IOCOHERENT_QCOM;
             clBufHostPtr.dmabuf_hostptr = pData;
@@ -555,6 +599,29 @@ QCStatus_e OpenclSrv::DeregPlane( void *pData, cl_image_format *pFormat )
         else
         {
             (void) m_planeMap.erase( it );
+        }
+    }
+
+    return ret;
+}
+
+QCStatus_e OpenclSrv::DeregBufferDesc( QCBufferDescriptorBase_t &buffer )
+{
+    QCStatus_e ret = QC_STATUS_OK;
+    cl_int retCL = CL_SUCCESS;
+
+    auto it = m_bufferMap.find( buffer.pBuf );
+    if ( it != m_bufferMap.end() )
+    {
+        retCL = clReleaseMemObject( it->second.clMem );
+        if ( CL_SUCCESS != retCL )
+        {
+            QC_ERROR( "Unable to release CL buffer, retCL = %d", retCL );
+            ret = QC_STATUS_FAIL;
+        }
+        else
+        {
+            (void) m_bufferMap.erase( it );
         }
     }
 

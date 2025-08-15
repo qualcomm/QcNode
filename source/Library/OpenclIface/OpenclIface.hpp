@@ -13,8 +13,12 @@
 
 #include "QC/Common/Types.hpp"
 #include "QC/Infras/Log/Logger.hpp"
+#include "QC/Infras/Memory/ImageDescriptor.hpp"
 #include "QC/Infras/Memory/SharedBuffer.hpp"
+#include "QC/Infras/Memory/TensorDescriptor.hpp"
+
 using namespace QC;
+using namespace QC::Memory;
 
 namespace QC
 {
@@ -117,6 +121,7 @@ public:
     QCStatus_e Deinit();
 
     /**
+     * deprecated function, will be removed after QCnode phase2 development
      * @brief Register the OpenclIface buffer
      * @param[in] pBuffer the QC buffer pointer to register
      * @param[in] pBufferCL the OpenCL memory buffer pointer
@@ -154,6 +159,18 @@ public:
                          cl_image_desc *pDesc );
 
     /**
+     * @brief Register the OpenclIface BufferDescriptor
+     * @param[in] buffer the BufferDescriptor to register
+     * @param[in] bufferCL the OpenCL memory buffer
+     * @return QC_STATUS_OK on success, others on failure
+     * @note Create an OpenCL memory buffer and register the host BufferDescriptor to it in zero
+     * memory copy method. Then store the OpenCL memory buffer to buffer map, so the same host
+     * buffer would not be registered twice.
+     */
+    QCStatus_e RegBufferDesc( QCBufferDescriptorBase_t &buffer, cl_mem &bufferCL );
+
+    /**
+     * deprecated function, will be removed after QCnode phase2 development
      * @brief Deregister the OpenclIface buffer
      * @param[in] pBuffer the QC buffer pointer to deregister
      * @return QC_STATUS_OK on success, others on failure
@@ -178,6 +195,15 @@ public:
      * @note Release the OpenCL memory buffer of single plane.
      */
     QCStatus_e DeregPlane( void *pData, cl_image_format *pFormat );
+
+    /**
+     * @brief Deregister the OpenclIface BufferDescriptor
+     * @param[in] buffer the BufferDescriptor to deregister
+     * @return QC_STATUS_OK on success, others on failure
+     * @note Release the OpenCL memory buffer corresponding to the host BufferDescriptor and
+     * erase it in the buffer map.
+     */
+    QCStatus_e DeregBufferDesc( QCBufferDescriptorBase_t &buffer );
 
     /**
      * @brief Execute the OpenclIface kernel
