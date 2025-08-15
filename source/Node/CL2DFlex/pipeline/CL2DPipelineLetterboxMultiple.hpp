@@ -21,25 +21,21 @@ public:
     ~CL2DPipelineLetterboxMultiple();
 
     QCStatus_e Init( uint32_t inputId, cl_kernel *pKernel, CL2DFlex_Config_t *pConfig,
-                     OpenclSrv *pOpenclSrvObj );
+                     OpenclSrv *pOpenclSrvObj,
+                     std::vector<std::reference_wrapper<QCBufferDescriptorBase>> &buffers );
 
     QCStatus_e Deinit();
 
-    QCStatus_e Execute( const QCSharedBuffer_t *pInput, const QCSharedBuffer_t *pOutput );
-
-    QCStatus_e ExecuteWithROI( const QCSharedBuffer_t *pInput, const QCSharedBuffer_t *pOutput,
-                               const CL2DFlex_ROIConfig_t *pROIs, const uint32_t numROIs );
+    QCStatus_e Execute( ImageDescriptor_t &input, ImageDescriptor_t &output );
 
 private:
-    QCStatus_e LetterboxFromNV12ToRGBMultiple( uint32_t numROIs, cl_mem bufferSrc,
-                                               uint32_t srcOffset, cl_mem bufferDst,
-                                               uint32_t dstOffset, const QCSharedBuffer_t *pInput,
-                                               const QCSharedBuffer_t *pOutput,
-                                               const CL2DFlex_ROIConfig_t *pROIs );
+    QCStatus_e LetterboxFromNV12ToRGBMultiple( cl_mem bufferSrc, uint32_t srcOffset,
+                                               cl_mem bufferDst, uint32_t dstOffset,
+                                               ImageDescriptor_t &input,
+                                               ImageDescriptor_t &output );
 
 private:
-    QCSharedBuffer_t
-            m_roiBuffer; /**<internal buffer used to store roi parameters for ExecuteWithROI API*/
+    cl_mem m_bufferROIs;
 
 };   // class PipelineLetterboxMultiple
 
