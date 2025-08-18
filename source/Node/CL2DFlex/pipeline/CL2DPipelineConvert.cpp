@@ -14,8 +14,10 @@ CL2DPipelineConvert::CL2DPipelineConvert() {}
 
 CL2DPipelineConvert::~CL2DPipelineConvert() {}
 
-QCStatus_e CL2DPipelineConvert::Init( uint32_t inputId, cl_kernel *pKernel,
-                                      CL2DFlex_Config_t *pConfig, OpenclSrv *pOpenclSrvObj )
+QCStatus_e
+CL2DPipelineConvert::Init( uint32_t inputId, cl_kernel *pKernel, CL2DFlex_Config_t *pConfig,
+                           OpenclSrv *pOpenclSrvObj,
+                           std::vector<std::reference_wrapper<QCBufferDescriptorBase>> &buffers )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
@@ -67,13 +69,13 @@ QCStatus_e CL2DPipelineConvert::Deinit()
     return ret;
 }
 
-QCStatus_e CL2DPipelineConvert::Execute( const QCSharedBuffer_t *pInput,
-                                         const QCSharedBuffer_t *pOutput )
+QCStatus_e CL2DPipelineConvert::Execute( ImageDescriptor_t &input, ImageDescriptor_t &output )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
     cl_mem bufferDst;
-    ret = m_pOpenclSrvObj->RegBuf( &( pOutput->buffer ), &bufferDst );
+    ret = m_pOpenclSrvObj->RegBufferDesc( dynamic_cast<QCBufferDescriptorBase_t &>( output ),
+                                          bufferDst );
     if ( QC_STATUS_OK != ret )
     {
         QC_ERROR( "Failed to register output buffer!" );
@@ -81,31 +83,32 @@ QCStatus_e CL2DPipelineConvert::Execute( const QCSharedBuffer_t *pInput,
     else
     {
         cl_mem bufferSrc;
-        ret = m_pOpenclSrvObj->RegBuf( &( pInput->buffer ), &bufferSrc );
+        ret = m_pOpenclSrvObj->RegBufferDesc( dynamic_cast<QCBufferDescriptorBase_t &>( input ),
+                                              bufferSrc );
         if ( QC_STATUS_OK != ret )
         {
             QC_ERROR( "Failed to register input buffer!" );
         }
         else
         {
-            uint32_t srcOffset = pInput->offset;
-            uint32_t sizeOne = (uint32_t) ( pOutput->size ) / ( pOutput->imgProps.batchSize );
-            uint32_t dstOffset = (uint32_t) ( pOutput->offset ) + m_inputId * sizeOne;
+            uint32_t srcOffset = input.offset;
+            uint32_t sizeOne = (uint32_t) ( output.size ) / ( output.batchSize );
+            uint32_t dstOffset = (uint32_t) ( output.offset ) + m_inputId * sizeOne;
 
             if ( CL2DFLEX_PIPELINE_CONVERT_NV12_TO_RGB == m_pipeline )
             {
-                ret = ConvertFromNV12ToRGB( bufferSrc, srcOffset, bufferDst, dstOffset, pInput,
-                                            pOutput );
+                ret = ConvertFromNV12ToRGB( bufferSrc, srcOffset, bufferDst, dstOffset, input,
+                                            output );
             }
             else if ( CL2DFLEX_PIPELINE_CONVERT_UYVY_TO_RGB == m_pipeline )
             {
-                ret = ConvertFromUYVYToRGB( bufferSrc, srcOffset, bufferDst, dstOffset, pInput,
-                                            pOutput );
+                ret = ConvertFromUYVYToRGB( bufferSrc, srcOffset, bufferDst, dstOffset, input,
+                                            output );
             }
             else if ( CL2DFLEX_PIPELINE_CONVERT_UYVY_TO_NV12 == m_pipeline )
             {
-                ret = ConvertFromUYVYToNV12( bufferSrc, srcOffset, bufferDst, dstOffset, pInput,
-                                             pOutput );
+                ret = ConvertFromUYVYToNV12( bufferSrc, srcOffset, bufferDst, dstOffset, input,
+                                             output );
             }
             else
             {
@@ -118,22 +121,10 @@ QCStatus_e CL2DPipelineConvert::Execute( const QCSharedBuffer_t *pInput,
     return ret;
 }
 
-QCStatus_e CL2DPipelineConvert::ExecuteWithROI( const QCSharedBuffer_t *pInput,
-                                                const QCSharedBuffer_t *pOutput,
-                                                const CL2DFlex_ROIConfig_t *pROIs,
-                                                const uint32_t numROIs )
-{
-    QCStatus_e ret = QC_STATUS_BAD_ARGUMENTS;
-
-    // empty function
-
-    return ret;
-}
-
 QCStatus_e CL2DPipelineConvert::ConvertFromNV12ToRGB( cl_mem bufferSrc, uint32_t srcOffset,
                                                       cl_mem bufferDst, uint32_t dstOffset,
-                                                      const QCSharedBuffer_t *pInput,
-                                                      const QCSharedBuffer_t *pOutput )
+                                                      ImageDescriptor_t &input,
+                                                      ImageDescriptor_t &output )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
@@ -147,13 +138,13 @@ QCStatus_e CL2DPipelineConvert::ConvertFromNV12ToRGB( cl_mem bufferSrc, uint32_t
     OpenclArgs[2].argSize = sizeof( cl_mem );
     OpenclArgs[3].pArg = (void *) &dstOffset;
     OpenclArgs[3].argSize = sizeof( cl_int );
-    OpenclArgs[4].pArg = (void *) &( pInput->imgProps.stride[0] );
+    OpenclArgs[4].pArg = (void *) &( input.stride[0] );
     OpenclArgs[4].argSize = sizeof( cl_int );
-    OpenclArgs[5].pArg = (void *) &( pInput->imgProps.planeBufSize[0] );
+    OpenclArgs[5].pArg = (void *) &( input.planeBufSize[0] );
     OpenclArgs[5].argSize = sizeof( cl_int );
-    OpenclArgs[6].pArg = (void *) &( pInput->imgProps.stride[1] );
+    OpenclArgs[6].pArg = (void *) &( input.stride[1] );
     OpenclArgs[6].argSize = sizeof( cl_int );
-    OpenclArgs[7].pArg = (void *) &( pOutput->imgProps.stride[0] );
+    OpenclArgs[7].pArg = (void *) &( output.stride[0] );
     OpenclArgs[7].argSize = sizeof( cl_int );
     uint32_t kernelROIX = m_config.ROIs[m_inputId].x / 2;
     uint32_t kernelROIY = m_config.ROIs[m_inputId].y / 2;
@@ -164,8 +155,7 @@ QCStatus_e CL2DPipelineConvert::ConvertFromNV12ToRGB( cl_mem bufferSrc, uint32_t
 
     OpenclIface_WorkParams_t OpenclWorkParams;
     OpenclWorkParams.workDim = 2;
-    size_t globalWorkSize[2] = { (size_t) ( pOutput->imgProps.width ) / 2,
-                                 (size_t) ( pOutput->imgProps.height ) / 2 };
+    size_t globalWorkSize[2] = { (size_t) ( output.width ) / 2, (size_t) ( output.height ) / 2 };
     OpenclWorkParams.pGlobalWorkSize = globalWorkSize;
     size_t globalWorkOffset[2] = { 0, 0 };
     OpenclWorkParams.pGlobalWorkOffset = globalWorkOffset;
@@ -184,8 +174,8 @@ QCStatus_e CL2DPipelineConvert::ConvertFromNV12ToRGB( cl_mem bufferSrc, uint32_t
 
 QCStatus_e CL2DPipelineConvert::ConvertFromUYVYToRGB( cl_mem bufferSrc, uint32_t srcOffset,
                                                       cl_mem bufferDst, uint32_t dstOffset,
-                                                      const QCSharedBuffer_t *pInput,
-                                                      const QCSharedBuffer_t *pOutput )
+                                                      ImageDescriptor_t &input,
+                                                      ImageDescriptor_t &output )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
@@ -199,9 +189,9 @@ QCStatus_e CL2DPipelineConvert::ConvertFromUYVYToRGB( cl_mem bufferSrc, uint32_t
     OpenclArgs[2].argSize = sizeof( cl_mem );
     OpenclArgs[3].pArg = (void *) &dstOffset;
     OpenclArgs[3].argSize = sizeof( cl_int );
-    OpenclArgs[4].pArg = (void *) &( pInput->imgProps.stride[0] );
+    OpenclArgs[4].pArg = (void *) &( input.stride[0] );
     OpenclArgs[4].argSize = sizeof( cl_int );
-    OpenclArgs[5].pArg = (void *) &( pOutput->imgProps.stride[0] );
+    OpenclArgs[5].pArg = (void *) &( output.stride[0] );
     OpenclArgs[5].argSize = sizeof( cl_int );
     uint32_t kernelROIX = m_config.ROIs[m_inputId].x / 2;
     uint32_t kernelROIY = m_config.ROIs[m_inputId].y;
@@ -212,8 +202,7 @@ QCStatus_e CL2DPipelineConvert::ConvertFromUYVYToRGB( cl_mem bufferSrc, uint32_t
 
     OpenclIface_WorkParams_t OpenclWorkParams;
     OpenclWorkParams.workDim = 2;
-    size_t globalWorkSize[2] = { (size_t) ( pOutput->imgProps.width ) / 2,
-                                 pOutput->imgProps.height };
+    size_t globalWorkSize[2] = { (size_t) ( output.width ) / 2, output.height };
     OpenclWorkParams.pGlobalWorkSize = globalWorkSize;
     size_t globalWorkOffset[2] = { 0, 0 };
     OpenclWorkParams.pGlobalWorkOffset = globalWorkOffset;
@@ -232,8 +221,8 @@ QCStatus_e CL2DPipelineConvert::ConvertFromUYVYToRGB( cl_mem bufferSrc, uint32_t
 
 QCStatus_e CL2DPipelineConvert::ConvertFromUYVYToNV12( cl_mem bufferSrc, uint32_t srcOffset,
                                                        cl_mem bufferDst, uint32_t dstOffset,
-                                                       const QCSharedBuffer_t *pInput,
-                                                       const QCSharedBuffer_t *pOutput )
+                                                       ImageDescriptor_t &input,
+                                                       ImageDescriptor_t &output )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
@@ -247,13 +236,13 @@ QCStatus_e CL2DPipelineConvert::ConvertFromUYVYToNV12( cl_mem bufferSrc, uint32_
     OpenclArgs[2].argSize = sizeof( cl_mem );
     OpenclArgs[3].pArg = (void *) &dstOffset;
     OpenclArgs[3].argSize = sizeof( cl_int );
-    OpenclArgs[4].pArg = (void *) &( pInput->imgProps.stride[0] );
+    OpenclArgs[4].pArg = (void *) &( input.stride[0] );
     OpenclArgs[4].argSize = sizeof( cl_int );
-    OpenclArgs[5].pArg = (void *) &( pOutput->imgProps.stride[0] );
+    OpenclArgs[5].pArg = (void *) &( output.stride[0] );
     OpenclArgs[5].argSize = sizeof( cl_int );
-    OpenclArgs[6].pArg = (void *) &( pOutput->imgProps.planeBufSize[0] );
+    OpenclArgs[6].pArg = (void *) &( output.planeBufSize[0] );
     OpenclArgs[6].argSize = sizeof( cl_int );
-    OpenclArgs[7].pArg = (void *) &( pOutput->imgProps.stride[1] );
+    OpenclArgs[7].pArg = (void *) &( output.stride[1] );
     OpenclArgs[7].argSize = sizeof( cl_int );
     uint32_t kernelROIX = m_config.ROIs[m_inputId].x / 2;
     uint32_t kernelROIY = m_config.ROIs[m_inputId].y / 2;
@@ -264,8 +253,7 @@ QCStatus_e CL2DPipelineConvert::ConvertFromUYVYToNV12( cl_mem bufferSrc, uint32_
 
     OpenclIface_WorkParams_t OpenclWorkParams;
     OpenclWorkParams.workDim = 2;
-    size_t globalWorkSize[2] = { (size_t) ( pOutput->imgProps.width ) / 2,
-                                 (size_t) ( pOutput->imgProps.height ) / 2 };
+    size_t globalWorkSize[2] = { (size_t) ( output.width ) / 2, (size_t) ( output.height ) / 2 };
     OpenclWorkParams.pGlobalWorkSize = globalWorkSize;
     size_t globalWorkOffset[2] = { 0, 0 };
     OpenclWorkParams.pGlobalWorkOffset = globalWorkOffset;

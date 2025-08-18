@@ -21,7 +21,7 @@ namespace Node
 
 QCStatus_e CL2DFlexImpl::Start()
 {
-    QCStatus_e ret = QC_STATUS_OK;
+    QCStatus_e status = QC_STATUS_OK;
 
     if ( QC_OBJECT_STATE_READY == m_state )
     {
@@ -30,15 +30,15 @@ QCStatus_e CL2DFlexImpl::Start()
     else
     {
         QC_ERROR( "CL2DFlex node start failed due to wrong state!" );
-        ret = QC_STATUS_BAD_STATE;
+        status = QC_STATUS_BAD_STATE;
     }
 
-    return ret;
+    return status;
 }
 
 QCStatus_e CL2DFlexImpl::Stop()
 {
-    QCStatus_e ret = QC_STATUS_OK;
+    QCStatus_e status = QC_STATUS_OK;
 
     if ( QC_OBJECT_STATE_RUNNING == m_state )
     {
@@ -47,10 +47,10 @@ QCStatus_e CL2DFlexImpl::Stop()
     else
     {
         QC_ERROR( "CL2DFlex node stop failed due to wrong state!" );
-        ret = QC_STATUS_BAD_STATE;
+        status = QC_STATUS_BAD_STATE;
     }
 
-    return ret;
+    return status;
 }
 
 QCStatus_e
@@ -65,24 +65,6 @@ CL2DFlexImpl::Initialize( std::vector<std::reference_wrapper<QCBufferDescriptorB
     }
     else
     {
-        for ( uint32_t inputId = 0; inputId < m_config.params.numOfInputs; inputId++ )
-        {
-            if ( CL2DFLEX_WORK_MODE_REMAP_NEAREST == m_config.params.workModes[inputId] )
-            {
-                uint32_t mapXBufferId = m_mapXBufferIds[inputId];
-                QCBufferDescriptorBase_t &mapXBufferDesc = buffers[mapXBufferId];
-                QCSharedBufferDescriptor_t *pMapXBufferDesc =
-                        dynamic_cast<QCSharedBufferDescriptor_t *>( &mapXBufferDesc );
-                m_config.params.remapTable[inputId].pMapX = &( pMapXBufferDesc->buffer );
-
-                uint32_t mapYBufferId = m_mapYBufferIds[inputId];
-                QCBufferDescriptorBase_t &mapYBufferDesc = buffers[mapYBufferId];
-                QCSharedBufferDescriptor_t *pMapYBufferDesc =
-                        dynamic_cast<QCSharedBufferDescriptor_t *>( &mapYBufferDesc );
-                m_config.params.remapTable[inputId].pMapY = &( pMapYBufferDesc->buffer );
-            }
-        }
-
         status = m_OpenclSrvObj.Init( "Opencl", LOGGER_LEVEL_ERROR, m_config.params.priority );
         if ( QC_STATUS_OK != status )
         {
@@ -144,7 +126,8 @@ CL2DFlexImpl::Initialize( std::vector<std::reference_wrapper<QCBufferDescriptorB
                 {
                     m_pCL2DPipeline[inputId]->InitLogger( "CL2DPipeline", LOGGER_LEVEL_ERROR );
                     status = m_pCL2DPipeline[inputId]->Init( inputId, &m_kernel[inputId],
-                                                             &m_config.params, &m_OpenclSrvObj );
+                                                             &m_config.params, &m_OpenclSrvObj,
+                                                             buffers );
                 }
                 else
                 {
@@ -171,18 +154,8 @@ CL2DFlexImpl::Initialize( std::vector<std::reference_wrapper<QCBufferDescriptorB
             {
                 if ( bufferId < buffers.size() )
                 {
-                    const QCBufferDescriptorBase_t &bufDesc = buffers[bufferId];
-                    const QCSharedBufferDescriptor_t *pSharedBuffer =
-                            dynamic_cast<const QCSharedBufferDescriptor_t *>( &bufDesc );
-                    if ( nullptr == pSharedBuffer )
-                    {
-                        QC_ERROR( "buffer %" PRIu32 "is invalid", bufferId );
-                        status = QC_STATUS_INVALID_BUF;
-                    }
-                    else
-                    {
-                        status = RegisterBuffers( &( pSharedBuffer->buffer ), 1 );
-                    }
+                    cl_mem bufferCL;
+                    status = m_OpenclSrvObj.RegBufferDesc( buffers[bufferId], bufferCL );
                 }
                 else
                 {
@@ -247,8 +220,6 @@ QCStatus_e CL2DFlexImpl::DeInitialize()
 QCStatus_e CL2DFlexImpl::ProcessFrameDescriptor( QCFrameDescriptorNodeIfs &frameDesc )
 {
     QCStatus_e status = QC_STATUS_OK;
-    std::vector<QCSharedBuffer_t> inputs;
-    std::vector<QCSharedBuffer_t> outputs;
     if ( QC_OBJECT_STATE_RUNNING != m_state )
     {
         QC_ERROR( "CL2DFlex node not in running status!" );
@@ -256,54 +227,72 @@ QCStatus_e CL2DFlexImpl::ProcessFrameDescriptor( QCFrameDescriptorNodeIfs &frame
     }
     else
     {
-        inputs.reserve( m_inputNum );
-        for ( uint32_t i = 0; i < m_inputNum; i++ )
+        if ( QC_STATUS_OK == status )
         {
-            uint32_t globalBufferId = m_config.globalBufferIdMap[i].globalBufferId;
-            QCBufferDescriptorBase_t &bufDesc = frameDesc.GetBuffer( globalBufferId );
-            const QCSharedBufferDescriptor_t *pSharedBuffer =
-                    dynamic_cast<const QCSharedBufferDescriptor_t *>( &bufDesc );
-            if ( nullptr == pSharedBuffer )
+            uint32_t outputBufferId = m_config.globalBufferIdMap[m_inputNum].globalBufferId;
+            ImageDescriptor_t &outputBufDesc =
+                    dynamic_cast<ImageDescriptor_t &>( frameDesc.GetBuffer( outputBufferId ) );
+            if ( m_config.params.outputFormat != outputBufDesc.format )
             {
-                status = QC_STATUS_INVALID_BUF;
-                break;
+                QC_ERROR( "Output image format not match!" );
+                status = QC_STATUS_BAD_ARGUMENTS;
+            }
+            else if ( m_config.params.outputWidth != outputBufDesc.width )
+            {
+                QC_ERROR( "Output image width not match!" );
+                status = QC_STATUS_BAD_ARGUMENTS;
+            }
+            else if ( m_config.params.outputHeight != outputBufDesc.height )
+            {
+                QC_ERROR( "Output image height not match!" );
+                status = QC_STATUS_BAD_ARGUMENTS;
             }
             else
             {
-                inputs.push_back( pSharedBuffer->buffer );
-            }
-        }
-
-        if ( QC_STATUS_OK == status )
-        {
-            outputs.reserve( m_outputNum );
-            for ( uint32_t i = m_inputNum; i < m_inputNum + m_outputNum; i++ )
-            {
-                uint32_t globalBufferId = m_config.globalBufferIdMap[i].globalBufferId;
-                QCBufferDescriptorBase_t &bufDesc = frameDesc.GetBuffer( globalBufferId );
-                const QCSharedBufferDescriptor_t *pSharedBuffer =
-                        dynamic_cast<const QCSharedBufferDescriptor_t *>( &bufDesc );
-                if ( nullptr == pSharedBuffer )
+                for ( uint32_t inputId = 0; inputId < m_inputNum; inputId++ )
                 {
-                    status = QC_STATUS_INVALID_BUF;
-                    break;
+                    uint32_t inputBufferId = m_config.globalBufferIdMap[inputId].globalBufferId;
+                    ImageDescriptor_t &inputBufDesc = dynamic_cast<ImageDescriptor_t &>(
+                            frameDesc.GetBuffer( inputBufferId ) );
+                    if ( nullptr == inputBufDesc.pBuf )
+                    {
+                        QC_ERROR( "Input buffer data is null for inputId=%d!", inputId );
+                        status = QC_STATUS_BAD_ARGUMENTS;
+                    }
+                    else if ( m_config.params.inputFormats[inputId] != inputBufDesc.format )
+                    {
+                        QC_ERROR( "Input image format not match for inputId=%d!", inputId );
+                        status = QC_STATUS_BAD_ARGUMENTS;
+                    }
+                    else if ( m_config.params.inputWidths[inputId] != inputBufDesc.width )
+                    {
+                        QC_ERROR( "Input image width not match for inputId=%d!", inputId );
+                        status = QC_STATUS_BAD_ARGUMENTS;
+                    }
+                    else if ( m_config.params.inputHeights[inputId] != inputBufDesc.height )
+                    {
+                        QC_ERROR( "Input image height not match for inputId=%d!", inputId );
+                        status = QC_STATUS_BAD_ARGUMENTS;
+                    }
+                    else
+                    {
+                        if ( nullptr == m_pCL2DPipeline[inputId] )
+                        {
+                            QC_ERROR( "Pipeline not setup for inputId=%d!", inputId );
+                            status = QC_STATUS_FAIL;
+                        }
+                        else
+                        {
+                            status = m_pCL2DPipeline[inputId]->Execute( inputBufDesc,
+                                                                        outputBufDesc );
+                        }
+                    }
+                    if ( QC_STATUS_OK != status )
+                    {
+                        QC_ERROR( "Failed to execute pipeline for inputId=%d!", inputId );
+                        break;
+                    }
                 }
-                else
-                {
-                    outputs.push_back( pSharedBuffer->buffer );
-                }
-            }
-        }
-
-        if ( QC_STATUS_OK == status )
-        {
-            if ( 0 == m_numOfROIs )
-            {
-                status = Execute( inputs.data(), inputs.size(), outputs.data() );
-            }
-            else
-            {
-                status = ExecuteWithROI( inputs.data(), outputs.data(), m_ROIs, m_numOfROIs );
             }
         }
     }
@@ -314,371 +303,6 @@ QCStatus_e CL2DFlexImpl::ProcessFrameDescriptor( QCFrameDescriptorNodeIfs &frame
 QCObjectState_e CL2DFlexImpl::GetState()
 {
     return m_state;
-}
-
-QCStatus_e CL2DFlexImpl::RegisterBuffers( const QCSharedBuffer_t *pBuffers, uint32_t numBuffers )
-{
-    QCStatus_e ret = QC_STATUS_OK;
-
-    if ( ( QC_OBJECT_STATE_READY != m_state ) && ( QC_OBJECT_STATE_RUNNING != m_state ) )
-    {
-        QC_ERROR( "CL2DFlex component not in ready or running status!" );
-        ret = QC_STATUS_BAD_STATE;
-    }
-    else if ( nullptr == pBuffers )
-    {
-        QC_ERROR( "Empty buffers pointer!" );
-        ret = QC_STATUS_BAD_ARGUMENTS;
-    }
-    else
-    {
-        for ( uint32_t i = 0; i < numBuffers; i++ )
-        {
-            if ( QC_IMAGE_FORMAT_NV12_UBWC == pBuffers[i].imgProps.format )
-            {
-                QCStatus_e retVal = QC_STATUS_OK;
-                cl_mem bufferSrc;
-                cl_mem bufferSrcY;
-                cl_mem bufferSrcUV;
-                cl_image_format inputImageFormat = { 0 };
-                inputImageFormat.image_channel_order = CL_QCOM_COMPRESSED_NV12;
-                inputImageFormat.image_channel_data_type = CL_UNORM_INT8;
-                cl_image_desc inputImageDesc = { 0 };
-                inputImageDesc.image_type = CL_MEM_OBJECT_IMAGE2D;
-                inputImageDesc.image_width = (size_t) pBuffers[i].imgProps.width;
-                inputImageDesc.image_height = (size_t) pBuffers[i].imgProps.height;
-                retVal = m_OpenclSrvObj.RegImage( pBuffers[i].data(), pBuffers[i].buffer.dmaHandle,
-                                                  &bufferSrc, &inputImageFormat, &inputImageDesc );
-                if ( QC_STATUS_OK != retVal )
-                {
-                    ret = QC_STATUS_FAIL;
-                    QC_ERROR( "Failed to register input NV12 UBWC image!" );
-                }
-                else
-                {
-                    cl_image_format inputYFormat = { 0 };
-                    inputYFormat.image_channel_order = CL_QCOM_COMPRESSED_NV12_Y;
-                    inputYFormat.image_channel_data_type = CL_UNORM_INT8;
-                    cl_image_desc inputYDesc = { 0 };
-                    inputYDesc.image_type = CL_MEM_OBJECT_IMAGE2D;
-                    inputYDesc.image_width = (size_t) m_config.params.outputWidth;
-                    inputYDesc.image_height = (size_t) m_config.params.outputHeight;
-                    inputYDesc.mem_object = bufferSrc;
-                    retVal = m_OpenclSrvObj.RegPlane( pBuffers[i].data(), &bufferSrcY,
-                                                      &inputYFormat, &inputYDesc );
-                }
-                if ( QC_STATUS_OK != retVal )
-                {
-                    ret = QC_STATUS_FAIL;
-                    QC_ERROR( "Failed to register input Y plane!" );
-                }
-                else
-                {
-                    cl_image_format inputUVFormat = { 0 };
-                    inputUVFormat.image_channel_order = CL_QCOM_COMPRESSED_NV12_UV;
-                    inputUVFormat.image_channel_data_type = CL_UNORM_INT8;
-                    cl_image_desc inputUVDesc = { 0 };
-                    inputUVDesc.image_type = CL_MEM_OBJECT_IMAGE2D;
-                    inputUVDesc.image_width = (size_t) m_config.params.outputWidth;
-                    inputUVDesc.image_height = (size_t) m_config.params.outputHeight;
-                    inputUVDesc.mem_object = bufferSrc;
-                    retVal = m_OpenclSrvObj.RegPlane( pBuffers[i].data(), &bufferSrcUV,
-                                                      &inputUVFormat, &inputUVDesc );
-                }
-                if ( QC_STATUS_OK != retVal )
-                {
-                    ret = QC_STATUS_FAIL;
-                    QC_ERROR( "Failed to register input UV plane!" );
-                }
-            }
-            else
-            {
-                cl_mem bufferCL;
-                ret = m_OpenclSrvObj.RegBuf( &( pBuffers[i].buffer ), &bufferCL );
-            }
-
-            if ( QC_STATUS_OK != ret )
-            {
-                QC_ERROR( "Failed to register buffer for number %d!", i );
-                break;
-            }
-        }
-    }
-
-    return ret;
-}
-
-QCStatus_e CL2DFlexImpl::DeRegisterBuffers( const QCSharedBuffer_t *pBuffers, uint32_t numBuffers )
-{
-    QCStatus_e ret = QC_STATUS_OK;
-
-    if ( ( QC_OBJECT_STATE_READY != m_state ) && ( QC_OBJECT_STATE_RUNNING != m_state ) )
-    {
-        QC_ERROR( "CL2DFlex component not in ready or running status!" );
-        ret = QC_STATUS_BAD_STATE;
-    }
-    else if ( nullptr == pBuffers )
-    {
-        QC_ERROR( "Empty buffers pointer!" );
-        ret = QC_STATUS_BAD_ARGUMENTS;
-    }
-    else
-    {
-        for ( uint32_t i = 0; i < numBuffers; i++ )
-        {
-            if ( QC_IMAGE_FORMAT_NV12_UBWC == pBuffers[i].imgProps.format )
-            {
-                QCStatus_e retVal = QC_STATUS_OK;
-                retVal = m_OpenclSrvObj.DeregImage( pBuffers[i].data() );
-                if ( QC_STATUS_OK != retVal )
-                {
-                    ret = QC_STATUS_FAIL;
-                    QC_ERROR( "Failed to deregister input NV12 UBWC image!" );
-                }
-                else
-                {
-                    cl_image_format inputYFormat = { 0 };
-                    inputYFormat.image_channel_order = CL_QCOM_COMPRESSED_NV12_Y;
-                    retVal = m_OpenclSrvObj.DeregPlane( pBuffers[i].data(), &inputYFormat );
-                }
-                if ( QC_STATUS_OK != retVal )
-                {
-                    ret = QC_STATUS_FAIL;
-                    QC_ERROR( "Failed to deregister input Y plane!" );
-                }
-                else
-                {
-                    cl_image_format inputUVFormat = { 0 };
-                    inputUVFormat.image_channel_order = CL_QCOM_COMPRESSED_NV12_UV;
-                    retVal = m_OpenclSrvObj.DeregPlane( pBuffers[i].data(), &inputUVFormat );
-                }
-                if ( QC_STATUS_OK != retVal )
-                {
-                    ret = QC_STATUS_FAIL;
-                    QC_ERROR( "Failed to deregister input UV plane!" );
-                }
-            }
-            else
-            {
-                ret = m_OpenclSrvObj.DeregBuf( &( pBuffers[i].buffer ) );
-            }
-            if ( QC_STATUS_OK != ret )
-            {
-                QC_ERROR( "Failed to deregister buffer for number %d!", i );
-            }
-        }
-    }
-
-    return ret;
-}
-
-QCStatus_e CL2DFlexImpl::Execute( const QCSharedBuffer_t *pInputs, const uint32_t numInputs,
-                                  const QCSharedBuffer_t *pOutput )
-{
-    QCStatus_e ret = QC_STATUS_OK;
-
-    if ( ( QC_OBJECT_STATE_READY != m_state ) && ( QC_OBJECT_STATE_RUNNING != m_state ) )
-    {
-        QC_ERROR( "CL2DFlex component not initialized!" );
-        ret = QC_STATUS_BAD_STATE;
-    }
-    else if ( nullptr == pOutput )
-    {
-        QC_ERROR( "Output buffer is null!" );
-        ret = QC_STATUS_BAD_ARGUMENTS;
-    }
-    else if ( nullptr == pInputs )
-    {
-        QC_ERROR( "Input buffer is null!" );
-        ret = QC_STATUS_BAD_ARGUMENTS;
-    }
-    else if ( numInputs != m_config.params.numOfInputs )
-    {
-        QC_ERROR( "number of inputs not match!" );
-        ret = QC_STATUS_BAD_ARGUMENTS;
-    }
-    else if ( QC_BUFFER_TYPE_IMAGE != pOutput->type )
-    {
-        QC_ERROR( "Output buffer is not image type!" );
-        ret = QC_STATUS_BAD_ARGUMENTS;
-    }
-    else if ( m_config.params.outputFormat != pOutput->imgProps.format )
-    {
-        QC_ERROR( "Output image format not match!" );
-        ret = QC_STATUS_BAD_ARGUMENTS;
-    }
-    else if ( m_config.params.outputWidth != pOutput->imgProps.width )
-    {
-        QC_ERROR( "Output image width not match!" );
-        ret = QC_STATUS_BAD_ARGUMENTS;
-    }
-    else if ( m_config.params.outputHeight != pOutput->imgProps.height )
-    {
-        QC_ERROR( "Output image height not match!" );
-        ret = QC_STATUS_BAD_ARGUMENTS;
-    }
-    else if ( numInputs != pOutput->imgProps.batchSize )
-    {
-        QC_ERROR( "Output image batch not match!" );
-        ret = QC_STATUS_BAD_ARGUMENTS;
-    }
-    else
-    {
-        for ( uint32_t inputId = 0; inputId < numInputs; inputId++ )
-        {
-            if ( nullptr == pInputs[inputId].data() )
-            {
-                QC_ERROR( "Input buffer data is null for inputId=%d!", inputId );
-                ret = QC_STATUS_BAD_ARGUMENTS;
-            }
-            else if ( QC_BUFFER_TYPE_IMAGE != pInputs[inputId].type )
-            {
-                QC_ERROR( "Input buffer is not image type for inputId=%d!", inputId );
-                ret = QC_STATUS_BAD_ARGUMENTS;
-            }
-            else if ( m_config.params.inputFormats[inputId] != pInputs[inputId].imgProps.format )
-            {
-                QC_ERROR( "Input image format not match for inputId=%d!", inputId );
-                ret = QC_STATUS_BAD_ARGUMENTS;
-            }
-            else if ( m_config.params.inputWidths[inputId] != pInputs[inputId].imgProps.width )
-            {
-                QC_ERROR( "Input image width not match for inputId=%d!", inputId );
-                ret = QC_STATUS_BAD_ARGUMENTS;
-            }
-            else if ( m_config.params.inputHeights[inputId] != pInputs[inputId].imgProps.height )
-            {
-                QC_ERROR( "Input image height not match for inputId=%d!", inputId );
-                ret = QC_STATUS_BAD_ARGUMENTS;
-            }
-            else
-            {
-                if ( nullptr == m_pCL2DPipeline[inputId] )
-                {
-                    QC_ERROR( "Pipeline not setup for inputId=%d!", inputId );
-                    ret = QC_STATUS_FAIL;
-                }
-                else
-                {
-                    ret = m_pCL2DPipeline[inputId]->Execute( &pInputs[inputId], pOutput );
-                }
-            }
-            if ( QC_STATUS_OK != ret )
-            {
-                QC_ERROR( "Failed to execute pipeline for inputId=%d!", inputId );
-                break;
-            }
-        }
-    }
-
-    return ret;
-}
-
-QCStatus_e CL2DFlexImpl::ExecuteWithROI( const QCSharedBuffer_t *pInput,
-                                         const QCSharedBuffer_t *pOutput,
-                                         const CL2DFlex_ROIConfig_t *pROIs, const uint32_t numROIs )
-{
-    QCStatus_e ret = QC_STATUS_OK;
-
-    if ( ( QC_OBJECT_STATE_READY != m_state ) && ( QC_OBJECT_STATE_RUNNING != m_state ) )
-    {
-        QC_ERROR( "CL2DFlex component not initialized!" );
-        ret = QC_STATUS_BAD_STATE;
-    }
-    else if ( nullptr == pInput )
-    {
-        QC_ERROR( "Input buffer is null!" );
-        ret = QC_STATUS_BAD_ARGUMENTS;
-    }
-    else if ( nullptr == pOutput )
-    {
-        QC_ERROR( "Output buffer is null!" );
-        ret = QC_STATUS_BAD_ARGUMENTS;
-    }
-    else if ( nullptr == pROIs )
-    {
-        QC_ERROR( "ROI configurations is null!" );
-        ret = QC_STATUS_BAD_ARGUMENTS;
-    }
-    else if ( 1 != m_config.params.numOfInputs )
-    {
-        QC_ERROR( "number of inputs not match!" );
-        ret = QC_STATUS_BAD_ARGUMENTS;
-    }
-    else if ( nullptr == pOutput->data() )
-    {
-        QC_ERROR( "Output buffer data is null" );
-        ret = QC_STATUS_BAD_ARGUMENTS;
-    }
-    else if ( QC_BUFFER_TYPE_IMAGE != pOutput->type )
-    {
-        QC_ERROR( "Output buffer is not image type!" );
-        ret = QC_STATUS_BAD_ARGUMENTS;
-    }
-    else if ( m_config.params.outputFormat != pOutput->imgProps.format )
-    {
-        QC_ERROR( "Output image format not match!" );
-        ret = QC_STATUS_BAD_ARGUMENTS;
-    }
-    else if ( m_config.params.outputWidth != pOutput->imgProps.width )
-    {
-        QC_ERROR( "Output image width not match!" );
-        ret = QC_STATUS_BAD_ARGUMENTS;
-    }
-    else if ( m_config.params.outputHeight != pOutput->imgProps.height )
-    {
-        QC_ERROR( "Output image height not match!" );
-        ret = QC_STATUS_BAD_ARGUMENTS;
-    }
-    else if ( numROIs != pOutput->imgProps.batchSize )
-    {
-        QC_ERROR( "Output image batch not match!" );
-        ret = QC_STATUS_BAD_ARGUMENTS;
-    }
-    else if ( nullptr == pInput->data() )
-    {
-        QC_ERROR( "Input buffer data is null" );
-        ret = QC_STATUS_BAD_ARGUMENTS;
-    }
-    else if ( QC_BUFFER_TYPE_IMAGE != pInput->type )
-    {
-        QC_ERROR( "Input buffer is not image type" );
-        ret = QC_STATUS_BAD_ARGUMENTS;
-    }
-    else if ( m_config.params.inputFormats[0] != pInput->imgProps.format )
-    {
-        QC_ERROR( "Input image format not match" );
-        ret = QC_STATUS_BAD_ARGUMENTS;
-    }
-    else if ( m_config.params.inputWidths[0] != pInput->imgProps.width )
-    {
-        QC_ERROR( "Input image width not match" );
-        ret = QC_STATUS_BAD_ARGUMENTS;
-    }
-    else if ( m_config.params.inputHeights[0] != pInput->imgProps.height )
-    {
-        QC_ERROR( "Input image height not match" );
-        ret = QC_STATUS_BAD_ARGUMENTS;
-    }
-    else
-    {
-        if ( nullptr == m_pCL2DPipeline[0] )
-        {
-            QC_ERROR( "Pipeline not setup for inputId=0!" );
-            ret = QC_STATUS_FAIL;
-        }
-        else
-        {
-            ret = m_pCL2DPipeline[0]->ExecuteWithROI( pInput, pOutput, pROIs, numROIs );
-        }
-
-        if ( QC_STATUS_OK != ret )
-        {
-            QC_ERROR( "Failed to execute pipeline with ROI!" );
-        }
-    }
-
-    return ret;
 }
 
 QCStatus_e CL2DFlexImpl::SetupGlobalBufferIdMap()

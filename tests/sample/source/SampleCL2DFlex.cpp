@@ -186,25 +186,17 @@ QCStatus_e SampleCL2DFlex::ParseConfig( SampleConfig_t &config )
         if ( true == m_bEnableUndistortion )
         {
             bool bAllocateOK = true;
-            QCTensorProps_t mapXProp;
-            mapXProp = {
-                    QC_TENSOR_TYPE_FLOAT_32,
-                    { m_outputHeight * m_outputWidth, 0 },
-                    1,
-            };
-            ret = m_mapXBufferDesc[i].buffer.Allocate( &mapXProp );
+            TensorProps_t mapXProp;
+            mapXProp = { QC_TENSOR_TYPE_FLOAT_32, { m_outputHeight * m_outputWidth } };
+            ret = m_pBufMgr->Allocate( mapXProp, m_mapXBufferDesc[i] );
             if ( QC_STATUS_OK != ret )
             {
                 bAllocateOK = false;
                 QC_ERROR( "failed to allocate mapX%u!\n", i );
             }
-            QCTensorProps_t mapYProp;
-            mapYProp = {
-                    QC_TENSOR_TYPE_FLOAT_32,
-                    { m_outputHeight * m_outputWidth, 0 },
-                    1,
-            };
-            ret = m_mapYBufferDesc[i].buffer.Allocate( &mapYProp );
+            TensorProps_t mapYProp;
+            mapYProp = { QC_TENSOR_TYPE_FLOAT_32, { m_outputHeight * m_outputWidth } };
+            ret = m_pBufMgr->Allocate( mapYProp, m_mapYBufferDesc[i] );
             if ( QC_STATUS_OK != ret )
             {
                 bAllocateOK = false;
@@ -218,13 +210,15 @@ QCStatus_e SampleCL2DFlex::ParseConfig( SampleConfig_t &config )
                                             "./data/test/CL2DFlex/mapX.raw" );
                 std::string mapYPath = Get( config, "mapY_path" + std::to_string( i ),
                                             "./data/test/CL2DFlex/mapY.raw" );
-                ret = LoadFile( m_mapXBufferDesc[i].buffer, mapXPath );
+                ret = LoadFile( dynamic_cast<QCBufferDescriptorBase_t &>( m_mapXBufferDesc[i] ),
+                                mapXPath );
                 if ( QC_STATUS_OK != ret )
                 {
                     QC_ERROR( "failed to read mapX table for input %u!\n", i );
                     bReadOK = false;
                 }
-                ret = LoadFile( m_mapYBufferDesc[i].buffer, mapYPath );
+                ret = LoadFile( dynamic_cast<QCBufferDescriptorBase_t &>( m_mapYBufferDesc[i] ),
+                                mapYPath );
                 if ( QC_STATUS_OK != ret )
                 {
                     QC_ERROR( "failed to read mapY table for input %u!\n", i );
@@ -236,8 +230,8 @@ QCStatus_e SampleCL2DFlex::ParseConfig( SampleConfig_t &config )
                 }
                 else
                 {
-                    inputDt.Set<uint32_t>( "mapX", i * 2 );
-                    inputDt.Set<uint32_t>( "mapY", i * 2 + 1 );
+                    inputDt.Set<uint32_t>( "mapXBufferId", i * 2 + 0 );
+                    inputDt.Set<uint32_t>( "mapYBufferId", i * 2 + 1 );
                 }
             }
         }
@@ -257,31 +251,38 @@ QCStatus_e SampleCL2DFlex::ParseConfig( SampleConfig_t &config )
             ret = QC_STATUS_BAD_ARGUMENTS;
         }
 
+        TensorProps_t ROIProp;
+        ROIProp = { QC_TENSOR_TYPE_UINT_32, { m_roiNumber, 4 } };
+        ret = m_pBufMgr->Allocate( ROIProp, m_ROIsBufferDesc );
+
         for ( uint32_t i = 0; i < m_roiNumber; i++ )
         {
-            m_ROIs[i].x = Get( config, "roi_x" + std::to_string( i ), 0 );
-            if ( m_ROIs[i].x >= inputWidths[0] )
+            uint32_t *pROIsBufferDesc = reinterpret_cast<uint32_t *>( m_ROIsBufferDesc.pBuf );
+            pROIsBufferDesc[i * 4 + 0] = Get( config, "roi_x" + std::to_string( i ), 0 );
+            if ( pROIsBufferDesc[i * 4 + 0] >= inputWidths[0] )
             {
                 QC_ERROR( "invalid roi_x%u\n", i );
                 ret = QC_STATUS_BAD_ARGUMENTS;
             }
 
-            m_ROIs[i].y = Get( config, "roi_y" + std::to_string( i ), 0 );
-            if ( m_ROIs[i].y >= inputHeights[0] )
+            pROIsBufferDesc[i * 4 + 1] = Get( config, "roi_y" + std::to_string( i ), 0 );
+            if ( pROIsBufferDesc[i * 4 + 1] >= inputHeights[0] )
             {
                 QC_ERROR( "invalid roi_y%u\n", i );
                 ret = QC_STATUS_BAD_ARGUMENTS;
             }
 
-            m_ROIs[i].width = Get( config, "roi_width" + std::to_string( i ), inputWidths[0] );
-            if ( 0 == m_ROIs[i].width )
+            pROIsBufferDesc[i * 4 + 2] =
+                    Get( config, "roi_width" + std::to_string( i ), inputWidths[0] );
+            if ( 0 == pROIsBufferDesc[i * 4 + 2] )
             {
                 QC_ERROR( "invalid roi_width%u\n", i );
                 ret = QC_STATUS_BAD_ARGUMENTS;
             }
 
-            m_ROIs[i].height = Get( config, "roi_height" + std::to_string( i ), inputHeights[0] );
-            if ( 0 == m_ROIs[i].height )
+            pROIsBufferDesc[i * 4 + 3] =
+                    Get( config, "roi_height" + std::to_string( i ), inputHeights[0] );
+            if ( 0 == pROIsBufferDesc[i * 4 + 3] )
             {
                 QC_ERROR( "invalid roi_height%u\n", i );
                 ret = QC_STATUS_BAD_ARGUMENTS;
@@ -291,17 +292,8 @@ QCStatus_e SampleCL2DFlex::ParseConfig( SampleConfig_t &config )
 
     if ( true == m_bExecuteWithROIs )
     {
-        std::vector<DataTree> roiDts;
-        for ( int i = 0; i < m_roiNumber; i++ )
-        {
-            DataTree roiDt;
-            roiDt.Set<uint32_t>( "roiX", m_ROIs[i].x );
-            roiDt.Set<uint32_t>( "roiY", m_ROIs[i].y );
-            roiDt.Set<uint32_t>( "roiWidth", m_ROIs[i].width );
-            roiDt.Set<uint32_t>( "roiHeight", m_ROIs[i].height );
-            roiDts.push_back( roiDt );
-        }
-        m_dataTree.Set( "static.ROIs", roiDts );
+        m_dataTree.Set<uint32_t>( "static.numOfROIs", m_roiNumber );
+        m_dataTree.Set<uint32_t>( "static.ROIsBufferId", 0 );
     }
 
     QCNodeInit_t data = { m_dataTree.Dump() };
@@ -346,12 +338,25 @@ QCStatus_e SampleCL2DFlex::Init( std::string name, SampleConfig_t &config )
     QCNodeInit_t nodeCfg;
     QCStatus_e ret = QC_STATUS_OK;
 
-    ret = SampleIF::Init( name );
+    ret = SampleIF::Init( name, QC_NODE_TYPE_CL_2D_FLEX );
+
+    if ( QC_STATUS_OK == ret )
+    {
+        m_pBufMgr = BufferManager::Get( m_nodeId, LOGGER_LEVEL_INFO );
+        if ( nullptr == m_pBufMgr )
+        {
+            QC_ERROR( "Failed to get buffer manager for %s %d: %s!", m_nodeId.name.c_str(),
+                      m_nodeId.id, name.c_str() );
+            ret = QC_STATUS_FAIL;
+        }
+    }
+
     if ( QC_STATUS_OK == ret )
     {
         TRACE_ON( GPU );
         ret = ParseConfig( config );
     }
+
     if ( QC_STATUS_OK == ret )
     {
         QCImageProps_t imgProp;
@@ -433,7 +438,7 @@ QCStatus_e SampleCL2DFlex::Init( std::string name, SampleConfig_t &config )
         {
             if ( true == m_bEnableUndistortion )
             {
-                if ( nullptr != m_mapXBufferDesc[i].buffer.data() )
+                if ( nullptr != m_mapXBufferDesc[i].pBuf )
                 {
                     nodeCfg.buffers.push_back( m_mapXBufferDesc[i] );
                 }
@@ -441,13 +446,24 @@ QCStatus_e SampleCL2DFlex::Init( std::string name, SampleConfig_t &config )
                 {
                     QC_INFO( "m_mapXBufferDesc[%d] is nullptr\n", i );
                 }
-                if ( nullptr != m_mapYBufferDesc[i].buffer.data() )
+                if ( nullptr != m_mapYBufferDesc[i].pBuf )
                 {
                     nodeCfg.buffers.push_back( m_mapYBufferDesc[i] );
                 }
                 else
                 {
                     QC_INFO( "m_mapYBufferDesc[%d] is nullptr\n", i );
+                }
+            }
+            if ( ( true == m_bExecuteWithROIs ) && ( 0 == i ) )
+            {
+                if ( nullptr != m_ROIsBufferDesc.pBuf )
+                {
+                    nodeCfg.buffers.push_back( m_ROIsBufferDesc );
+                }
+                else
+                {
+                    QC_INFO( "m_ROIsBufferDesc is nullptr\n" );
                 }
             }
         }
@@ -463,18 +479,6 @@ QCStatus_e SampleCL2DFlex::Init( std::string name, SampleConfig_t &config )
     if ( QC_STATUS_OK == ret )
     {
         ret = m_pub.Init( name, m_outputTopicName );
-    }
-
-    if ( QC_STATUS_OK == ret )
-    {
-        for ( uint32_t i = 0; i < m_numOfInputs; i++ )
-        {
-            if ( true == m_bEnableUndistortion )
-            {
-                (void) m_mapXBufferDesc[i].buffer.Free();
-                (void) m_mapYBufferDesc[i].buffer.Free();
-            }
-        }
     }
 
     return ret;
@@ -511,38 +515,27 @@ void SampleCL2DFlex::ThreadMain()
             std::shared_ptr<SharedBuffer_t> bufferOutput = m_imagePool.Get();
             if ( nullptr != bufferOutput )
             {
-                std::vector<QCSharedBuffer_t> inputs;
-                for ( auto &frame : frames.frames )
-                {
-                    inputs.push_back( frame.buffer->sharedBuffer );
-                }
-
                 PROFILER_BEGIN();
                 TRACE_BEGIN( frames.FrameId( 0 ) );
-
-                std::vector<QCSharedBufferDescriptor_t> bufferDescs;
-                bufferDescs.resize( inputs.size() + 1 );
                 frameDesc.Clear();
                 uint32_t globalIdx = 0;
 
-                if ( QC_STATUS_OK == ret )
+                for ( auto &frame : frames.frames )
                 {
-                    for ( auto &buffer : inputs )
+                    std::shared_ptr<SharedBuffer_t> sbuf = frame.buffer;
+                    QCBufferDescriptorBase_t &buffer = frame.GetBuffer();
+                    ImageDescriptor_t *pImage = dynamic_cast<ImageDescriptor_t *>( &buffer );
+                    ret = frameDesc.SetBuffer( globalIdx, *pImage );
+                    if ( QC_STATUS_OK != ret )
                     {
-                        bufferDescs[globalIdx].buffer = buffer;
-                        ret = frameDesc.SetBuffer( globalIdx, bufferDescs[globalIdx] );
-                        if ( QC_STATUS_OK != ret )
-                        {
-                            break;
-                        }
-                        globalIdx++;
+                        break;
                     }
+                    globalIdx++;
                 }
 
                 if ( QC_STATUS_OK == ret )
                 {
-                    bufferDescs[globalIdx].buffer = bufferOutput->sharedBuffer;
-                    ret = frameDesc.SetBuffer( globalIdx, bufferDescs[globalIdx] );
+                    ret = frameDesc.SetBuffer( globalIdx, bufferOutput->imgDesc );
                     if ( QC_STATUS_OK != ret )
                     {
                         break;
@@ -602,6 +595,9 @@ QCStatus_e SampleCL2DFlex::Deinit()
     TRACE_BEGIN( SYSTRACE_TASK_DEINIT );
     ret = m_cl2d.DeInitialize();
     TRACE_END( SYSTRACE_TASK_DEINIT );
+
+    BufferManager::Put( m_pBufMgr );
+    m_pBufMgr = nullptr;
 
     return ret;
 }
