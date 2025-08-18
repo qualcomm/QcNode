@@ -7,15 +7,13 @@
   - [The QCNode Logger](./logger.md)
 
 - The QCNode components
-  - [The QCNode C2D](./C2D.md)
   - [The QCNode Camera](./camera.md)
   - [The QCNode QNN](./QNN.md)
   - [The QCNode Remap](./remap.md)
   - [The QCNode VideoEncoder](./videoencoder.md)
+  - [The QCNode VideoDecoder](./VideoDecoder.md)
   - [The QCNode Voxelization](./Voxelization.md)
-  - [The QCNode PostCenterPoint](./PostCenterPoint.md)
   - [The QCNode CL2DFlex](./CL2DFlex.md)
-  - [The QCNode GL2DFlex](./GL2DFlex.md)
   - [The QCNode OpticalFlow](./OpticalFlow.md)
   - [The QCNode DepthFromStereo](./DepthFromStereo.md)
   - [The QCNode Radar](./NodeRadar.md)
