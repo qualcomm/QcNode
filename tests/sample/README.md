@@ -26,6 +26,7 @@
     - [2.22 QCNode DepthFromStereoViz Sample](#222-qcnode-depthfromstereoviz-sample)
     - [2.23 QCNode VideoDemuxer Sample](#223-qcnode-videodemuxer-sample)
     - [2.24 QCNode Radar Sample](#224-qcnode-radar-sample)
+    - [2.25 QCNode C2C Sample](#225-qcnode-c2c-sample)
   - [3. Typical QCNode Sample Application pipelines](#3-typical-qcnode-sample-application-pipelines)
     - [3.1 4 DataReader based QNN perception pipelines](#31-4-datareader-based-qnn-perception-pipelines)
     - [3.2 1 DataReader and 1 Camera AR231 based QNN perception pipelines](#32-1-datareader-and-1-camera-ar231-based-qnn-perception-pipelines)
@@ -58,7 +59,7 @@ Note: the "-n componentX_name -t componentX_type" must be in the begin for each 
 | parameter | required | type      | comments |
 |-----------|----------|-----------|----------|
 | -n        | true     | string    | The unique component name |
-| -t        | true     | string    | The component type name, options from [DataReader, Camera, Remap, Qnn, C2D, PostProcCenternet, TinyViz, VideoEncoder, VideoDecoder, Recorder, PlrPre, PlrPost, DataOnline, CL2DFlex, GL2DFlex, SharedRing, FpsAdapter, OpticalFlow, OpticalFlowViz, FrameSync, DepthFromStereo, DepthFromStereoViz, Radar] |
+| -t        | true     | string    | The component type name, options from [DataReader, Camera, Remap, Qnn, C2D, PostProcCenternet, TinyViz, VideoEncoder, VideoDecoder, Recorder, PlrPre, PlrPost, DataOnline, CL2DFlex, GL2DFlex, SharedRing, FpsAdapter, OpticalFlow, OpticalFlowViz, FrameSync, DepthFromStereo, DepthFromStereoViz, Radar, C2C] |
 | -k        | true     | string    | The unique component attribute name |
 | -v        | true     | string    | The attribute value for the previous attribute name |
 | -d        | false    |   -       | Direct the QCNode log to stdout |
@@ -824,6 +825,36 @@ To use the radar pipeline, prepare your radar data files in the following format
 - The DataReader will read these files sequentially and create `QC_BUFFER_TYPE_TENSOR` buffers
 - The Radar component will process these tensors using hardware acceleration
 - The Recorder will save the processed results back to disk with metadata
+
+
+### 2.25 QCNode C2C Sample
+
+| attribute| required | type      | default | comments |
+|----------|----------|-----------|---------|----------|
+| topic    | true     | string    | -       | the topic name |
+| type     | false    | string    | pub     | valid type: "pub" or "sub". If the type is "pub", get the message from DataBroker and forward it to the PCIe C2C, else get the message from the PCIe C2C and forward it to DataBroker. |
+| queue_depth | false | int       | 2       | the subscriber queue depth |
+| width     | true    | int       | -       | The image width |
+| height    | true    | int       | -       | The image height |
+| format    | false   | string    | nv12    | The image format, options from [nv12, nv12_ubwc, uyvy, p010, rgb, bgr] |
+| pool_size | false   | int       | 4       | The image memory pool size |
+| channel   | false   | int       | 0       | The PCIe C2C channel ID, start from 0 |
+| buffers_name | true   | string | -        | The input buffers name, only valid if type is "pub". |
+
+The command line template example:
+
+```sh
+# for type pub
+  -n C2C_CAM0 -t C2C -k channel -v 0 -k type -v pub \
+    -k buffers_name -v CAM0.0 \
+    -k width -v 1920 -k height -v 1080 -k format -v nv12 \
+    -k topic -v /sensor/camera/CAM0/raw \
+
+# for type sub
+  -n C2C_CAM0 -t C2C -k channel -v 0 -k type -v sub \
+    -k width -v 1920 -k height -v 1080 -k format -v nv12 \
+    -k topic -v /sensor/camera/CAM0/raw \
+```
 
 ## 3. Typical QCNode Sample Application pipelines
 
