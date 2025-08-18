@@ -97,6 +97,11 @@ if( "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" )
 endif()
 endif()
 
+if ( ENABLE_C2C )
+  list( APPEND QCNODE_SAMPLE_SOURCES SampleC2C.cpp )
+  list( APPEND TARGET_LIBRARIES c2c )
+endif()
+
 add_library( QCNodeSample SHARED ${QCNODE_SAMPLE_SOURCES} )
 
 set_property( TARGET QCNodeSample PROPERTY LINKER_LANGUAGE CXX )
