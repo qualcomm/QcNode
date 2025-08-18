@@ -9,31 +9,31 @@
 
 # 1. PostCenterPoint overview
 
-The Component PostCenterPoint is a postprocessing that extracts and filters bounding boxes from the center point network output according to the definition in paper [PointPillars: Fast Encoders for Object Detection from Point Clouds](https://arxiv.org/pdf/1812.05784).
+The Sample PostCenterPoint is a postprocessing that extracts and filters bounding boxes from the center point network output according to the definition in paper [PointPillars: Fast Encoders for Object Detection from Point Clouds](https://arxiv.org/pdf/1812.05784).
 
-And this Component PostCenterPoint is based on [FastADAS FadasVM library](https://developer.qualcomm.com/sites/default/files/docs/adas-sdk/api/group__vm__bb.html).
+And this Sample PostCenterPoint is based on [FastADAS FadasVM library](https://developer.qualcomm.com/sites/default/files/docs/adas-sdk/api/group__vm__bb.html).
 
 # 2. PostCenterPoint Data Structures
 
-- [PostCenterPoint_3DBBoxFilterParams_t](../include/QC/component/PostCenterPoint.hpp#L34)
-- [PostCenterPoint_Config_t](../include/QC/component/PostCenterPoint.hpp#L68)
-- [PostCenterPoint_Object3D_t](../include/QC/component/PostCenterPoint.hpp#L86)
+- [PostCenterPoint_3DBBoxFilterParams_t](./PostCenterPoint.hpp#L34)
+- [PostCenterPoint_Config_t](./PostCenterPoint.hpp#L68)
+- [PostCenterPoint_Object3D_t](./PostCenterPoint.hpp#L86)
 
 # 3. PostCenterPoint APIs
 
-- [Init](../include/QC/component/PostCenterPoint.hpp#L108)
-- [RegisterBuffers](../include/QC/component/PostCenterPoint.hpp#L122)
-- [Start](../include/QC/component/PostCenterPoint.hpp#L129)
-- [Execute](../include/QC/component/PostCenterPoint.hpp#L157)
-- [Stop](../include/QC/component/PostCenterPoint.hpp#L168)
-- [DeRegisterBuffers](../include/QC/component/PostCenterPoint.hpp#L180)
-- [Deinit](../include/QC/component/PostCenterPoint.hpp#L186)
+- [Init](./PostCenterPoint.hpp#L108)
+- [RegisterBuffers](./PostCenterPoint.hpp#L122)
+- [Start](./PostCenterPoint.hpp#L129)
+- [Execute](./PostCenterPoint.hpp#L157)
+- [Stop](./PostCenterPoint.hpp#L168)
+- [DeRegisterBuffers](./PostCenterPoint.hpp#L180)
+- [Deinit](./PostCenterPoint.hpp#L186)
 
 # 4. PostCenterPoint Examples
 
 ## 4.1 PostCenterPoint initialization
 
-The [gtest plrPostConfig0](../tests/unit_test/components/PointPillar/gtest_PointPillar.cpp#L51) and [gtest plrPostConfig1](../tests/unit_test/components/PointPillar/gtest_PointPillar.cpp#L71) are 2 typical PostCenterPoint configuration examples according to the pointpilalr model configuration.
+The [gtest plrPostConfig0](./gtest_PostCenterPoint.cpp#L20) and [gtest plrPostConfig1](./gtest_PostCenterPoint.cpp#L40) are 2 typical PostCenterPoint configuration examples according to the pointpilalr model configuration.
 
 And the plrPostConfig0 is for the [OpenPCDet default pointpillar config](https://github.com/open-mmlab/OpenPCDet/blob/master/tools/cfgs/kitti_models/pointpillar.yaml).
 
@@ -67,7 +67,7 @@ ret = plrPost.Start();
 
 ### 4.1.1 How to configure the `filterParams`
 
-The [filterParams](../include/QC/component/PostCenterPoint.hpp#L58) are only valid and will be used if both [bMapPtsToBBox](../include/QC/component/PostCenterPoint.hpp#L61) and [bBBoxFilter](../include/QC/component/PostCenterPoint.hpp#L67) are true.
+The [filterParams](./PostCenterPoint.hpp#L61) are only valid and will be used if both [bMapPtsToBBox](./PostCenterPoint.hpp#L64) and [bBBoxFilter](./PostCenterPoint.hpp#L70) are true.
 
 When `bMapPtsToBBox` was true, the PostCenterPoint checks the input point cloud for each detected 3D bounding box. It calculates the mean values of x/y/z coordinates and intensities for all points inside this bounding box. However, this process can be time-consuming. In real-world scenarios, ADAS applications may only require this mean calculation for specific classes and limit it to the first several bounding boxes with high scores.
 
@@ -75,7 +75,10 @@ As an example configuration, consider using filterParams to optimize performance
 
 ```c
 PostCenterPoint_Config_t config = plrPostConfig0;
-PostCenterPoint plrPost;
+BufferManager *pBufMgr = BufferManager::Get( { "PLRPOST", QC_NODE_TYPE_CUSTOM_0, 0 } );
+Logger logger;
+logger.Init( "PLRPOST", LOGGER_LEVEL_ERROR );
+PostCenterPoint plrPost( logger );
 QCStatus_e ret;
 bool labelSelect[3] = { true, false, false }; // only do the mean calcuation for the class: Car
 // do the mean calcuation for the first 10 bounding box with high scores.
@@ -93,7 +96,7 @@ config.bBBoxFilter = true;
 
 ## 4.2 PostCenterPoint execution
 
-The [SANITY_PostCenterPoint](../tests/unit_test/components/PointPillar/gtest_PointPillar.cpp#L336) gtest code is a good example. It loads the related input and output buffers from a raw file by calling APIs [LoadRaw](../tests/unit_test/components/PointPillar/gtest_PointPillar.cpp#L121) or [LoadPoints](../tests/unit_test/components/PointPillar/gtest_PointPillar.cpp#L103). Additionally, this code demonstrates how to decode the detection output buffer. Below is a copy of it.
+The [SANITY_PostCenterPoint](./gtest_PostCenterPoint.cpp#L92) gtest code is a good example. It loads the related input and output buffers from a raw file by calling APIs [LoadRaw](./gtest_PostCenterPoint.cpp#L78) or [LoadPoints](./gtest_PostCenterPoint.cpp#L60). Additionally, this code demonstrates how to decode the detection output buffer. Below is a copy of it.
 
 ```c++
     PostCenterPoint_Object3D_t *pObj = (PostCenterPoint_Object3D_t *) det.data();
@@ -108,5 +111,5 @@ The [SANITY_PostCenterPoint](../tests/unit_test/components/PointPillar/gtest_Poi
     }
 ```
 
-And the [SamplePlrPost](../tests/sample/source/SamplePlrPost.cpp#L228) provides an end-to-end pipeline demo that illustrates how to call the Execute API to extract bounding boxes.
+And the [SamplePlrPost](../../source/SamplePlrPost.cpp#L228) provides an end-to-end pipeline demo that illustrates how to call the Execute API to extract bounding boxes.
 
