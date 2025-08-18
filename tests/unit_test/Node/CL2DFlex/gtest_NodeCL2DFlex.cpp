@@ -11,13 +11,53 @@
 #include <string>
 
 #include "QC/Node/CL2DFlex.hpp"
+#include "QC/sample/BufferManager.hpp"
 #include "md5_utils.hpp"
 
 using namespace QC::Node;
 using namespace QC::component;
 using namespace QC::test::utils;
+using namespace QC::sample;
 
-QCStatus_e LoadMap( QCSharedBuffer_t buffer, std::string path )
+QCStatus_e LoadImage( ImageDescriptor_t imageDesc, std::string path )
+{
+    QCStatus_e status = QC_STATUS_OK;
+    FILE *file = nullptr;
+    size_t length = 0;
+    file = fopen( path.c_str(), "rb" );
+    if ( nullptr == file )
+    {
+        printf( "could not open image file %s\n", path.c_str() );
+        status = QC_STATUS_FAIL;
+    }
+    else
+    {
+        fseek( file, 0, SEEK_END );
+        length = (size_t) ftell( file );
+        if ( imageDesc.size != length )
+        {
+            printf( "image file %s size not match, need %d but got %d\n", path.c_str(),
+                    (int) imageDesc.size, (int) length );
+            status = QC_STATUS_FAIL;
+        }
+        else
+        {
+            fseek( file, 0, SEEK_SET );
+            auto r = fread( imageDesc.pBuf, 1, length, file );
+            if ( length != r )
+            {
+                printf( "failed to read image file %s, need %d but read %d\n", path.c_str(),
+                        (int) length, (int) r );
+                status = QC_STATUS_FAIL;
+            }
+        }
+        fclose( file );
+    }
+
+    return status;
+}
+
+QCStatus_e LoadMap( TensorDescriptor_t buffer, std::string path )
 {
     QCStatus_e status = QC_STATUS_OK;
     FILE *file = nullptr;
@@ -46,7 +86,7 @@ QCStatus_e LoadMap( QCSharedBuffer_t buffer, std::string path )
     if ( QC_STATUS_OK == status )
     {
         fseek( file, 0, SEEK_SET );
-        auto r = fread( buffer.data(), 1, length, file );
+        auto r = fread( buffer.pBuf, 1, length, file );
         if ( length != r )
         {
             printf( "failed to read map table file %s", path.c_str() );
@@ -107,8 +147,8 @@ void SetConfigCL2D( CL2DFlex_Config_t *pCL2DFlexConfig, DataTree *pdt )
         else if ( pCL2DFlexConfig->workModes[i] == CL2DFLEX_WORK_MODE_REMAP_NEAREST )
         {
             inputDt.Set<std::string>( "workMode", "remap_nearest" );
-            inputDt.Set<uint32_t>( "mapX", 0 );
-            inputDt.Set<uint32_t>( "mapY", 1 );
+            inputDt.Set<uint32_t>( "mapXBufferId", pCL2DFlexConfig->numOfInputs + 1 );
+            inputDt.Set<uint32_t>( "mapYBufferId", pCL2DFlexConfig->numOfInputs + 2 );
         }
 
         inputDts.push_back( inputDt );
@@ -121,6 +161,7 @@ void Sanity()
     QCStatus_e ret;
     std::string errors;
     QCNodeIfs *pCL2DFlex = new QC::Node::CL2DFlex();
+    BufferManager bufMgr( { "MANAGER", QC_NODE_TYPE_CL_2D_FLEX, 0 } );
 
     CL2DFlex_Config_t CL2DFlexConfig;
     CL2DFlexConfig.numOfInputs = 2;
@@ -147,10 +188,7 @@ void Sanity()
     QCNodeInit_t config = { dt.Dump() };
     printf( "config: %s\n", config.config.c_str() );
 
-    ret = pCL2DFlex->Initialize( config );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    QCImageProps_t imgPropInputs[CL2DFlexConfig.numOfInputs];
+    ImageProps_t imgPropInputs[CL2DFlexConfig.numOfInputs];
     for ( int i = 0; i < CL2DFlexConfig.numOfInputs; i++ )
     {
         imgPropInputs[i].batchSize = 1;
@@ -183,7 +221,7 @@ void Sanity()
         }
     }
 
-    QCImageProps_t imgPropOutput;
+    ImageProps_t imgPropOutput;
     imgPropOutput.batchSize = CL2DFlexConfig.numOfInputs;
     imgPropOutput.width = CL2DFlexConfig.outputWidth;
     imgPropOutput.height = CL2DFlexConfig.outputHeight;
@@ -207,40 +245,34 @@ void Sanity()
         imgPropOutput.numPlanes = 2;
     }
 
-    std::vector<QCImageProps_t> inputsProps;
-    std::vector<QCSharedBufferDescriptor_t> inputs;
+    uint32_t globalIdx = 0;
+    QCSharedFrameDescriptorNode frameDesc( CL2DFlexConfig.numOfInputs + 1 );
+    std::vector<ImageDescriptor_t> inputs;
+    inputs.reserve( CL2DFlexConfig.numOfInputs );
     for ( int i = 0; i < CL2DFlexConfig.numOfInputs; i++ )
     {
-        inputsProps.push_back( imgPropInputs[i] );
-        QCSharedBufferDescriptor_t buffer;
-        ret = buffer.buffer.Allocate( &imgPropInputs[i] );
+        ImageDescriptor_t imageDesc;
+        ret = bufMgr.Allocate( imgPropInputs[i], imageDesc );
         ASSERT_EQ( QC_STATUS_OK, ret );
-        inputs.push_back( buffer );
+        inputs.push_back( imageDesc );
+        ret = frameDesc.SetBuffer( globalIdx, inputs.back() );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+        globalIdx++;
     }
-    std::vector<QCImageProps_t> outputsProps;
-    std::vector<QCSharedBufferDescriptor_t> outputs;
-    outputsProps.push_back( imgPropOutput );
-    QCSharedBufferDescriptor_t buffer;
-    ret = buffer.buffer.Allocate( &imgPropOutput );
-    outputs.push_back( buffer );
+    std::vector<ImageDescriptor_t> outputs;
+    outputs.reserve( 1 );
+    ImageDescriptor_t imageDesc;
+    ret = bufMgr.Allocate( imgPropOutput, imageDesc );
+    outputs.push_back( imageDesc );
+    ret = frameDesc.SetBuffer( globalIdx, outputs.back() );
+    ASSERT_EQ( QC_STATUS_OK, ret );
+    globalIdx++;
+
+    ret = pCL2DFlex->Initialize( config );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = pCL2DFlex->Start();
     ASSERT_EQ( QC_STATUS_OK, ret );
-
-    QCSharedFrameDescriptorNode frameDesc( inputs.size() + outputs.size() );
-    uint32_t globalIdx = 0;
-    for ( auto &buffer : inputs )
-    {
-        ret = frameDesc.SetBuffer( globalIdx, buffer );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        globalIdx++;
-    }
-    for ( auto &buffer : outputs )
-    {
-        ret = frameDesc.SetBuffer( globalIdx, buffer );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        globalIdx++;
-    }
 
     ret = pCL2DFlex->ProcessFrameDescriptor( frameDesc );
     ASSERT_EQ( QC_STATUS_OK, ret );
@@ -251,15 +283,15 @@ void Sanity()
     ret = pCL2DFlex->DeInitialize();
     ASSERT_EQ( QC_STATUS_OK, ret );
 
-    for ( auto &buffer : inputs )
+    for ( auto imageDesc : inputs )
     {
-        ret = buffer.buffer.Free();
+        ret = bufMgr.Free( imageDesc );
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
 
-    for ( auto &buffer : outputs )
+    for ( auto imageDesc : outputs )
     {
-        ret = buffer.buffer.Free();
+        ret = bufMgr.Free( imageDesc );
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
 
@@ -275,6 +307,11 @@ void Accuracy( uint32_t inputNumberTest, CL2DFlex_Work_Mode_e modeTest,
     QCStatus_e ret;
     std::string errors;
     QCNodeIfs *pCL2DFlex = new QC::Node::CL2DFlex();
+    BufferManager bufMgr( { "MANAGER", QC_NODE_TYPE_CL_2D_FLEX, 0 } );
+    uint32_t globalIdx = 0;
+    std::vector<uint32_t> bufferIds;
+    QCNodeInit_t config;
+    config.buffers.clear();
 
     CL2DFlex_Config_t CL2DFlexConfig;
     CL2DFlexConfig.numOfInputs = inputNumberTest;
@@ -298,54 +335,7 @@ void Accuracy( uint32_t inputNumberTest, CL2DFlex_Work_Mode_e modeTest,
     dt.Set<uint32_t>( "static.id", 0 );
     SetConfigCL2D( &CL2DFlexConfig, &dt );
 
-    QCNodeInit_t config = { dt.Dump() };
-    printf( "config: %s\n", config.config.c_str() );
-
-    QCSharedBufferDescriptor_t mapXBufferDesc;
-    QCSharedBufferDescriptor_t mapYBufferDesc;
-    if ( CL2DFLEX_WORK_MODE_REMAP_NEAREST == CL2DFlexConfig.workModes[0] )
-    {
-        QCTensorProps_t mapXProp = {
-                QC_TENSOR_TYPE_FLOAT_32,
-                { CL2DFlexConfig.outputHeight * CL2DFlexConfig.outputWidth, 0 },
-                1,
-        };
-        ret = mapXBufferDesc.buffer.Allocate( &mapXProp );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        ret = LoadMap( mapXBufferDesc.buffer, "./data/test/CL2DFlex/mapX.raw" );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-
-        QCTensorProps_t mapYProp = {
-                QC_TENSOR_TYPE_FLOAT_32,
-                { CL2DFlexConfig.outputHeight * CL2DFlexConfig.outputWidth, 0 },
-                1,
-        };
-        ret = mapYBufferDesc.buffer.Allocate( &mapYProp );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        ret = LoadMap( mapYBufferDesc.buffer, "./data/test/CL2DFlex/mapY.raw" );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        if ( nullptr != mapXBufferDesc.buffer.data() )
-        {
-            config.buffers.push_back( mapXBufferDesc );
-        }
-        else
-        {
-            printf( "mapXBufferDesc is nullptr\n" );
-        }
-        if ( nullptr != mapYBufferDesc.buffer.data() )
-        {
-            config.buffers.push_back( mapYBufferDesc );
-        }
-        else
-        {
-            printf( "mapYBufferDesc is nullptr\n" );
-        }
-    }
-
-    ret = pCL2DFlex->Initialize( config );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    QCImageProps_t imgPropInputs[CL2DFlexConfig.numOfInputs];
+    ImageProps_t imgPropInputs[CL2DFlexConfig.numOfInputs];
     for ( int i = 0; i < CL2DFlexConfig.numOfInputs; i++ )
     {
         imgPropInputs[i].batchSize = 1;
@@ -378,7 +368,7 @@ void Accuracy( uint32_t inputNumberTest, CL2DFlex_Work_Mode_e modeTest,
         }
     }
 
-    QCImageProps_t imgPropOutput;
+    ImageProps_t imgPropOutput;
     imgPropOutput.batchSize = CL2DFlexConfig.numOfInputs;
     imgPropOutput.width = CL2DFlexConfig.outputWidth;
     imgPropOutput.height = CL2DFlexConfig.outputHeight;
@@ -402,80 +392,107 @@ void Accuracy( uint32_t inputNumberTest, CL2DFlex_Work_Mode_e modeTest,
         imgPropOutput.numPlanes = 2;
     }
 
-    std::vector<QCImageProps_t> inputsProps;
-    std::vector<QCSharedBufferDescriptor_t> inputs;
+    uint32_t frameIdx = 0;
+    QCSharedFrameDescriptorNode frameDesc( CL2DFlexConfig.numOfInputs + 1 );
+
+    std::vector<ImageDescriptor_t> inputs;
+    inputs.reserve( CL2DFlexConfig.numOfInputs );
     for ( int i = 0; i < CL2DFlexConfig.numOfInputs; i++ )
     {
-        inputsProps.push_back( imgPropInputs[i] );
-        QCSharedBufferDescriptor_t buffer;
+        ImageDescriptor_t imageDesc;
         if ( QC_IMAGE_FORMAT_NV12_UBWC == CL2DFlexConfig.inputFormats[i] )
         {
-            ret = buffer.buffer.Allocate( CL2DFlexConfig.inputWidths[i],
-                                          CL2DFlexConfig.inputHeights[i],
-                                          CL2DFlexConfig.inputFormats[i] );
+            ret = bufMgr.Allocate( ImageBasicProps_t( CL2DFlexConfig.inputWidths[i],
+                                                      CL2DFlexConfig.inputHeights[i],
+                                                      CL2DFlexConfig.inputFormats[i] ),
+                                   imageDesc );
         }
         else
         {
-            ret = buffer.buffer.Allocate( &imgPropInputs[i] );
+            ret = bufMgr.Allocate( imgPropInputs[i], imageDesc );
         }
         ASSERT_EQ( QC_STATUS_OK, ret );
-        memset( buffer.buffer.data(), 0, buffer.buffer.size );
+        inputs.push_back( imageDesc );
+        ret = frameDesc.SetBuffer( frameIdx, inputs.back() );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+        frameIdx++;
+        config.buffers.push_back( inputs.back() );
+        bufferIds.push_back( globalIdx );
+        globalIdx++;
+    }
 
-        FILE *file1 = nullptr;
-        size_t length1 = 0;
-        file1 = fopen( pathTest.c_str(), "rb" );
-        if ( nullptr == file1 )
+    std::vector<ImageDescriptor_t> outputs;
+    outputs.reserve( 1 );
+    ImageDescriptor_t imageDesc;
+    ret = bufMgr.Allocate( imgPropOutput, imageDesc );
+    outputs.push_back( imageDesc );
+    ret = frameDesc.SetBuffer( frameIdx, outputs.back() );
+    ASSERT_EQ( QC_STATUS_OK, ret );
+    frameIdx++;
+    config.buffers.push_back( outputs.back() );
+    bufferIds.push_back( globalIdx );
+    globalIdx++;
+
+    TensorDescriptor_t mapXBufferDesc;
+    TensorDescriptor_t mapYBufferDesc;
+    if ( CL2DFLEX_WORK_MODE_REMAP_NEAREST == CL2DFlexConfig.workModes[0] )
+    {
+        TensorProps_t mapXProp = { QC_TENSOR_TYPE_FLOAT_32,
+                                   { CL2DFlexConfig.outputHeight * CL2DFlexConfig.outputWidth } };
+        ret = bufMgr.Allocate( mapXProp, mapXBufferDesc );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+
+        TensorProps_t mapYProp = { QC_TENSOR_TYPE_FLOAT_32,
+                                   { CL2DFlexConfig.outputHeight * CL2DFlexConfig.outputWidth }
+
+        };
+        ret = bufMgr.Allocate( mapYProp, mapYBufferDesc );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+        if ( nullptr != mapXBufferDesc.pBuf )
         {
-            printf( "could not open image file %s\n", pathTest.c_str() );
+            config.buffers.push_back( mapXBufferDesc );
+            bufferIds.push_back( globalIdx );
+            globalIdx++;
         }
         else
         {
-            fseek( file1, 0, SEEK_END );
-            length1 = (size_t) ftell( file1 );
-            if ( buffer.buffer.size != length1 )
-            {
-                printf( "image file %s size not match, need %d but got %d\n", pathTest.c_str(),
-                        (int) buffer.buffer.size, (int) length1 );
-            }
-            else
-            {
-                fseek( file1, 0, SEEK_SET );
-                auto r = fread( buffer.buffer.data(), 1, length1, file1 );
-                if ( length1 != r )
-                {
-                    printf( "failed to read image file %s, need %d but read %d\n", pathTest.c_str(),
-                            (int) length1, (int) r );
-                }
-            }
-            fclose( file1 );
+            printf( "mapXBufferDesc is nullptr\n" );
         }
-
-        inputs.push_back( buffer );
+        if ( nullptr != mapYBufferDesc.pBuf )
+        {
+            config.buffers.push_back( mapYBufferDesc );
+            bufferIds.push_back( globalIdx );
+            globalIdx++;
+        }
+        else
+        {
+            printf( "mapYBufferDesc is nullptr\n" );
+        }
     }
 
-    std::vector<QCImageProps_t> outputsProps;
-    std::vector<QCSharedBufferDescriptor_t> outputs;
-    outputsProps.push_back( imgPropOutput );
-    QCSharedBufferDescriptor_t buffer;
-    ret = buffer.buffer.Allocate( &imgPropOutput );
-    outputs.push_back( buffer );
+    dt.Set<uint32_t>( "static.bufferIds", bufferIds );
+    config.config = dt.Dump();
+    printf( "config: %s\n", config.config.c_str() );
+
+    ret = pCL2DFlex->Initialize( config );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = pCL2DFlex->Start();
     ASSERT_EQ( QC_STATUS_OK, ret );
 
-    QCSharedFrameDescriptorNode frameDesc( inputs.size() + outputs.size() );
-    uint32_t globalIdx = 0;
-    for ( auto &buffer : inputs )
+    for ( int i = 0; i < CL2DFlexConfig.numOfInputs; i++ )
     {
-        ret = frameDesc.SetBuffer( globalIdx, buffer );
+        memset( inputs[i].pBuf, 0, inputs[i].size );
+        ret = LoadImage( inputs[i], pathTest );
         ASSERT_EQ( QC_STATUS_OK, ret );
-        globalIdx++;
     }
-    for ( auto &buffer : outputs )
+    memset( outputs[0].pBuf, 0, outputs[0].size );
+    if ( CL2DFLEX_WORK_MODE_REMAP_NEAREST == CL2DFlexConfig.workModes[0] )
     {
-        ret = frameDesc.SetBuffer( globalIdx, buffer );
+        ret = LoadMap( mapXBufferDesc, "./data/test/CL2DFlex/mapX.raw" );
         ASSERT_EQ( QC_STATUS_OK, ret );
-        globalIdx++;
+        ret = LoadMap( mapYBufferDesc, "./data/test/CL2DFlex/mapY.raw" );
+        ASSERT_EQ( QC_STATUS_OK, ret );
     }
 
     ret = pCL2DFlex->ProcessFrameDescriptor( frameDesc );
@@ -483,57 +500,29 @@ void Accuracy( uint32_t inputNumberTest, CL2DFlex_Work_Mode_e modeTest,
 
     if ( true == saveOutput )
     {
-        uint8_t *ptr = (uint8_t *) outputs[0].buffer.data();
+        uint8_t *ptr = (uint8_t *) outputs[0].pBuf;
         FILE *fp = fopen( goldenPath.c_str(), "wb" );
         if ( nullptr != fp )
         {
-            fwrite( ptr, outputs[0].buffer.size, 1, fp );
+            fwrite( ptr, outputs[0].size, 1, fp );
             fclose( fp );
         }
     }
 
-    QCSharedBuffer_t golden;
-    (void) golden.Allocate( &imgPropOutput );
+    ImageDescriptor_t golden;
+    (void) bufMgr.Allocate( imgPropOutput, golden );
+    LoadImage( golden, goldenPath );
 
-    FILE *file2 = nullptr;
-    size_t length2 = 0;
-    file2 = fopen( goldenPath.c_str(), "rb" );
-    if ( nullptr == file2 )
-    {
-        printf( "could not open golden file %s\n", goldenPath.c_str() );
-    }
-    else
-    {
-        fseek( file2, 0, SEEK_END );
-        length2 = (size_t) ftell( file2 );
-        if ( golden.size != length2 )
-        {
-            printf( "golden file %s size not match, need %d but got %d\n", goldenPath.c_str(),
-                    (int) golden.size, (int) length2 );
-        }
-        else
-        {
-            fseek( file2, 0, SEEK_SET );
-            auto r = fread( golden.data(), 1, length2, file2 );
-            if ( length2 != r )
-            {
-                printf( "failed to read golden file %s, need %d but read %d\n", pathTest.c_str(),
-                        (int) length2, (int) r );
-            }
-        }
-        fclose( file2 );
-    }
-
-    std::string md5Output = MD5Sum( outputs[0].buffer.data(), outputs[0].buffer.size );
+    std::string md5Output = MD5Sum( outputs[0].pBuf, outputs[0].size );
     printf( "output md5 = %s\n", md5Output.c_str() );
-    std::string md5Golden = MD5Sum( golden.data(), outputs[0].buffer.size );
+    std::string md5Golden = MD5Sum( golden.pBuf, outputs[0].size );
     printf( "golden md5 = %s\n", md5Golden.c_str() );
 
     if ( md5Output != md5Golden )   // check cosine similarity if md5 not match
     {
-        size_t outputSize = outputs[0].buffer.size;
-        uint8_t *outputData = (uint8_t *) outputs[0].buffer.data();
-        uint8_t *goldenData = (uint8_t *) golden.data();
+        size_t outputSize = outputs[0].size;
+        uint8_t *outputData = (uint8_t *) outputs[0].pBuf;
+        uint8_t *goldenData = (uint8_t *) golden.pBuf;
         float dot = 0.0;
         float norm1 = 1e-10;
         float norm2 = 1e-10;
@@ -565,21 +554,19 @@ void Accuracy( uint32_t inputNumberTest, CL2DFlex_Work_Mode_e modeTest,
     ret = pCL2DFlex->DeInitialize();
     ASSERT_EQ( QC_STATUS_OK, ret );
 
-    for ( auto &buffer : inputs )
+    for ( auto imageDesc : inputs )
     {
-        ret = buffer.buffer.Free();
-        ASSERT_EQ( QC_STATUS_OK, ret );
+        ret = bufMgr.Free( imageDesc );
     }
 
-    for ( auto &buffer : outputs )
+    for ( auto imageDesc : outputs )
     {
-        ret = buffer.buffer.Free();
-        ASSERT_EQ( QC_STATUS_OK, ret );
+        ret = bufMgr.Free( imageDesc );
     }
 
-    (void) mapXBufferDesc.buffer.Free();
-    (void) mapYBufferDesc.buffer.Free();
-    (void) golden.Free();
+    (void) bufMgr.Free( mapXBufferDesc );
+    (void) bufMgr.Free( mapYBufferDesc );
+    (void) bufMgr.Free( golden );
 
     reinterpret_cast<QC::Node::CL2DFlex *>( pCL2DFlex )->~CL2DFlex();
 }
@@ -589,21 +576,22 @@ TEST( NodeCL2D, Sanity )
     Sanity();
 }
 
+// md5 of 0.nv12 is a1591f4b8c196a47628f0ef6bc3a721c
+// md5 of 0.uyvy is 5b1ae2203a9d97aeafe65e997f3beebc
+// md5 of 0.ubwc is ce5f81f72f9c0ec0c347b1ee55d13584
+// md5 of golden1.rgb is 4b528d54b7c5d5164f66719a89f988be
+// md5 of golden2.rgb is f94a6aeae302add0424821660bcd2684
+// md5 of golden3.nv12 is 91ed68589443b87bcfff8ae7e69b03b2
+// md5 of golden4.rgb is 9382129ca960b8ff22e3c135e3eb12b7
+// md5 of golden5.rgb is 520d1039f96107ef4db669e9644250fd
+// md5 of golden6.nv12 is 91cdd0def0f40ce3c0fec070c2bccd01
+// md5 of golden7.rgb is a906c3bc49c7b91ec25d6474311d8031
+// md5 of golden8.nv12 is 43d33b3417b0b53c594269e5df95e035
+// md5 of golden9.rgb is cdb33ad92de656964c3be1d67fff25fb
+// md5 of golden10.nv12 is e5396625f90a049b625b65bc1fdf8183
+
 TEST( NodeCL2D, Accuracy )
 {
-    // md5 of 0.nv12 is a1591f4b8c196a47628f0ef6bc3a721c
-    // md5 of 0.uyvy is 5b1ae2203a9d97aeafe65e997f3beebc
-    // md5 of 0.ubwc is ce5f81f72f9c0ec0c347b1ee55d13584
-    // md5 of golden1.rgb is 4b528d54b7c5d5164f66719a89f988be
-    // md5 of golden2.rgb is f94a6aeae302add0424821660bcd2684
-    // md5 of golden3.nv12 is 91ed68589443b87bcfff8ae7e69b03b2
-    // md5 of golden4.rgb is 9382129ca960b8ff22e3c135e3eb12b7
-    // md5 of golden5.rgb is 520d1039f96107ef4db669e9644250fd
-    // md5 of golden6.nv12 is 91cdd0def0f40ce3c0fec070c2bccd01
-    // md5 of golden7.rgb is a906c3bc49c7b91ec25d6474311d8031
-    // md5 of golden8.nv12 is 43d33b3417b0b53c594269e5df95e035
-    // md5 of golden9.rgb is 94d20588fa7d89cd285a819cddb0c978
-    // md5 of golden10.nv12 is e5396625f90a049b625b65bc1fdf8183
     Accuracy( 1, CL2DFLEX_WORK_MODE_CONVERT, QC_IMAGE_FORMAT_NV12, QC_IMAGE_FORMAT_RGB888, 1920,
               1024, 1920, 1024, "./data/test/CL2DFlex/0.nv12", "./data/test/CL2DFlex/golden1.rgb",
               false );
@@ -613,9 +601,6 @@ TEST( NodeCL2D, Accuracy )
     Accuracy( 1, CL2DFLEX_WORK_MODE_CONVERT, QC_IMAGE_FORMAT_UYVY, QC_IMAGE_FORMAT_NV12, 1920, 1024,
               1920, 1024, "./data/test/CL2DFlex/0.uyvy", "./data/test/CL2DFlex/golden3.nv12",
               false );
-    Accuracy( 1, CL2DFLEX_WORK_MODE_CONVERT_UBWC, QC_IMAGE_FORMAT_NV12_UBWC, QC_IMAGE_FORMAT_NV12,
-              3840, 2160, 3840, 2160, "./data/test/CL2DFlex/0.ubwc",
-              "./data/test/CL2DFlex/golden8.nv12", false );
     Accuracy( 1, CL2DFLEX_WORK_MODE_RESIZE_NEAREST, QC_IMAGE_FORMAT_NV12, QC_IMAGE_FORMAT_RGB888,
               1920, 1024, 1152, 800, "./data/test/CL2DFlex/0.nv12",
               "./data/test/CL2DFlex/golden4.rgb", false );
@@ -634,9 +619,20 @@ TEST( NodeCL2D, Accuracy )
     Accuracy( 1, CL2DFLEX_WORK_MODE_LETTERBOX_NEAREST, QC_IMAGE_FORMAT_NV12, QC_IMAGE_FORMAT_RGB888,
               1920, 1024, 1152, 800, "./data/test/CL2DFlex/0.nv12",
               "./data/test/CL2DFlex/golden7.rgb", false );
+}
+
+TEST( NodeCL2D, RemapAccuracy )
+{
     Accuracy( 1, CL2DFLEX_WORK_MODE_REMAP_NEAREST, QC_IMAGE_FORMAT_NV12, QC_IMAGE_FORMAT_RGB888,
               1920, 1024, 1152, 800, "./data/test/CL2DFlex/0.nv12",
               "./data/test/CL2DFlex/golden9.rgb", false );
+}
+
+TEST( NodeCL2D, UBWCAccuracy )
+{
+    Accuracy( 1, CL2DFLEX_WORK_MODE_CONVERT_UBWC, QC_IMAGE_FORMAT_NV12_UBWC, QC_IMAGE_FORMAT_NV12,
+              3840, 2160, 3840, 2160, "./data/test/CL2DFlex/0.ubwc",
+              "./data/test/CL2DFlex/golden8.nv12", false );
 }
 
 #ifndef GTEST_QCNODE

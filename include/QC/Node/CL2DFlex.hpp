@@ -43,12 +43,11 @@ typedef enum
 /** @brief remap tables for input images */
 typedef struct
 {
-    QCSharedBuffer_t
-            *pMapX; /**<shared buffer for X map, each element is the column coordinate of the mapped
-                       location in the source image, data size is mapWidth * mapHeight*/
-    QCSharedBuffer_t
-            *pMapY; /**<shared buffer for Y map, each element is the row coordinate of the mapped
-                       location in the source image, data size is mapWidth * mapHeight*/
+    uint32_t mapXBufferId; /**<tensor buffer ID for X map, in the buffer each element is the column
+coordinate of the mapped location in the source image, data size is mapWidth * mapHeight*/
+    uint32_t mapYBufferId; /**<tensor buffer ID for Y map, in the buffer each element is the row
+coordinate of the mapped location in the source image, data size is mapWidth * mapHeight*/
+
 } CL2DFlex_MapTable_t;
 
 /** @brief CL2DFlex input images ROI configuration */
@@ -72,16 +71,17 @@ typedef struct
                                                          an integer   multiple of 2*/
     uint32_t inputHeights[QC_MAX_INPUTS];          /**<input image height for each batch, must be an
                                                          integer  multiple of 2*/
+    CL2DFlex_ROIConfig_t ROIs[QC_MAX_INPUTS];      /**<ROI configurations for each batch*/
     QCImageFormat_e outputFormat;                  /**<output image format*/
     uint32_t outputWidth;                          /**<output image width*/
     uint32_t outputHeight;                         /**<output image height*/
-    uint32_t numOfROIs;                            /**<number of output ROIs for ROI pipeline*/
-    CL2DFlex_ROIConfig_t ROIs[QC_MAX_INPUTS];      /**<ROI configurations for each batch*/
     uint32_t letterboxPaddingValue =
             0; /**<the padding value for letterbox resize with fixed height/width ratio, uint32
                   value in which the lower 24 bits are composed of three 8 bits values representing
                   R,G,B respectively, default set to 0 which means all black */
     CL2DFlex_MapTable_t remapTable[QC_MAX_INPUTS]; /**<remap table, used for remap work mode*/
+    uint32_t numOfROIs;    /**<number of output ROIs for multiple ROI work modes*/
+    uint32_t ROIsBufferId; /**<ROIs buffer ID for multiple ROI work modes*/
     OpenclIfcae_Perf_e priority =
             OPENCLIFACE_PERF_NORMAL; /**<OpenCL performance priority level, default set to normal*/
 
@@ -146,18 +146,12 @@ public:
      *              "workMode": "The input work mode, type: string,
      *                          options: [convert, resize_nearest, letterbox_nearest, convert_ubwc,
      *                          letterbox_nearest_multiple, resize_nearest_multiple, remap_nearest]"
-     *              "mapX": "The buffer id of X direction map table, type: uint32_t",
-     *              "mapY": "The buffer id of Y direction map table, type: uint32_t"
+     *              "mapXBufferId": "The buffer id of X direction map table, type: uint32_t",
+     *              "mapYBufferId": "The buffer id of Y direction map table, type: uint32_t"
      *           }
      *       ],
-     *        "ROIs": [
-     *           {
-     *              "roiX": "The input roiX, type: uint32_t",
-     *              "roiY": "The input roiY, type: uint32_t",
-     *              "roiWidth": "The input roiWidth, type: uint32_t",
-     *              "roiHeight": "The input roiHeight, type: uint32_t",
-     *           }
-     *       ],
+     *        "numOfROIs": "The number of ROIs for multiple ROIs work mode, type: uint32_t",
+     *        "ROIsBufferId": "The ROIs buffer ID for multiple ROIs work mode, type: uint32_t",
      *        "bufferIds": [A list of uint32_t values representing the indices of buffers
      *                      in QCNodeInit::buffers],
      *        "globalBufferIdMap": [
@@ -170,8 +164,8 @@ public:
      *                   type: bool, default: false"
      *     }
      *   }
-     * @note: mapX and mapY are optional, only used for remap_nearest work mode.
-     *        ROIs configuration is optional, only used for resize_nearest_multiple and
+     * @note: mapXBufferId and mapYBufferId are optional, only used for remap_nearest work mode.
+     *        numOfROIs and ROIsBufferId are optional, only used for resize_nearest_multiple and
      *        letterbox_nearest_multiple work mode.
      * @return QC_STATUS_OK on success, other values on failure.
      */
@@ -198,7 +192,6 @@ private:
 private:
     CL2DFlexImpl *m_pCL2DFlexImpl;
     std::string m_options;
-    uint32_t m_numOfInputs;
 };
 
 // TODO: how to handle CL2DFlexMonitoring

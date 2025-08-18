@@ -223,6 +223,7 @@ protected:
     QCProcessorType_e Get( SampleConfig_t &config, std::string key, QCProcessorType_e defaultV );
     bool Get( SampleConfig_t &config, std::string key, bool defaultV );
     QCStatus_e LoadFile( QCSharedBuffer_t buffer, std::string path );
+    QCStatus_e LoadFile( QCBufferDescriptorBase_t &bufferDesc, std::string path );
 
 protected:
     std::string m_name;

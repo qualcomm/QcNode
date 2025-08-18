@@ -22,21 +22,21 @@ KernelCode(
             uchar3 RGB;
             int xIn = round( mapX[x + y * resizeWidth] );
             xIn = max( 0, xIn );
-            xIn = min( inputWidth, xIn );
+            xIn = min( inputWidth - 1, xIn );
             xIn = roiX + xIn;
             int yIn = round( mapY[x + y * resizeWidth] );
             yIn = max( 0, yIn );
-            yIn = min( inputHeight, yIn );
+            yIn = min( inputHeight - 1, yIn );
             yIn = roiY + yIn;
             int yPtr = mad24( yIn, inputStride0, xIn );
             int uPtr = mad24( yIn / 2, inputStride1, ( xIn / 2 ) << 1 );
             float Y = max( 0, ySrc[yPtr] - 16 ) * coeffY;
             float2 UV = convert_float2( vload2( 0, uSrc + uPtr ) ) - 128.0f;
-            float4 UV4 = ( float4 )( UV, UV );
+            float4 UV4 = (float4) ( UV, UV );
             UV4 = mad( UV4, coeffUV4, 0.5f );
             UV4.s1 = UV4.s1 + UV4.s2 - 0.5f;
             UV4 += Y;
-            RGB = convert_uchar3_sat( ( float3 )( UV4.s3, UV4.s1, UV4.s0 ) );
+            RGB = convert_uchar3_sat( (float3) ( UV4.s3, UV4.s1, UV4.s0 ) );
             vstore3( RGB, 0, dst );
         }
 
@@ -54,21 +54,21 @@ KernelCode(
             uchar3 BGR;
             int xIn = round( mapX[x + y * resizeWidth] );
             xIn = max( 0, xIn );
-            xIn = min( inputWidth, xIn );
+            xIn = min( inputWidth - 1, xIn );
             xIn = roiX + xIn;
             int yIn = round( mapY[x + y * resizeWidth] );
             yIn = max( 0, yIn );
-            yIn = min( inputHeight, yIn );
+            yIn = min( inputHeight - 1, yIn );
             yIn = roiY + yIn;
             int yPtr = mad24( yIn, inputStride0, xIn );
             int uPtr = mad24( yIn / 2, inputStride1, ( xIn / 2 ) << 1 );
             float Y = max( 0, ySrc[yPtr] - 16 ) * coeffY;
             float2 UV = convert_float2( vload2( 0, uSrc + uPtr ) ) - 128.0f;
-            float4 UV4 = ( float4 )( UV, UV );
+            float4 UV4 = (float4) ( UV, UV );
             UV4 = mad( UV4, coeffUV4, 0.5f );
             UV4.s1 = UV4.s1 + UV4.s2 - 0.5f;
             UV4 += Y;
-            BGR = convert_uchar3_sat( ( float3 )( UV4.s0, UV4.s1, UV4.s3 ) );
+            BGR = convert_uchar3_sat( (float3) ( UV4.s0, UV4.s1, UV4.s3 ) );
             vstore3( BGR, 0, dst );
         }
 
