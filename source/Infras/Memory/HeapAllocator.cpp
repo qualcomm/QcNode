@@ -2,7 +2,7 @@
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
-//#include <malloc.h>
+// #include <malloc.h>
 #include <memory>
 #include <stdlib.h>
 #include <string>
@@ -20,7 +20,10 @@ HeapAllocator::HeapAllocator()
     (void) QC_LOGGER_INIT( GetConfiguration().name.c_str(), LOGGER_LEVEL_VERBOSE );
 }
 
-HeapAllocator::~HeapAllocator(){};
+HeapAllocator::~HeapAllocator()
+{
+    (void) QC_LOGGER_DEINIT();
+};
 
 QCStatus_e HeapAllocator::Allocate( const QCBufferPropBase_t &request,
                                     QCBufferDescriptorBase_t &response )
