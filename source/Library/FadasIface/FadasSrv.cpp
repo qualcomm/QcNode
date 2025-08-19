@@ -549,7 +549,7 @@ int32_t FadasSrv::RegisterImage( const QCSharedBuffer_t *pBuffer, FadasBufType_e
     size_t size = pBuffer->buffer.size;
     size_t offset = pBuffer->offset;
     uint32_t batch = pBuffer->imgProps.batchSize;
-    size_t sizeOne = ( size_t )( pBuffer->size / batch );
+    size_t sizeOne = (size_t) ( pBuffer->size / batch );
     QCImageFormat_e format = pBuffer->imgProps.format;
     uint32_t sizePlane0 = pBuffer->imgProps.planeBufSize[0];
     uint32_t sizePlane1 = pBuffer->imgProps.planeBufSize[1];
@@ -700,6 +700,13 @@ int32_t FadasSrv::RegBuf( const QCSharedBuffer_t *pBuffer, FadasBufType_e buffer
     }
 
     return fd;
+}
+
+int32_t FadasSrv::RegBuf( const QCBufferDescriptorBase_t &bufDesc, FadasBufType_e bufferType )
+{
+    /* TODO: FIXME to not use QCSharedBuffer_t */
+    QCSharedBuffer_t sbuf = bufDesc;
+    return RegBuf( &sbuf, bufferType );
 }
 
 void FadasSrv::DeregBuf( void *pBuffer )

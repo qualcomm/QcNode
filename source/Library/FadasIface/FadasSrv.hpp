@@ -21,16 +21,17 @@ extern "C"
 
 #include "QC/Common/Types.hpp"
 #include "QC/Infras/Log/Logger.hpp"
+#include "QC/Infras/Memory/Ifs/QCBufferDescriptorBase.hpp"
 #include "QC/Infras/Memory/SharedBuffer.hpp"
-using namespace QC;
-using namespace QC::Memory;
-
 namespace QC
 {
 namespace libs
 {
 namespace FadasIface
 {
+
+using namespace QC;
+using namespace QC::Memory;
 
 #ifndef FADAS_CLIENT_URI
 #define FADAS_CLIENT_URI "&_session="
@@ -68,6 +69,7 @@ public:
     QCStatus_e Init( QCProcessorType_e coreId, const char *pName, Logger_Level_e level );
     QCStatus_e Deinit();
     int32_t RegBuf( const QCSharedBuffer_t *pBuffer, FadasBufType_e bufferType );
+    int32_t RegBuf( const QCBufferDescriptorBase_t &bufDesc, FadasBufType_e bufferType );
     void DeregBuf( void *pBuffer );
     remote_handle64 GetRemoteHandle64();
 

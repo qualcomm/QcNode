@@ -3,14 +3,11 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#ifndef _QC_SAMPLE_PLRPOST_HPP_
-#define _QC_SAMPLE_PLRPOST_HPP_
+#ifndef QC_SAMPLE_PLRPOST_HPP
+#define QC_SAMPLE_PLRPOST_HPP
 
-#include "QC/component/PostCenterPoint.hpp"
+#include "PostCenterPoint.hpp"
 #include "QC/sample/SampleIF.hpp"
-
-using namespace QC;
-using namespace QC::component;
 
 namespace QC
 {
@@ -81,4 +78,4 @@ private:
 }   // namespace sample
 }   // namespace QC
 
-#endif   // _QC_SAMPLE_PLRPOST_HPP_
+#endif   // QC_SAMPLE_PLRPOST_HPP

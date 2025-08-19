@@ -12,7 +12,7 @@ namespace QC
 namespace sample
 {
 
-SamplePlrPost::SamplePlrPost() {}
+SamplePlrPost::SamplePlrPost() : m_plrPost( m_logger ) {}
 SamplePlrPost::~SamplePlrPost() {}
 
 QCStatus_e SamplePlrPost::ParseConfig( SampleConfig_t &config )
@@ -41,6 +41,8 @@ QCStatus_e SamplePlrPost::ParseConfig( SampleConfig_t &config )
     m_config.threshIOU = Get( config, "thresh_iou", 0.4f );
     m_config.bMapPtsToBBox = Get( config, "map_points_to_bbox", false );
     m_config.bBBoxFilter = false;
+
+    m_config.nodeId = m_nodeId.id;
 
     m_offsetX = Get( config, "offset_x", 514 );
     m_offsetY = Get( config, "offset_y", 0 );
@@ -218,37 +220,43 @@ void SamplePlrPost::ThreadMain()
                 std::shared_ptr<SharedBuffer_t> detOut = m_objsPool.Get();
                 if ( nullptr != detOut )
                 {
-                    QCSharedBuffer_t &inPts = lidarFrames.SharedBuffer( 0 );
-                    QCSharedBuffer_t &heatmap = infFrames.SharedBuffer( m_indexs[0] );
-                    QCSharedBuffer_t &xy = infFrames.SharedBuffer( m_indexs[1] );
-                    QCSharedBuffer_t &z = infFrames.SharedBuffer( m_indexs[2] );
-                    QCSharedBuffer_t &size = infFrames.SharedBuffer( m_indexs[3] );
-                    QCSharedBuffer_t &theta = infFrames.SharedBuffer( m_indexs[4] );
+                    TensorDescriptor_t *pDetOutDesc =
+                            dynamic_cast<TensorDescriptor_t *>( &detOut->GetBuffer() );
+                    TensorDescriptor_t *pInPts =
+                            static_cast<TensorDescriptor_t *>( &lidarFrames.GetBuffer( 0 ) );
+                    TensorDescriptor_t *pHeatmap = static_cast<TensorDescriptor_t *>(
+                            &infFrames.GetBuffer( m_indexs[0] ) );
+                    TensorDescriptor_t *pXY = static_cast<TensorDescriptor_t *>(
+                            &infFrames.GetBuffer( m_indexs[1] ) );
+                    TensorDescriptor_t *pZ = static_cast<TensorDescriptor_t *>(
+                            &infFrames.GetBuffer( m_indexs[2] ) );
+                    TensorDescriptor_t *pSize = static_cast<TensorDescriptor_t *>(
+                            &infFrames.GetBuffer( m_indexs[3] ) );
+                    TensorDescriptor_t *pTheta = static_cast<TensorDescriptor_t *>(
+                            &infFrames.GetBuffer( m_indexs[4] ) );
 
                     ret = SampleIF::Lock();
                     if ( QC_STATUS_OK == ret )
                     {
                         PROFILER_BEGIN();
                         TRACE_BEGIN( infFrames.FrameId( 0 ) );
-                        detOut->sharedBuffer.tensorProps.dims[0] = m_config.maxNumDetOut;
-                        ret = m_plrPost.Execute( &heatmap, &xy, &z, &size, &theta, &inPts,
-                                                 &detOut->sharedBuffer );
+                        pDetOutDesc->dims[0] = m_config.maxNumDetOut;
+                        ret = m_plrPost.Execute( pHeatmap, pXY, pZ, pSize, pTheta, pInPts,
+                                                 pDetOutDesc );
                         if ( QC_STATUS_OK == ret )
                         {
                             PROFILER_END();
                             TRACE_END( infFrames.FrameId( 0 ) );
                             Road2DObjects_t objs;
                             PostCenterPoint_Object3D_t *pObj =
-                                    (PostCenterPoint_Object3D_t *) detOut->sharedBuffer.data();
+                                    (PostCenterPoint_Object3D_t *) pDetOutDesc->GetDataPtr();
                             if ( m_bDebug )
                             {
                                 printf( "lidar frameId %" PRIu64 ", number of detections %" PRIu32
                                         "\n",
-                                        lidarFrames.FrameId( 0 ),
-                                        detOut->sharedBuffer.tensorProps.dims[0] );
+                                        lidarFrames.FrameId( 0 ), pDetOutDesc->dims[0] );
                             }
-                            for ( uint32_t i = 0; i < detOut->sharedBuffer.tensorProps.dims[0];
-                                  i++ )
+                            for ( uint32_t i = 0; i < pDetOutDesc->dims[0]; i++ )
                             {
                                 Road2DObject_t obj;
                                 obj.classId = pObj->label;
