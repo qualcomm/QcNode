@@ -74,7 +74,8 @@ QCStatus_e ManagerLocal::Initialize( const QCMemoryManagerInit_t &init )
         }
     }
     else
-    {}
+    {
+    }
 
     return status;
 }
@@ -155,7 +156,7 @@ QCStatus_e ManagerLocal::DeInitialize()
 // Un/Registration
 QCStatus_e ManagerLocal::Register( const QCNodeID_t &node, QCMemoryHandle_t &handle )
 {
-    QC_INFO( "node name %s node type %d node id %d", node.name, node.type, node.id );
+    QC_INFO( "node name %s node type %d node id %d", node.name.c_str(), node.type, node.id );
 
     QCStatus_e status = QC_STATUS_OK;
     // generate random number to used as memory handlers
@@ -703,7 +704,7 @@ QCStatus_e ManagerLocal::ReclaimResources( const QCMemoryHandle_t &handle )
         QC_DEBUG( "handle (%ull) ", handle.GetHandle() );
         QC_DEBUG( "handle allocations in vector is %d ", handleIt->second );
         // reclaim stand alone allocations
-        //###############################
+        // ###############################
         std::map<QCBufferDescriptorBase_t, QCMemoryAllocator_e> &bufferMap =
                 m_allocations[handleIt->second];
 
