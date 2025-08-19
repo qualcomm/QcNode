@@ -3,29 +3,26 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#include "QC/component/PostCenterPoint.hpp"
+#include "PostCenterPoint.hpp"
 #include <cmath>
 
 namespace QC
 {
-namespace component
+namespace sample
 {
 
-PostCenterPoint::PostCenterPoint() {}
+PostCenterPoint::PostCenterPoint( Logger &logger ) : m_logger( logger ) {}
 
 PostCenterPoint::~PostCenterPoint() {}
 
-QCStatus_e PostCenterPoint::Init( const char *pName, const PostCenterPoint_Config_t *pConfig,
-                                  Logger_Level_e level )
+QCStatus_e PostCenterPoint::Init( const char *pName, const PostCenterPoint_Config_t *pConfig )
 {
     QCStatus_e ret = QC_STATUS_OK;
-    bool bIFInitOK = false;
+    bool bInitStart = false;
     bool bFadasInitOK = false;
 
-    ret = ComponentIF::Init( pName, level );
-    if ( QC_STATUS_OK == ret )
+    if ( QC_OBJECT_STATE_INITIAL == m_state )
     {
-        bIFInitOK = true;
         if ( nullptr == pConfig )
         {
             QC_ERROR( "pConfig is nullptr!" );
@@ -51,10 +48,15 @@ QCStatus_e PostCenterPoint::Init( const char *pName, const PostCenterPoint_Confi
             }
         }
     }
+    else
+    {
+        ret = QC_STATUS_BAD_STATE;
+    }
 
     if ( QC_STATUS_OK == ret )
     {
-        ret = m_plrPost.Init( m_config.processor, pName, level );
+        bInitStart = true;
+        ret = m_plrPost.Init( m_config.processor, pName, m_logger.GetLevel() );
         if ( QC_STATUS_OK != ret )
         {
             QC_ERROR( "Failed to init FadasPlrPost!" );
@@ -80,45 +82,56 @@ QCStatus_e PostCenterPoint::Init( const char *pName, const PostCenterPoint_Confi
 
     if ( QC_STATUS_OK == ret )
     {
-        QCTensorProps_t tensorProps;
-        tensorProps.type = QC_TENSOR_TYPE_FLOAT_32;
+        m_pBufMgr = BufferManager::Get( { pName, QC_NODE_TYPE_CUSTOM_0, m_config.nodeId },
+                                        m_logger.GetLevel() );
+        if ( nullptr == m_pBufMgr )
+        {
+            QC_ERROR( "Failed to create buffer manager!" );
+            ret = QC_STATUS_NOMEM;
+        }
+    }
+
+    if ( QC_STATUS_OK == ret )
+    {
+        TensorProps_t tensorProps;
+        tensorProps.tensorType = QC_TENSOR_TYPE_FLOAT_32;
         tensorProps.dims[0] = m_config.maxNumDetOut;
         tensorProps.dims[1] = sizeof( FadasCuboidf32_t ) / sizeof( float );
         tensorProps.numDims = 2;
-        ret = m_BBoxList.Allocate( &tensorProps );
+        ret = m_pBufMgr->Allocate( tensorProps, m_BBoxList );
     }
 
     if ( QC_STATUS_OK == ret )
     {
-        QCTensorProps_t tensorProps;
-        tensorProps.type = QC_TENSOR_TYPE_UINT_32;
+        TensorProps_t tensorProps;
+        tensorProps.tensorType = QC_TENSOR_TYPE_UINT_32;
         tensorProps.dims[0] = m_config.maxNumDetOut;
         tensorProps.numDims = 1;
-        ret = m_labels.Allocate( &tensorProps );
+        ret = m_pBufMgr->Allocate( tensorProps, m_labels );
     }
 
     if ( QC_STATUS_OK == ret )
     {
-        QCTensorProps_t tensorProps;
-        tensorProps.type = QC_TENSOR_TYPE_FLOAT_32;
+        TensorProps_t tensorProps;
+        tensorProps.tensorType = QC_TENSOR_TYPE_FLOAT_32;
         tensorProps.dims[0] = m_config.maxNumDetOut;
         tensorProps.numDims = 1;
-        ret = m_scores.Allocate( &tensorProps );
+        ret = m_pBufMgr->Allocate( tensorProps, m_scores );
     }
 
     if ( QC_STATUS_OK == ret )
     {
-        QCTensorProps_t tensorProps;
-        tensorProps.type = QC_TENSOR_TYPE_UINT_8;
+        TensorProps_t tensorProps;
+        tensorProps.tensorType = QC_TENSOR_TYPE_UINT_8;
         tensorProps.dims[0] = m_config.maxNumDetOut;
         tensorProps.dims[1] = sizeof( FadasPlr3DBBoxMetadata_t );
         tensorProps.numDims = 2;
-        ret = m_metadata.Allocate( &tensorProps );
+        ret = m_pBufMgr->Allocate( tensorProps, m_metadata );
     }
 
     if ( QC_STATUS_OK == ret )
     {
-        QCSharedBuffer_t buffers[4] = { m_BBoxList, m_labels, m_scores, m_metadata };
+        TensorDescriptor_t buffers[4] = { m_BBoxList, m_labels, m_scores, m_metadata };
         ret = RegisterBuffersToFadas( buffers, 4, FADAS_BUF_TYPE_OUT );
     }
 
@@ -128,40 +141,47 @@ QCStatus_e PostCenterPoint::Init( const char *pName, const PostCenterPoint_Confi
         if ( QC_STATUS_OK != ret )
         {
             /* do deregister */
-            QCSharedBuffer_t buffers[4] = { m_BBoxList, m_labels, m_scores, m_metadata };
+            TensorDescriptor_t buffers[4] = { m_BBoxList, m_labels, m_scores, m_metadata };
             (void) DeRegisterBuffersToFadas( buffers, 4 );
         }
     }
 
     if ( QC_STATUS_OK != ret )
     {
-        if ( bIFInitOK )
-        { /* do error clean up */
-            QC_ERROR( "PlrPost Init failed: %d!", ret );
-            /* do clean up */
-            if ( nullptr != m_BBoxList.buffer.pData )
+        /* do error clean up */
+        QC_ERROR( "PlrPost Init failed: %d!", ret );
+        if ( true == bInitStart )
+        { /* do clean up */
+            if ( nullptr != m_pBufMgr )
             {
-                (void) m_BBoxList.Free();
-            }
-            if ( nullptr != m_labels.buffer.pData )
-            {
-                (void) m_labels.Free();
-            }
-            if ( nullptr != m_scores.buffer.pData )
-            {
-                (void) m_scores.Free();
-            }
-            if ( nullptr != m_metadata.buffer.pData )
-            {
-                (void) m_metadata.Free();
+                if ( nullptr != m_BBoxList.pBuf )
+                {
+                    (void) m_pBufMgr->Free( m_BBoxList );
+                    m_BBoxList.pBuf = nullptr;
+                }
+                if ( nullptr != m_labels.pBuf )
+                {
+                    (void) m_pBufMgr->Free( m_labels );
+                    m_labels.pBuf = nullptr;
+                }
+                if ( nullptr != m_scores.pBuf )
+                {
+                    (void) m_pBufMgr->Free( m_scores );
+                    m_scores.pBuf = nullptr;
+                }
+                if ( nullptr != m_metadata.pBuf )
+                {
+                    (void) m_pBufMgr->Free( m_metadata );
+                    m_metadata.pBuf = nullptr;
+                }
+                BufferManager::Put( m_pBufMgr );
+                m_pBufMgr = nullptr;
             }
 
-            if ( bFadasInitOK )
+            if ( true == bFadasInitOK )
             {
                 (void) m_plrPost.Deinit();
             }
-
-            (void) ComponentIF::Deinit();
         }
     }
     else
@@ -225,7 +245,7 @@ QCStatus_e PostCenterPoint::Deinit()
     {
         QCStatus_e ret2;
         /* do deregister */
-        QCSharedBuffer_t buffers[4] = { m_BBoxList, m_labels, m_scores, m_metadata };
+        TensorDescriptor_t buffers[4] = { m_BBoxList, m_labels, m_scores, m_metadata };
         ret2 = DeRegisterBuffers( buffers, 4 );
         if ( QC_STATUS_OK != ret2 )
         {
@@ -233,33 +253,37 @@ QCStatus_e PostCenterPoint::Deinit()
             ret = ret2;
         }
 
-        ret2 = m_BBoxList.Free();
+        ret2 = m_pBufMgr->Free( m_BBoxList );
         if ( QC_STATUS_OK != ret2 )
         {
             QC_ERROR( "PlrPost Free m_BBoxList failed: %d!", ret2 );
             ret = ret2;
         }
+        m_BBoxList.pBuf = nullptr;
 
-        ret2 = m_labels.Free();
+        ret2 = m_pBufMgr->Free( m_labels );
         if ( QC_STATUS_OK != ret2 )
         {
             QC_ERROR( "PlrPost Free m_labels failed: %d!", ret2 );
             ret = ret2;
         }
+        m_labels.pBuf = nullptr;
 
-        ret2 = m_scores.Free();
+        ret2 = m_pBufMgr->Free( m_scores );
         if ( QC_STATUS_OK != ret2 )
         {
             QC_ERROR( "PlrPost Free m_scores failed: %d!", ret2 );
             ret = ret2;
         }
+        m_scores.pBuf = nullptr;
 
-        ret2 = m_metadata.Free();
+        ret2 = m_pBufMgr->Free( m_metadata );
         if ( QC_STATUS_OK != ret2 )
         {
             QC_ERROR( "PlrPost Free m_metadata failed: %d!", ret2 );
             ret = ret2;
         }
+        m_metadata.pBuf = nullptr;
 
         ret2 = m_plrPost.DestroyPostProc();
         if ( QC_STATUS_OK != ret2 )
@@ -268,35 +292,32 @@ QCStatus_e PostCenterPoint::Deinit()
             ret = ret2;
         }
 
+        BufferManager::Put( m_pBufMgr );
+        m_pBufMgr = nullptr;
+
         ret2 = m_plrPost.Deinit();
         if ( QC_STATUS_OK != ret2 )
         {
             QC_ERROR( "PlrPost Deinit failed: %d!", ret2 );
             ret = ret2;
         }
-
-        ret2 = ComponentIF::Deinit();
-        if ( QC_STATUS_OK != ret2 )
-        {
-            QC_ERROR( "Deinit ComponentIF failed!" );
-            ret = ret2;
-        }
+        m_state = QC_OBJECT_STATE_INITIAL;
     }
 
     return ret;
 }
 
-QCStatus_e PostCenterPoint::RegisterBuffersToFadas( const QCSharedBuffer_t *pBuffers,
+QCStatus_e PostCenterPoint::RegisterBuffersToFadas( const TensorDescriptor_t *pBuffers,
                                                     uint32_t numBuffers, FadasBufType_e bufferType )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
     for ( uint32_t i = 0; i < numBuffers; i++ )
     {
-        const QCSharedBuffer_t *pBuf = &pBuffers[i];
+        const TensorDescriptor_t *pBuf = &pBuffers[i];
         if ( QC_BUFFER_TYPE_TENSOR == pBuf->type )
         {
-            int32_t fd = m_plrPost.RegBuf( pBuf, bufferType );
+            int32_t fd = m_plrPost.RegBuf( *pBuf, bufferType );
             if ( 0 > fd )
             {
                 QC_ERROR( "Failed to register buffer[%d]!", i );
@@ -318,8 +339,8 @@ QCStatus_e PostCenterPoint::RegisterBuffersToFadas( const QCSharedBuffer_t *pBuf
     return ret;
 }
 
-QCStatus_e PostCenterPoint::RegisterBuffers( const QCSharedBuffer_t *pBuffers, uint32_t numBuffers,
-                                             FadasBufType_e bufferType )
+QCStatus_e PostCenterPoint::RegisterBuffers( const TensorDescriptor_t *pBuffers,
+                                             uint32_t numBuffers, FadasBufType_e bufferType )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
@@ -341,17 +362,17 @@ QCStatus_e PostCenterPoint::RegisterBuffers( const QCSharedBuffer_t *pBuffers, u
     return ret;
 }
 
-QCStatus_e PostCenterPoint::DeRegisterBuffersToFadas( const QCSharedBuffer_t *pBuffers,
+QCStatus_e PostCenterPoint::DeRegisterBuffersToFadas( const TensorDescriptor_t *pBuffers,
                                                       uint32_t numBuffers )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
     for ( uint32_t i = 0; i < numBuffers; i++ )
     {
-        const QCSharedBuffer_t *pBuf = &pBuffers[i];
+        const TensorDescriptor_t *pBuf = &pBuffers[i];
         if ( QC_BUFFER_TYPE_TENSOR == pBuf->type )
         {
-            m_plrPost.DeregBuf( pBuf->data() );
+            m_plrPost.DeregBuf( pBuf->GetDataPtr() );
         }
         else
         {
@@ -368,7 +389,7 @@ QCStatus_e PostCenterPoint::DeRegisterBuffersToFadas( const QCSharedBuffer_t *pB
     return ret;
 }
 
-QCStatus_e PostCenterPoint::DeRegisterBuffers( const QCSharedBuffer_t *pBuffers,
+QCStatus_e PostCenterPoint::DeRegisterBuffers( const TensorDescriptor_t *pBuffers,
                                                uint32_t numBuffers )
 {
     QCStatus_e ret = QC_STATUS_OK;
@@ -391,10 +412,12 @@ QCStatus_e PostCenterPoint::DeRegisterBuffers( const QCSharedBuffer_t *pBuffers,
     return ret;
 }
 
-QCStatus_e PostCenterPoint::Execute( const QCSharedBuffer_t *pHeatmap, const QCSharedBuffer_t *pXY,
-                                     const QCSharedBuffer_t *pZ, const QCSharedBuffer_t *pSize,
-                                     const QCSharedBuffer_t *pTheta, const QCSharedBuffer_t *pInPts,
-                                     QCSharedBuffer_t *pDetections )
+QCStatus_e PostCenterPoint::Execute( const TensorDescriptor_t *pHeatmap,
+                                     const TensorDescriptor_t *pXY, const TensorDescriptor_t *pZ,
+                                     const TensorDescriptor_t *pSize,
+                                     const TensorDescriptor_t *pTheta,
+                                     const TensorDescriptor_t *pInPts,
+                                     TensorDescriptor_t *pDetections )
 {
     QCStatus_e ret = QC_STATUS_OK;
     uint32_t numDetOut = 0;
@@ -414,13 +437,10 @@ QCStatus_e PostCenterPoint::Execute( const QCSharedBuffer_t *pHeatmap, const QCS
         QC_ERROR( "pHeatmap is nullptr!" );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
-    else if ( ( QC_BUFFER_TYPE_TENSOR != pHeatmap->type ) ||
-              ( nullptr == pHeatmap->buffer.pData ) || ( 4 != pHeatmap->tensorProps.numDims ) ||
-              ( QC_TENSOR_TYPE_FLOAT_32 != pHeatmap->tensorProps.type ) ||
-              ( 1 != pHeatmap->tensorProps.dims[0] ) ||
-              ( m_height != pHeatmap->tensorProps.dims[1] ) ||
-              ( m_width != pHeatmap->tensorProps.dims[2] ) ||
-              ( m_config.numClass != pHeatmap->tensorProps.dims[3] ) )
+    else if ( ( QC_BUFFER_TYPE_TENSOR != pHeatmap->type ) || ( nullptr == pHeatmap->pBuf ) ||
+              ( 4 != pHeatmap->numDims ) || ( QC_TENSOR_TYPE_FLOAT_32 != pHeatmap->tensorType ) ||
+              ( 1 != pHeatmap->dims[0] ) || ( m_height != pHeatmap->dims[1] ) ||
+              ( m_width != pHeatmap->dims[2] ) || ( m_config.numClass != pHeatmap->dims[3] ) )
     {
         QC_ERROR( "pHeatmap is invalid!" );
         ret = QC_STATUS_INVALID_BUF;
@@ -430,11 +450,10 @@ QCStatus_e PostCenterPoint::Execute( const QCSharedBuffer_t *pHeatmap, const QCS
         QC_ERROR( "pXY is nullptr!" );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
-    else if ( ( QC_BUFFER_TYPE_TENSOR != pXY->type ) || ( nullptr == pXY->buffer.pData ) ||
-              ( 4 != pXY->tensorProps.numDims ) ||
-              ( QC_TENSOR_TYPE_FLOAT_32 != pXY->tensorProps.type ) ||
-              ( 1 != pXY->tensorProps.dims[0] ) || ( m_height != pXY->tensorProps.dims[1] ) ||
-              ( m_width != pXY->tensorProps.dims[2] ) || ( 2 != pXY->tensorProps.dims[3] ) )
+    else if ( ( QC_BUFFER_TYPE_TENSOR != pXY->type ) || ( nullptr == pXY->pBuf ) ||
+              ( 4 != pXY->numDims ) || ( QC_TENSOR_TYPE_FLOAT_32 != pXY->tensorType ) ||
+              ( 1 != pXY->dims[0] ) || ( m_height != pXY->dims[1] ) ||
+              ( m_width != pXY->dims[2] ) || ( 2 != pXY->dims[3] ) )
     {
         QC_ERROR( "pXY is invalid!" );
         ret = QC_STATUS_INVALID_BUF;
@@ -444,11 +463,10 @@ QCStatus_e PostCenterPoint::Execute( const QCSharedBuffer_t *pHeatmap, const QCS
         QC_ERROR( "pZ is nullptr!" );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
-    else if ( ( QC_BUFFER_TYPE_TENSOR != pZ->type ) || ( nullptr == pZ->buffer.pData ) ||
-              ( 4 != pZ->tensorProps.numDims ) ||
-              ( QC_TENSOR_TYPE_FLOAT_32 != pZ->tensorProps.type ) ||
-              ( 1 != pZ->tensorProps.dims[0] ) || ( m_height != pZ->tensorProps.dims[1] ) ||
-              ( m_width != pZ->tensorProps.dims[2] ) || ( 1 != pZ->tensorProps.dims[3] ) )
+    else if ( ( QC_BUFFER_TYPE_TENSOR != pZ->type ) || ( nullptr == pZ->pBuf ) ||
+              ( 4 != pZ->numDims ) || ( QC_TENSOR_TYPE_FLOAT_32 != pZ->tensorType ) ||
+              ( 1 != pZ->dims[0] ) || ( m_height != pZ->dims[1] ) || ( m_width != pZ->dims[2] ) ||
+              ( 1 != pZ->dims[3] ) )
     {
         QC_ERROR( "pZ is invalid!" );
         ret = QC_STATUS_INVALID_BUF;
@@ -458,11 +476,10 @@ QCStatus_e PostCenterPoint::Execute( const QCSharedBuffer_t *pHeatmap, const QCS
         QC_ERROR( "pSize is nullptr!" );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
-    else if ( ( QC_BUFFER_TYPE_TENSOR != pSize->type ) || ( nullptr == pSize->buffer.pData ) ||
-              ( 4 != pSize->tensorProps.numDims ) ||
-              ( QC_TENSOR_TYPE_FLOAT_32 != pSize->tensorProps.type ) ||
-              ( 1 != pSize->tensorProps.dims[0] ) || ( m_height != pSize->tensorProps.dims[1] ) ||
-              ( m_width != pSize->tensorProps.dims[2] ) || ( 3 != pSize->tensorProps.dims[3] ) )
+    else if ( ( QC_BUFFER_TYPE_TENSOR != pSize->type ) || ( nullptr == pSize->pBuf ) ||
+              ( 4 != pSize->numDims ) || ( QC_TENSOR_TYPE_FLOAT_32 != pSize->tensorType ) ||
+              ( 1 != pSize->dims[0] ) || ( m_height != pSize->dims[1] ) ||
+              ( m_width != pSize->dims[2] ) || ( 3 != pSize->dims[3] ) )
     {
         QC_ERROR( "pSize is invalid!" );
         ret = QC_STATUS_INVALID_BUF;
@@ -472,11 +489,10 @@ QCStatus_e PostCenterPoint::Execute( const QCSharedBuffer_t *pHeatmap, const QCS
         QC_ERROR( "pTheta is nullptr!" );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
-    else if ( ( QC_BUFFER_TYPE_TENSOR != pTheta->type ) || ( nullptr == pTheta->buffer.pData ) ||
-              ( 4 != pTheta->tensorProps.numDims ) ||
-              ( QC_TENSOR_TYPE_FLOAT_32 != pTheta->tensorProps.type ) ||
-              ( 1 != pTheta->tensorProps.dims[0] ) || ( m_height != pTheta->tensorProps.dims[1] ) ||
-              ( m_width != pTheta->tensorProps.dims[2] ) || ( 2 != pTheta->tensorProps.dims[3] ) )
+    else if ( ( QC_BUFFER_TYPE_TENSOR != pTheta->type ) || ( nullptr == pTheta->pBuf ) ||
+              ( 4 != pTheta->numDims ) || ( QC_TENSOR_TYPE_FLOAT_32 != pTheta->tensorType ) ||
+              ( 1 != pTheta->dims[0] ) || ( m_height != pTheta->dims[1] ) ||
+              ( m_width != pTheta->dims[2] ) || ( 2 != pTheta->dims[3] ) )
     {
         QC_ERROR( "pTheta is invalid!" );
         ret = QC_STATUS_INVALID_BUF;
@@ -486,10 +502,9 @@ QCStatus_e PostCenterPoint::Execute( const QCSharedBuffer_t *pHeatmap, const QCS
         QC_ERROR( "pInPts is nullptr!" );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
-    else if ( ( QC_BUFFER_TYPE_TENSOR != pInPts->type ) || ( nullptr == pInPts->buffer.pData ) ||
-              ( 2 != pInPts->tensorProps.numDims ) ||
-              ( QC_TENSOR_TYPE_FLOAT_32 != pInPts->tensorProps.type ) ||
-              ( m_config.numInFeatureDim != pInPts->tensorProps.dims[1] ) )
+    else if ( ( QC_BUFFER_TYPE_TENSOR != pInPts->type ) || ( nullptr == pInPts->pBuf ) ||
+              ( 2 != pInPts->numDims ) || ( QC_TENSOR_TYPE_FLOAT_32 != pInPts->tensorType ) ||
+              ( m_config.numInFeatureDim != pInPts->dims[1] ) )
     {
         QC_ERROR( "pInPts is invalid!" );
         ret = QC_STATUS_INVALID_BUF;
@@ -499,12 +514,11 @@ QCStatus_e PostCenterPoint::Execute( const QCSharedBuffer_t *pHeatmap, const QCS
         QC_ERROR( "pDetections is nullptr!" );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
-    else if ( ( QC_BUFFER_TYPE_TENSOR != pDetections->type ) ||
-              ( nullptr == pDetections->buffer.pData ) ||
-              ( 2 != pDetections->tensorProps.numDims ) ||
-              ( QC_TENSOR_TYPE_FLOAT_32 != pDetections->tensorProps.type ) ||
-              ( m_config.maxNumDetOut != pDetections->tensorProps.dims[0] ) ||
-              ( POSTCENTERPOINT_OBJECT_3D_DIM != pDetections->tensorProps.dims[1] ) )
+    else if ( ( QC_BUFFER_TYPE_TENSOR != pDetections->type ) || ( nullptr == pDetections->pBuf ) ||
+              ( 2 != pDetections->numDims ) ||
+              ( QC_TENSOR_TYPE_FLOAT_32 != pDetections->tensorType ) ||
+              ( m_config.maxNumDetOut != pDetections->dims[0] ) ||
+              ( POSTCENTERPOINT_OBJECT_3D_DIM != pDetections->dims[1] ) )
     {
         QC_ERROR( "pDetections is invalid!" );
         ret = QC_STATUS_INVALID_BUF;
@@ -516,12 +530,12 @@ QCStatus_e PostCenterPoint::Execute( const QCSharedBuffer_t *pHeatmap, const QCS
 
         if ( QC_STATUS_OK == ret )
         {
-            pObj = (PostCenterPoint_Object3D_t *) pDetections->data();
-            pBBoxList = (FadasCuboidf32_t *) m_BBoxList.data();
-            pLabels = (uint32_t *) m_labels.data();
-            pScores = (float32_t *) m_scores.data();
-            pMetadata = (FadasPlr3DBBoxMetadata_t *) m_metadata.data();
-            pDetections->tensorProps.dims[0] = numDetOut;
+            pObj = (PostCenterPoint_Object3D_t *) pDetections->GetDataPtr();
+            pBBoxList = (FadasCuboidf32_t *) m_BBoxList.GetDataPtr();
+            pLabels = (uint32_t *) m_labels.GetDataPtr();
+            pScores = (float32_t *) m_scores.GetDataPtr();
+            pMetadata = (FadasPlr3DBBoxMetadata_t *) m_metadata.GetDataPtr();
+            pDetections->dims[0] = numDetOut;
             QC_DEBUG( "number of detections %" PRIu32, numDetOut );
             for ( uint32_t i = 0; i < numDetOut; i++ )
             {
@@ -563,5 +577,5 @@ QCStatus_e PostCenterPoint::Execute( const QCSharedBuffer_t *pHeatmap, const QCS
     return ret;
 }
 
-}   // namespace component
+}   // namespace sample
 }   // namespace QC
