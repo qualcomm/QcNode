@@ -9,6 +9,6 @@ set( HEADERS_DIR ${PROJECT_SOURCE_DIR}/include
 
 add_executable( gtest_NodeQnn gtest_NodeQnn.cpp )
 target_include_directories( gtest_NodeQnn PUBLIC ${HEADERS_DIR})
-target_link_libraries( gtest_NodeQnn gtest QCNodeComponentCommon QCNode QCNodeTestUtils BufferManager)
+target_link_libraries( gtest_NodeQnn gtest QCNodeQNN QCNodeTestUtils BufferManager)
 install(TARGETS gtest_NodeQnn DESTINATION bin)
 

@@ -26,7 +26,7 @@ set( QC_NODE_QNN_SOURCES
     QnnMonitor.cpp
 )
 
-set( TARGET_LIBRARIES QCNodeBase stdc++ cdsprpc fastrpc )
+set( TARGET_LIBRARIES QCNodeBase cdsprpc )
 
 add_library( QCNodeQNN OBJECT ${QC_NODE_QNN_SOURCES} )
 
