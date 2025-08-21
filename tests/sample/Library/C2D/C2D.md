@@ -1,22 +1,22 @@
 *Menu*:
 - [1. Introduction](#1-introduction)
-- [2. QC C2D Data Structures](#2-qc-c2d-data-structures)
-  - [2.1 The details of C2D_Config_t](#21-the-details-of-c2d_config_t)
-  - [2.2 The details of C2D_InputConfig_t](#22-the-details-of-c2d_inputconfig_t)
-  - [2.3 The details of C2D_ROIConfig_t](#23-the-details-of-c2d_roiconfig_t)
-  - [2.4 The details of C2D_ImageResolution_t](#24-the-details-of-c2d_imageresolution_t)
-- [3. QC C2D APIs](#3-qc-c2d-apis)
+- [2. QCNode C2D Data Structures](#2-qcnode-c2d-data-structures)
+  - [2.1 The details of C2D\_Config\_t](#21-the-details-of-c2d_config_t)
+  - [2.2 The details of C2D\_InputConfig\_t](#22-the-details-of-c2d_inputconfig_t)
+  - [2.3 The details of C2D\_ROIConfig\_t](#23-the-details-of-c2d_roiconfig_t)
+  - [2.4 The details of C2D\_ImageResolution\_t](#24-the-details-of-c2d_imageresolution_t)
+- [3. QCNode C2D APIs](#3-qcnode-c2d-apis)
 - [4. Typical Use Case](#4-typical-use-case)
 
 # 1. Introduction
-The QC C2D component is a system-level programming interface designed to accelerate 2D bit manipulation. It supports camera image processing functions for QC, including cropping, downscaling, upscaling, and color conversion. This component is compatible with the QNX platform and offers a user-friendly API along with a high-performance function library.
+The QCNode C2D Sample Library is a system-level programming interface designed to accelerate 2D bit manipulation. It supports camera image processing functions for QCNode, including cropping, downscaling, upscaling, and color conversion. This component is compatible with the QNX platform and offers a user-friendly API along with a high-performance function library.
 
-# 2. QC C2D Data Structures
+# 2. QCNode C2D Data Structures
 
-- [C2D_Config_t](../include/QC/component/C2D.hpp#L53)
-- [C2D_InputConfig_t](../include/QC/component/C2D.hpp#L46)
-- [C2D_ROIConfig_t](../include/QC/component/C2D.hpp#L38)
-- [C2D_ImageResolution_t](../include/QC/component/C2D.hpp#L29)
+- [C2D_Config_t](C2D.hpp#L53)
+- [C2D_InputConfig_t](C2D.hpp#L46)
+- [C2D_ROIConfig_t](C2D.hpp#L38)
+- [C2D_ImageResolution_t](C2D.hpp#L29)
 
 ## 2.1 The details of C2D_Config_t
 C2D_Config_t is the data structure that used to initialize C2D component. It contains C2D input configurations, all the parameters needs to be set by user.
@@ -42,17 +42,17 @@ C2D_ImageResolution_t is the data structure that contains image resolution infor
 - width: Image width
 - height: Image height
 
-# 3. QC C2D APIs
+# 3. QCNode C2D APIs
 
-- [Initialize the C2D component](../include/QC/component/C2D.hpp#L79)
-- [Start the C2D pipeline](../include/QC/component/C2D.hpp#L87)
-- [Stop the C2D pipeline](../include/QC/component/C2D.hpp#L94)
-- [Deinitialize the C2D component](../include/QC/component/C2D.hpp#L101)
-- [Execute the C2D pipeline](../include/QC/component/C2D.hpp#L111)
-- [Register shared buffers for each input](../include/QC/component/C2D.hpp#L121)
-- [Register shared buffers for output](../include/QC/component/C2D.hpp#L131)
-- [Deregister shared buffers for each input](../include/QC/component/C2D.hpp#L141)
-- [Deregister shared buffers for output](../include/QC/component/C2D.hpp#L151)
+- [Initialize the C2D component](C2D.hpp#L79)
+- [Start the C2D pipeline](C2D.hpp#L87)
+- [Stop the C2D pipeline](C2D.hpp#L94)
+- [Deinitialize the C2D component](C2D.hpp#L101)
+- [Execute the C2D pipeline](C2D.hpp#L111)
+- [Register shared buffers for each input](C2D.hpp#L121)
+- [Register shared buffers for output](C2D.hpp#L131)
+- [Deregister shared buffers for each input](C2D.hpp#L141)
+- [Deregister shared buffers for output](C2D.hpp#L151)
 
 # 4. Typical Use Case
 
@@ -60,7 +60,10 @@ It needs just several steps to configure and launch C2D component. User needs to
 
 - Step 1: Configure and Initialize input/output parameters
 ```c++
-    C2D C2DObj;
+    BufferManager bufMgr( { "C2D", QC_NODE_TYPE_CUSTOM_0, 0 } );
+    Logger logger;
+    logger.Init( "C2D", LOGGER_LEVEL_ERROR );
+    C2D C2DObj(logger);
     C2D_Config_t C2DConfig;
     C2D_Config_t *pC2DConfig = &C2DConfig;
     char pName[5] = "C2D";
@@ -86,19 +89,18 @@ It needs just several steps to configure and launch C2D component. User needs to
 
 - Step 2: Allocate and register input/output buffers
 ```c++
-    QCSharedBuffer_t inputs[C2DConfig.numOfInputs];
-    ret = inputs[0].Allocate( C2DConfig.inputConfigs[0].inputResolution.width,
-                                C2DConfig.inputConfigs[0].inputResolution.height,
-                                C2DConfig.inputConfigs[0].inputFormat );
-
-    QCSharedBuffer_t output;
-    ret = output.Allocate( C2DOutputWidth, C2DOutputHeight, C2DOutputFormat );
+    ImageDescriptor_t inputs[C2DConfig.numOfInputs];
+    ImageDescriptor_t output;
 
     for ( size_t i = 0; i < numInputs; i++ )
     {
+        ret = bufMgr.Allocate( ImageBasicProps_t( C2DConfig.inputConfigs[i].inputResolution.width,
+                                                  C2DConfig.inputConfigs[i].inputResolution.height,
+                                                  C2DConfig.inputConfigs[i].inputFormat ),
+                               inputs[i] );
         ret = C2DObj.RegisterInputBuffers( &inputs[i], 1 );
     }
-
+    ret = bufMgr.Allocate( ImageBasicProps_t( C2DOutputWidth, C2DOutputHeight, C2DOutputFormat ), output );
     ret = C2DObj.RegisterOutputBuffers( &output, 1 );
 ```
 
@@ -122,7 +124,7 @@ ret = C2DObj.Execute( inputs, C2DConfig.numOfInputs, &output );
 ```
 
 Reference: 
-- [gtest_ComponentC2D](../tests/unit_test/components/C2D/gtest_C2D.cpp)
-- [SampleC2D](../tests/sample/source/SampleC2D.cpp)
+- [gtest_ComponentC2D](./gtest_C2D.cpp)
+- [SampleC2D](../../source/SampleC2D.cpp)
 
 
