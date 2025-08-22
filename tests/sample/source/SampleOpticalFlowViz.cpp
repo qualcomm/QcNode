@@ -186,7 +186,7 @@ QCStatus_e SampleOpticalFlowViz::MvComputeColor( float fx, float fy, uint8_t *pi
         float a = atan2f( -fy, -fx ) / M_PI;
 
         float fk = ( a + 1.0 ) / 2.0 * ( m_ncols - 1 );
-        int32_t k0 = (int32_t) fk;
+        int32_t k0 = static_cast<int32_t>( fk );
         int32_t k1 = ( k0 + 1 ) % m_ncols;
         float f = fk - k0;
         // f = 0; // uncomment to see original color wheel
@@ -277,18 +277,27 @@ QCStatus_e SampleOpticalFlowViz::Init( std::string name, SampleConfig_t &config 
                     QC_ERROR( "Failed to create kernel" );
                 }
             }
-
             if ( QC_STATUS_OK == ret )
             {
-                ret = m_colorwheelBuf.Allocate( sizeof( m_nColorwheel ) );
+                m_pBufMgr = BufferManager::Get( m_nodeId, m_logger.GetLevel() );
+                if ( nullptr == m_pBufMgr )
+                {
+                    QC_ERROR( "Failed to create buffer manager!" );
+                    ret = QC_STATUS_NOMEM;
+                }
+            }
+            if ( QC_STATUS_OK == ret )
+            {
+                ret = m_pBufMgr->Allocate( BufferProps_t( sizeof( m_nColorwheel ) ),
+                                           m_colorwheelBuf );
                 if ( QC_STATUS_OK != ret )
                 {
                     QC_ERROR( "Failed to allocate color wheel buffer" );
                 }
                 else
                 {
-                    memcpy( m_colorwheelBuf.data(), m_nColorwheel, m_colorwheelBuf.size );
-                    ret = m_openclSrvObj.RegBuf( &( m_colorwheelBuf.buffer ), &m_clMemColorWheel );
+                    memcpy( m_colorwheelBuf.GetDataPtr(), m_nColorwheel, m_colorwheelBuf.size );
+                    ret = m_openclSrvObj.RegBufferDesc( m_colorwheelBuf, m_clMemColorWheel );
                     if ( QC_STATUS_OK != ret )
                     {
                         QC_ERROR( "Failed to create cl color wheel mem" );
@@ -314,19 +323,26 @@ QCStatus_e SampleOpticalFlowViz::Start()
     return ret;
 }
 
-QCStatus_e SampleOpticalFlowViz::ConvertToRgbCPU( QCSharedBuffer_t *pMv, QCSharedBuffer_t *pMvConf,
-                                                  QCSharedBuffer_t *pRGB )
+QCStatus_e SampleOpticalFlowViz::ConvertToRgbCPU( QCBufferDescriptorBase_t &Mv,
+                                                  QCBufferDescriptorBase_t &MvConf,
+                                                  QCBufferDescriptorBase_t &RGB )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
-    auto strideH = pMvConf->tensorProps.dims[1];
-    auto strideW = pMvConf->tensorProps.dims[2];
-    auto strideW_MV = pMv->tensorProps.dims[2];
+    TensorDescriptor_t *pMv = dynamic_cast<TensorDescriptor_t *>( &Mv );
+    TensorDescriptor_t *pMvConf = dynamic_cast<TensorDescriptor_t *>( &MvConf );
 
-    int16_t *pOutMVX = (int16_t *) pMv->data();
-    int16_t *pOutMVY = (int16_t *) ( ( (uint8_t *) pOutMVX ) + ( strideW_MV * strideH ) );
-    uint8_t *pOutCONF = (uint8_t *) pMvConf->data();
-    uint8_t *pPixs = (uint8_t *) pRGB->data();
+    auto strideH = pMvConf->dims[1];
+    auto strideW = pMvConf->dims[2];
+    auto strideW_MV = pMv->dims[2];
+
+
+    int16_t *pOutMVX = static_cast<int16_t *>( pMv->GetDataPtr() );
+    int16_t *pOutMVY = reinterpret_cast<int16_t *>( reinterpret_cast<uint8_t *>( pOutMVX ) +
+                                                    ( strideW_MV * strideH ) );
+    uint8_t *pOutCONF = static_cast<uint8_t *>( pMvConf->GetDataPtr() );
+    uint8_t *pPixs = static_cast<uint8_t *>( RGB.GetDataPtr() );
+
 
     uint32_t h, w;
 
@@ -394,8 +410,9 @@ QCStatus_e SampleOpticalFlowViz::ConvertToRgbCPU( QCSharedBuffer_t *pMv, QCShare
     return ret;
 }
 
-QCStatus_e SampleOpticalFlowViz::ConvertToRgbGPU( QCSharedBuffer_t *pMv, QCSharedBuffer_t *pMvConf,
-                                                  QCSharedBuffer_t *pRGB )
+QCStatus_e SampleOpticalFlowViz::ConvertToRgbGPU( QCBufferDescriptorBase_t &Mv,
+                                                  QCBufferDescriptorBase_t &MvConf,
+                                                  QCBufferDescriptorBase_t &RGB )
 {
     QCStatus_e ret = QC_STATUS_OK;
     OpenclIfcae_Arg_t openclArgs[8];
@@ -411,16 +428,19 @@ QCStatus_e SampleOpticalFlowViz::ConvertToRgbGPU( QCSharedBuffer_t *pMv, QCShare
     cl_mem clMemMvConf;
     cl_mem clMemRGB;
 
-    auto strideH = pMvConf->tensorProps.dims[1];
-    auto strideW = pMvConf->tensorProps.dims[2];
-    auto strideW_MV = pMv->tensorProps.dims[2];
+    TensorDescriptor_t *pMv = dynamic_cast<TensorDescriptor_t *>( &Mv );
+    TensorDescriptor_t *pMvConf = dynamic_cast<TensorDescriptor_t *>( &MvConf );
+
+    auto strideH = pMvConf->dims[1];
+    auto strideW = pMvConf->dims[2];
+    auto strideW_MV = pMv->dims[2];
 
     imageStride.s[0] = strideH;
     imageStride.s[1] = strideW_MV;
     imageStride.s[2] = strideW;
     imageStride.s[3] = m_width * 3;
 
-    ret = m_openclSrvObj.RegBuf( &( pMv->buffer ), &clMemMv );
+    ret = m_openclSrvObj.RegBufferDesc( Mv, clMemMv );
     if ( QC_STATUS_OK != ret )
     {
         QC_ERROR( "Failed to create cl mv mem" );
@@ -428,7 +448,7 @@ QCStatus_e SampleOpticalFlowViz::ConvertToRgbGPU( QCSharedBuffer_t *pMv, QCShare
 
     if ( QC_STATUS_OK == ret )
     {
-        ret = m_openclSrvObj.RegBuf( &( pMvConf->buffer ), &clMemMvConf );
+        ret = m_openclSrvObj.RegBufferDesc( MvConf, clMemMvConf );
         if ( QC_STATUS_OK != ret )
         {
             QC_ERROR( "Failed to create cl mvConf mem" );
@@ -437,7 +457,7 @@ QCStatus_e SampleOpticalFlowViz::ConvertToRgbGPU( QCSharedBuffer_t *pMv, QCShare
 
     if ( QC_STATUS_OK == ret )
     {
-        ret = m_openclSrvObj.RegBuf( &( pRGB->buffer ), &clMemRGB );
+        ret = m_openclSrvObj.RegBufferDesc( RGB, clMemRGB );
         if ( QC_STATUS_OK != ret )
         {
             QC_ERROR( "Failed to create cl rgb mem" );
@@ -446,22 +466,30 @@ QCStatus_e SampleOpticalFlowViz::ConvertToRgbGPU( QCSharedBuffer_t *pMv, QCShare
 
     if ( QC_STATUS_OK == ret )
     {
-        openclArgs[0].pArg = (void *) &clMemMv;
+        openclArgs[0].pArg = static_cast<void *>( &clMemMv );
         openclArgs[0].argSize = sizeof( cl_mem );
-        openclArgs[1].pArg = (void *) &clMemMvConf;
+
+        openclArgs[1].pArg = static_cast<void *>( &clMemMvConf );
         openclArgs[1].argSize = sizeof( cl_mem );
-        openclArgs[2].pArg = (void *) &clMemRGB;
+
+        openclArgs[2].pArg = static_cast<void *>( &clMemRGB );
         openclArgs[2].argSize = sizeof( cl_mem );
-        openclArgs[3].pArg = (void *) &m_clMemColorWheel;
+
+        openclArgs[3].pArg = static_cast<void *>( &m_clMemColorWheel );
         openclArgs[3].argSize = sizeof( cl_mem );
-        openclArgs[4].pArg = (void *) &imageStride;
+
+        openclArgs[4].pArg = static_cast<void *>( &imageStride );
         openclArgs[4].argSize = sizeof( cl_uint4 );
-        openclArgs[5].pArg = (void *) &m_nConfMapThreshold;
+
+        openclArgs[5].pArg = static_cast<void *>( &m_nConfMapThreshold );
         openclArgs[5].argSize = sizeof( cl_uchar );
-        openclArgs[6].pArg = (void *) &m_ncols;
+
+        openclArgs[6].pArg = static_cast<void *>( &m_ncols );
         openclArgs[6].argSize = sizeof( cl_uint );
-        openclArgs[7].pArg = (void *) &m_nTransparency;
+
+        openclArgs[7].pArg = static_cast<void *>( &m_nTransparency );
         openclArgs[7].argSize = sizeof( cl_uchar );
+
 
         ret = m_openclSrvObj.Execute( &m_kernel, openclArgs, 8, &openclWorkParams );
         if ( QC_STATUS_OK != ret )
@@ -488,8 +516,8 @@ void SampleOpticalFlowViz::ThreadMain()
             std::shared_ptr<SharedBuffer_t> rgb = m_rgbPool.Get();
             if ( nullptr != rgb )
             {
-                QCSharedBuffer_t &mv = frames.SharedBuffer( 0 );
-                QCSharedBuffer_t &mvConf = frames.SharedBuffer( 1 );
+                QCBufferDescriptorBase_t &mv = frames.GetBuffer( 0 );
+                QCBufferDescriptorBase_t &mvConf = frames.GetBuffer( 1 );
 
                 if ( QC_STATUS_OK == ret )
                 {
@@ -497,11 +525,11 @@ void SampleOpticalFlowViz::ThreadMain()
                     TRACE_BEGIN( frames.FrameId( 0 ) );
                     if ( QC_PROCESSOR_CPU == m_processor )
                     {
-                        ret = ConvertToRgbCPU( &mv, &mvConf, &rgb->sharedBuffer );
+                        ret = ConvertToRgbCPU( mv, mvConf, rgb->GetBuffer() );
                     }
                     else
                     {
-                        ret = ConvertToRgbGPU( &mv, &mvConf, &rgb->sharedBuffer );
+                        ret = ConvertToRgbGPU( mv, mvConf, rgb->GetBuffer() );
                     }
                     if ( QC_STATUS_OK == ret )
                     {
@@ -544,6 +572,11 @@ QCStatus_e SampleOpticalFlowViz::Stop()
 QCStatus_e SampleOpticalFlowViz::Deinit()
 {
     QCStatus_e ret = QC_STATUS_OK;
+    if ( nullptr != m_pBufMgr )
+    {
+        BufferManager::Put( m_pBufMgr );
+        m_pBufMgr = nullptr;
+    }
     return ret;
 }
 

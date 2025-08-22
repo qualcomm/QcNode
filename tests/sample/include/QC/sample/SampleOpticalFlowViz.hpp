@@ -66,10 +66,10 @@ private:
     void MvMakeColorWheel( void );
     QCStatus_e MvComputeColor( float fx, float fy, uint8_t *pix );
 
-    QCStatus_e ConvertToRgbCPU( QCSharedBuffer_t *pMvFwd, QCSharedBuffer_t *pMvConf,
-                                QCSharedBuffer_t *pRGB );
-    QCStatus_e ConvertToRgbGPU( QCSharedBuffer_t *pMvFwd, QCSharedBuffer_t *pMvConf,
-                                QCSharedBuffer_t *pRGB );
+    QCStatus_e ConvertToRgbCPU( QCBufferDescriptorBase_t &Mv, QCBufferDescriptorBase_t &MvConf,
+                                QCBufferDescriptorBase_t &RGB );
+    QCStatus_e ConvertToRgbGPU( QCBufferDescriptorBase_t &Mv, QCBufferDescriptorBase_t &MvConf,
+                                QCBufferDescriptorBase_t &RGB );
 
 private:
     uint32_t m_width;
@@ -89,7 +89,7 @@ private:
 
     uint32_t m_ncols;
     uint8_t m_nColorwheel[MVCOLOR_MAXCOLS][3];
-    QCSharedBuffer_t m_colorwheelBuf;
+    BufferDescriptor_t m_colorwheelBuf;
     cl_mem m_clMemColorWheel;
 
     MvColorMvMaxValue_t m_sLiveMaxMvValue = { 0, 0 };   // full opaque
@@ -102,6 +102,8 @@ private:
     QCProcessorType_e m_processor;
     OpenclSrv m_openclSrvObj;
     cl_kernel m_kernel;
+
+    BufferManager *m_pBufMgr = nullptr;
 };   // class SampleOpticalFlowViz
 
 }   // namespace sample

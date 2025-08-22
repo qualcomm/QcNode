@@ -203,24 +203,27 @@ QCStatus_e SampleDepthFromStereoViz::Start()
     return ret;
 }
 
-QCStatus_e SampleDepthFromStereoViz::ConvertToRgbCPU( QCSharedBuffer_t *pDisparity,
-                                                      QCSharedBuffer_t *pConf,
-                                                      QCSharedBuffer_t *pRGB )
+QCStatus_e SampleDepthFromStereoViz::ConvertToRgbCPU( QCBufferDescriptorBase_t &disparity,
+                                                      QCBufferDescriptorBase_t &conf,
+                                                      QCBufferDescriptorBase_t &RGB )
 {
     QCStatus_e ret = QC_STATUS_OK;
+    TensorDescriptor_t *pDisparity = dynamic_cast<TensorDescriptor_t *>( &disparity );
+    TensorDescriptor_t *pConf = dynamic_cast<TensorDescriptor_t *>( &conf );
 
-    auto strideW = pConf->tensorProps.dims[2];
-    auto strideW_Disp = pDisparity->tensorProps.dims[2] * sizeof( uint16_t );
+    auto strideW = pConf->dims[2];
+    auto strideW_Disp = pDisparity->dims[2] * sizeof( uint16_t );
 
-    uint16_t *pOutDisp = (uint16_t *) pDisparity->data();
-    uint8_t *pOutCONF = (uint8_t *) pConf->data();
-    uint8_t *pPixs = (uint8_t *) pRGB->data();
+    uint16_t *pOutDisp = static_cast<uint16_t *>( pDisparity->GetDataPtr() );
+    uint8_t *pOutCONF = static_cast<uint8_t *>( pConf->GetDataPtr() );
+    uint8_t *pPixs = static_cast<uint8_t *>( RGB.GetDataPtr() );
 
     uint32_t h, w;
 
     for ( h = 0; h < m_height; h++ )
     {
-        uint16_t *pDisp = (uint16_t *) ( ( (uint8_t *) pOutDisp ) + h * strideW_Disp );
+        uint16_t *pDisp = reinterpret_cast<uint16_t *>( reinterpret_cast<uint8_t *>( pOutDisp ) +
+                                                        h * strideW_Disp );
         uint8_t *pCONF = pOutCONF + h * strideW;
         uint8_t *pColorPix = pPixs + h * m_width * 3;
         for ( w = 0; w < m_width; w++ )
@@ -249,15 +252,15 @@ QCStatus_e SampleDepthFromStereoViz::ConvertToRgbCPU( QCSharedBuffer_t *pDispari
 
                 // calculte the relative RGB values according to the depth disparity
                 float weight = 1.0 - ( val - m_cumulativeWeights[i] ) * m_relativeWeights[i];
-                pColorPix[0] = (uint8_t) ( ( weight * m_colors[i][0] +
-                                             ( 1.0 - weight ) * m_colors[i + 1][0] ) *
-                                           255.0 );
-                pColorPix[1] = (uint8_t) ( ( weight * m_colors[i][1] +
-                                             ( 1.0 - weight ) * m_colors[i + 1][1] ) *
-                                           255.0 );
-                pColorPix[2] = (uint8_t) ( ( weight * m_colors[i][2] +
-                                             ( 1.0 - weight ) * m_colors[i + 1][2] ) *
-                                           255.0 );
+                pColorPix[0] = static_cast<uint8_t>(
+                        ( weight * m_colors[i][0] + ( 1.0 - weight ) * m_colors[i + 1][0] ) *
+                        255.0 );
+                pColorPix[1] = static_cast<uint8_t>(
+                        ( weight * m_colors[i][1] + ( 1.0 - weight ) * m_colors[i + 1][1] ) *
+                        255.0 );
+                pColorPix[2] = static_cast<uint8_t>(
+                        ( weight * m_colors[i][2] + ( 1.0 - weight ) * m_colors[i + 1][2] ) *
+                        255.0 );
             }
             else
             {
@@ -274,9 +277,9 @@ QCStatus_e SampleDepthFromStereoViz::ConvertToRgbCPU( QCSharedBuffer_t *pDispari
     return ret;
 }
 
-QCStatus_e SampleDepthFromStereoViz::ConvertToRgbGPU( QCSharedBuffer_t *pDisparity,
-                                                      QCSharedBuffer_t *pConf,
-                                                      QCSharedBuffer_t *pRGB )
+QCStatus_e SampleDepthFromStereoViz::ConvertToRgbGPU( QCBufferDescriptorBase_t &disparity,
+                                                      QCBufferDescriptorBase_t &conf,
+                                                      QCBufferDescriptorBase_t &RGB )
 {
     QCStatus_e ret = QC_STATUS_OK;
     OpenclIfcae_Arg_t openclArgs[9];
@@ -290,12 +293,13 @@ QCStatus_e SampleDepthFromStereoViz::ConvertToRgbGPU( QCSharedBuffer_t *pDispari
     cl_mem clMemDisp;
     cl_mem clMemConf;
     cl_mem clMemRGB;
-
-    cl_uint strideConf = pConf->tensorProps.dims[2];
-    cl_uint strideDisp = pDisparity->tensorProps.dims[2];
+    TensorDescriptor_t *pDisparity = dynamic_cast<TensorDescriptor_t *>( &disparity );
+    TensorDescriptor_t *pConf = dynamic_cast<TensorDescriptor_t *>( &conf );
+    cl_uint strideConf = pConf->dims[2];
+    cl_uint strideDisp = pDisparity->dims[2];
     cl_uint strideRGB = m_width * 3;
 
-    ret = m_openclSrvObj.RegBuf( &( pDisparity->buffer ), &clMemDisp );
+    ret = m_openclSrvObj.RegBufferDesc( disparity, clMemDisp );
     if ( QC_STATUS_OK != ret )
     {
         QC_ERROR( "Failed to create cl mv mem" );
@@ -303,7 +307,7 @@ QCStatus_e SampleDepthFromStereoViz::ConvertToRgbGPU( QCSharedBuffer_t *pDispari
 
     if ( QC_STATUS_OK == ret )
     {
-        ret = m_openclSrvObj.RegBuf( &( pConf->buffer ), &clMemConf );
+        ret = m_openclSrvObj.RegBufferDesc( conf, clMemConf );
         if ( QC_STATUS_OK != ret )
         {
             QC_ERROR( "Failed to create cl mvConf mem" );
@@ -312,7 +316,7 @@ QCStatus_e SampleDepthFromStereoViz::ConvertToRgbGPU( QCSharedBuffer_t *pDispari
 
     if ( QC_STATUS_OK == ret )
     {
-        ret = m_openclSrvObj.RegBuf( &( pRGB->buffer ), &clMemRGB );
+        ret = m_openclSrvObj.RegBufferDesc( RGB, clMemRGB );
         if ( QC_STATUS_OK != ret )
         {
             QC_ERROR( "Failed to create cl rgb mem" );
@@ -321,24 +325,34 @@ QCStatus_e SampleDepthFromStereoViz::ConvertToRgbGPU( QCSharedBuffer_t *pDispari
 
     if ( QC_STATUS_OK == ret )
     {
-        openclArgs[0].pArg = (void *) &clMemDisp;
+
+        openclArgs[0].pArg = static_cast<void *>( &clMemDisp );
         openclArgs[0].argSize = sizeof( cl_mem );
-        openclArgs[1].pArg = (void *) &clMemConf;
+
+        openclArgs[1].pArg = static_cast<void *>( &clMemConf );
         openclArgs[1].argSize = sizeof( cl_mem );
-        openclArgs[2].pArg = (void *) &clMemRGB;
+
+        openclArgs[2].pArg = static_cast<void *>( &clMemRGB );
         openclArgs[2].argSize = sizeof( cl_mem );
-        openclArgs[3].pArg = (void *) &strideDisp;
+
+        openclArgs[3].pArg = static_cast<void *>( &strideDisp );
         openclArgs[3].argSize = sizeof( cl_uint );
-        openclArgs[4].pArg = (void *) &strideConf;
+
+        openclArgs[4].pArg = static_cast<void *>( &strideConf );
         openclArgs[4].argSize = sizeof( cl_uint );
-        openclArgs[5].pArg = (void *) &strideRGB;
+
+        openclArgs[5].pArg = static_cast<void *>( &strideRGB );
         openclArgs[5].argSize = sizeof( cl_uint );
-        openclArgs[6].pArg = (void *) &m_nConfMapThreshold;
+
+        openclArgs[6].pArg = static_cast<void *>( &m_nConfMapThreshold );
         openclArgs[6].argSize = sizeof( cl_uchar );
-        openclArgs[7].pArg = (void *) &m_disparityMax;
+
+        openclArgs[7].pArg = static_cast<void *>( &m_disparityMax );
         openclArgs[7].argSize = sizeof( cl_ushort );
-        openclArgs[8].pArg = (void *) &m_nTransparency;
+
+        openclArgs[8].pArg = static_cast<void *>( &m_nTransparency );
         openclArgs[8].argSize = sizeof( cl_uchar );
+
 
         ret = m_openclSrvObj.Execute( &m_kernel, openclArgs, 9, &openclWorkParams );
         if ( QC_STATUS_OK != ret )
@@ -365,8 +379,8 @@ void SampleDepthFromStereoViz::ThreadMain()
             std::shared_ptr<SharedBuffer_t> rgb = m_rgbPool.Get();
             if ( nullptr != rgb )
             {
-                QCSharedBuffer_t &disp = frames.SharedBuffer( 0 );
-                QCSharedBuffer_t &conf = frames.SharedBuffer( 1 );
+                QCBufferDescriptorBase_t &disp = frames.GetBuffer( 0 );
+                QCBufferDescriptorBase_t &conf = frames.GetBuffer( 1 );
 
                 if ( QC_STATUS_OK == ret )
                 {
@@ -374,11 +388,11 @@ void SampleDepthFromStereoViz::ThreadMain()
                     TRACE_BEGIN( frames.FrameId( 0 ) );
                     if ( QC_PROCESSOR_CPU == m_processor )
                     {
-                        ret = ConvertToRgbCPU( &disp, &conf, &rgb->sharedBuffer );
+                        ret = ConvertToRgbCPU( disp, conf, rgb->GetBuffer() );
                     }
                     else
                     {
-                        ret = ConvertToRgbGPU( &disp, &conf, &rgb->sharedBuffer );
+                        ret = ConvertToRgbGPU( disp, conf, rgb->GetBuffer() );
                     }
                     if ( QC_STATUS_OK == ret )
                     {
