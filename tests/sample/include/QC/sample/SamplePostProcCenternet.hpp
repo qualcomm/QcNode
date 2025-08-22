@@ -87,9 +87,9 @@ private:
     uint32_t m_maxObjNum = MAX_OBJ_NUM;
     uint32_t m_kernelSize = 7;
 
-    QCSharedBuffer_t m_outputClsIdBuf;
-    QCSharedBuffer_t m_outputProbBuf;
-    QCSharedBuffer_t m_outputCoordsBuf;
+    BufferDescriptor_t m_outputClsIdBuf;
+    BufferDescriptor_t m_outputProbBuf;
+    BufferDescriptor_t m_outputCoordsBuf;
 
     cl_mem m_clInputHMBuf;
     cl_mem m_clInputWHBuf;
@@ -104,6 +104,8 @@ private:
 
     DataSubscriber<DataFrames_t> m_sub;
     DataPublisher<Road2DObjects_t> m_pub;
+
+    BufferManager *m_pBufMgr = nullptr;
 };   // class SamplePostProcCenternet
 
 }   // namespace sample

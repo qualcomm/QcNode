@@ -196,6 +196,15 @@ QCStatus_e SamplePostProcCenternet::Init( std::string name, SampleConfig_t &conf
             }
             if ( QC_STATUS_OK == ret )
             {
+                m_pBufMgr = BufferManager::Get( m_nodeId, m_logger.GetLevel() );
+                if ( nullptr == m_pBufMgr )
+                {
+                    QC_ERROR( "Failed to create buffer manager!" );
+                    ret = QC_STATUS_NOMEM;
+                }
+            }
+            if ( QC_STATUS_OK == ret )
+            {
                 ret = RegisterOutputBuffers();
                 if ( QC_STATUS_OK != ret )
                 {
@@ -262,9 +271,11 @@ QCStatus_e SamplePostProcCenternet::RegisterInputBuffers( DataFrames_t &tensors 
 {
     QCStatus_e ret = QC_STATUS_OK;
 
-    QCSharedBuffer_t hm = tensors.SharedBuffer( 0 );
-    QCSharedBuffer_t wh = tensors.SharedBuffer( 1 );
-    QCSharedBuffer_t reg = tensors.SharedBuffer( 2 );
+    QCBufferDescriptorBase_t &hm = tensors.GetBuffer( 0 );
+    QCBufferDescriptorBase_t &wh = tensors.GetBuffer( 1 );
+    QCBufferDescriptorBase_t &reg = tensors.GetBuffer( 2 );
+
+    TensorDescriptor_t *pHmDesc = dynamic_cast<TensorDescriptor_t *>( &hm );
 
     m_hmScale = tensors.QuantScale( 0 );
     m_whScale = tensors.QuantScale( 1 );
@@ -272,26 +283,26 @@ QCStatus_e SamplePostProcCenternet::RegisterInputBuffers( DataFrames_t &tensors 
     m_hmOffset = tensors.QuantOffset( 0 );
     m_whOffset = tensors.QuantOffset( 1 );
     m_regOffset = tensors.QuantOffset( 2 );
-    m_height = hm.tensorProps.dims[1];
-    m_width = hm.tensorProps.dims[2];
-    m_classNum = hm.tensorProps.dims[3];
+    m_height = pHmDesc->dims[1];
+    m_width = pHmDesc->dims[2];
+    m_classNum = pHmDesc->dims[3];
 
     // Create hm data buffer
-    ret = m_OpenclSrvObj.RegBuf( &( hm.buffer ), &m_clInputHMBuf );
+    ret = m_OpenclSrvObj.RegBufferDesc( hm, m_clInputHMBuf );
     if ( QC_STATUS_OK != ret )
     {
         QC_ERROR( "Failed to create hm data buffer" );
     }
 
     // Create wh data buffer
-    ret = m_OpenclSrvObj.RegBuf( &( wh.buffer ), &m_clInputWHBuf );
+    ret = m_OpenclSrvObj.RegBufferDesc( wh, m_clInputWHBuf );
     if ( QC_STATUS_OK != ret )
     {
         QC_ERROR( "Failed to create wh data buffer" );
     }
 
     // Create reg data buffer
-    ret = m_OpenclSrvObj.RegBuf( &( reg.buffer ), &m_clInputRegBuf );
+    ret = m_OpenclSrvObj.RegBufferDesc( reg, m_clInputRegBuf );
     if ( QC_STATUS_OK != ret )
     {
         QC_ERROR( "Failed to create reg data buffer" );
@@ -308,33 +319,44 @@ QCStatus_e SamplePostProcCenternet::RegisterOutputBuffers()
             ( MAX_OBJ_NUM + 1 ) * sizeof( uint32_t );   // the last element is object num
     size_t outputProbBufSize = MAX_OBJ_NUM * sizeof( float );
     size_t outputCoordsBufSize = MAX_OBJ_NUM * 4 * sizeof( float );
-    uint64_t bufHandle = 0;
 
     // create output classId data buffer
-    ret = m_outputClsIdBuf.Allocate( outputClsIdBufSize );
-    bufHandle = m_outputClsIdBuf.buffer.dmaHandle;
-    ret = m_OpenclSrvObj.RegBuf( &( m_outputClsIdBuf.buffer ), &m_clOutputClsIdBuf );
+    ret = m_pBufMgr->Allocate( BufferProps_t( outputClsIdBufSize ), m_outputClsIdBuf );
+    if ( QC_STATUS_OK == ret )
+    {
+        ret = m_OpenclSrvObj.RegBufferDesc( m_outputClsIdBuf, m_clOutputClsIdBuf );
+    }
     if ( QC_STATUS_OK != ret )
     {
         QC_ERROR( "Failed to create output classId data buffer" );
     }
 
-    // create output classId prob buffer
-    ret = m_outputProbBuf.Allocate( outputProbBufSize );
-    bufHandle = m_outputProbBuf.buffer.dmaHandle;
-    ret = m_OpenclSrvObj.RegBuf( &( m_outputProbBuf.buffer ), &m_clOutputProbBuf );
-    if ( QC_STATUS_OK != ret )
+    if ( QC_STATUS_OK == ret )
     {
-        QC_ERROR( "Failed to create output prob data buffer" );
+        // create output classId prob buffer
+        ret = m_pBufMgr->Allocate( BufferProps_t( outputProbBufSize ), m_outputProbBuf );
+        if ( QC_STATUS_OK == ret )
+        {
+            ret = m_OpenclSrvObj.RegBufferDesc( m_outputProbBuf, m_clOutputProbBuf );
+        }
+        if ( QC_STATUS_OK != ret )
+        {
+            QC_ERROR( "Failed to create output prob data buffer" );
+        }
     }
 
-    // create output coords data buffer
-    ret = m_outputCoordsBuf.Allocate( outputCoordsBufSize );
-    bufHandle = m_outputCoordsBuf.buffer.dmaHandle;
-    ret = m_OpenclSrvObj.RegBuf( &( m_outputCoordsBuf.buffer ), &m_clOutputCoordsBuf );
-    if ( QC_STATUS_OK != ret )
+    if ( QC_STATUS_OK == ret )
     {
-        QC_ERROR( "Failed to create output coords data buffer" );
+        // create output coords data buffer
+        ret = m_pBufMgr->Allocate( BufferProps_t( outputCoordsBufSize ), m_outputCoordsBuf );
+        if ( QC_STATUS_OK == ret )
+        {
+            ret = m_OpenclSrvObj.RegBufferDesc( m_outputCoordsBuf, m_clOutputCoordsBuf );
+        }
+        if ( QC_STATUS_OK != ret )
+        {
+            QC_ERROR( "Failed to create output coords data buffer" );
+        }
     }
 
     return ret;
@@ -342,49 +364,49 @@ QCStatus_e SamplePostProcCenternet::RegisterOutputBuffers()
 
 void SamplePostProcCenternet::SetCLParams()
 {
-    m_openclArgs[0].pArg = (void *) &m_clInputHMBuf;
+    m_openclArgs[0].pArg = reinterpret_cast<void *>( &m_clInputHMBuf );
     m_openclArgs[0].argSize = sizeof( cl_mem );
-    m_openclArgs[1].pArg = (void *) &m_clInputWHBuf;
+    m_openclArgs[1].pArg = reinterpret_cast<void *>( &m_clInputWHBuf );
     m_openclArgs[1].argSize = sizeof( cl_mem );
-    m_openclArgs[2].pArg = (void *) &m_clInputRegBuf;
+    m_openclArgs[2].pArg = reinterpret_cast<void *>( &m_clInputRegBuf );
     m_openclArgs[2].argSize = sizeof( cl_mem );
-    m_openclArgs[3].pArg = (void *) &m_clOutputClsIdBuf;
+    m_openclArgs[3].pArg = reinterpret_cast<void *>( &m_clOutputClsIdBuf );
     m_openclArgs[3].argSize = sizeof( cl_mem );
-    m_openclArgs[4].pArg = (void *) &m_clOutputProbBuf;
+    m_openclArgs[4].pArg = reinterpret_cast<void *>( &m_clOutputProbBuf );
     m_openclArgs[4].argSize = sizeof( cl_mem );
-    m_openclArgs[5].pArg = (void *) &m_clOutputCoordsBuf;
+    m_openclArgs[5].pArg = reinterpret_cast<void *>( &m_clOutputCoordsBuf );
     m_openclArgs[5].argSize = sizeof( cl_mem );
-    m_openclArgs[6].pArg = (void *) &m_classNum;
+    m_openclArgs[6].pArg = reinterpret_cast<void *>( &m_classNum );
     m_openclArgs[6].argSize = sizeof( cl_uint );
-    m_openclArgs[7].pArg = (void *) &m_maxObjNum;
+    m_openclArgs[7].pArg = reinterpret_cast<void *>( &m_maxObjNum );
     m_openclArgs[7].argSize = sizeof( cl_uint );
-    m_openclArgs[8].pArg = (void *) &m_scoreThreshold;
+    m_openclArgs[8].pArg = reinterpret_cast<void *>( &m_scoreThreshold );
     m_openclArgs[8].argSize = sizeof( cl_float );
-    m_openclArgs[9].pArg = (void *) &m_kernelSize;
+    m_openclArgs[9].pArg = reinterpret_cast<void *>( &m_kernelSize );
     m_openclArgs[9].argSize = sizeof( cl_uint );
-    m_openclArgs[10].pArg = (void *) &m_width;
+    m_openclArgs[10].pArg = reinterpret_cast<void *>( &m_width );
     m_openclArgs[10].argSize = sizeof( cl_uint );
-    m_openclArgs[11].pArg = (void *) &m_height;
+    m_openclArgs[11].pArg = reinterpret_cast<void *>( &m_height );
     m_openclArgs[11].argSize = sizeof( cl_uint );
-    m_openclArgs[12].pArg = (void *) &m_camWidth;
+    m_openclArgs[12].pArg = reinterpret_cast<void *>( &m_camWidth );
     m_openclArgs[12].argSize = sizeof( cl_uint );
-    m_openclArgs[13].pArg = (void *) &m_camHeight;
+    m_openclArgs[13].pArg = reinterpret_cast<void *>( &m_camHeight );
     m_openclArgs[13].argSize = sizeof( cl_uint );
-    m_openclArgs[14].pArg = (void *) &m_roiX;
+    m_openclArgs[14].pArg = reinterpret_cast<void *>( &m_roiX );
     m_openclArgs[14].argSize = sizeof( cl_uint );
-    m_openclArgs[15].pArg = (void *) &m_roiY;
+    m_openclArgs[15].pArg = reinterpret_cast<void *>( &m_roiY );
     m_openclArgs[15].argSize = sizeof( cl_uint );
-    m_openclArgs[16].pArg = (void *) &m_hmScale;
+    m_openclArgs[16].pArg = reinterpret_cast<void *>( &m_hmScale );
     m_openclArgs[16].argSize = sizeof( cl_float );
-    m_openclArgs[17].pArg = (void *) &m_hmOffset;
+    m_openclArgs[17].pArg = reinterpret_cast<void *>( &m_hmOffset );
     m_openclArgs[17].argSize = sizeof( cl_int );
-    m_openclArgs[18].pArg = (void *) &m_whScale;
+    m_openclArgs[18].pArg = reinterpret_cast<void *>( &m_whScale );
     m_openclArgs[18].argSize = sizeof( cl_float );
-    m_openclArgs[19].pArg = (void *) &m_whOffset;
+    m_openclArgs[19].pArg = reinterpret_cast<void *>( &m_whOffset );
     m_openclArgs[19].argSize = sizeof( cl_int );
-    m_openclArgs[20].pArg = (void *) &m_regScale;
+    m_openclArgs[20].pArg = reinterpret_cast<void *>( &m_regScale );
     m_openclArgs[20].argSize = sizeof( cl_float );
-    m_openclArgs[21].pArg = (void *) &m_regOffset;
+    m_openclArgs[21].pArg = reinterpret_cast<void *>( &m_regOffset );
     m_openclArgs[21].argSize = sizeof( cl_int );
 
     return;
@@ -403,17 +425,17 @@ void SamplePostProcCenternet::PostProcCPU( DataFrames_t &tensors )
 
     TensorDescriptor_t *pTsHmDesc = dynamic_cast<TensorDescriptor_t *>( &hmDesc );
 
-    int H = (int) pTsHmDesc->dims[1];
-    int W = (int) pTsHmDesc->dims[2];
-    int classNum = (int) pTsHmDesc->dims[3];
+    int H = static_cast<int>( pTsHmDesc->dims[1] );
+    int W = static_cast<int>( pTsHmDesc->dims[2] );
+    int classNum = static_cast<int>( pTsHmDesc->dims[3] );
 
-    uint8_t *hm = (uint8_t *) hmDesc.pBuf;
+    uint8_t *hm = reinterpret_cast<uint8_t *>( hmDesc.pBuf );
     float hmScale = tensors.QuantScale( 0 );
     int32_t hmOffset = tensors.QuantOffset( 0 );
-    uint8_t *wh = (uint8_t *) whDesc.pBuf;
+    uint8_t *wh = reinterpret_cast<uint8_t *>( whDesc.pBuf );
     float whScale = tensors.QuantScale( 1 );
     int32_t whOffset = tensors.QuantOffset( 1 );
-    uint8_t *reg = (uint8_t *) regDesc.pBuf;
+    uint8_t *reg = reinterpret_cast<uint8_t *>( regDesc.pBuf );
     float regScale = tensors.QuantScale( 2 );
     int32_t regOffset = tensors.QuantOffset( 2 );
     const int kernel_size = 7;
@@ -521,7 +543,7 @@ QCStatus_e SamplePostProcCenternet::PostProcCL( DataFrames_t &tensors )
     openclWorkParams.pGlobalWorkOffset = globalWorkOffset;
     openclWorkParams.pLocalWorkSize = NULL;
 
-    uint32_t *pdetClsIds = (uint32_t *) m_outputClsIdBuf.data();
+    uint32_t *pdetClsIds = (uint32_t *) m_outputClsIdBuf.GetDataPtr();
     *( pdetClsIds + MAX_OBJ_NUM ) = 0;
 
     ret = m_OpenclSrvObj.Execute( &m_kernel, m_openclArgs, numArgs, &openclWorkParams );
@@ -535,8 +557,8 @@ QCStatus_e SamplePostProcCenternet::PostProcCL( DataFrames_t &tensors )
     Road2DObject_t detObj;
     Road2DObjects_t objs;
     uint32_t objNum = *( pdetClsIds + MAX_OBJ_NUM );
-    float *pdetProbs = (float *) m_outputProbBuf.data();
-    float *pdetCoords = (float *) m_outputCoordsBuf.data();
+    float *pdetProbs = reinterpret_cast<float *>( m_outputProbBuf.GetDataPtr() );
+    float *pdetCoords = reinterpret_cast<float *>( m_outputCoordsBuf.GetDataPtr() );
     for ( uint32_t i = 0; i < objNum; i++ )
     {
         uint32_t idx = i * 4;
@@ -633,6 +655,12 @@ QCStatus_e SamplePostProcCenternet::Deinit()
             QC_ERROR( "Release CL resources failed!" );
             ret = QC_STATUS_FAIL;
         }
+    }
+
+    if ( nullptr != m_pBufMgr )
+    {
+        BufferManager::Put( m_pBufMgr );
+        m_pBufMgr = nullptr;
     }
     return ret;
 }

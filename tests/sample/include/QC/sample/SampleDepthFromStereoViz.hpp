@@ -59,10 +59,10 @@ private:
     QCStatus_e ParseConfig( SampleConfig_t &config );
     void ThreadMain();
 
-    QCStatus_e ConvertToRgbCPU( QCSharedBuffer_t *pDisparity, QCSharedBuffer_t *pConf,
-                                QCSharedBuffer_t *pRGB );
-    QCStatus_e ConvertToRgbGPU( QCSharedBuffer_t *pDisparity, QCSharedBuffer_t *pConf,
-                                QCSharedBuffer_t *pRGB );
+    QCStatus_e ConvertToRgbCPU( QCBufferDescriptorBase_t &disparity, QCBufferDescriptorBase_t &conf,
+                                QCBufferDescriptorBase_t &RGB );
+    QCStatus_e ConvertToRgbGPU( QCBufferDescriptorBase_t &disparity, QCBufferDescriptorBase_t &conf,
+                                QCBufferDescriptorBase_t &RGB );
 
 private:
     uint32_t m_width;
