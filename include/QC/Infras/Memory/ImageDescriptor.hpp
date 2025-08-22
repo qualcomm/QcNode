@@ -8,6 +8,8 @@
 #include "QC/Infras/Memory/BufferDescriptor.hpp"
 #include "QC/Infras/Memory/TensorDescriptor.hpp"
 
+#include <algorithm>
+#include <cstring>
 #include <string>
 #include <vector>
 
@@ -126,7 +128,12 @@ public:
      * @brief Constructor for BufferProps.
      * @return None.
      */
-    ImageProps() : ImageBasicProps() {}
+    ImageProps() : ImageBasicProps()
+    {
+        std::memset( stride, 0, sizeof( stride ) );
+        std::memset( actualHeight, 0, sizeof( actualHeight ) );
+        std::memset( planeBufSize, 0, sizeof( planeBufSize ) );
+    }
 
     /**
      * @brief Constructor for ImageProps.

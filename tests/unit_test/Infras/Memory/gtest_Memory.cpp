@@ -794,6 +794,7 @@ TEST( Memory, L2_Image )
         imgProp.height = 753;
         imgProp.stride[0] = 1024 * 3;
         imgProp.actualHeight[0] = 768;
+        imgProp.planeBufSize[0] = 0;
         imgProp.numPlanes = 1;
         auto status = bufMgr.Allocate( imgProp, imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
