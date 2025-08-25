@@ -328,32 +328,40 @@ QCStatus_e SampleOpticalFlowViz::ConvertToRgbCPU( QCBufferDescriptorBase_t &Mv,
                                                   QCBufferDescriptorBase_t &RGB )
 {
     QCStatus_e ret = QC_STATUS_OK;
+    uint32_t strideH = 0;
+    uint32_t strideW = 0;
+    uint32_t strideW_MV = 0;
 
     TensorDescriptor_t *pMv = dynamic_cast<TensorDescriptor_t *>( &Mv );
     TensorDescriptor_t *pMvConf = dynamic_cast<TensorDescriptor_t *>( &MvConf );
 
-    auto strideH = pMvConf->dims[1];
-    auto strideW = pMvConf->dims[2];
-    auto strideW_MV = pMv->dims[2];
+    if ( ( nullptr == pMv ) || ( nullptr == pMvConf ) )
+    {
+        QC_ERROR( "motion vector or conf is not a valid tensor" );
+        ret = QC_STATUS_INVALID_BUF;
+    }
+    else
+    {
+        strideH = pMvConf->dims[1];
+        strideW = pMvConf->dims[2];
+        strideW_MV = pMv->dims[2];
+    }
 
 
-    int16_t *pOutMVX = static_cast<int16_t *>( pMv->GetDataPtr() );
+    int16_t *pOutMVX = static_cast<int16_t *>( Mv.GetDataPtr() );
     int16_t *pOutMVY = reinterpret_cast<int16_t *>( reinterpret_cast<uint8_t *>( pOutMVX ) +
                                                     ( strideW_MV * strideH ) );
-    uint8_t *pOutCONF = static_cast<uint8_t *>( pMvConf->GetDataPtr() );
+    uint8_t *pOutCONF = static_cast<uint8_t *>( MvConf.GetDataPtr() );
     uint8_t *pPixs = static_cast<uint8_t *>( RGB.GetDataPtr() );
 
-
-    uint32_t h, w;
-
     MvColorMvMaxValue_t sLiveMaxMvValue = m_sLiveMaxMvValue;
-    for ( h = 0; h < m_height; h++ )
+    for ( uint32_t h = 0; ( h < m_height ) && ( QC_STATUS_OK == ret ); h++ )
     {
         auto pMVX = (int16_t *) ( ( (uint8_t *) pOutMVX ) + h * strideW_MV );
         auto pMVY = (int16_t *) ( ( (uint8_t *) pOutMVY ) + h * strideW_MV );
         auto pCONF = pOutCONF + h * strideW;
         uint8_t *pColorPix = pPixs + h * m_width * 3;
-        for ( w = 0; w < m_width; w++ )
+        for ( uint32_t w = 0; w < m_width; w++ )
         {
             if ( *pCONF > m_nConfMapThreshold )
             {
@@ -427,23 +435,34 @@ QCStatus_e SampleOpticalFlowViz::ConvertToRgbGPU( QCBufferDescriptorBase_t &Mv,
     cl_mem clMemMv;
     cl_mem clMemMvConf;
     cl_mem clMemRGB;
+    uint32_t strideH = 0;
+    uint32_t strideW = 0;
+    uint32_t strideW_MV = 0;
 
     TensorDescriptor_t *pMv = dynamic_cast<TensorDescriptor_t *>( &Mv );
     TensorDescriptor_t *pMvConf = dynamic_cast<TensorDescriptor_t *>( &MvConf );
 
-    auto strideH = pMvConf->dims[1];
-    auto strideW = pMvConf->dims[2];
-    auto strideW_MV = pMv->dims[2];
-
-    imageStride.s[0] = strideH;
-    imageStride.s[1] = strideW_MV;
-    imageStride.s[2] = strideW;
-    imageStride.s[3] = m_width * 3;
-
-    ret = m_openclSrvObj.RegBufferDesc( Mv, clMemMv );
-    if ( QC_STATUS_OK != ret )
+    if ( ( nullptr == pMv ) || ( nullptr == pMvConf ) )
     {
-        QC_ERROR( "Failed to create cl mv mem" );
+        QC_ERROR( "motion vector or conf is not a valid tensor" );
+        ret = QC_STATUS_INVALID_BUF;
+    }
+    else
+    {
+        strideH = pMvConf->dims[1];
+        strideW = pMvConf->dims[2];
+        strideW_MV = pMv->dims[2];
+
+        imageStride.s[0] = strideH;
+        imageStride.s[1] = strideW_MV;
+        imageStride.s[2] = strideW;
+        imageStride.s[3] = m_width * 3;
+
+        ret = m_openclSrvObj.RegBufferDesc( Mv, clMemMv );
+        if ( QC_STATUS_OK != ret )
+        {
+            QC_ERROR( "Failed to create cl mv mem" );
+        }
     }
 
     if ( QC_STATUS_OK == ret )

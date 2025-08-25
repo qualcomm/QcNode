@@ -276,36 +276,47 @@ QCStatus_e SamplePostProcCenternet::RegisterInputBuffers( DataFrames_t &tensors 
     QCBufferDescriptorBase_t &reg = tensors.GetBuffer( 2 );
 
     TensorDescriptor_t *pHmDesc = dynamic_cast<TensorDescriptor_t *>( &hm );
-
-    m_hmScale = tensors.QuantScale( 0 );
-    m_whScale = tensors.QuantScale( 1 );
-    m_regScale = tensors.QuantScale( 2 );
-    m_hmOffset = tensors.QuantOffset( 0 );
-    m_whOffset = tensors.QuantOffset( 1 );
-    m_regOffset = tensors.QuantOffset( 2 );
-    m_height = pHmDesc->dims[1];
-    m_width = pHmDesc->dims[2];
-    m_classNum = pHmDesc->dims[3];
-
-    // Create hm data buffer
-    ret = m_OpenclSrvObj.RegBufferDesc( hm, m_clInputHMBuf );
-    if ( QC_STATUS_OK != ret )
+    if ( nullptr == pHmDesc )
     {
-        QC_ERROR( "Failed to create hm data buffer" );
+        QC_ERROR( "heatmap is not a valid tensor" );
+        ret = QC_STATUS_INVALID_BUF;
     }
-
-    // Create wh data buffer
-    ret = m_OpenclSrvObj.RegBufferDesc( wh, m_clInputWHBuf );
-    if ( QC_STATUS_OK != ret )
+    else
     {
-        QC_ERROR( "Failed to create wh data buffer" );
+        m_hmScale = tensors.QuantScale( 0 );
+        m_whScale = tensors.QuantScale( 1 );
+        m_regScale = tensors.QuantScale( 2 );
+        m_hmOffset = tensors.QuantOffset( 0 );
+        m_whOffset = tensors.QuantOffset( 1 );
+        m_regOffset = tensors.QuantOffset( 2 );
+        m_height = pHmDesc->dims[1];
+        m_width = pHmDesc->dims[2];
+        m_classNum = pHmDesc->dims[3];
+
+        // Create hm data buffer
+        ret = m_OpenclSrvObj.RegBufferDesc( hm, m_clInputHMBuf );
+        if ( QC_STATUS_OK != ret )
+        {
+            QC_ERROR( "Failed to create hm data buffer" );
+        }
     }
-
-    // Create reg data buffer
-    ret = m_OpenclSrvObj.RegBufferDesc( reg, m_clInputRegBuf );
-    if ( QC_STATUS_OK != ret )
+    if ( QC_STATUS_OK == ret )
     {
-        QC_ERROR( "Failed to create reg data buffer" );
+        // Create wh data buffer
+        ret = m_OpenclSrvObj.RegBufferDesc( wh, m_clInputWHBuf );
+        if ( QC_STATUS_OK != ret )
+        {
+            QC_ERROR( "Failed to create wh data buffer" );
+        }
+    }
+    if ( QC_STATUS_OK == ret )
+    {
+        // Create reg data buffer
+        ret = m_OpenclSrvObj.RegBufferDesc( reg, m_clInputRegBuf );
+        if ( QC_STATUS_OK != ret )
+        {
+            QC_ERROR( "Failed to create reg data buffer" );
+        }
     }
 
     return ret;
@@ -408,8 +419,6 @@ void SamplePostProcCenternet::SetCLParams()
     m_openclArgs[20].argSize = sizeof( cl_float );
     m_openclArgs[21].pArg = reinterpret_cast<void *>( &m_regOffset );
     m_openclArgs[21].argSize = sizeof( cl_int );
-
-    return;
 }
 
 void SamplePostProcCenternet::PostProcCPU( DataFrames_t &tensors )
@@ -417,6 +426,9 @@ void SamplePostProcCenternet::PostProcCPU( DataFrames_t &tensors )
     QC_DEBUG( "receive frameId %" PRIu64 ", timestamp %" PRIu64 "\n", tensors.FrameId( 0 ),
               tensors.Timestamp( 0 ) );
 
+    int H = 0;
+    int W = 0;
+    int classNum = 1;
     Road2DObjects_t objs;
 
     QCBufferDescriptorBase_t &hmDesc = tensors.GetBuffer( 0 );
@@ -424,10 +436,16 @@ void SamplePostProcCenternet::PostProcCPU( DataFrames_t &tensors )
     QCBufferDescriptorBase_t &regDesc = tensors.GetBuffer( 2 );
 
     TensorDescriptor_t *pTsHmDesc = dynamic_cast<TensorDescriptor_t *>( &hmDesc );
-
-    int H = static_cast<int>( pTsHmDesc->dims[1] );
-    int W = static_cast<int>( pTsHmDesc->dims[2] );
-    int classNum = static_cast<int>( pTsHmDesc->dims[3] );
+    if ( nullptr == pTsHmDesc )
+    {
+        QC_ERROR( "heatmap is not a valid tensor" );
+    }
+    else
+    {
+        H = static_cast<int>( pTsHmDesc->dims[1] );
+        W = static_cast<int>( pTsHmDesc->dims[2] );
+        classNum = static_cast<int>( pTsHmDesc->dims[3] );
+    }
 
     uint8_t *hm = reinterpret_cast<uint8_t *>( hmDesc.pBuf );
     float hmScale = tensors.QuantScale( 0 );
