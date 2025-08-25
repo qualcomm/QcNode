@@ -208,25 +208,32 @@ QCStatus_e SampleDepthFromStereoViz::ConvertToRgbCPU( QCBufferDescriptorBase_t &
                                                       QCBufferDescriptorBase_t &RGB )
 {
     QCStatus_e ret = QC_STATUS_OK;
+    uint32_t strideW = 0;
+    uint32_t strideW_Disp = 0;
+    uint16_t *pOutDisp = static_cast<uint16_t *>( disparity.GetDataPtr() );
+    uint8_t *pOutCONF = static_cast<uint8_t *>( conf.GetDataPtr() );
+    uint8_t *pPixs = static_cast<uint8_t *>( RGB.GetDataPtr() );
     TensorDescriptor_t *pDisparity = dynamic_cast<TensorDescriptor_t *>( &disparity );
     TensorDescriptor_t *pConf = dynamic_cast<TensorDescriptor_t *>( &conf );
 
-    auto strideW = pConf->dims[2];
-    auto strideW_Disp = pDisparity->dims[2] * sizeof( uint16_t );
+    if ( ( nullptr == pDisparity ) || ( nullptr == pConf ) )
+    {
+        QC_ERROR( "disparity or conf is not a valid tensor" );
+        ret = QC_STATUS_INVALID_BUF;
+    }
+    else
+    {
+        strideW = pConf->dims[2];
+        strideW_Disp = pDisparity->dims[2] * sizeof( uint16_t );
+    }
 
-    uint16_t *pOutDisp = static_cast<uint16_t *>( pDisparity->GetDataPtr() );
-    uint8_t *pOutCONF = static_cast<uint8_t *>( pConf->GetDataPtr() );
-    uint8_t *pPixs = static_cast<uint8_t *>( RGB.GetDataPtr() );
-
-    uint32_t h, w;
-
-    for ( h = 0; h < m_height; h++ )
+    for ( uint32_t h = 0; ( h < m_height ) && ( QC_STATUS_OK == ret ); h++ )
     {
         uint16_t *pDisp = reinterpret_cast<uint16_t *>( reinterpret_cast<uint8_t *>( pOutDisp ) +
                                                         h * strideW_Disp );
         uint8_t *pCONF = pOutCONF + h * strideW;
         uint8_t *pColorPix = pPixs + h * m_width * 3;
-        for ( w = 0; w < m_width; w++ )
+        for ( uint32_t w = 0; w < m_width; w++ )
         {
             if ( *pCONF > m_nConfMapThreshold )
             {
@@ -295,14 +302,25 @@ QCStatus_e SampleDepthFromStereoViz::ConvertToRgbGPU( QCBufferDescriptorBase_t &
     cl_mem clMemRGB;
     TensorDescriptor_t *pDisparity = dynamic_cast<TensorDescriptor_t *>( &disparity );
     TensorDescriptor_t *pConf = dynamic_cast<TensorDescriptor_t *>( &conf );
-    cl_uint strideConf = pConf->dims[2];
-    cl_uint strideDisp = pDisparity->dims[2];
+    cl_uint strideConf = 0;
+    cl_uint strideDisp = 0;
     cl_uint strideRGB = m_width * 3;
 
-    ret = m_openclSrvObj.RegBufferDesc( disparity, clMemDisp );
-    if ( QC_STATUS_OK != ret )
+    if ( ( nullptr == pDisparity ) || ( nullptr == pConf ) )
     {
-        QC_ERROR( "Failed to create cl mv mem" );
+        QC_ERROR( "disparity or conf is not a valid tensor" );
+        ret = QC_STATUS_INVALID_BUF;
+    }
+    else
+    {
+        strideConf = pConf->dims[2];
+        strideDisp = pDisparity->dims[2];
+
+        ret = m_openclSrvObj.RegBufferDesc( disparity, clMemDisp );
+        if ( QC_STATUS_OK != ret )
+        {
+            QC_ERROR( "Failed to create cl mv mem" );
+        }
     }
 
     if ( QC_STATUS_OK == ret )
