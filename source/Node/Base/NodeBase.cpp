@@ -9,10 +9,6 @@ namespace QC
 namespace Node
 {
 
-QCDummyBufferDescriptor_t QCSharedFrameDescriptorNode::s_dummy;
-
-QCSharedFrameDescriptorNode QCSharedFrameDescriptorNodePool::s_dummy( 1 );
-
 const std::string NodeConfigIfs::s_QC_STATUS_UNSUPPORTED = "QC_STATUS_UNSUPPORTED";
 
 QCStatus_e NodeConfigIfs::VerifyAndSet( const std::string config, std::string &errors )
@@ -83,7 +79,8 @@ QCStatus_e NodeBase::Init( QCNodeID_t nodeId, Logger_Level_e level )
     { /* logger used by QCNodeConfigIfs and already initialized */
         status = QC_STATUS_OK;
     }
-    QC_LOG_DEBUG( "Init NodeBase %s(%u) type (%d) status=%d", m_nodeId.name.c_str(), m_nodeId.id, m_nodeId.type, status );
+    QC_LOG_DEBUG( "Init NodeBase %s(%u) type (%d) status=%d", m_nodeId.name.c_str(), m_nodeId.id,
+                  m_nodeId.type, status );
     return status;
 }
 
@@ -91,7 +88,8 @@ QCStatus_e NodeBase::DeInitialize()
 {
     QCStatus_e status = QC_STATUS_OK;
     status = (QCStatus_e) m_logger.Deinit();
-    QC_LOG_DEBUG( "DeInit NodeBase %s(%u) type(%d) status=%d", m_nodeId.name.c_str(), m_nodeId.id, m_nodeId.type, status );
+    QC_LOG_DEBUG( "DeInit NodeBase %s(%u) type(%d) status=%d", m_nodeId.name.c_str(), m_nodeId.id,
+                  m_nodeId.type, status );
     return status;
 }
 
