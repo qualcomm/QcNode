@@ -88,7 +88,7 @@ private:
     QCProcessorType_e m_processor;
     int m_rsmPriority;
 
-    QCSharedFrameDescriptorNodePool *m_pFrameDescPool = nullptr;
+    NodeFrameDescriptorPool *m_pFrameDescPool = nullptr;
 };   // class SampleQnn
 
 }   // namespace sample

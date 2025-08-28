@@ -286,7 +286,7 @@ QCStatus_e SampleQnn::Init( std::string name, SampleConfig_t &config )
     {
         if ( true == m_bAsync )
         {
-            m_pFrameDescPool = new QCSharedFrameDescriptorNodePool(
+            m_pFrameDescPool = new NodeFrameDescriptorPool(
                     m_poolSize, m_inputsInfo.size() + m_outputsInfo.size() + 1 );
             if ( nullptr == m_pFrameDescPool )
             {
@@ -345,7 +345,7 @@ void SampleQnn::ThreadMain()
     QCStatus_e ret;
     std::mutex mtx;
 
-    QCSharedFrameDescriptorNode frameDesc( m_inputsInfo.size() + m_outputsInfo.size() + 1 );
+    NodeFrameDescriptor frameDesc( m_inputsInfo.size() + m_outputsInfo.size() + 1 );
     while ( false == m_stop )
     {
         DataFrames_t frames;

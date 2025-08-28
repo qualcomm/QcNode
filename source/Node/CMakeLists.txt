@@ -1,20 +1,4 @@
 set( HEADERS_DIR ${PROJECT_SOURCE_DIR}/include )
-set( NODEIF_HEADERS ${HEADERS_DIR}/QC/Node/NodeBase.hpp)
-set( NODEIF_SOURCES
-    NodeBase.cpp
-    DataTree.cpp
-)
-set( TARGET_LIBRARIES QCNodeCommon QCNodeVideoCodec )
-add_library( QCNodeBase STATIC ${NODEIF_SOURCES} )
-set_property( TARGET QCNodeBase PROPERTY LINKER_LANGUAGE CXX )
-set_property( TARGET QCNodeBase PROPERTY POSITION_INDEPENDENT_CODE ON )
-find_package(nlohmann_json 3.2.0 REQUIRED)
-list( APPEND TARGET_LIBRARIES nlohmann_json::nlohmann_json)
-target_link_libraries( QCNodeBase PUBLIC ${TARGET_LIBRARIES} )
-install( FILES ${NODEIF_HEADERS} DESTINATION include/QC/Node )
-install( FILES  ${HEADERS_DIR}/QC/Common/DataTree.hpp
-                ${HEADERS_DIR}/QC/Common/QCDefs.hpp
-                DESTINATION include/QC/Common )
 install( FILES  ${HEADERS_DIR}/QC/Infras/Log/Logger.hpp
                 DESTINATION include/QC/Infras/Log )
 install( FILES  ${HEADERS_DIR}/QC/Infras/Memory/Ifs/QCBufferDescriptorBase.hpp
@@ -30,6 +14,7 @@ install( FILES  ${HEADERS_DIR}/QC/Node/Ifs/QCFrameDescriptorNodeIfs.hpp
                 ${HEADERS_DIR}/QC/Node/Ifs/QCNodeIfs.hpp
                 ${HEADERS_DIR}/QC/Node/Ifs/QCNodeMonitoringIfs.hpp
                 DESTINATION include/QC/Node/Ifs )
+add_subdirectory(Base)
 add_subdirectory(QNN)
 add_subdirectory(CL2DFlex)
 add_subdirectory(Camera)
