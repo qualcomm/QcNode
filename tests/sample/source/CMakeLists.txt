@@ -21,6 +21,7 @@ set( QCNODE_SAMPLE_SOURCES
     SampleFrameSync.cpp
     SysTrace.cpp
     SampleGL2DFlex.cpp
+    SampleTemporal.cpp
 )
 
 if ( ENABLE_EVA )

@@ -27,6 +27,7 @@
     - [2.23 QCNode VideoDemuxer Sample](#223-qcnode-videodemuxer-sample)
     - [2.24 QCNode Radar Sample](#224-qcnode-radar-sample)
     - [2.25 QCNode C2C Sample](#225-qcnode-c2c-sample)
+    - [2.26 QCNode Temporal Sample](#226-qcnode-temporal-sample)
   - [3. Typical QCNode Sample Application pipelines](#3-typical-qcnode-sample-application-pipelines)
     - [3.1 4 DataReader based QNN perception pipelines](#31-4-datareader-based-qnn-perception-pipelines)
     - [3.2 1 DataReader and 1 Camera AR231 based QNN perception pipelines](#32-1-datareader-and-1-camera-ar231-based-qnn-perception-pipelines)
@@ -59,7 +60,7 @@ Note: the "-n componentX_name -t componentX_type" must be in the begin for each 
 | parameter | required | type      | comments |
 |-----------|----------|-----------|----------|
 | -n        | true     | string    | The unique component name |
-| -t        | true     | string    | The component type name, options from [DataReader, Camera, Remap, Qnn, C2D, PostProcCenternet, TinyViz, VideoEncoder, VideoDecoder, Recorder, PlrPre, PlrPost, DataOnline, CL2DFlex, GL2DFlex, SharedRing, FpsAdapter, OpticalFlow, OpticalFlowViz, FrameSync, DepthFromStereo, DepthFromStereoViz, Radar, C2C] |
+| -t        | true     | string    | The component type name, options from [DataReader, Camera, Remap, Qnn, C2D, PostProcCenternet, TinyViz, VideoEncoder, VideoDecoder, Recorder, PlrPre, PlrPost, DataOnline, CL2DFlex, GL2DFlex, SharedRing, FpsAdapter, OpticalFlow, OpticalFlowViz, FrameSync, DepthFromStereo, DepthFromStereoViz, Radar, C2C, Temporal] |
 | -k        | true     | string    | The unique component attribute name |
 | -v        | true     | string    | The attribute value for the previous attribute name |
 | -d        | false    |   -       | Direct the QCNode log to stdout |
@@ -855,6 +856,66 @@ The command line template example:
   -n C2C_CAM0 -t C2C -k channel -v 0 -k type -v sub \
     -k width -v 1920 -k height -v 1080 -k format -v nv12 \
     -k topic -v /sensor/camera/CAM0/raw \
+```
+
+### 2.26 QCNode Temporal Sample
+
+This is a specially designed sample for temporal-type models such as [VAD](https://github.com/hustvl/VAD), which has a temporal input derived from one of the previous model outputs.
+
+```mermaid
+graph LR
+    subgraph Inputs
+        IPP["Image PreProc"]
+        SN["Misc"]
+    end
+
+    Temp["Temporary"]
+    FS["FrameSync"]
+    QNN["QNN"]
+
+    IPP -- image --> FS
+    SN -- canbus --> FS
+    SN -- lidar2img --> FS
+    Temp -- prev_bev --> FS
+    Temp -- use_prev_flag --> FS
+
+    FS --> QNN
+
+    QNN -- bev_embed --> Temp
+
+    PP["PostProc"]
+
+    QNN -- all_cls_scores --> PP
+    QNN -- all_bbox_preds --> PP
+    QNN -- all_traj_preds --> PP
+    QNN -- "..." --> PP
+```
+
+| attribute            | required | type      | default       | comments |
+|----------------------|----------|-----------|---------------|----------|
+| temporal_tensor_type | true     | string    | ufixed_point8 | The temporal tensor type, options from [float32,ufixed_point8, ufixed_point16] |
+| temporal_tensor_dims | true     | string    |       -       | The temporal tensor dimensions, in format "N,H,W,C", "N,S,C", "N,C", or "N" depends on the number of dimensions. |
+| temporal_quant_scale | false    | float     | 1.0f          | The quantization scale of the quantize temporal tensor  |
+| temporal_quant_offset| false    | int       | 0             | The quantization offset of the quantize temporal tensor |
+| temporal_index       | false    | int       | 0             | The temporal tensor index of the outputs of the temporal model. |
+| use_flag_tensor_type | false    | string    |  -            | The use flag tensor type, options from [float32,ufixed_point8, ufixed_point16] |
+| use_flag_tensor_dims | true     | string    |       "1"     | The use flag tensor dimensions, in format "N,H,W,C", "N,S,C", "N,C", or "N" depends on the number of dimensions. |
+| use_flag_quant_scale | false    | float     | 1.0f          | The quantization scale of the quantize use flag tensor  |
+| use_flag_quant_offset| false    | int       | 0             | The quantization offset of the quantize use flag tensor |
+| input_topic          | true     | string    |      -        | the input topic name |
+| output_topic         | true     | string    |      -        | the output topic name |
+
+The command line template example:
+
+```sh
+  -n TEMP0 -t Temporal \
+    -k temporal_tensor_type -v ufixed_point8 -k temporal_tensor_dims -v "1,100,100,256" \
+    -k temporal_quant_scale -v 0.0230286 -k temporal_quant_offset -v -131 \
+    -k temporal_index -v 0 \
+    -k use_flag_tensor_type -v ufixed_point8 -k use_flag_tensor_dims -v "1" \
+    -k use_flag_quant_scale -v 0.003921576 -k use_flag_quant_offset -v 0 \
+    -k input_topic -v /sensor/camera/VAD0/qnn \
+    -k output_topic -v /sensor/camera/VAD0/temp \
 ```
 
 ## 3. Typical QCNode Sample Application pipelines
