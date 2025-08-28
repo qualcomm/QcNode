@@ -1,3 +1,5 @@
+- [The QCNode high level overview](./QCNode.md)
+
 - The QCNode building guideline
   - [How to build for HGY Linux](./build-hgy-linux.md)
   - [How to build for HGY Ubuntu](./build-hgy-ubuntu.md)

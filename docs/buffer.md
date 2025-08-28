@@ -1,14 +1,22 @@
 *Menu*:
-- [1. QCNode Buffer Data Structures](#1-qcnode-buffer-data-structures)
-    - [QCNode Buffer properties](#qcnode-buffer-properties)
-    - [QCNode Buffer Descriptors](#qcnode-buffer-descriptors)
-  - [1.1 The details of image properties.](#11-the-details-of-image-properties)
-- [1.2 The details of QCNode Buffer Descriptors.](#12-the-details-of-qcnode-buffer-descriptors)
+- [1. QCNode Buffer Related Types](#1-qcnode-buffer-related-types)
+  - [QCNode Buffer properties](#qcnode-buffer-properties)
+    - [The details of image properties.](#the-details-of-image-properties)
+  - [QCNode Buffer Descriptors](#qcnode-buffer-descriptors)
+    - [The details of QCNode Buffer Descriptors.](#the-details-of-qcnode-buffer-descriptors)
     - [`BufferDescriptor_t` Overview](#bufferdescriptor_t-overview)
     - [Key Concepts](#key-concepts)
     - [Typical Usage](#typical-usage)
     - [Special Use Case: BEV AI Model](#special-use-case-bev-ai-model)
     - [Memory Allocation Recommendation](#memory-allocation-recommendation)
+  - [QCNode Node Frame Descriptor](#qcnode-node-frame-descriptor)
+    - [Global Buffer Mapping in NodeFrameDescriptor](#global-buffer-mapping-in-nodeframedescriptor)
+    - [Example: Buffer Usage in a Simple QCNode Pipeline](#example-buffer-usage-in-a-simple-qcnode-pipeline)
+      - [Camera Node](#camera-node)
+      - [CL2DFlex Node](#cl2dflex-node)
+      - [QNN Node (Centernet)](#qnn-node-centernet)
+      - [VideoEncoder Node](#videoencoder-node)
+    - [⚠️ Application Responsibility \& Limitations in Sample Code](#️-application-responsibility--limitations-in-sample-code)
 - [2. QCNode buffer related APIs](#2-qcnode-buffer-related-apis)
 - [3. QCNode Buffer Descriptor Examples](#3-qcnode-buffer-descriptor-examples)
   - [3.1 A ImageDescriptor\_t image for BEV kind of AI model](#31-a-imagedescriptor_t-image-for-bev-kind-of-ai-model)
@@ -18,9 +26,9 @@
     - [3.4.1 Convert the RGB Image to the Tensor](#341-convert-the-rgb-image-to-the-tensor)
     - [3.4.2 Convert the NV12/P010 Image to the Luma and Chroma Tensor](#342-convert-the-nv12p010-image-to-the-luma-and-chroma-tensor)
 
-# 1. QCNode Buffer Data Structures
+# 1. QCNode Buffer Related Types
 
-### QCNode Buffer properties
+## QCNode Buffer properties
 
 These properties define the memory allocation strategy required to fulfill the specific needs of each QCNode. They guide the buffer manager in selecting the appropriate allocation method and configuring the buffer layout accordingly.
 
@@ -29,16 +37,7 @@ These properties define the memory allocation strategy required to fulfill the s
   - [ImageProps_t](../include/QC/Infras/Memory/ImageDescriptor.hpp#L113)
   - [TensorProps_t](../include/QC/Infras/Memory/TensorDescriptor.hpp#L28)
 
-### QCNode Buffer Descriptors
-
-The following descriptor types define the structure and metadata of buffers used by QCNode. Each descriptor corresponds to a specific buffer format and plays a critical role in managing memory and data layout.
-
-  - [BufferDescriptor_t](../include/QC/Infras/Memory/BufferDescriptor.hpp#L72)
-  - [ImageDescriptor_t](../include/QC/Infras/Memory/ImageDescriptor.hpp#L176)
-  - [TensorDescriptor_t](../include/QC/Infras/Memory/TensorDescriptor.hpp#L77)
-
-
-## 1.1 The details of image properties.
+### The details of image properties.
 
 Due to hardware constraints, the actual buffer used to store an image may have alignment padding along its width and height. This padding is primarily required for zero-copy operations, enabling the buffer to be shared with the hardware accelerator. However, for an image with certain width and height, it can has no padding at all.
 
@@ -54,11 +53,19 @@ And the below picture shows a case what's the actual buffer looks like for an im
 
 Thus now, it's easy to understand those members of the type [ImageProps_t](../include/QC/Infras/Memory/ImageDescriptor.hpp#L113) except batchSize.
 
-For the batchSize, it was generally designed for the BEV kind of AI models, check below section [3.1](#31-a-qcnode_sharedbuffer_t-image-for-bev-kind-of-ai-model).
+For the batchSize, it was generally designed for the BEV kind of AI models, check below section [3.1](#31-a-imagedescriptor_t-image-for-bev-kind-of-ai-model).
 
 For or the compressed image with the format H264 or H265, and the code [SANITY_CompressedImageAllocateByProps](../tests/unit_test/Infras/Memory/gtest_Memory.cpp#L340) which gives an example that how to allocate a buffer for a compressed image and this is the only way. And please note that for the compressed image, the member stride/actualHeight will be invalid and should not be used.
 
-# 1.2 The details of QCNode Buffer Descriptors.
+## QCNode Buffer Descriptors
+
+The following descriptor types define the structure and metadata of buffers used by QCNode. Each descriptor corresponds to a specific buffer format and plays a critical role in managing memory and data layout.
+
+  - [BufferDescriptor_t](../include/QC/Infras/Memory/BufferDescriptor.hpp#L72)
+  - [ImageDescriptor_t](../include/QC/Infras/Memory/ImageDescriptor.hpp#L176)
+  - [TensorDescriptor_t](../include/QC/Infras/Memory/TensorDescriptor.hpp#L77)
+
+### The details of QCNode Buffer Descriptors.
 
 ```mermaid
 classDiagram
@@ -176,6 +183,98 @@ imgDesc.imgProps.planeBufSize[numPlanes-1] = strideX*actualHeight;
 ```
 
 And another thing, the Buffer Descriptor can be shared between QCNode, but it has no life cycle management ability. Here, the QCNode Sample Application has a demo that using C++ std::shared_ptr to demonstrate that how to do the buffer life cycle management between the components that running in the same process but in different threads, refer [The QCNode Sample Buffer Life Cycle Management](./sample-buffer-life-cycle-management.md).
+
+## QCNode Node Frame Descriptor
+
+NodeFrameDescriptor is a concrete implementation of QCFrameDescriptorNodeIfs used by QCNode. It encapsulates a collection of buffer descriptors that represent DMA-accessible memory regions for raw data, images, or tensors.
+
+The role of each buffer descriptor in `NodeFrameDescriptor`—whether it serves as an input, output, or parameter—is determined by the specific QCNode implementation based on its buffer index, referred to as `globalBufferId`.
+
+  - [NodeFrameDescriptor](../include/QC/Node/NodeFrameDescriptor.hpp#L45)
+    - [GetBuffer](../include/QC/Node/NodeFrameDescriptor.hpp#L94)
+    - [SetBuffer](../include/QC/Node/NodeFrameDescriptor.hpp#L110)
+    - [Clear](../include/QC/Node/NodeFrameDescriptor.hpp#L128)
+
+### Global Buffer Mapping in NodeFrameDescriptor
+
+The user application can implement its own version of `NodeFrameDescriptor` tailored to its specific needs. The QCNode framework is designed to support a model where a **single `NodeFrameDescriptor` instance** is shared across multiple nodes in a processing pipeline. In this design, each node must know which buffer indices—referred to as `globalBufferId`s—it should interact with. This mapping of buffer roles (e.g., input, output, parameter) is defined in a **global buffer map**, which should be provided to each node during the initialization phase via a **JSON configuration string**.
+
+### Example: Buffer Usage in a Simple QCNode Pipeline
+
+Consider a simple pipeline:
+
+```mermaid
+graph LR
+    A[Camera] --> B[CL2DFlex]
+    B --> C["QNN e.g., Centernet"]
+    A --> D[VideoEncoder]
+```
+
+In this setup, we can define a shared `NodeFrameDescriptor` with the following buffer layout:
+
+```
+[cam_img, cl_rgb, heatmap, wh, reg, hevc]
+```
+
+```mermaid
+graph LR
+    subgraph NodeFrameDescriptor
+        B0["0: cam_img"]
+        B1["1: cl_rgb"]
+        B2["2: heatmap"]
+        B3["3: wh"]
+        B4["4: reg"]
+        B5["5: hevc"]
+    end
+
+    CameraNode["Camera Node"] -->|writes to| B0
+    B0 -->|read by| CL2DFlexNode["CL2DFlex Node"]
+    CL2DFlexNode -->|writes to| B1
+    B1 -->|read by| QNNNode["QNN Node"]
+    QNNNode -->|writes to| B2
+    QNNNode -->|writes to| B3
+    QNNNode -->|writes to| B4
+    B0 -->|read by| VideoEncoderNode["VideoEncoder Node"]
+    VideoEncoderNode -->|writes to| B5
+```
+
+#### Camera Node
+- **Buffer Index 0 (`cam_img`)**:  
+  The Camera node writes its output image to this buffer.
+
+#### CL2DFlex Node
+- **Input**:
+  Reads from **buffer index 0**, which contains the image produced by the Camera.
+- **Output**:
+  Writes the preprocessed RGB image to **buffer index 1 (`cl_rgb`)**.
+
+#### QNN Node (Centernet)
+- **Input**:
+  Reads from **buffer index 1**, the RGB image produced by CL2DFlex.
+- **Outputs**:
+  - **Buffer index 2 (`heatmap`)**: Centernet heatmap output  
+  - **Buffer index 3 (`wh`)**: Width-height regression output  
+  - **Buffer index 4 (`reg`)**: Offset regression output
+- For details, refer [QNN globalBufferIdMap configuration](../include/QC/Node/QNN.hpp#L105)
+
+#### VideoEncoder Node
+- **Input**:
+  Reads from **buffer index 0**, which contains the image produced by the Camera.
+- **Output**:
+  Writes the compressed hevc image to **buffer index 5 (`hevc`)**.
+
+### ⚠️ Application Responsibility & Limitations in Sample Code
+
+To correctly use a shared `NodeFrameDescriptor` across multiple QCNodes in a pipeline, the **application must be aware of the graph topology**—specifically, the number of buffer descriptors required and their roles (input, output, parameter) at each stage. This knowledge is essential to correctly size and populate the `NodeFrameDescriptor`.
+
+In the current QCNode source code, the **`QCNodeSampleApp` does not support this shared descriptor model**. Instead, each sample application demonstrates a single QCNode in isolation, using a `NodeFrameDescriptor` that contains **only the buffer descriptors relevant to that specific node**.
+
+As a result:
+- The shared buffer model is not demonstrated in the sample apps.
+- Developers integrating multiple nodes must manually manage the buffer layout and ensure consistency across nodes.
+- The global buffer map must be defined and passed during initialization, but this feature is **not yet fully supported by all QCNode implementations**.
+
+---
 
 # 2. QCNode buffer related APIs
 
