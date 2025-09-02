@@ -90,6 +90,17 @@ QCStatus_e QnnConfig::VerifyStaticConfig( DataTree &dt, std::string &errors )
         status = QC_STATUS_BAD_ARGUMENTS;
     }
 
+    std::string perfProfile = dt.Get<std::string>( "perfProfile", "default" );
+    if ( ( "low_balanced" != perfProfile ) && ( "balanced" != perfProfile ) &&
+         ( "default" != perfProfile ) && ( "high_performance" != perfProfile ) &&
+         ( "sustained_high_performance" != perfProfile ) && ( "burst" != perfProfile ) &&
+         ( "low_power_saver" != perfProfile ) && ( "power_saver" != perfProfile ) &&
+         ( "high_power_saver" != perfProfile ) && ( "extreme_power_saver" != perfProfile ) )
+    {
+        errors += "the perfProfile " + perfProfile + " is invalid, ";
+        status = QC_STATUS_BAD_ARGUMENTS;
+    }
+
     std::string loadType = dt.Get<std::string>( "loadType", "binary" );
     if ( ( "binary" == loadType ) || ( "library" == loadType ) )
     {
@@ -248,6 +259,50 @@ QCStatus_e QnnConfig::ParseStaticConfig( DataTree &dt, std::string &errors )
         {
             config.processorType = QNN_PROCESSOR_GPU;
         }
+
+        std::string perfProfile = dt.Get<std::string>( "perfProfile", "default" );
+        QC_DEBUG( "QNN perf profile: %s", perfProfile.c_str() );
+        if ( "low_balanced" == perfProfile )
+        {
+            config.perfProfile = QNN_PERF_PROFILE_LOW_BALANCED;
+        }
+        else if ( "balanced" == perfProfile )
+        {
+            config.perfProfile = QNN_PERF_PROFILE_BALANCED;
+        }
+        else if ( "high_performance" == perfProfile )
+        {
+            config.perfProfile = QNN_PERF_PROFILE_HIGH_PERFORMANCE;
+        }
+        else if ( "sustained_high_performance" == perfProfile )
+        {
+            config.perfProfile = QNN_PERF_PROFILE_SUSTAINED_HIGH_PERFORMANCE;
+        }
+        else if ( "burst" == perfProfile )
+        {
+            config.perfProfile = QNN_PERF_PROFILE_BURST;
+        }
+        else if ( "low_power_saver" == perfProfile )
+        {
+            config.perfProfile = QNN_PERF_PROFILE_LOW_POWER_SAVER;
+        }
+        else if ( "power_saver" == perfProfile )
+        {
+            config.perfProfile = QNN_PERF_PROFILE_POWER_SAVER;
+        }
+        else if ( "high_power_saver" == perfProfile )
+        {
+            config.perfProfile = QNN_PERF_PROFILE_HIGH_POWER_SAVER;
+        }
+        else if ( "extreme_power_saver" == perfProfile )
+        {
+            config.perfProfile = QNN_PERF_PROFILE_EXTREME_POWER_SAVER;
+        }
+        else
+        {
+            config.perfProfile = QNN_PERF_PROFILE_DEFAULT;
+        }
+
         config.coreIds = dt.Get<std::vector<uint32_t>>( "coreIds", std::vector<uint32_t>( { 0 } ) );
         std::string loadType = dt.Get<std::string>( "loadType", "binary" );
         if ( "binary" == loadType )

@@ -49,6 +49,7 @@
 | `udoPackages` | depends | object[]    | List of UDO packages. <br> Each object contains:<br> - `udoLibPath` (string)<br> - `interfaceProvider` (string) |
 | `globalBufferIdMap` | false | object[] | Mapping of buffer names to buffer indices in `QCFrameDescriptorNodeIfs`. <br>Each object contains:<br> - `name` (string)<br> - `id` (uint32_t)   |
 | `deRegisterAllBuffersWhenStop` | false | bool     | Flag to deregister all buffers when stopped      <br>Default: `false` |
+| `perfProfile` | false | string     | Specifies perf profile to set. <br> Options: `low_balanced`, `balanced`, `default`, `high_performance`, `sustained_high_performance`, `burst`, `low_power_saver`, `power_saver`, `high_power_saver`, `extreme_power_saver` <br> Default: `default` |
 
 - Example Configurations
   - Load QNN Model from a Serialized Context Binary
