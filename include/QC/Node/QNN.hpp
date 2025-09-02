@@ -53,7 +53,7 @@ typedef struct
  */
 class QnnImpl;
 
-class QnnConfig : public NodeConfigIfs
+class QnnConfig : public NodeConfigBase
 {
 public:
     /**
