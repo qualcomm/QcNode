@@ -145,8 +145,14 @@ QCStatus_e QnnImpl::GetQnnFunctionPointers( std::string backendPath, std::string
     bool foundValidInterface{ false };
     if ( QC_STATUS_OK == status )
     {
+        QC_DEBUG( "Looking QNN interface compatible with version %u.%u.%u", QNN_API_VERSION_MAJOR,
+                  QNN_API_VERSION_MINOR, QNN_API_VERSION_PATCH );
         for ( size_t pIdx = 0; pIdx < numProviders; pIdx++ )
         {
+            QC_DEBUG( "Found QNN interface with version %u.%u.%u",
+                      interfaceProviders[pIdx]->apiVersion.coreApiVersion.major,
+                      interfaceProviders[pIdx]->apiVersion.coreApiVersion.minor,
+                      interfaceProviders[pIdx]->apiVersion.coreApiVersion.patch );
             if ( QNN_API_VERSION_MAJOR ==
                          interfaceProviders[pIdx]->apiVersion.coreApiVersion.major &&
                  QNN_API_VERSION_MINOR <=
@@ -280,8 +286,15 @@ QCStatus_e QnnImpl::GetQnnSystemFunctionPointers( std::string systemLibraryPath 
         bool foundValidSystemInterface{ false };
         if ( QC_STATUS_OK == status )
         {
+            QC_DEBUG( "Looking system interface compatible with version %u.%u.%u",
+                      QNN_SYSTEM_API_VERSION_MAJOR, QNN_SYSTEM_API_VERSION_MINOR,
+                      QNN_SYSTEM_API_VERSION_PATCH );
             for ( size_t pIdx = 0; pIdx < numProviders; pIdx++ )
             {
+                QC_DEBUG( "Found system interface with version %u.%u.%u",
+                          systemInterfaceProviders[pIdx]->systemApiVersion.major,
+                          systemInterfaceProviders[pIdx]->systemApiVersion.minor,
+                          systemInterfaceProviders[pIdx]->systemApiVersion.patch );
                 if ( QNN_SYSTEM_API_VERSION_MAJOR ==
                              systemInterfaceProviders[pIdx]->systemApiVersion.major &&
                      QNN_SYSTEM_API_VERSION_MINOR <=

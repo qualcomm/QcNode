@@ -161,7 +161,7 @@ protected:
         ret = optionsDt.Get( "model.outputs", outputDts );
         ASSERT_EQ( QC_STATUS_OK, ret );
 
-        pFrameDesc = new QCSharedFrameDescriptorNode( inputDts.size() + outputDts.size() + 1 );
+        pFrameDesc = new NodeFrameDescriptor( inputDts.size() + outputDts.size() + 1 );
         uint32_t globalIdx = 0;
         inputs.reserve( inputDts.size() );
         for ( auto &inDt : inputDts )
@@ -250,12 +250,12 @@ protected:
 
     std::vector<TensorDescriptor_t> inputs;
     std::vector<TensorDescriptor_t> outputs;
-    QCSharedFrameDescriptorNode *pFrameDesc = nullptr;
+    NodeFrameDescriptor *pFrameDesc = nullptr;
 
     /* use to load from context buffer */
     std::shared_ptr<uint8_t> buffer = nullptr;
     uint64_t bufferSize{ 0 };
-    QCBufferDescriptorBase ctxBufDesc;
+    QCBufferDescriptorBase_t ctxBufDesc;
 };
 
 TEST_F( QnnTest, SANITY_General )
@@ -533,7 +533,7 @@ TEST( QNN, LoadOpPackage )
     ret = optionsDt.Get( "model.outputs", outputDts );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
-    QCSharedFrameDescriptorNode frameDesc( inputDts.size() + outputDts.size() + 1 );
+    NodeFrameDescriptor frameDesc( inputDts.size() + outputDts.size() + 1 );
     uint32_t globalIdx = 0;
     std::vector<TensorDescriptor_t> inputs;
     inputs.reserve( inputDts.size() );
@@ -693,7 +693,7 @@ TEST( QNN, CreateModelFromSo )
     ret = optionsDt.Get( "model.outputs", outputDts );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
-    QCSharedFrameDescriptorNode frameDesc( inputDts.size() + outputDts.size() + 1 );
+    NodeFrameDescriptor frameDesc( inputDts.size() + outputDts.size() + 1 );
     uint32_t globalIdx = 0;
     std::vector<TensorDescriptor_t> inputs;
     inputs.reserve( inputDts.size() );
@@ -786,7 +786,7 @@ TEST( QNN, DynamicBatchSize )
     ASSERT_EQ( QC_STATUS_OK, ret );
 
     uint32_t batchSize = 10;
-    QCSharedFrameDescriptorNode frameDesc( inputDts.size() + outputDts.size() + 1 );
+    NodeFrameDescriptor frameDesc( inputDts.size() + outputDts.size() + 1 );
     uint32_t globalIdx = 0;
     std::vector<TensorDescriptor_t> inputs;
     inputs.reserve( inputDts.size() );
@@ -895,7 +895,7 @@ TEST( QNN, BufferFree )
     ret = optionsDt.Get( "model.outputs", outputDts );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
-    QCSharedFrameDescriptorNode frameDesc( inputDts.size() + outputDts.size() + 1 );
+    NodeFrameDescriptor frameDesc( inputDts.size() + outputDts.size() + 1 );
     uint32_t globalIdx = 0;
     std::vector<TensorDescriptor_t> inputs;
     inputs.reserve( inputDts.size() );
@@ -1022,8 +1022,8 @@ TEST( QNN, OneBufferMutipleTensors )
     ret = optionsDt.Get( "model.outputs", outputDts );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
-    QCSharedFrameDescriptorNode frameDesc( inputDts.size() + outputDts.size() + 1 );
-    QCSharedFrameDescriptorNode frameDesc1( inputDts.size() + outputDts.size() + 1 );
+    NodeFrameDescriptor frameDesc( inputDts.size() + outputDts.size() + 1 );
+    NodeFrameDescriptor frameDesc1( inputDts.size() + outputDts.size() + 1 );
     uint32_t globalIdx = 0;
     uint32_t globalIdx1 = 0;
     std::vector<TensorDescriptor_t> inputs;
@@ -1150,7 +1150,7 @@ TEST( QNN, TestAccuracy )
     ret = optionsDt.Get( "model.outputs", outputDts );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
-    QCSharedFrameDescriptorNode frameDesc( inputDts.size() + outputDts.size() + 1 );
+    NodeFrameDescriptor frameDesc( inputDts.size() + outputDts.size() + 1 );
     uint32_t globalIdx = 0;
     std::vector<TensorDescriptor_t> inputs;
     inputs.reserve( inputDts.size() );
@@ -1277,7 +1277,7 @@ TEST( QNN, TwoModelWithSameBuffer )
     ret = optionsDt.Get( "model.outputs", outputDts );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
-    QCSharedFrameDescriptorNode frameDesc( inputDts.size() + outputDts.size() + 1 );
+    NodeFrameDescriptor frameDesc( inputDts.size() + outputDts.size() + 1 );
     uint32_t globalIdx = 0;
     std::vector<TensorDescriptor_t> inputs;
     inputs.reserve( inputDts.size() );
@@ -1384,7 +1384,7 @@ TEST( QNN, AsyncExecute )
     ret = optionsDt.Get( "model.outputs", outputDts );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
-    QCSharedFrameDescriptorNode frameDesc( inputDts.size() + outputDts.size() + 1 );
+    NodeFrameDescriptor frameDesc( inputDts.size() + outputDts.size() + 1 );
     uint32_t globalIdx = 0;
     std::vector<TensorDescriptor_t> inputs;
     inputs.reserve( inputDts.size() );
@@ -1519,7 +1519,7 @@ TEST( QNN, InputOutputCheck )
     ret = optionsDt.Get( "model.outputs", outputDts );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
-    QCSharedFrameDescriptorNode frameDesc( inputDts.size() + outputDts.size() + 1 );
+    NodeFrameDescriptor frameDesc( inputDts.size() + outputDts.size() + 1 );
     uint32_t globalIdx = 0;
     std::vector<TensorDescriptor_t> inputs;
     inputs.reserve( inputDts.size() );
@@ -1552,7 +1552,7 @@ TEST( QNN, InputOutputCheck )
         globalIdx++;
     }
 
-    QCSharedFrameDescriptorNode frameDesc2( inputDts.size() + outputDts.size() + 1 );
+    NodeFrameDescriptor frameDesc2( inputDts.size() + outputDts.size() + 1 );
     QCBufferDescriptorBase_t dummy = frameDesc.GetBuffer( inputDts.size() + outputDts.size() + 1 );
 
     // force input 0 as invalid dummy buffer
@@ -1669,7 +1669,7 @@ TEST( QNN, ExecuteWithRegDeRegEachTime )
     ret = optionsDt.Get( "model.outputs", outputDts );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
-    QCSharedFrameDescriptorNode frameDesc( inputDts.size() + outputDts.size() + 1 );
+    NodeFrameDescriptor frameDesc( inputDts.size() + outputDts.size() + 1 );
     uint32_t globalIdx = 0;
     std::vector<TensorDescriptor_t> inputs;
     inputs.reserve( inputDts.size() );
@@ -1769,7 +1769,7 @@ TEST( QNN, ExecuteWithAllocBufferEachTime )
     ret = optionsDt.Get( "model.outputs", outputDts );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
-    QCSharedFrameDescriptorNode frameDesc( inputDts.size() + outputDts.size() + 1 );
+    NodeFrameDescriptor frameDesc( inputDts.size() + outputDts.size() + 1 );
 
     uint32_t loopNumber = 100;
     const char *envValue = getenv( "QNN_TEST_LOOP_NUMBER" );
@@ -1881,7 +1881,7 @@ TEST( QNN, InitDeInitializeStress )
         ret = optionsDt.Get( "model.outputs", outputDts );
         ASSERT_EQ( QC_STATUS_OK, ret );
 
-        QCSharedFrameDescriptorNode frameDesc( inputDts.size() + outputDts.size() + 1 );
+        NodeFrameDescriptor frameDesc( inputDts.size() + outputDts.size() + 1 );
         uint32_t globalIdx = 0;
         std::vector<TensorDescriptor_t> inputs;
         inputs.reserve( inputDts.size() );

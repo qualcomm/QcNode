@@ -277,8 +277,8 @@ public:
         {
             m_inputBuffers.resize( m_inputsInfo.size() );
             m_outputBuffers.resize( m_outputsInfo.size() );
-            m_pFrameDesc = new QCSharedFrameDescriptorNode( m_inputsInfo.size() +
-                                                            m_outputsInfo.size() + 1 );
+            m_pFrameDesc =
+                    new NodeFrameDescriptor( m_inputsInfo.size() + m_outputsInfo.size() + 1 );
         }
 
         for ( size_t i = 0; ( i < m_inputsInfo.size() ) && ( QC_STATUS_OK == ret ); i++ )
@@ -514,7 +514,7 @@ private:
 
     BufferManager m_bufMgr;
 
-    QCSharedFrameDescriptorNode *m_pFrameDesc;
+    NodeFrameDescriptor *m_pFrameDesc;
 };
 
 bool ThreadMain( int nLoops, std::vector<std::shared_ptr<QnnTestRunner>> runners )
