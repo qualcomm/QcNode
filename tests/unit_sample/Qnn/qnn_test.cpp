@@ -578,6 +578,9 @@ int Usage( char *prog, int error )
             "    -a: enable async execution mode.\n"
             "    -q priotity: specify the QNN model priority, options: [low, normal, normal_high, "
             "high]\n"
+            "    -f perf_profile:  perf profile to set, options: [low_balanced, balanced, default, "
+            "high_performance, sustained_high_performance, burst, low_power_saver, power_saver, "
+            "high_power_saver, extreme_power_saver]\n"
             "  Repeat above options to create multiple testers\n"
             "  Other miscellaneous options:\n"
             "    -d: disable dumping outputs even if the input raw files specified\n",
@@ -591,7 +594,7 @@ int main( int argc, char *argv[] )
     std::vector<QnnTest_Parameters_t> paramsList;
 
     int flags, opt;
-    while ( ( opt = getopt( argc, argv, "an:m:p:c:b:u:t:l:i:P:S:q:dh" ) ) != -1 )
+    while ( ( opt = getopt( argc, argv, "af:n:m:p:c:b:u:t:l:i:P:S:q:dh" ) ) != -1 )
     {
         switch ( opt )
         {
@@ -599,6 +602,12 @@ int main( int argc, char *argv[] )
             {
                 QnnTest_Parameters_t &params = paramsList.back();
                 params.bAsync = true;
+                break;
+            }
+            case 'f':
+            {
+                QnnTest_Parameters_t &params = paramsList.back();
+                params.dt.Set<std::string>( "perfProfile", optarg );
                 break;
             }
             case 'n':

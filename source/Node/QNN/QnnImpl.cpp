@@ -806,9 +806,9 @@ QnnLog_Level_t QnnImpl::GetQnnLogLevel( Logger_Level_e level )
     return qnnLogLevel;
 }
 
-int QnnImpl::GetQnnDeviceId( Qnn_ProcessorType_e processorType )
+uint32_t QnnImpl::GetQnnDeviceId( Qnn_ProcessorType_e processorType )
 {
-    int deviceId = INT32_MAX;
+    uint32_t deviceId = UINT32_MAX;
     switch ( processorType )
     {
         case QNN_PROCESSOR_HTP0:
@@ -1052,6 +1052,276 @@ QCStatus_e QnnImpl::CreateFromBinaryFile( std::string modelFile )
     return status;
 }
 
+
+static const int sg_lowerLatency = 40;      // Should be used on V66 and above only
+static const int sg_lowLatency = 100;       // This will limit sleep modes available while running
+static const int sg_mediumLatency = 1000;   // This will limit sleep modes available while running
+
+QCStatus_e QnnImpl::SetHtpPerformanceMode()
+{
+    QCStatus_e status = QC_STATUS_OK;
+    QnnDevice_Infrastructure_t deviceInfra = nullptr;
+    Qnn_ErrorHandle_t retVal;
+    QnnHtpPerfInfrastructure_PowerConfig_t powerConfig;
+    memset( &powerConfig, 0, sizeof( powerConfig ) );
+
+#if ( QC_TARGET_SOC == 8797 )
+    QnnHtpPerfInfrastructure_PowerConfig_t powerHmxConfig;
+    memset( &powerHmxConfig, 0, sizeof( powerHmxConfig ) );
+#endif
+
+    QC_INFO( "set HTP perf mode: %d", m_config.perfProfile );
+
+    retVal = m_qnnFunctionPointers.qnnInterface.deviceGetInfrastructure( &deviceInfra );
+    if ( QNN_SUCCESS != retVal )
+    {
+        QC_ERROR( "Failure in deviceGetInfrastructure() = %" PRIu64, retVal );
+        status = QC_STATUS_FAIL;
+    }
+
+    if ( QC_STATUS_OK == status )
+    {
+        QnnHtpDevice_Infrastructure_t *htpInfra =
+                static_cast<QnnHtpDevice_Infrastructure_t *>( deviceInfra );
+        m_perfInfra = &( htpInfra->perfInfra );
+        m_powerConfigIds.reserve( m_config.coreIds.size() );
+        for ( size_t i = 0; i < m_config.coreIds.size(); i++ )
+        {
+            uint32_t deviceId = GetQnnDeviceId( m_config.processorType );
+            uint32_t coreId = m_config.coreIds[i];
+            QnnDevice_HardwareDeviceInfo_t &hwDevice = m_platformInfo->v1.hwDevices[deviceId];
+            deviceId = hwDevice.v1.deviceId;
+            coreId = hwDevice.v1.cores->v1.coreId;
+            uint32_t powerConfigId = UINT32_MAX;
+            retVal = m_perfInfra->createPowerConfigId( deviceId, coreId, &powerConfigId );
+            if ( QNN_SUCCESS != retVal )
+            {
+                QC_ERROR( "Failure in createPowerConfigId() for device %u core %u = %" PRIu64,
+                          deviceId, coreId, retVal );
+                status = QC_STATUS_FAIL;
+                break;
+            }
+            else
+            {
+                m_powerConfigIds.push_back( powerConfigId );
+            }
+        }
+    }
+
+    if ( QC_STATUS_OK == status )
+    {
+        powerConfig.option = QNN_HTP_PERF_INFRASTRUCTURE_POWER_CONFIGOPTION_DCVS_V3;
+        // keep dcvs enabled for powerMode to take effect
+        powerConfig.dcvsV3Config.dcvsEnable = 0;
+        powerConfig.dcvsV3Config.setDcvsEnable = 1;
+
+        // during init & inferencing, vote in performance mode
+        powerConfig.dcvsV3Config.powerMode = QNN_HTP_PERF_INFRASTRUCTURE_POWERMODE_PERFORMANCE_MODE;
+        powerConfig.dcvsV3Config.setSleepLatency = 1;
+        powerConfig.dcvsV3Config.setBusParams = 1;
+        powerConfig.dcvsV3Config.setCoreParams = 1;
+        powerConfig.dcvsV3Config.sleepDisable = 0;
+        powerConfig.dcvsV3Config.setSleepDisable = 0;
+
+#if ( QC_TARGET_SOC == 8797 )
+        powerHmxConfig.option = QNN_HTP_PERF_INFRASTRUCTURE_POWER_CONFIGOPTION_HMX_V2;
+        powerHmxConfig.hmxV2Config.hmxPickDefault = 0;
+#endif
+
+        switch ( m_config.perfProfile )
+        {
+            case QNN_PERF_PROFILE_BURST:
+                powerConfig.dcvsV3Config.sleepLatency = sg_lowerLatency;
+                powerConfig.dcvsV3Config.busVoltageCornerMin =
+                        DCVS_VOLTAGE_VCORNER_MAX_VOLTAGE_CORNER;
+                powerConfig.dcvsV3Config.busVoltageCornerTarget =
+                        DCVS_VOLTAGE_VCORNER_MAX_VOLTAGE_CORNER;
+                powerConfig.dcvsV3Config.busVoltageCornerMax =
+                        DCVS_VOLTAGE_VCORNER_MAX_VOLTAGE_CORNER;
+                powerConfig.dcvsV3Config.coreVoltageCornerMin =
+                        DCVS_VOLTAGE_VCORNER_MAX_VOLTAGE_CORNER;
+                powerConfig.dcvsV3Config.coreVoltageCornerTarget =
+                        DCVS_VOLTAGE_VCORNER_MAX_VOLTAGE_CORNER;
+                powerConfig.dcvsV3Config.coreVoltageCornerMax =
+                        DCVS_VOLTAGE_VCORNER_MAX_VOLTAGE_CORNER;
+
+#if ( QC_TARGET_SOC == 8797 )
+                powerHmxConfig.hmxV2Config.hmxPerfMode = QNN_HTP_PERF_INFRASTRUCTURE_CLK_PERF_HIGH;
+                powerHmxConfig.hmxV2Config.hmxVoltageCornerMin = DCVS_EXP_VCORNER_MAX;
+                powerHmxConfig.hmxV2Config.hmxVoltageCornerTarget = DCVS_EXP_VCORNER_MAX;
+                powerHmxConfig.hmxV2Config.hmxVoltageCornerMax = DCVS_EXP_VCORNER_MAX;
+#endif
+                break;
+            case QNN_PERF_PROFILE_SUSTAINED_HIGH_PERFORMANCE:
+            case QNN_PERF_PROFILE_HIGH_PERFORMANCE:
+                powerConfig.dcvsV3Config.sleepLatency = sg_lowLatency;
+                powerConfig.dcvsV3Config.busVoltageCornerMin = DCVS_VOLTAGE_VCORNER_TURBO;
+                powerConfig.dcvsV3Config.busVoltageCornerTarget = DCVS_VOLTAGE_VCORNER_TURBO;
+                powerConfig.dcvsV3Config.busVoltageCornerMax = DCVS_VOLTAGE_VCORNER_TURBO;
+                powerConfig.dcvsV3Config.coreVoltageCornerMin = DCVS_VOLTAGE_VCORNER_TURBO;
+                powerConfig.dcvsV3Config.coreVoltageCornerTarget = DCVS_VOLTAGE_VCORNER_TURBO;
+                powerConfig.dcvsV3Config.coreVoltageCornerMax = DCVS_VOLTAGE_VCORNER_TURBO;
+
+#if ( QC_TARGET_SOC == 8797 )
+                powerHmxConfig.hmxV2Config.hmxPerfMode = QNN_HTP_PERF_INFRASTRUCTURE_CLK_PERF_HIGH;
+                powerHmxConfig.hmxV2Config.hmxVoltageCornerMin = DCVS_EXP_VCORNER_TUR;
+                powerHmxConfig.hmxV2Config.hmxVoltageCornerTarget = DCVS_EXP_VCORNER_TUR;
+                powerHmxConfig.hmxV2Config.hmxVoltageCornerMax = DCVS_EXP_VCORNER_TUR;
+#endif
+                break;
+            case QNN_PERF_PROFILE_POWER_SAVER:
+                powerConfig.dcvsV3Config.powerMode =
+                        QNN_HTP_PERF_INFRASTRUCTURE_POWERMODE_POWER_SAVER_MODE;
+                powerConfig.dcvsV3Config.sleepLatency = sg_mediumLatency;
+                powerConfig.dcvsV3Config.busVoltageCornerMin = DCVS_VOLTAGE_VCORNER_SVS;
+                powerConfig.dcvsV3Config.busVoltageCornerTarget = DCVS_VOLTAGE_VCORNER_SVS;
+                powerConfig.dcvsV3Config.busVoltageCornerMax = DCVS_VOLTAGE_VCORNER_SVS;
+                powerConfig.dcvsV3Config.coreVoltageCornerMin = DCVS_VOLTAGE_VCORNER_SVS;
+                powerConfig.dcvsV3Config.coreVoltageCornerTarget = DCVS_VOLTAGE_VCORNER_SVS;
+                powerConfig.dcvsV3Config.coreVoltageCornerMax = DCVS_VOLTAGE_VCORNER_SVS;
+
+#if ( QC_TARGET_SOC == 8797 )
+                powerHmxConfig.hmxV2Config.hmxPerfMode = QNN_HTP_PERF_INFRASTRUCTURE_CLK_PERF_LOW;
+                powerHmxConfig.hmxV2Config.hmxVoltageCornerMin = DCVS_EXP_VCORNER_SVS;
+                powerHmxConfig.hmxV2Config.hmxVoltageCornerTarget = DCVS_EXP_VCORNER_SVS;
+                powerHmxConfig.hmxV2Config.hmxVoltageCornerMax = DCVS_EXP_VCORNER_SVS;
+#endif
+                break;
+            case QNN_PERF_PROFILE_LOW_POWER_SAVER:
+                powerConfig.dcvsV3Config.powerMode =
+                        QNN_HTP_PERF_INFRASTRUCTURE_POWERMODE_POWER_SAVER_MODE;
+                powerConfig.dcvsV3Config.sleepLatency = sg_mediumLatency;
+                powerConfig.dcvsV3Config.busVoltageCornerMin = DCVS_VOLTAGE_VCORNER_SVS2;
+                powerConfig.dcvsV3Config.busVoltageCornerTarget = DCVS_VOLTAGE_VCORNER_SVS2;
+                powerConfig.dcvsV3Config.busVoltageCornerMax = DCVS_VOLTAGE_VCORNER_SVS2;
+                powerConfig.dcvsV3Config.coreVoltageCornerMin = DCVS_VOLTAGE_VCORNER_SVS2;
+                powerConfig.dcvsV3Config.coreVoltageCornerTarget = DCVS_VOLTAGE_VCORNER_SVS2;
+                powerConfig.dcvsV3Config.coreVoltageCornerMax = DCVS_VOLTAGE_VCORNER_SVS2;
+
+#if ( QC_TARGET_SOC == 8797 )
+                powerHmxConfig.hmxV2Config.hmxPerfMode = QNN_HTP_PERF_INFRASTRUCTURE_CLK_PERF_LOW;
+                powerHmxConfig.hmxV2Config.hmxVoltageCornerMin = DCVS_EXP_VCORNER_LOW_SVS_D2;
+                powerHmxConfig.hmxV2Config.hmxVoltageCornerTarget = DCVS_EXP_VCORNER_LOW_SVS_D2;
+                powerHmxConfig.hmxV2Config.hmxVoltageCornerMax = DCVS_EXP_VCORNER_LOW_SVS_D2;
+#endif
+                break;
+            case QNN_PERF_PROFILE_HIGH_POWER_SAVER:
+                powerConfig.dcvsV3Config.powerMode =
+                        QNN_HTP_PERF_INFRASTRUCTURE_POWERMODE_POWER_SAVER_MODE;
+                powerConfig.dcvsV3Config.sleepLatency = sg_mediumLatency;
+                powerConfig.dcvsV3Config.busVoltageCornerMin = DCVS_VOLTAGE_VCORNER_SVS_PLUS;
+                powerConfig.dcvsV3Config.busVoltageCornerTarget = DCVS_VOLTAGE_VCORNER_SVS_PLUS;
+                powerConfig.dcvsV3Config.busVoltageCornerMax = DCVS_VOLTAGE_VCORNER_SVS_PLUS;
+                powerConfig.dcvsV3Config.coreVoltageCornerMin = DCVS_VOLTAGE_VCORNER_SVS_PLUS;
+                powerConfig.dcvsV3Config.coreVoltageCornerTarget = DCVS_VOLTAGE_VCORNER_SVS_PLUS;
+                powerConfig.dcvsV3Config.coreVoltageCornerMax = DCVS_VOLTAGE_VCORNER_SVS_PLUS;
+
+#if ( QC_TARGET_SOC == 8797 )
+                powerHmxConfig.hmxV2Config.hmxPerfMode = QNN_HTP_PERF_INFRASTRUCTURE_CLK_PERF_LOW;
+                powerHmxConfig.hmxV2Config.hmxVoltageCornerMin = DCVS_EXP_VCORNER_LOW_SVS_D2;
+                powerHmxConfig.hmxV2Config.hmxVoltageCornerTarget = DCVS_EXP_VCORNER_LOW_SVS_D2;
+                powerHmxConfig.hmxV2Config.hmxVoltageCornerMax = DCVS_EXP_VCORNER_LOW_SVS_D2;
+#endif
+                break;
+            case QNN_PERF_PROFILE_EXTREME_POWER_SAVER:
+                powerConfig.dcvsV3Config.powerMode =
+                        QNN_HTP_PERF_INFRASTRUCTURE_POWERMODE_POWER_SAVER_MODE;
+                powerConfig.dcvsV3Config.sleepLatency = sg_mediumLatency;
+                powerConfig.dcvsV3Config.busVoltageCornerMin = DCVS_VOLTAGE_CORNER_DISABLE;
+                powerConfig.dcvsV3Config.busVoltageCornerTarget = DCVS_VOLTAGE_CORNER_DISABLE;
+                powerConfig.dcvsV3Config.busVoltageCornerMax = DCVS_VOLTAGE_CORNER_DISABLE;
+                powerConfig.dcvsV3Config.coreVoltageCornerMin = DCVS_VOLTAGE_CORNER_DISABLE;
+                powerConfig.dcvsV3Config.coreVoltageCornerTarget = DCVS_VOLTAGE_CORNER_DISABLE;
+                powerConfig.dcvsV3Config.coreVoltageCornerMax = DCVS_VOLTAGE_CORNER_DISABLE;
+
+#if ( QC_TARGET_SOC == 8797 )
+                powerHmxConfig.hmxV2Config.hmxPerfMode = QNN_HTP_PERF_INFRASTRUCTURE_CLK_PERF_LOW;
+                powerHmxConfig.hmxV2Config.hmxVoltageCornerMin = DCVS_EXP_VCORNER_LOW_SVS_D2;
+                powerHmxConfig.hmxV2Config.hmxVoltageCornerTarget = DCVS_EXP_VCORNER_LOW_SVS_D2;
+                powerHmxConfig.hmxV2Config.hmxVoltageCornerMax = DCVS_EXP_VCORNER_LOW_SVS_D2;
+#endif
+                break;
+            case QNN_PERF_PROFILE_LOW_BALANCED:
+                powerConfig.dcvsV3Config.sleepLatency = sg_mediumLatency;
+                powerConfig.dcvsV3Config.busVoltageCornerMin = DCVS_VOLTAGE_VCORNER_NOM;
+                powerConfig.dcvsV3Config.busVoltageCornerTarget = DCVS_VOLTAGE_VCORNER_NOM;
+                powerConfig.dcvsV3Config.busVoltageCornerMax = DCVS_VOLTAGE_VCORNER_NOM;
+                powerConfig.dcvsV3Config.coreVoltageCornerMin = DCVS_VOLTAGE_VCORNER_NOM;
+                powerConfig.dcvsV3Config.coreVoltageCornerTarget = DCVS_VOLTAGE_VCORNER_NOM;
+                powerConfig.dcvsV3Config.coreVoltageCornerMax = DCVS_VOLTAGE_VCORNER_NOM;
+
+#if ( QC_TARGET_SOC == 8797 )
+                powerHmxConfig.hmxV2Config.hmxPerfMode = QNN_HTP_PERF_INFRASTRUCTURE_CLK_PERF_HIGH;
+                powerHmxConfig.hmxV2Config.hmxVoltageCornerMin = DCVS_EXP_VCORNER_NOM;
+                powerHmxConfig.hmxV2Config.hmxVoltageCornerTarget = DCVS_EXP_VCORNER_NOM;
+                powerHmxConfig.hmxV2Config.hmxVoltageCornerMax = DCVS_EXP_VCORNER_NOM;
+#endif
+                break;
+            case QNN_PERF_PROFILE_BALANCED:
+                powerConfig.dcvsV3Config.sleepLatency = sg_mediumLatency;
+                powerConfig.dcvsV3Config.busVoltageCornerMin = DCVS_VOLTAGE_VCORNER_NOM_PLUS;
+                powerConfig.dcvsV3Config.busVoltageCornerTarget = DCVS_VOLTAGE_VCORNER_NOM_PLUS;
+                powerConfig.dcvsV3Config.busVoltageCornerMax = DCVS_VOLTAGE_VCORNER_NOM_PLUS;
+                powerConfig.dcvsV3Config.coreVoltageCornerMin = DCVS_VOLTAGE_VCORNER_NOM_PLUS;
+                powerConfig.dcvsV3Config.coreVoltageCornerTarget = DCVS_VOLTAGE_VCORNER_NOM_PLUS;
+                powerConfig.dcvsV3Config.coreVoltageCornerMax = DCVS_VOLTAGE_VCORNER_NOM_PLUS;
+
+#if ( QC_TARGET_SOC == 8797 )
+                powerHmxConfig.hmxV2Config.hmxPerfMode = QNN_HTP_PERF_INFRASTRUCTURE_CLK_PERF_HIGH;
+                powerHmxConfig.hmxV2Config.hmxVoltageCornerMin = DCVS_EXP_VCORNER_NOM_L1;
+                powerHmxConfig.hmxV2Config.hmxVoltageCornerTarget = DCVS_EXP_VCORNER_NOM_L1;
+                powerHmxConfig.hmxV2Config.hmxVoltageCornerMax = DCVS_EXP_VCORNER_NOM_L1;
+#endif
+                break;
+            default:
+                QC_ERROR( "Invalid performance profile %d to set power configs",
+                          m_config.perfProfile );
+                status = QC_STATUS_FAIL;
+                break;
+        }
+    }
+    if ( QC_STATUS_OK == status )
+    {
+        // Set power config with different performance parameters
+        for ( uint32_t &powerConfigId : m_powerConfigIds )
+        {
+            powerConfig.dcvsV3Config.contextId = powerConfigId;
+            const QnnHtpPerfInfrastructure_PowerConfig_t *powerConfigs[] = { &powerConfig,
+#if ( QC_TARGET_SOC == 8797 )
+                                                                             &powerHmxConfig,
+#endif
+                                                                             NULL };
+            retVal = m_perfInfra->setPowerConfig( powerConfigId, powerConfigs );
+            if ( QNN_SUCCESS != retVal )
+            {
+                QC_ERROR( "Failure in setPowerConfig() = %" PRIu64, retVal );
+                status = QC_STATUS_FAIL;
+            }
+        }
+    }
+
+
+    return status;
+}
+
+QCStatus_e QnnImpl::SetPerformanceMode()
+{
+    QCStatus_e status = QC_STATUS_OK;
+
+    if ( QNN_PERF_PROFILE_DEFAULT != m_config.perfProfile )
+    {
+        if ( ( QNN_PROCESSOR_HTP0 == m_config.processorType ) ||
+             ( QNN_PROCESSOR_HTP1 == m_config.processorType ) ||
+             ( QNN_PROCESSOR_HTP2 == m_config.processorType ) ||
+             ( QNN_PROCESSOR_HTP3 == m_config.processorType ) )
+        {
+            status = SetHtpPerformanceMode();
+        }
+    }
+
+    return status;
+}
+
 QCStatus_e
 QnnImpl::Initialize( QCNodeEventCallBack_t callback,
                      std::vector<std::reference_wrapper<QCBufferDescriptorBase>> &buffers )
@@ -1221,8 +1491,8 @@ QnnImpl::Initialize( QCNodeEventCallBack_t callback,
                              deviceInfo.deviceType, deviceInfo.numCores );
                 }
                 std::vector<QnnDevice_CoreInfo_t> coreInfo;
-                int deviceId = GetQnnDeviceId( m_config.processorType );
-                if ( deviceId < (int) m_platformInfo->v1.numHwDevices )
+                uint32_t deviceId = GetQnnDeviceId( m_config.processorType );
+                if ( deviceId < m_platformInfo->v1.numHwDevices )
                 {
                     QnnDevice_HardwareDeviceInfo_t hwDevice =
                             m_platformInfo->v1.hwDevices[deviceId];
@@ -1276,7 +1546,17 @@ QnnImpl::Initialize( QCNodeEventCallBack_t callback,
                     }
                 }
             }
+            else
+            {
+                QC_ERROR( "platform info version %d not supported", m_platformInfo->version );
+                status = QC_STATUS_UNSUPPORTED;
+            }
         }
+    }
+
+    if ( QC_STATUS_OK == status )
+    {
+        status = SetPerformanceMode();
     }
 
     if ( QC_STATUS_OK == status )
@@ -1588,6 +1868,11 @@ QCStatus_e QnnImpl::ValidateTensor( const TensorDescriptor_t &tensorDesc,
     const uint32_t rank = QNN_TENSOR_GET_RANK( &tensor );
     const uint32_t *dimensions = QNN_TENSOR_GET_DIMENSIONS( &tensor );
     const char *pName = QNN_TENSOR_GET_NAME( &tensor );
+
+    QC_DEBUG( "input %s: type %d dims = [%u, %u, %u, %u, %u, %u, %u, %u], numDims = %u",
+              tensorDesc.name.c_str() ?: "null", tensorDesc.tensorType, tensorDesc.dims[0],
+              tensorDesc.dims[1], tensorDesc.dims[2], tensorDesc.dims[3], tensorDesc.dims[4],
+              tensorDesc.dims[5], tensorDesc.dims[6], tensorDesc.dims[7], tensorDesc.numDims );
 
     if ( tensorDesc.pBuf == nullptr )
     {
@@ -2081,6 +2366,20 @@ QCStatus_e QnnImpl::Destroy()
             status = QC_STATUS_FAIL;
         }
         m_context = nullptr;
+    }
+
+    if ( nullptr != m_perfInfra )
+    {
+        for ( uint32_t &powerConfigId : m_powerConfigIds )
+        {
+            retVal = m_perfInfra->destroyPowerConfigId( powerConfigId );
+            if ( QNN_CONTEXT_NO_ERROR != retVal )
+            {
+                QC_ERROR( "Could not destroy power config Id. Error is %" PRIu64, retVal );
+                status = QC_STATUS_FAIL;
+            }
+        }
+        m_perfInfra = nullptr;
     }
 
     if ( nullptr != m_deviceHandle )
