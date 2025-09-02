@@ -128,6 +128,7 @@ QCStatus_e SampleQnn::ParseConfig( SampleConfig_t &config )
     dt.Set<std::string>( "processorType", Get( config, "processor", "htp0" ) );
     dt.Set<uint32_t>( "coreIds", coreIds );
     dt.Set( "udoPackages", udoPkgs );
+    dt.Set<std::string>( "perfProfile", Get( config, "perf_profile", "default" ) );
     m_dataTree.Set( "static", dt );
     m_processor = Get( config, "processor", QC_PROCESSOR_HTP0 );
     m_rsmPriority = Get( config, "rsm_priority", 0 );

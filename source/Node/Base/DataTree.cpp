@@ -100,7 +100,6 @@ QCStatus_e DataTree::Get( const std::string &key, std::vector<DataTree> &dts )
     std::istringstream ss( key );
     std::string token;
     const json *pCurrent = &m_json;
-    std::vector<DataTree> retV;
     QCStatus_e status = QC_STATUS_OK;
 
     while ( std::getline( ss, token, '.' ) )
