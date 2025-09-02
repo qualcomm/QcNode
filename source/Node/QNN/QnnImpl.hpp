@@ -5,6 +5,7 @@
 #ifndef QC_NODE_QNN_IMPL_HPP
 #define QC_NODE_QNN_IMPL_HPP
 
+#include "HTP/QnnHtpDevice.h"
 #include "QC/Infras/Memory/TensorDescriptor.hpp"
 #include "QC/Node/QNN.hpp"
 #include "QnnInterface.h"
@@ -37,6 +38,20 @@ typedef enum
     QNN_PROCESSOR_GPU,
     QNN_PROCESSOR_MAX
 } Qnn_ProcessorType_e;
+
+typedef enum
+{
+    QNN_PERF_PROFILE_EXTREME_POWER_SAVER,
+    QNN_PERF_PROFILE_HIGH_POWER_SAVER,
+    QNN_PERF_PROFILE_LOW_POWER_SAVER,
+    QNN_PERF_PROFILE_POWER_SAVER,
+    QNN_PERF_PROFILE_LOW_BALANCED,
+    QNN_PERF_PROFILE_BALANCED,
+    QNN_PERF_PROFILE_DEFAULT,
+    QNN_PERF_PROFILE_HIGH_PERFORMANCE,
+    QNN_PERF_PROFILE_SUSTAINED_HIGH_PERFORMANCE,
+    QNN_PERF_PROFILE_BURST,
+} Qnn_PerfProfile_e;
 
 /**
  * @brief Represents metadata for a UDO (User-Defined Operation) package.
@@ -139,6 +154,7 @@ typedef struct QnnImplConfig : public QCNodeConfigBase_t
     std::vector<uint32_t> bufferIds;
     std::vector<QCNodeBufferMapEntry_t> globalBufferIdMap;
     bool bDeRegisterAllBuffersWhenStop;
+    Qnn_PerfProfile_e perfProfile;
 } QnnImplConfig_t;
 
 // TODO
@@ -289,7 +305,7 @@ private:
     void QnnNotifyFn( NotifyParam_t *pNotifyParam, Qnn_NotifyStatus_t notifyStatus );
 
     QnnLog_Level_t GetQnnLogLevel( Logger_Level_e level );
-    int GetQnnDeviceId( Qnn_ProcessorType_e processorType );
+    uint32_t GetQnnDeviceId( Qnn_ProcessorType_e processorType );
     QCStatus_e LoadOpPackages( std::vector<Qnn_UdoPackage_t> &udoPackages );
 
     QCStatus_e CreateFromModelSo( std::string modelFile );
@@ -331,6 +347,8 @@ private:
     QCStatus_e FreeQnnTensor( Qnn_Tensor_t &tensor );
     QCStatus_e FreeQnnTensors( Qnn_Tensor_t *&tensors, uint32_t numTensors );
     QCStatus_e FreeGraphsInfo( qnn_wrapper_api::GraphInfoPtr_t **graphsInfo, uint32_t numGraphs );
+    QCStatus_e SetHtpPerformanceMode();
+    QCStatus_e SetPerformanceMode();
 
 private:
     QCNodeID_t &m_nodeId;
@@ -381,6 +399,9 @@ private:
     uint32_t m_inputTensorNum;
     uint32_t m_outputTensorNum;
     uint32_t m_bufferDescNum;
+
+    std::vector<uint32_t> m_powerConfigIds;
+    QnnHtpDevice_PerfInfrastructure_t *m_perfInfra{ nullptr };
 
     std::vector<Qnn_Tensor_t> m_inputs;
     std::vector<Qnn_Tensor_t> m_outputs;
