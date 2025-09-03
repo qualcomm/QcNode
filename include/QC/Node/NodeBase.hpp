@@ -18,6 +18,7 @@
 #include "QC/Infras/Log/Logger.hpp"
 #include "QC/Infras/Memory/BufferDescriptor.hpp"
 #include "QC/Infras/Memory/Ifs/QCBufferDescriptorBase.hpp"
+#include "QC/Infras/Memory/CameraFrameDescriptor.hpp"
 #include "QC/Infras/Memory/Ifs/QCMemoryDefs.hpp"
 #include "QC/Infras/Memory/ImageDescriptor.hpp"
 #include "QC/Infras/Memory/SharedBuffer.hpp"

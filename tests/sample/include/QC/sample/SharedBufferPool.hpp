@@ -105,6 +105,23 @@ public:
 
     QCBufferDescriptorBase_t &GetBuffer() { return buffer; }
 
+    void SetBuffer( QCBufferDescriptorBase_t &bufDesc )
+    {
+        ImageDescriptor_t *pImage = dynamic_cast<ImageDescriptor_t *>( &bufDesc );
+        if ( nullptr != pImage )
+        {
+            imgDesc = bufDesc;
+            buffer = imgDesc;
+        }
+        else
+        {
+            tensorDesc = bufDesc;
+            buffer = tensorDesc;
+        }
+
+        sharedBuffer = bufDesc;
+    }
+
     void *GetDataPtr()
     {
         QCBufferDescriptorBase_t &bufDesc = buffer;

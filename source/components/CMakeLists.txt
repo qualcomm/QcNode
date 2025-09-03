@@ -21,7 +21,6 @@ target_include_directories( QCNodeComponentCommon PUBLIC ${HEADERS_DIR} )
 target_link_libraries( QCNodeComponentCommon PUBLIC ${TARGET_LIBRARIES} )
 
 install( FILES ${COMPONENT_COMMON_HEADERS} DESTINATION include/QC/component )
-add_subdirectory(Camera)
 if ( ENABLE_FADAS )
 add_subdirectory(Remap)
 add_subdirectory(Voxelization)
