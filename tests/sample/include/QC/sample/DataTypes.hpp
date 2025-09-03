@@ -66,6 +66,10 @@ public:
                 buffer->buffer = buffer->tensorDesc;
             }
         }
+        if ( nullptr == buffer->sharedBuffer.data() )
+        {
+            buffer->sharedBuffer = bufDesc;
+        }
     }
 
     QCBufferType_e GetBufferType() { return buffer->GetBufferType(); }

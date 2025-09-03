@@ -1,8 +1,3 @@
-if( NOT TARGET QCNodeCamera )
-    message( STATUS "build without Camera" )
-    return()
-endif()
-
 set( HEADERS_DIR ${PROJECT_SOURCE_DIR}/include )
 
 set( QC_NODE_CAMERA_HEADERS
@@ -11,18 +6,28 @@ set( QC_NODE_CAMERA_HEADERS
 
 set( QC_NODE_CAMERA_SOURCES
     Camera.cpp
+    CameraImpl.cpp
+    CameraConfig.cpp
+    CameraMonitor.cpp
 )
 
-set( TARGET_LIBRARIES QCNodeCamera QCNodeBase )
+set( TARGET_LIBRARIES QCNodeBase qcxclient qcxosal )
 
-add_library( QCNodeNodeCamera OBJECT ${QC_NODE_CAMERA_SOURCES} )
+if( "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" )
+    list( APPEND TARGET_LIBRARIES qcxplatform cutils )
+else()
+    list( APPEND TARGET_LIBRARIES xml2 )
+endif()
 
-set_property( TARGET QCNodeNodeCamera PROPERTY LINKER_LANGUAGE CXX )
-set_property( TARGET QCNodeNodeCamera PROPERTY POSITION_INDEPENDENT_CODE ON )
+add_library( QCNodeCamera OBJECT ${QC_NODE_CAMERA_SOURCES} )
 
-target_include_directories( QCNodeNodeCamera PUBLIC ${HEADERS_DIR} )
+set_property( TARGET QCNodeCamera PROPERTY LINKER_LANGUAGE CXX )
+set_property( TARGET QCNodeCamera PROPERTY POSITION_INDEPENDENT_CODE ON )
 
-target_link_libraries( QCNodeNodeCamera PUBLIC ${TARGET_LIBRARIES} )
+target_include_directories( QCNodeCamera PUBLIC ${HEADERS_DIR} )
+
+target_link_libraries( QCNodeCamera PUBLIC ${TARGET_LIBRARIES} )
 
 install( FILES ${QC_NODE_CAMERA_HEADERS} DESTINATION include/QC/Node )
+
 

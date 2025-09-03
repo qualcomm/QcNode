@@ -15,19 +15,18 @@ SampleCamera ::~SampleCamera() {}
 void SampleCamera::ProcessDoneCb( const QCNodeEventInfo_t &eventInfo )
 {
     QCStatus_e status = QC_STATUS_OK;
-    QCFrameDescriptorNodeIfs &frameDesc = eventInfo.frameDesc;
-    QCBufferDescriptorBase_t &bufDesc = frameDesc.GetBuffer( 0 );
-
-    const QCSharedCameraFrameDescriptor_t *pCamFrameDesc =
-            dynamic_cast<const QCSharedCameraFrameDescriptor_t *>( &bufDesc );
+    QCFrameDescriptorNodeIfs &frameDescIfs = eventInfo.frameDesc;
+    QCBufferDescriptorBase_t &bufDesc = frameDescIfs.GetBuffer( 0 );
+    const CameraFrameDescriptor_t *pCamFrameDesc =
+            dynamic_cast<const CameraFrameDescriptor_t *>( &bufDesc );
 
     if ( nullptr == pCamFrameDesc )
     {
-	QC_ERROR( "Frame pointer is empty" );
+        QC_ERROR( "Frame pointer is empty" );
     }
     else
     {
-        if ( !m_stop )
+        if ( ( m_stop == false ) )
         {
             std::unique_lock<std::mutex> lck( m_mutex );
             m_camFrameQueue.push( *pCamFrameDesc );
@@ -35,7 +34,13 @@ void SampleCamera::ProcessDoneCb( const QCNodeEventInfo_t &eventInfo )
         }
         else
         {
+            QCSharedFrameDescriptorNode frameDesc( 1 );
+            (void) frameDesc.SetBuffer( 0, bufDesc );
             status = m_camera.ProcessFrameDescriptor( frameDesc );
+            if ( QC_STATUS_OK != status )
+            {
+                QC_ERROR( "Failed to process frame descriptor, status=%u", status );
+            }
         }
     }
 }
@@ -57,7 +62,6 @@ QCStatus_e SampleCamera::ParseConfig( SampleConfig_t &config )
     m_config.Set<uint32_t>( "opMode",
                             Get( config, "op_mode", (uint32_t) QCARCAM_OPMODE_OFFLINE_ISP ) );
 
-    std::vector<DataTree> streamConfigs;
     uint32_t bufferIdx = 0;
     for ( uint32_t i = 0; i < numStream; i++ )
     {
@@ -114,7 +118,7 @@ QCStatus_e SampleCamera::ParseConfig( SampleConfig_t &config )
             streamConfig.Set<uint32_t>( "height", height );
             streamConfig.SetImageFormat( "format", format );
             streamConfig.Set<uint32_t>( "submitRequestPattern", submitRequestPattern );
-            streamConfigs.push_back( streamConfig );
+            m_streamConfigs.push_back( streamConfig );
         }
 
         std::string topicName = Get( config, "topic" + suffix, "" );
@@ -130,7 +134,7 @@ QCStatus_e SampleCamera::ParseConfig( SampleConfig_t &config )
 
         m_frameId[streamId] = 0;
     }
-    m_config.Set( "streamConfigs", streamConfigs );
+    m_config.Set( "streamConfigs", m_streamConfigs );
 
     m_config.Set<bool>( "requestMode", Get( config, "request_mode", false ) );
     m_config.Set<bool>( "primary", Get( config, "is_primary", false ) );
@@ -149,6 +153,11 @@ QCStatus_e SampleCamera::Init( std::string name, SampleConfig_t &config )
     QCStatus_e ret = SampleIF::Init( name );
 
     std::vector<DataTree> streamConfigs;
+    QCImageProps_t imgProp;
+    uint32_t streamId = 0;
+    uint32_t bufCnt = 0;
+    uint32_t bufferId = 0;
+    uint32_t numStream = 0;
 
     if ( QC_STATUS_OK == ret )
     {
@@ -158,13 +167,54 @@ QCStatus_e SampleCamera::Init( std::string name, SampleConfig_t &config )
     if ( QC_STATUS_OK == ret )
     {
         using std::placeholders::_1;
-        QCNodeInit_t nodeConfig = { .config = m_dataTree.Dump(),
-                                    .callback =
-                                            std::bind( &SampleCamera::ProcessDoneCb, this, _1 ) };
-        std::cout << "config: " << nodeConfig.config << std::endl;
+        m_nodeCfg.config = m_dataTree.Dump();
+        m_nodeCfg.callback = std::bind( &SampleCamera::ProcessDoneCb, this, _1 );
+        QC_INFO( "config: %s", m_nodeCfg.config );
+    }
 
+    if ( QC_STATUS_OK == ret )
+    {
+        numStream = m_streamConfigs.size();
+        m_frameBufferPools.resize( numStream );
+        for ( uint32_t i = 0; i < numStream; i++ )
+        {
+            streamId = m_streamConfigs[i].Get<uint32_t>( "streamId", UINT32_MAX );
+            std::string bufPoolName = m_name + std::to_string( i );
+            bufCnt = m_streamConfigs[i].Get<uint32_t>( "bufCnt", UINT32_MAX );
+            imgProp.format = m_streamConfigs[i].GetImageFormat( "format", QC_IMAGE_FORMAT_MAX );
+            imgProp.width = m_streamConfigs[i].Get<uint32_t>( "width", UINT32_MAX );
+            imgProp.height = m_streamConfigs[i].Get<uint32_t>( "height", UINT32_MAX );
+
+            if ( ( QC_IMAGE_FORMAT_RGB888 == imgProp.format ) ||
+                 ( QC_IMAGE_FORMAT_BGR888 == imgProp.format ) )
+            {
+                imgProp.batchSize = 1;
+                imgProp.stride[0] = QC_ALIGN_SIZE( imgProp.width * 3, 16 );
+                imgProp.actualHeight[0] = imgProp.height;
+                imgProp.numPlanes = 1;
+                imgProp.planeBufSize[0] = 0;
+
+                ret = m_frameBufferPools[i].Init( bufPoolName, m_nodeId, LOGGER_LEVEL_ERROR, bufCnt,
+                                                  imgProp, QC_MEMORY_ALLOCATOR_DMA_CAMERA,
+                                                  QC_CACHEABLE );
+            }
+            else
+            {
+                ret = m_frameBufferPools[i].Init( bufPoolName, m_nodeId, LOGGER_LEVEL_ERROR, bufCnt,
+                                                  imgProp.width, imgProp.height, imgProp.format,
+                                                  QC_MEMORY_ALLOCATOR_DMA_CAMERA, QC_CACHEABLE );
+            }
+            if ( QC_STATUS_OK == ret )
+            {
+                ret = m_frameBufferPools[i].GetBuffers( m_nodeCfg.buffers );
+            }
+        }
+    }
+
+    if ( QC_STATUS_OK == ret )
+    {
         TRACE_BEGIN( SYSTRACE_TASK_INIT );
-        ret = m_camera.Initialize( nodeConfig );
+        ret = m_camera.Initialize( m_nodeCfg );
         TRACE_END( SYSTRACE_TASK_INIT );
     }
 
@@ -173,22 +223,15 @@ QCStatus_e SampleCamera::Init( std::string name, SampleConfig_t &config )
         QC_ERROR( "Failed to Init camera node" );
         if ( m_bIgnoreError )
         {
-            QC_ERROR( "Ignore Initialization Error" );
             ret = QC_STATUS_OK;
+            QC_ERROR( "Ignore Initialization Error" );
         }
     }
 
     if ( QC_STATUS_OK == ret )
     {
-        ret = m_config.Get( "streamConfigs", streamConfigs );
-    }
-
-    if ( QC_STATUS_OK == ret )
-    {
-        uint32_t numStream = streamConfigs.size();
         for ( uint32_t i = 0; i < numStream; i++ )
         {
-            uint32_t streamId = streamConfigs[i].Get<uint32_t>( "streamId", UINT32_MAX );
             std::string topicName = m_topicNameMap[streamId];
             m_pubMap[streamId] = std::make_shared<DataPublisher<DataFrames_t>>();
             ret = m_pubMap[streamId]->Init( name + "." + std::to_string( streamId ), topicName );
@@ -230,26 +273,25 @@ QCStatus_e SampleCamera::Start()
     return ret;
 }
 
-void SampleCamera::ProcessFrame( QCSharedCameraFrameDescriptor_t *pFrameDesc )
+void SampleCamera::ProcessFrame( CameraFrameDescriptor_t *pCamFrameDesc )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
     DataFrames_t frames;
     DataFrame_t frame;
-    std::vector<DataTree> streamConfigs;
 
     SharedBuffer_t *pSharedBuffer = new SharedBuffer_t;
-    pSharedBuffer->sharedBuffer = pFrameDesc->buffer;
+    pSharedBuffer->SetBuffer( *pCamFrameDesc );
     pSharedBuffer->pubHandle =
-            (uint64_t) pFrameDesc->frameIndex + ( (uint64_t) pFrameDesc->streamId << 32 );
+            (uint64_t) pCamFrameDesc->frameIdx + ( (uint64_t) pCamFrameDesc->streamId << 32 );
 
     std::shared_ptr<SharedBuffer_t> buffer( pSharedBuffer, [&]( SharedBuffer_t *pSharedBuffer ) {
-        QCSharedCameraFrameDescriptor_t camFrameDesc;
+        CameraFrameDescriptor_t camFrameDesc;
         QCSharedFrameDescriptorNode frameDesc( 1 );
 
-        uint32_t frameIndex = pSharedBuffer->pubHandle & 0xFFFFFFFFul;
-        camFrameDesc.buffer = pSharedBuffer->sharedBuffer;
-        camFrameDesc.frameIndex = frameIndex;
+        uint32_t frameIdx = pSharedBuffer->pubHandle & 0xFFFFFFFFul;
+        camFrameDesc = pSharedBuffer->imgDesc;
+        camFrameDesc.frameIdx = frameIdx;
         camFrameDesc.streamId = pSharedBuffer->pubHandle >> 32;
         (void) frameDesc.SetBuffer( 0, camFrameDesc );
 
@@ -270,14 +312,13 @@ void SampleCamera::ProcessFrame( QCSharedCameraFrameDescriptor_t *pFrameDesc )
         delete pSharedBuffer;
     } );
 
-    frame.frameId = m_frameId[pFrameDesc->streamId]++;
+    frame.frameId = m_frameId[pCamFrameDesc->streamId]++;
     frame.buffer = buffer;
-    frame.timestamp = pFrameDesc->timestamp;
+    frame.timestamp = pCamFrameDesc->timestamp;
     frames.Add( frame );
 
-    ret = m_config.Get( "streamConfigs", streamConfigs );
-    uint32_t streamId = streamConfigs[0].Get<uint32_t>( "streamId", UINT32_MAX );
-    if ( streamId == pFrameDesc->streamId )
+    uint32_t streamId = m_streamConfigs[0].Get<uint32_t>( "streamId", UINT32_MAX );
+    if ( streamId == pCamFrameDesc->streamId )
     {
         /* trace and profiling the first stream */
         PROFILER_BEGIN();
@@ -287,17 +328,17 @@ void SampleCamera::ProcessFrame( QCSharedCameraFrameDescriptor_t *pFrameDesc )
     else
     {
         /* profiling the other streams */
-        TRACE_CAMERA_EVENT( pFrameDesc->streamId, frame.frameId );
+        TRACE_CAMERA_EVENT( pCamFrameDesc->streamId, frame.frameId );
     }
 
-    auto it = m_pubMap.find( pFrameDesc->streamId );
+    auto it = m_pubMap.find( pCamFrameDesc->streamId );
     if ( m_pubMap.end() != it )
     {
         it->second->Publish( frames );
     }
     else
     {
-        QC_ERROR( "no publisher for stream %u", pFrameDesc->streamId );
+        QC_ERROR( "no publisher for stream %u", pCamFrameDesc->streamId );
     }
 
     if ( true == m_bImmediateRelease )
@@ -309,12 +350,12 @@ void SampleCamera::ProcessFrame( QCSharedCameraFrameDescriptor_t *pFrameDesc )
         }
         else
         {
-            QCSharedCameraFrameDescriptor_t camFrameDesc;
+            CameraFrameDescriptor_t camFrameDesc;
             QCSharedFrameDescriptorNode frameDesc( 1 );
 
-            uint32_t frameIndex = pSharedBuffer->pubHandle & 0xFFFFFFFFul;
-            camFrameDesc.buffer = pSharedBuffer->sharedBuffer;
-            camFrameDesc.frameIndex = frameIndex;
+            uint32_t framdIdx = pSharedBuffer->pubHandle & 0xFFFFFFFFul;
+            camFrameDesc = pSharedBuffer->imgDesc;
+            camFrameDesc.frameIdx = framdIdx;
             camFrameDesc.streamId = pSharedBuffer->pubHandle >> 32;
             (void) frameDesc.SetBuffer( 0, camFrameDesc );
             m_camera.ProcessFrameDescriptor( frameDesc );
@@ -325,7 +366,7 @@ void SampleCamera::ProcessFrame( QCSharedCameraFrameDescriptor_t *pFrameDesc )
 void SampleCamera::ThreadMain()
 {
     QCStatus_e ret = QC_STATUS_OK;
-    QCSharedCameraFrameDescriptor_t camFrameDesc;
+    CameraFrameDescriptor_t camFrameDesc;
 
     while ( !m_stop )
     {
@@ -351,7 +392,7 @@ QCStatus_e SampleCamera::Stop()
         m_thread.join();
     }
 
-    QCSharedCameraFrameDescriptor_t camFrameDesc;
+    CameraFrameDescriptor_t camFrameDesc;
     while ( !m_camFrameQueue.empty() )
     {
         std::unique_lock<std::mutex> lck( m_mutex );
@@ -361,7 +402,9 @@ QCStatus_e SampleCamera::Stop()
     }
 
     TRACE_BEGIN( SYSTRACE_TASK_STOP );
+    QC_DEBUG( "Stopping camera begin" );
     ret = m_camera.Stop();
+    QC_DEBUG( "Stopping camera end" );
     TRACE_END( SYSTRACE_TASK_STOP );
     PROFILER_SHOW();
 
