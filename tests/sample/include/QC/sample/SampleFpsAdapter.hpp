@@ -6,16 +6,15 @@
 #ifndef QC_SAMPLE_FPS_ADAPTER_HPP
 #define QC_SAMPLE_FPS_ADAPTER_HPP
 
-#include "QC/component/Camera.hpp"
+#include "QC/Node/Camera.hpp"
 #include "QC/sample/SampleIF.hpp"
-
-using namespace QC;
-using namespace QC::component;
 
 namespace QC
 {
 namespace sample
 {
+
+using namespace QC::Node;
 
 /// @brief qcnode::sample::SampleFpsAdapter
 ///

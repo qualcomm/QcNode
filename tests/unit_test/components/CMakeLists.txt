@@ -1,4 +1,3 @@
-add_subdirectory(Camera)
 add_subdirectory(Common)
 add_subdirectory(VideoEncoder)
 if ( ENABLE_EVA )
