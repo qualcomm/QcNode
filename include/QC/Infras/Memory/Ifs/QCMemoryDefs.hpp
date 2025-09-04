@@ -208,6 +208,18 @@ typedef struct QCBufferPropBase
     ( void *ptr; ( ptr = (void *) ( (long) pVoid + ALLIGNMENT - 1ul ) & ~( ALLIGNMENT - 1ul ) );   \
       ptr )
 
+/**
+ * @def QC_ALIGN_SIZE
+ * @brief Provide the aligned size of a buffer.
+ *
+ * This macro calculates the aligned size of a buffer based on the provided size and alignment.
+ *
+ * @param size The size of the buffer.
+ * @param ALLIGNMENT The alignment of the buffer.
+ */
+#define QC_ALIGN_SIZE( size, ALLIGNMENT )                                                          \
+    ( ( ( ( size ) + ( ALLIGNMENT ) - 1 ) / ( ALLIGNMENT ) ) * ( ALLIGNMENT ) )
+
 }   // namespace Memory
 }   // namespace QC
 

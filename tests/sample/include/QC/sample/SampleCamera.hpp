@@ -2,7 +2,6 @@
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
-
 #ifndef QC_SAMPLE_CAMERA_HPP
 #define QC_SAMPLE_CAMERA_HPP
 
@@ -13,7 +12,6 @@
 #include <mutex>
 #include <queue>
 #include <string>
-
 
 namespace QC
 {
@@ -51,7 +49,7 @@ public:
 
 private:
     QCStatus_e ParseConfig( SampleConfig_t &config );
-    void ProcessFrame( QCSharedCameraFrameDescriptor_t *pFrameDesc );
+    void ProcessFrame( CameraFrameDescriptor_t *pFrameDesc );
     void ThreadMain();
 
     void ProcessDoneCb( const QCNodeEventInfo_t &eventInfo );
@@ -60,10 +58,13 @@ private:
     QC::Node::Camera m_camera;
     DataTree m_config;
     DataTree m_dataTree;
+    QCNodeInit_t m_nodeCfg;
 
     std::map<uint32_t, std::string> m_topicNameMap;
     std::map<uint32_t, std::shared_ptr<DataPublisher<DataFrames_t>>> m_pubMap;
+
     uint64_t m_frameId[MAX_CAMERA_STREAM] = { 0 };
+    std::vector<DataTree> m_streamConfigs;
 
     bool m_bImmediateRelease = false;
     bool m_bIgnoreError = false;
@@ -72,7 +73,9 @@ private:
     std::mutex m_mutex;
     std::thread m_thread;
     std::condition_variable m_condVar;
-    std::queue<QCSharedCameraFrameDescriptor_t> m_camFrameQueue;
+    std::queue<CameraFrameDescriptor_t> m_camFrameQueue;
+
+    std::vector<SharedBufferPool> m_frameBufferPools;
 
 };   // class SampleCamera
 
