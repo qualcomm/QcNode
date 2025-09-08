@@ -84,6 +84,7 @@ typedef struct
     uint32_t ROIsBufferId; /**<ROIs buffer ID for multiple ROI work modes*/
     OpenclIfcae_Perf_e priority =
             OPENCLIFACE_PERF_NORMAL; /**<OpenCL performance priority level, default set to normal*/
+    uint32_t deviceId = 0;           /**<OpenCL device ID, default set to 0*/
 
 } CL2DFlex_Config_t;
 
@@ -129,6 +130,9 @@ public:
      *     "static": {
      *        "name": "The Node unique name, type: string",
      *        "id": "The Node unique ID, type: uint32_t",
+     *        "priority": "The performance priority level, type: string,
+     *                     options: [low, normal, high]",
+     *        "deviceId": "The device ID for OpenCL platform, type: uint32_t",
      *        "outputWidth": "The output width, type: uint32_t",
      *        "outputHeight": "The output height, type: uint32_t",
      *        "outputFormat": "The output format, type: string,
@@ -164,7 +168,9 @@ public:
      *                   type: bool, default: false"
      *     }
      *   }
-     * @note: mapXBufferId and mapYBufferId are optional, only used for remap_nearest work mode.
+     * @note: priority is optional, default set to normal.
+     *        deviceId is optional, default set to 0.
+     *        mapXBufferId and mapYBufferId are optional, only used for remap_nearest work mode.
      *        numOfROIs and ROIsBufferId are optional, only used for resize_nearest_multiple and
      *        letterbox_nearest_multiple work mode.
      * @return QC_STATUS_OK on success, other values on failure.
