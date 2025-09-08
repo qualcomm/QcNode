@@ -74,14 +74,15 @@ public:
      * @brief Initialize the OpenclIface object
      * @param[in] pName the OpenclIface unique instance name
      * @param[in] level the logger message level
-     * @param[in] priority the desired performance priority level for this OpenCL context
+     * @param[in] priority the desired performance priority level, default one is normal
+     * @param[in] deviceId the device ID to be used, default one is 0
      * @return QC_STATUS_OK on success, others on failure
      * @note Do all the initialization work for a OpenclIface object: get platform ID, get device
      * ID, create context, create command queue, get device info. Must be called at the beginning of
      * pipeline.
      */
     QCStatus_e Init( const char *pName, Logger_Level_e level,
-                     OpenclIfcae_Perf_e priority = OPENCLIFACE_PERF_NORMAL );
+                     OpenclIfcae_Perf_e priority = OPENCLIFACE_PERF_NORMAL, uint32_t deviceId = 0 );
 
     /**
      * @brief Load OpenCL program from source file

@@ -12,7 +12,8 @@ namespace libs
 namespace OpenclIface
 {
 
-QCStatus_e OpenclSrv::Init( const char *pName, Logger_Level_e level, OpenclIfcae_Perf_e priority )
+QCStatus_e OpenclSrv::Init( const char *pName, Logger_Level_e level, OpenclIfcae_Perf_e priority,
+                            uint32_t deviceId )
 {
     QCStatus_e ret = QC_STATUS_OK;
     cl_int retCL = CL_SUCCESS;
@@ -34,11 +35,51 @@ QCStatus_e OpenclSrv::Init( const char *pName, Logger_Level_e level, OpenclIfcae
 
     if ( CL_SUCCESS == retCL )
     {
-        retCL = clGetDeviceIDs( m_platformID, CL_DEVICE_TYPE_GPU, 1, &m_deviceID, NULL );
+        cl_uint numDevices;
+        retCL = clGetDeviceIDs( m_platformID, CL_DEVICE_TYPE_GPU, 0, NULL, &numDevices );
         if ( CL_SUCCESS != retCL )
         {
-            QC_ERROR( "Unable to get OpenCL compatible GPU device, retCL = %d", retCL );
+            QC_ERROR( "Unable to get number of devices, retCL = %d", retCL );
             ret = QC_STATUS_FAIL;
+        }
+        else
+        {
+            cl_device_id *pDeviceIDs =
+                    (cl_device_id *) malloc( sizeof( cl_device_id ) * numDevices );
+            if ( pDeviceIDs == NULL )
+            {
+                QC_ERROR( "Failed to allocate memory for device IDs" );
+                ret = QC_STATUS_FAIL;
+            }
+            else
+            {
+                retCL = clGetDeviceIDs( m_platformID, CL_DEVICE_TYPE_GPU, numDevices, pDeviceIDs,
+                                        NULL );
+                if ( CL_SUCCESS == retCL )
+                {
+                    for ( int i = 0; i < numDevices; i++ )
+                    {
+                        QC_INFO( "device ID[%d] = %d\n", i, pDeviceIDs[i] );
+                    }
+
+                    if ( deviceId < numDevices )
+                    {
+                        m_deviceID = pDeviceIDs[deviceId];
+                    }
+                    else
+                    {
+                        QC_ERROR( "Invalid device ID = %d", deviceId );
+                        ret = QC_STATUS_BAD_ARGUMENTS;
+                    }
+                }
+                else
+                {
+                    QC_ERROR( "Unable to get device IDs, retCL = %d", retCL );
+                    ret = QC_STATUS_FAIL;
+                }
+
+                free( pDeviceIDs );
+            }
         }
     }
 

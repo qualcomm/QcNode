@@ -65,7 +65,8 @@ CL2DFlexImpl::Initialize( std::vector<std::reference_wrapper<QCBufferDescriptorB
     }
     else
     {
-        status = m_OpenclSrvObj.Init( "Opencl", LOGGER_LEVEL_ERROR, m_config.params.priority );
+        status = m_OpenclSrvObj.Init( "Opencl", LOGGER_LEVEL_ERROR, m_config.params.priority,
+                                      m_config.params.deviceId );
         if ( QC_STATUS_OK != status )
         {
             QC_ERROR( "Init OpenCL failed!" );

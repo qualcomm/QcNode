@@ -147,6 +147,26 @@ QCStatus_e CL2DFlexConfig::ParseStaticConfig( DataTree &dt, std::string &errors 
         config.params.outputHeight = dt.Get<uint32_t>( "outputHeight", 1024 );
         config.params.outputFormat = dt.GetImageFormat( "outputFormat", QC_IMAGE_FORMAT_RGB888 );
 
+        std::string priority = dt.Get<std::string>( "priority", "normal" );
+        if ( "normal" == priority )
+        {
+            config.params.priority = OPENCLIFACE_PERF_NORMAL;
+        }
+        else if ( "high" == priority )
+        {
+            config.params.priority = OPENCLIFACE_PERF_HIGH;
+        }
+        else if ( "low" == priority )
+        {
+            config.params.priority = OPENCLIFACE_PERF_LOW;
+        }
+        else
+        {
+            errors += "the priority is invalid, ";
+            status = QC_STATUS_BAD_ARGUMENTS;
+        }
+        config.params.deviceId = dt.Get<uint32_t>( "deviceId", 0 );
+
         std::vector<DataTree> inputDts;
         (void) dt.Get( "inputs", inputDts );
         uint32_t inputId = 0;
@@ -204,7 +224,6 @@ QCStatus_e CL2DFlexConfig::ParseStaticConfig( DataTree &dt, std::string &errors 
 
             inputId++;
         }
-
         config.params.numOfInputs = inputId;
 
         config.bufferIds = dt.Get<uint32_t>( "bufferIds", std::vector<uint32_t>{} );
