@@ -611,23 +611,30 @@ TEST( NodeRemap, Sanity )
     SanityRemap();
 }
 
-TEST( NodeRemap, Accuracy )
+// md5 of 0.uyvy is 5b1ae2203a9d97aeafe65e997f3beebc
+// md5 of golden_cpu.rgb is 59760700b59beb67227d305b317dcec6
+// md5 of golden_dsp.rgb is f139fb73234986a15e340afe1058522e
+// md5 of golden_gpu.rgb is 59760700b59beb67227d305b317dcec6
+TEST( NodeRemap, AccuracyHTP )
 {
-    // md5 of 0.uyvy is 5b1ae2203a9d97aeafe65e997f3beebc
-    // md5 of golden_cpu.rgb is 59760700b59beb67227d305b317dcec6
-    // md5 of golden_dsp.rgb is f139fb73234986a15e340afe1058522e
-    // md5 of golden_gpu.rgb is 59760700b59beb67227d305b317dcec6
-
     AccuracyRemap( 2, QC_PROCESSOR_HTP0, QC_IMAGE_FORMAT_UYVY, QC_IMAGE_FORMAT_RGB888, 1920, 1024,
                    1152, 800, true, false, "./data/test/remap/0.uyvy",
                    "./data/test/remap/golden_dsp.rgb", false );
+}
+TEST( NodeRemap, AccuracyCPU )
+{
     AccuracyRemap( 2, QC_PROCESSOR_CPU, QC_IMAGE_FORMAT_UYVY, QC_IMAGE_FORMAT_RGB888, 1920, 1024,
                    1152, 800, true, false, "./data/test/remap/0.uyvy",
                    "./data/test/remap/golden_cpu.rgb", false );
+}
+#if defined( USE_ENG_FADAS_GPU )
+TEST( NodeRemap, AccuracyGPU )
+{
     AccuracyRemap( 2, QC_PROCESSOR_GPU, QC_IMAGE_FORMAT_UYVY, QC_IMAGE_FORMAT_RGB888, 1920, 1024,
                    1152, 800, true, false, "./data/test/remap/0.uyvy",
                    "./data/test/remap/golden_gpu.rgb", false );
 }
+#endif
 
 #ifndef GTEST_QCNODE
 int main( int argc, char **argv )
