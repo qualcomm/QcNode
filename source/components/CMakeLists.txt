@@ -22,7 +22,6 @@ target_link_libraries( QCNodeComponentCommon PUBLIC ${TARGET_LIBRARIES} )
 
 install( FILES ${COMPONENT_COMMON_HEADERS} DESTINATION include/QC/component )
 if ( ENABLE_FADAS )
-add_subdirectory(Remap)
 add_subdirectory(Voxelization)
 endif()
 add_subdirectory(VideoEncoder)

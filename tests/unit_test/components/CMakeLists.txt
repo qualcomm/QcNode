@@ -11,7 +11,6 @@ endif()
 
 if ( ENABLE_FADAS )
   add_subdirectory(PointPillar)
-  add_subdirectory(Remap)
 endif()
 
 if ( ENABLE_RADAR AND NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" )
