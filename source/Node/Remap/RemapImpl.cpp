@@ -1,0 +1,312 @@
+// Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+// All rights reserved.
+// Confidential and Proprietary - Qualcomm Technologies, Inc.
+
+
+#include "RemapImpl.hpp"
+
+namespace QC
+{
+namespace Node
+{
+
+QCStatus_e RemapImpl::Start()
+{
+    QCStatus_e status = QC_STATUS_OK;
+
+    if ( QC_OBJECT_STATE_READY == m_state )
+    {
+        m_state = QC_OBJECT_STATE_RUNNING;
+    }
+    else
+    {
+        QC_ERROR( "Remap node start failed due to wrong state!" );
+        status = QC_STATUS_BAD_STATE;
+    }
+
+    return status;
+}
+
+QCStatus_e RemapImpl::Stop()
+{
+    QCStatus_e status = QC_STATUS_OK;
+
+    if ( QC_OBJECT_STATE_RUNNING == m_state )
+    {
+        m_state = QC_OBJECT_STATE_READY;
+    }
+    else
+    {
+        QC_ERROR( "Remap node stop failed due to wrong state!" );
+        status = QC_STATUS_BAD_STATE;
+    }
+
+    return status;
+}
+
+QCStatus_e
+RemapImpl::Initialize( std::vector<std::reference_wrapper<QCBufferDescriptorBase>> &buffers )
+{
+    QCStatus_e status = QC_STATUS_OK;
+
+    if ( QC_OBJECT_STATE_INITIAL != m_state )
+    {
+        QC_ERROR( "Remap not in initial state!" );
+        status = QC_STATUS_BAD_STATE;
+    }
+    else
+    {
+        status = m_fadasRemapObj.Init( m_config.params.processor, "Remap", LOGGER_LEVEL_ERROR );
+        if ( QC_STATUS_OK != status )
+        {
+            QC_ERROR( "Failed to init fadas remap!" );
+        }
+        else
+        {
+            status = m_fadasRemapObj.SetRemapParams(
+                    m_config.params.numOfInputs, m_config.params.outputWidth,
+                    m_config.params.outputHeight, m_config.params.outputFormat,
+                    m_config.params.normlzR, m_config.params.normlzG, m_config.params.normlzB,
+                    m_config.params.bEnableUndistortion, m_config.params.bEnableNormalize );
+
+            if ( QC_STATUS_OK != status )
+            {
+                QC_ERROR( "Failed to set parameters!" );
+            }
+            else
+            {
+                for ( uint32_t inputId = 0; inputId < m_config.params.numOfInputs; inputId++ )
+                {
+                    status = m_fadasRemapObj.CreateRemapWorker(
+                            inputId, m_config.params.inputConfigs[inputId].inputFormat,
+                            m_config.params.inputConfigs[inputId].inputWidth,
+                            m_config.params.inputConfigs[inputId].inputHeight,
+                            m_config.params.inputConfigs[inputId].ROI );
+                    if ( QC_STATUS_OK != status )
+                    {
+                        QC_ERROR( "Create worker fail at inputId = %d", inputId );
+                        break;
+                    }
+
+                    QCSharedBuffer_t *pMapX = nullptr;
+                    QCSharedBuffer_t *pMapY = nullptr;
+                    if ( true == m_config.params.bEnableUndistortion )
+                    {
+                        uint32_t mapXBufferId =
+                                m_config.params.inputConfigs[inputId].remapTable.mapXBufferId;
+                        QCBufferDescriptorBase_t &mapXBufferDesc = buffers[mapXBufferId];
+                        QCSharedBufferDescriptor_t *pMapXBufferDesc =
+                                dynamic_cast<QCSharedBufferDescriptor_t *>( &mapXBufferDesc );
+                        pMapX = &( pMapXBufferDesc->buffer );
+
+                        uint32_t mapYBufferId =
+                                m_config.params.inputConfigs[inputId].remapTable.mapYBufferId;
+                        QCBufferDescriptorBase_t &mapYBufferDesc = buffers[mapYBufferId];
+                        QCSharedBufferDescriptor_t *pMapYBufferDesc =
+                                dynamic_cast<QCSharedBufferDescriptor_t *>( &mapYBufferDesc );
+                        pMapY = &( pMapYBufferDesc->buffer );
+                    }
+                    status = m_fadasRemapObj.CreatRemapTable(
+                            inputId, m_config.params.inputConfigs[inputId].mapWidth,
+                            m_config.params.inputConfigs[inputId].mapHeight, pMapX, pMapY );
+                    if ( QC_STATUS_OK != status )
+                    {
+                        QC_ERROR( "Create remap table fail at inputId = %d", inputId );
+                        break;
+                    }
+                }
+            }
+        }
+
+        if ( QC_STATUS_OK == status )
+        {
+            status = SetupGlobalBufferIdMap();
+        }
+
+        if ( QC_STATUS_OK == status )
+        {   // do buffer register during initialization
+            for ( uint32_t bufferId : m_config.bufferIds )
+            {
+                if ( bufferId < buffers.size() )
+                {
+                    const QCBufferDescriptorBase_t &bufDesc = buffers[bufferId];
+                    const QCSharedBufferDescriptor_t *pSharedBuffer =
+                            dynamic_cast<const QCSharedBufferDescriptor_t *>( &bufDesc );
+                    if ( nullptr == pSharedBuffer )
+                    {
+                        QC_ERROR( "buffer %" PRIu32 "is invalid", bufferId );
+                        status = QC_STATUS_INVALID_BUF;
+                    }
+                    else
+                    {
+                        int32_t fd = m_fadasRemapObj.RegBuf( &( pSharedBuffer->buffer ),
+                                                             FADAS_BUF_TYPE_INOUT );
+                        if ( 0 > fd )
+                        {
+                            QC_ERROR( "Failed to register buffer for bufferId = %d!", bufferId );
+                            status = QC_STATUS_FAIL;
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    QC_ERROR( "buffer index out of range" );
+                    status = QC_STATUS_BAD_ARGUMENTS;
+                }
+
+                if ( status != QC_STATUS_OK )
+                {
+                    break;
+                }
+            }
+        }
+
+        if ( QC_STATUS_OK == status )
+        {
+            m_state = QC_OBJECT_STATE_READY;
+        }
+    }
+
+    return status;
+}
+
+QCStatus_e RemapImpl::DeInitialize()
+{
+    QCStatus_e status = QC_STATUS_OK;
+    QCStatus_e status2 = QC_STATUS_OK;
+
+    if ( QC_OBJECT_STATE_READY != m_state )
+    {
+        QC_ERROR( "Remap node not in ready status!" );
+        status = QC_STATUS_BAD_STATE;
+    }
+    else
+    {
+        status2 = m_fadasRemapObj.DestroyMap();
+        if ( QC_STATUS_OK != status2 )
+        {
+            QC_ERROR( "Destroy map failed!" );
+            status = QC_STATUS_FAIL;
+        }
+        status2 = m_fadasRemapObj.DestroyWorkers();
+        if ( QC_STATUS_OK != status2 )
+        {
+            QC_ERROR( "Destroy worker failed!" );
+            status = QC_STATUS_FAIL;
+        }
+        status2 = m_fadasRemapObj.Deinit();
+        if ( QC_STATUS_OK != status2 )
+        {
+            QC_ERROR( "Deinit fadas remap failed!" );
+            status = QC_STATUS_FAIL;
+        }
+    }
+
+    return status;
+}
+
+QCStatus_e RemapImpl::ProcessFrameDescriptor( QCFrameDescriptorNodeIfs &frameDesc )
+{
+    QCStatus_e status = QC_STATUS_OK;
+    if ( QC_OBJECT_STATE_RUNNING != m_state )
+    {
+        QC_ERROR( "Remap node not in running status!" );
+        status = QC_STATUS_BAD_STATE;
+    }
+    else
+    {
+        std::vector<QCSharedBuffer_t> inputs;
+        std::vector<QCSharedBuffer_t> outputs;
+
+        inputs.reserve( m_inputNum );
+        for ( uint32_t i = 0; i < m_inputNum; i++ )
+        {
+            uint32_t globalBufferId = m_config.globalBufferIdMap[i].globalBufferId;
+            QCBufferDescriptorBase_t &bufDesc = frameDesc.GetBuffer( globalBufferId );
+            const QCSharedBufferDescriptor_t *pSharedBuffer =
+                    dynamic_cast<const QCSharedBufferDescriptor_t *>( &bufDesc );
+            if ( nullptr == pSharedBuffer )
+            {
+                status = QC_STATUS_INVALID_BUF;
+                break;
+            }
+            else
+            {
+                inputs.push_back( pSharedBuffer->buffer );
+            }
+        }
+
+        if ( QC_STATUS_OK == status )
+        {
+            outputs.reserve( m_outputNum );
+            for ( uint32_t i = m_inputNum; i < m_inputNum + m_outputNum; i++ )
+            {
+                uint32_t globalBufferId = m_config.globalBufferIdMap[i].globalBufferId;
+                QCBufferDescriptorBase_t &bufDesc = frameDesc.GetBuffer( globalBufferId );
+                const QCSharedBufferDescriptor_t *pSharedBuffer =
+                        dynamic_cast<const QCSharedBufferDescriptor_t *>( &bufDesc );
+                if ( nullptr == pSharedBuffer )
+                {
+                    status = QC_STATUS_INVALID_BUF;
+                    break;
+                }
+                else
+                {
+                    outputs.push_back( pSharedBuffer->buffer );
+                }
+            }
+        }
+
+        if ( QC_STATUS_OK == status )
+        {
+            status = m_fadasRemapObj.RemapRun( inputs.data(), outputs.data() );
+        }
+    }
+
+    return status;
+}
+
+QCObjectState_e RemapImpl::GetState()
+{
+    return m_state;
+}
+
+QCStatus_e RemapImpl::SetupGlobalBufferIdMap()
+{
+    QCStatus_e status = QC_STATUS_OK;
+
+    m_inputNum = m_config.params.numOfInputs;
+    m_outputNum = 1;
+
+    if ( 0 < m_config.globalBufferIdMap.size() )
+    {
+        if ( ( m_inputNum + m_outputNum ) != m_config.globalBufferIdMap.size() )
+        {
+            QC_ERROR( "global buffer map size is not correct: expect %" PRIu32,
+                      m_inputNum + m_outputNum + 1 );
+            status = QC_STATUS_BAD_ARGUMENTS;
+        }
+    }
+    else
+    { /* create a default global buffer index map */
+        m_config.globalBufferIdMap.resize( m_inputNum + m_outputNum );
+        uint32_t globalBufferId = 0;
+        for ( uint32_t i = 0; i < m_inputNum; i++ )
+        {
+            m_config.globalBufferIdMap[globalBufferId].name = "Input" + std::to_string( i );
+            m_config.globalBufferIdMap[globalBufferId].globalBufferId = globalBufferId;
+            globalBufferId++;
+        }
+        for ( uint32_t i = 0; i < m_outputNum; i++ )
+        {
+            m_config.globalBufferIdMap[globalBufferId].name = "Output";
+            m_config.globalBufferIdMap[globalBufferId].globalBufferId = globalBufferId;
+            globalBufferId++;
+        }
+    }
+    return status;
+}
+
+}   // namespace Node
+}   // namespace QC

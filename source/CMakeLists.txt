@@ -37,7 +37,6 @@ if ( ENABLE_FADAS )
             QCNodeRemap
             QCNodeVoxelization
             QCNodeNodeVoxelization
-            QCNodeNodeRemap
   )
 endif()
 

@@ -5,59 +5,89 @@
 #ifndef QC_NODE_REMAP_HPP
 #define QC_NODE_REMAP_HPP
 
-#include "QC/component/Remap.hpp"
+#include "FadasRemap.hpp"
 #include "QC/Node/NodeBase.hpp"
 
 namespace QC
 {
 namespace Node
 {
-using namespace QC::component;
+using namespace QC::libs::FadasIface;
+
+/*=================================================================================================
+** Typedefs
+=================================================================================================*/
+
+/** @brief remap tables for input images */
+typedef struct
+{
+    uint32_t mapXBufferId; /**<buffer ID for X map, in the buffer each element is the column
+               coordinate of the mapped location in the source image, data size is mapWidth *
+               mapHeight*/
+    uint32_t mapYBufferId; /**<buffer ID for Y map, in the buffer each element is the row coordinate
+                     of the mapped location in the source image, data size is mapWidth * mapHeight*/
+} Remap_MapTable_t;
+
+/** @brief remap configuration for each input image*/
+typedef struct
+{
+    QCImageFormat_e inputFormat; /**<input image format*/
+    uint32_t inputWidth;         /**<input format width*/
+    uint32_t inputHeight;        /**<input format height*/
+    uint32_t mapWidth;           /**<output map width*/
+    uint32_t mapHeight;          /**<output map height*/
+    Remap_MapTable_t remapTable; /**<remap table, used if enable undistortion*/
+    FadasROI_t ROI; /**<region of interest structure work on image after mapping, the ROI width and
+                       height should be consistent with output width and height*/
+} Remap_InputConfig_t;
+
+/** @brief Remap component configuration */
+typedef struct
+{
+    QCProcessorType_e processor;                     /**<pipelie processor type*/
+    Remap_InputConfig_t inputConfigs[QC_MAX_INPUTS]; /**<input images configuration*/
+    uint32_t numOfInputs;                            /**<number of input images*/
+    uint32_t outputWidth;                            /**<output image width*/
+    uint32_t outputHeight;                           /**<output image height*/
+    QCImageFormat_e outputFormat;                    /**<output image format*/
+    FadasNormlzParams_t normlzR;                     /**<normalize parameter for R channel*/
+    FadasNormlzParams_t normlzG;                     /**<normalize parameter for G channel*/
+    FadasNormlzParams_t normlzB;                     /**<normalize parameter for B channel*/
+    bool bEnableUndistortion;                        /**<enable undistortion or not*/
+    bool bEnableNormalize;                           /**<enable normalization or not*/
+} Remap_Config_t;
 
 /**
- * @brief Remap Node Configuration Data Structure
- * @param params The QC component Remap configuration data structure.
- * @param bufferIds The indices of buffers in QCNodeInit::buffers provided by the user application
- * for use by Remap. These buffers will be registered into Remap during the initialization stage.
- * @note bufferIds are optional and can be empty, in which case the buffers will be registered into
- * Remap when the API ProcessFrameDescriptor is called.
- * @param globalBufferIdMap The global buffer index map used to identify which buffer in
- * QCFrameDescriptorNodeIfs is used for Remap input(s) and output(s).
- * @note globalBufferIdMap is optional and can be empty, in which case a default buffer index map
- * will be applied for Remap input(s) and output(s). For now Remap only support multiple inputs to
- * single output
- * - The index 0 of QCFrameDescriptorNodeIfs will be input 0.
- * - The index 1 of QCFrameDescriptorNodeIfs will be input 1.
- * - ...
- * - The index N-1 of QCFrameDescriptorNodeIfs will be input N-1.
- * - The index N of QCFrameDescriptorNodeIfs will be output.
- * @param bDeRegisterAllBuffersWhenStop When the Stop API of the Remap node is called and
- * bDeRegisterAllBuffersWhenStop is true, deregister all buffers.
+ * @brief Represents the Remap implementation used by RemapConfig, RemapMonitor, and Node
+ * Remap.
+ *
+ * This class encapsulates the specific implementation details of the
+ * Remap that are shared across configuration, monitoring,  and Node Remap.
+ *
+ * It serves as a central reference for components that need to interact with
+ * the underlying Remap implementation.
  */
-typedef struct RemapConfig : public QCNodeConfigBase_t
-{
-    Remap_Config_t params;
-    std::vector<uint32_t> bufferIds;
-    std::vector<QCNodeBufferMapEntry_t> globalBufferIdMap;
-    bool bDeRegisterAllBuffersWhenStop;
-} RemapConfig_t;
+class RemapImpl;
 
-class RemapConfigIfs : public NodeConfigIfs
+class RemapConfig : public NodeConfigIfs
 {
 public:
     /**
-     * @brief RemapConfigIfs Constructor
-     * @param[in] logger A reference to the logger to be shared and used by RemapConfigIfs.
-     * @param[in] remap A reference to the QC Remap component to be used by RemapConfigIfs.
+     * @brief RemapConfig Constructor
+     * @param[in] logger A reference to the logger to be shared and used by RemapConfig.
+     * @param[in] pRemapImpl A pointer to the RemapImpl object to be used by RemapConfig.
      * @return None
      */
-    RemapConfigIfs( Logger &logger, Remap &remap ) : NodeConfigIfs( logger ), m_remap( remap ) {}
+    RemapConfig( Logger &logger, RemapImpl *pRemapImpl )
+        : NodeConfigIfs( logger ),
+          m_pRemapImpl( pRemapImpl )
+    {}
 
     /**
-     * @brief RemapConfigIfs Destructor
+     * @brief RemapConfig Destructor
      * @return None
      */
-    ~RemapConfigIfs() {}
+    ~RemapConfig() {}
 
     /**
      * @brief Verify the configuration string and set the configuration structure.
@@ -133,35 +163,38 @@ public:
      * @brief Get the Configuration Structure.
      * @return A reference to the Configuration Structure.
      */
-    virtual const QCNodeConfigBase_t &Get() { return m_config; };
+    virtual const QCNodeConfigBase_t &Get();
 
 private:
     QCStatus_e VerifyStaticConfig( DataTree &dt, std::string &errors );
     QCStatus_e ParseStaticConfig( DataTree &dt, std::string &errors );
 
 private:
-    Remap &m_remap;
+    RemapImpl *m_pRemapImpl;
     std::string m_options;
-
-public:
-    RemapConfig_t m_config;
-    uint32_t m_mapXBufferIds[QC_MAX_INPUTS];
-    uint32_t m_mapYBufferIds[QC_MAX_INPUTS];
     uint32_t m_numOfInputs;
 };
 
-// TODO: how to handle RemapMonitorConfig
+// TODO: how to handle RemapMonitoring
 typedef struct RemapMonitorConfig : public QCNodeMonitoringBase_t
 {
-    bool bPerfEnabled;
+    bool bEnablePerf;
 } RemapMonitorConfig_t;
 
-// TODO: how to handle RemapMonitoringIfs
-class RemapMonitoringIfs : public QCNodeMonitoringIfs
+class RemapMonitoring : public QCNodeMonitoringIfs
 {
 public:
-    RemapMonitoringIfs() {}
-    ~RemapMonitoringIfs() {}
+    /**
+     * @brief RemapMonitor Constructor
+     * @param[in] logger A reference to the logger to be shared and used by RemapConfig.
+     * @param[in] pRemapImpl A pointer to the RemapImpl object to be used by RemapConfig.
+     * @return None
+     */
+    RemapMonitoring( Logger &logger, RemapImpl *pRemapImpl )
+        : m_logger( logger ),
+          m_pRemapImpl( pRemapImpl )
+    {}
+    ~RemapMonitoring() {}
 
     virtual QCStatus_e VerifyAndSet( const std::string config, std::string &errors )
     {
@@ -170,16 +203,19 @@ public:
 
     virtual const std::string &GetOptions() { return m_options; }
 
-    virtual const QCNodeMonitoringBase_t &Get() { return m_config; };
+    virtual const QCNodeMonitoringBase_t &Get() { return m_monitorConfig; }
 
     virtual uint32_t GetMaximalSize() { return UINT32_MAX; }
     virtual uint32_t GetCurrentSize() { return UINT32_MAX; }
 
+
     virtual QCStatus_e Place( void *ptr, uint32_t &size ) { return QC_STATUS_UNSUPPORTED; }
 
 private:
+    RemapImpl *m_pRemapImpl;
+    Logger &m_logger;
     std::string m_options;
-    RemapMonitorConfig_t m_config;
+    RemapMonitorConfig_t m_monitorConfig;
 };
 
 class Remap : public NodeBase
@@ -189,13 +225,13 @@ public:
      * @brief Remap Constructor
      * @return None
      */
-    Remap() : m_configIfs( m_logger, m_remap ) {};
+    Remap();
 
     /**
      * @brief Remap Destructor
      * @return None
      */
-    ~Remap() {};
+    ~Remap();
 
     /**
      * @brief Initializes Node Remap.
@@ -257,24 +293,12 @@ public:
      * @brief Get the current state of the Node Remap
      * @return The current state of the Node Remap
      */
-    virtual QCObjectState_e GetState()
-    {
-        return static_cast<QCObjectState_e>( m_remap.GetState() );
-    }
+    virtual QCObjectState_e GetState();
 
 private:
-    QCStatus_e SetupGlobalBufferIdMap( const RemapConfig_t &cfg );
-
-private:
-    QC::component::Remap m_remap;
-    RemapConfigIfs m_configIfs;
-    RemapMonitoringIfs m_monitorIfs;
-    bool m_bDeRegisterAllBuffersWhenStop = false;
-
-    uint32_t m_inputNum;
-    uint32_t m_outputNum = 1;
-
-    std::vector<QCNodeBufferMapEntry_t> m_globalBufferIdMap;
+    RemapImpl *m_pRemapImpl;
+    RemapConfig m_configIfs;
+    RemapMonitoring m_monitorIfs;
 };
 
 }   // namespace Node
