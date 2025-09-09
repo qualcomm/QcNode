@@ -1,4 +1,4 @@
-if( NOT TARGET QCNodeNodeRemap )
+if( NOT TARGET QCNodeRemap )
     return()
 endif()
 
