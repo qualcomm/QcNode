@@ -25,6 +25,9 @@ CameraFrameDescriptor &CameraFrameDescriptor::operator=( const QCBufferDescripto
         const ImageDescriptor *pImgFrame = dynamic_cast<const ImageDescriptor *>( &other );
         if ( pImgFrame != nullptr )
         {
+            this->id = pImgFrame->id;
+            this->validSize = pImgFrame->validSize;
+            this->offset = pImgFrame->offset;
             this->format = pImgFrame->format;
             this->batchSize = pImgFrame->batchSize;
             this->width = pImgFrame->width;
