@@ -302,7 +302,7 @@ QCStatus_e SampleVideoEncoder::ParseConfig( SampleConfig_t &config )
         m_config.Set<uint32_t>( "height", height );
     }
 
-    uint32_t numInputBufferReq = Get( config, "numInputBufferReq", 4 );
+    uint32_t numInputBufferReq = Get( config, "pool_size", 4 );
     if ( 0 == numInputBufferReq )
     {
         QC_ERROR( "invalid pool_size = %u\n", numInputBufferReq );
@@ -310,10 +310,10 @@ QCStatus_e SampleVideoEncoder::ParseConfig( SampleConfig_t &config )
     }
     else
     {
-        m_config.Set<uint32_t>( "pool_size", numInputBufferReq );
+        m_config.Set<uint32_t>( "numInputBufferReq", numInputBufferReq );
     }
 
-    uint32_t numOutputBufferReq = Get( config, "numOutputBufferReq", numInputBufferReq );
+    uint32_t numOutputBufferReq = Get( config, "pool_size", numInputBufferReq );
     m_config.Set<uint32_t>( "numOutputBufferReq", numOutputBufferReq );
 
     uint32_t bitRate = Get( config, "bitrate", 8000000 );
@@ -374,3 +374,4 @@ REGISTER_SAMPLE( VideoEncoder, SampleVideoEncoder );
 
 }   // namespace sample
 }   // namespace QC
+
