@@ -128,8 +128,8 @@ public:
      *              "roiY": "The input roiY, type: uint32_t",
      *              "roiWidth": "The input roiWidth, type: uint32_t",
      *              "roiHeight": "The input roiHeight, type: uint32_t",
-     *              "mapX": "The buffer id of X direction map table, type: uint32_t",
-     *              "mapY": "The buffer id of Y direction map table, type: uint32_t"
+     *              "mapXBufferId": "The buffer id of X direction map table, type: uint32_t",
+     *              "mapYBufferId": "The buffer id of Y direction map table, type: uint32_t"
      *           }
      *       ],
      *        "bufferIds": [A list of uint32_t values representing the indices of buffers
@@ -144,7 +144,8 @@ public:
      *                   type: bool, default: false"
      *     }
      *   }
-     * @note: mapX and mapY are optional, only used when bEnableUndistortion is true.
+     * @note: mapXBufferId and mapYBufferId are optional,
+     *        only used when bEnableUndistortion is true.
      *        The quantization and normalization parameters are optional,
      *        only used when bEnableNormalize is true.
      * @return QC_STATUS_OK on success, other values on failure.

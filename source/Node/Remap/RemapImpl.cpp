@@ -88,27 +88,34 @@ RemapImpl::Initialize( std::vector<std::reference_wrapper<QCBufferDescriptorBase
                         break;
                     }
 
-                    QCSharedBuffer_t *pMapX = nullptr;
-                    QCSharedBuffer_t *pMapY = nullptr;
+                    TensorDescriptor_t *pMapXTensorDesc = nullptr;
+                    TensorDescriptor_t *pMapYTensorDesc = nullptr;
                     if ( true == m_config.params.bEnableUndistortion )
                     {
                         uint32_t mapXBufferId =
                                 m_config.params.inputConfigs[inputId].remapTable.mapXBufferId;
-                        QCBufferDescriptorBase_t &mapXBufferDesc = buffers[mapXBufferId];
-                        QCSharedBufferDescriptor_t *pMapXBufferDesc =
-                                dynamic_cast<QCSharedBufferDescriptor_t *>( &mapXBufferDesc );
-                        pMapX = &( pMapXBufferDesc->buffer );
+                        QCBufferDescriptorBase_t &mapXBufDesc = buffers[mapXBufferId];
+                        pMapXTensorDesc = dynamic_cast<TensorDescriptor_t *>( &mapXBufDesc );
+                        if ( nullptr == pMapXTensorDesc )
+                        {
+                            QC_ERROR( "null mapX buffer!" );
+                            break;
+                        }
 
                         uint32_t mapYBufferId =
                                 m_config.params.inputConfigs[inputId].remapTable.mapYBufferId;
-                        QCBufferDescriptorBase_t &mapYBufferDesc = buffers[mapYBufferId];
-                        QCSharedBufferDescriptor_t *pMapYBufferDesc =
-                                dynamic_cast<QCSharedBufferDescriptor_t *>( &mapYBufferDesc );
-                        pMapY = &( pMapYBufferDesc->buffer );
+                        QCBufferDescriptorBase_t &mapYBufDesc = buffers[mapYBufferId];
+                        pMapYTensorDesc = dynamic_cast<TensorDescriptor_t *>( &mapYBufDesc );
+                        if ( nullptr == pMapYTensorDesc )
+                        {
+                            QC_ERROR( "null mapY buffer!" );
+                            break;
+                        }
                     }
                     status = m_fadasRemapObj.CreatRemapTable(
                             inputId, m_config.params.inputConfigs[inputId].mapWidth,
-                            m_config.params.inputConfigs[inputId].mapHeight, pMapX, pMapY );
+                            m_config.params.inputConfigs[inputId].mapHeight, *pMapXTensorDesc,
+                            *pMapYTensorDesc );
                     if ( QC_STATUS_OK != status )
                     {
                         QC_ERROR( "Create remap table fail at inputId = %d", inputId );
@@ -130,23 +137,12 @@ RemapImpl::Initialize( std::vector<std::reference_wrapper<QCBufferDescriptorBase
                 if ( bufferId < buffers.size() )
                 {
                     const QCBufferDescriptorBase_t &bufDesc = buffers[bufferId];
-                    const QCSharedBufferDescriptor_t *pSharedBuffer =
-                            dynamic_cast<const QCSharedBufferDescriptor_t *>( &bufDesc );
-                    if ( nullptr == pSharedBuffer )
+                    int32_t fd = m_fadasRemapObj.RegBuf( bufDesc, FADAS_BUF_TYPE_INOUT );
+                    if ( 0 > fd )
                     {
-                        QC_ERROR( "buffer %" PRIu32 "is invalid", bufferId );
-                        status = QC_STATUS_INVALID_BUF;
-                    }
-                    else
-                    {
-                        int32_t fd = m_fadasRemapObj.RegBuf( &( pSharedBuffer->buffer ),
-                                                             FADAS_BUF_TYPE_INOUT );
-                        if ( 0 > fd )
-                        {
-                            QC_ERROR( "Failed to register buffer for bufferId = %d!", bufferId );
-                            status = QC_STATUS_FAIL;
-                            break;
-                        }
+                        QC_ERROR( "Failed to register buffer for bufferId = %d!", bufferId );
+                        status = QC_STATUS_FAIL;
+                        break;
                     }
                 }
                 else
@@ -209,6 +205,7 @@ QCStatus_e RemapImpl::DeInitialize()
 QCStatus_e RemapImpl::ProcessFrameDescriptor( QCFrameDescriptorNodeIfs &frameDesc )
 {
     QCStatus_e status = QC_STATUS_OK;
+
     if ( QC_OBJECT_STATE_RUNNING != m_state )
     {
         QC_ERROR( "Remap node not in running status!" );
@@ -216,52 +213,7 @@ QCStatus_e RemapImpl::ProcessFrameDescriptor( QCFrameDescriptorNodeIfs &frameDes
     }
     else
     {
-        std::vector<QCSharedBuffer_t> inputs;
-        std::vector<QCSharedBuffer_t> outputs;
-
-        inputs.reserve( m_inputNum );
-        for ( uint32_t i = 0; i < m_inputNum; i++ )
-        {
-            uint32_t globalBufferId = m_config.globalBufferIdMap[i].globalBufferId;
-            QCBufferDescriptorBase_t &bufDesc = frameDesc.GetBuffer( globalBufferId );
-            const QCSharedBufferDescriptor_t *pSharedBuffer =
-                    dynamic_cast<const QCSharedBufferDescriptor_t *>( &bufDesc );
-            if ( nullptr == pSharedBuffer )
-            {
-                status = QC_STATUS_INVALID_BUF;
-                break;
-            }
-            else
-            {
-                inputs.push_back( pSharedBuffer->buffer );
-            }
-        }
-
-        if ( QC_STATUS_OK == status )
-        {
-            outputs.reserve( m_outputNum );
-            for ( uint32_t i = m_inputNum; i < m_inputNum + m_outputNum; i++ )
-            {
-                uint32_t globalBufferId = m_config.globalBufferIdMap[i].globalBufferId;
-                QCBufferDescriptorBase_t &bufDesc = frameDesc.GetBuffer( globalBufferId );
-                const QCSharedBufferDescriptor_t *pSharedBuffer =
-                        dynamic_cast<const QCSharedBufferDescriptor_t *>( &bufDesc );
-                if ( nullptr == pSharedBuffer )
-                {
-                    status = QC_STATUS_INVALID_BUF;
-                    break;
-                }
-                else
-                {
-                    outputs.push_back( pSharedBuffer->buffer );
-                }
-            }
-        }
-
-        if ( QC_STATUS_OK == status )
-        {
-            status = m_fadasRemapObj.RemapRun( inputs.data(), outputs.data() );
-        }
+        status = m_fadasRemapObj.RemapRun( frameDesc );
     }
 
     return status;
@@ -276,34 +228,28 @@ QCStatus_e RemapImpl::SetupGlobalBufferIdMap()
 {
     QCStatus_e status = QC_STATUS_OK;
 
-    m_inputNum = m_config.params.numOfInputs;
-    m_outputNum = 1;
-
     if ( 0 < m_config.globalBufferIdMap.size() )
     {
-        if ( ( m_inputNum + m_outputNum ) != m_config.globalBufferIdMap.size() )
+        if ( ( m_config.params.numOfInputs + 1 ) != m_config.globalBufferIdMap.size() )
         {
             QC_ERROR( "global buffer map size is not correct: expect %" PRIu32,
-                      m_inputNum + m_outputNum + 1 );
+                      m_config.params.numOfInputs + 1 );
             status = QC_STATUS_BAD_ARGUMENTS;
         }
     }
     else
     { /* create a default global buffer index map */
-        m_config.globalBufferIdMap.resize( m_inputNum + m_outputNum );
+        m_config.globalBufferIdMap.resize( m_config.params.numOfInputs + 1 );
         uint32_t globalBufferId = 0;
-        for ( uint32_t i = 0; i < m_inputNum; i++ )
+        for ( uint32_t i = 0; i < m_config.params.numOfInputs; i++ )
         {
             m_config.globalBufferIdMap[globalBufferId].name = "Input" + std::to_string( i );
             m_config.globalBufferIdMap[globalBufferId].globalBufferId = globalBufferId;
             globalBufferId++;
         }
-        for ( uint32_t i = 0; i < m_outputNum; i++ )
-        {
-            m_config.globalBufferIdMap[globalBufferId].name = "Output";
-            m_config.globalBufferIdMap[globalBufferId].globalBufferId = globalBufferId;
-            globalBufferId++;
-        }
+        m_config.globalBufferIdMap[globalBufferId].name = "Output";
+        m_config.globalBufferIdMap[globalBufferId].globalBufferId = globalBufferId;
+        globalBufferId++;
     }
     return status;
 }
