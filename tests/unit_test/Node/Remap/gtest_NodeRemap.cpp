@@ -11,13 +11,52 @@
 #include <string>
 
 #include "QC/Node/Remap.hpp"
+#include "QC/sample/BufferManager.hpp"
 #include "md5_utils.hpp"
 
 using namespace QC::Node;
-using namespace QC::component;
 using namespace QC::test::utils;
+using namespace QC::sample;
 
-QCStatus_e LoadMapRemap( QCSharedBuffer_t buffer, std::string path )
+QCStatus_e LoadImageRemap( ImageDescriptor_t imageDesc, std::string path )
+{
+    QCStatus_e status = QC_STATUS_OK;
+    FILE *file = nullptr;
+    size_t length = 0;
+    file = fopen( path.c_str(), "rb" );
+    if ( nullptr == file )
+    {
+        printf( "could not open image file %s\n", path.c_str() );
+        status = QC_STATUS_FAIL;
+    }
+    else
+    {
+        fseek( file, 0, SEEK_END );
+        length = (size_t) ftell( file );
+        if ( imageDesc.size != length )
+        {
+            printf( "image file %s size not match, need %d but got %d\n", path.c_str(),
+                    (int) imageDesc.size, (int) length );
+            status = QC_STATUS_FAIL;
+        }
+        else
+        {
+            fseek( file, 0, SEEK_SET );
+            auto r = fread( imageDesc.pBuf, 1, length, file );
+            if ( length != r )
+            {
+                printf( "failed to read image file %s, need %d but read %d\n", path.c_str(),
+                        (int) length, (int) r );
+                status = QC_STATUS_FAIL;
+            }
+        }
+        fclose( file );
+    }
+
+    return status;
+}
+
+QCStatus_e LoadMapRemap( TensorDescriptor_t buffer, std::string path )
 {
     QCStatus_e status = QC_STATUS_OK;
     FILE *file = nullptr;
@@ -46,7 +85,7 @@ QCStatus_e LoadMapRemap( QCSharedBuffer_t buffer, std::string path )
     if ( QC_STATUS_OK == status )
     {
         fseek( file, 0, SEEK_SET );
-        auto r = fread( buffer.data(), 1, length, file );
+        auto r = fread( buffer.pBuf, 1, length, file );
         if ( length != r )
         {
             printf( "failed to read map table file %s", path.c_str() );
@@ -100,8 +139,8 @@ void SetConfigRemap( Remap_Config_t *pRemapConfig, DataTree *pdt )
 
         if ( pRemapConfig->bEnableUndistortion == true )
         {
-            inputDt.Set<uint32_t>( "mapX", 0 );
-            inputDt.Set<uint32_t>( "mapY", 1 );
+            inputDt.Set<uint32_t>( "mapXBufferId", 0 );
+            inputDt.Set<uint32_t>( "mapYBufferId", 1 );
         }
 
         inputDts.push_back( inputDt );
@@ -114,6 +153,7 @@ void SanityRemap()
     QCStatus_e ret;
     std::string errors;
     QCNodeIfs *pRemap = new QC::Node::Remap();
+    BufferManager bufMgr( { "MANAGER", QC_NODE_TYPE_FADAS_REMAP, 0 } );
 
     Remap_Config_t RemapConfig;
     RemapConfig.numOfInputs = 2;
@@ -144,10 +184,7 @@ void SanityRemap()
     QCNodeInit_t config = { dt.Dump() };
     printf( "config: %s\n", config.config.c_str() );
 
-    ret = pRemap->Initialize( config );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    QCImageProps_t imgPropInputs[RemapConfig.numOfInputs];
+    ImageProps_t imgPropInputs[RemapConfig.numOfInputs];
     for ( int i = 0; i < RemapConfig.numOfInputs; i++ )
     {
         imgPropInputs[i].batchSize = 1;
@@ -180,7 +217,7 @@ void SanityRemap()
         }
     }
 
-    QCImageProps_t imgPropOutput;
+    ImageProps_t imgPropOutput;
     imgPropOutput.batchSize = RemapConfig.numOfInputs;
     imgPropOutput.width = RemapConfig.outputWidth;
     imgPropOutput.height = RemapConfig.outputHeight;
@@ -204,40 +241,34 @@ void SanityRemap()
         imgPropOutput.numPlanes = 2;
     }
 
-    std::vector<QCImageProps_t> inputsProps;
-    std::vector<QCSharedBufferDescriptor_t> inputs;
+    QCSharedFrameDescriptorNode frameDesc( RemapConfig.numOfInputs + 1 );
+    uint32_t globalIdx = 0;
+    std::vector<ImageDescriptor_t> inputs;
+    inputs.reserve( RemapConfig.numOfInputs );
     for ( int i = 0; i < RemapConfig.numOfInputs; i++ )
     {
-        inputsProps.push_back( imgPropInputs[i] );
-        QCSharedBufferDescriptor_t buffer;
-        ret = buffer.buffer.Allocate( &imgPropInputs[i] );
+        ImageDescriptor_t imageDesc;
+        ret = bufMgr.Allocate( imgPropInputs[i], imageDesc );
         ASSERT_EQ( QC_STATUS_OK, ret );
-        inputs.push_back( buffer );
+        inputs.push_back( imageDesc );
+        ret = frameDesc.SetBuffer( globalIdx, inputs.back() );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+        globalIdx++;
     }
-    std::vector<QCImageProps_t> outputsProps;
-    std::vector<QCSharedBufferDescriptor_t> outputs;
-    outputsProps.push_back( imgPropOutput );
-    QCSharedBufferDescriptor_t buffer;
-    ret = buffer.buffer.Allocate( &imgPropOutput );
-    outputs.push_back( buffer );
+    std::vector<ImageDescriptor_t> outputs;
+    outputs.reserve( 1 );
+    ImageDescriptor_t imageDesc;
+    ret = bufMgr.Allocate( imgPropOutput, imageDesc );
+    outputs.push_back( imageDesc );
+    ret = frameDesc.SetBuffer( globalIdx, outputs.back() );
+    ASSERT_EQ( QC_STATUS_OK, ret );
+    globalIdx++;
+
+    ret = pRemap->Initialize( config );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = pRemap->Start();
     ASSERT_EQ( QC_STATUS_OK, ret );
-
-    QCSharedFrameDescriptorNode frameDesc( inputs.size() + outputs.size() );
-    uint32_t globalIdx = 0;
-    for ( auto &buffer : inputs )
-    {
-        ret = frameDesc.SetBuffer( globalIdx, buffer );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        globalIdx++;
-    }
-    for ( auto &buffer : outputs )
-    {
-        ret = frameDesc.SetBuffer( globalIdx, buffer );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        globalIdx++;
-    }
 
     ret = pRemap->ProcessFrameDescriptor( frameDesc );
     ASSERT_EQ( QC_STATUS_OK, ret );
@@ -248,15 +279,15 @@ void SanityRemap()
     ret = pRemap->DeInitialize();
     ASSERT_EQ( QC_STATUS_OK, ret );
 
-    for ( auto &buffer : inputs )
+    for ( auto imageDesc : inputs )
     {
-        ret = buffer.buffer.Free();
+        ret = bufMgr.Free( imageDesc );
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
 
-    for ( auto &buffer : outputs )
+    for ( auto imageDesc : outputs )
     {
-        ret = buffer.buffer.Free();
+        ret = bufMgr.Free( imageDesc );
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
 
@@ -272,6 +303,11 @@ void AccuracyRemap( uint32_t inputNumberTest, QCProcessorType_e processorTest,
     QCStatus_e ret;
     std::string errors;
     QCNodeIfs *pRemap = new QC::Node::Remap();
+    BufferManager bufMgr( { "MANAGER", QC_NODE_TYPE_FADAS_REMAP, 0 } );
+    uint32_t globalIdx = 0;
+    std::vector<uint32_t> bufferIds;
+    QCNodeInit_t config;
+    config.buffers.clear();
 
     Remap_Config_t RemapConfig;
     RemapConfig.numOfInputs = inputNumberTest;
@@ -320,54 +356,7 @@ void AccuracyRemap( uint32_t inputNumberTest, QCProcessorType_e processorTest,
     dt.Set<uint32_t>( "static.id", 0 );
     SetConfigRemap( &RemapConfig, &dt );
 
-    QCNodeInit_t config = { dt.Dump() };
-    printf( "config: %s\n", config.config.c_str() );
-
-    QCSharedBufferDescriptor_t mapXBufferDesc;
-    QCSharedBufferDescriptor_t mapYBufferDesc;
-    if ( true == RemapConfig.bEnableUndistortion )
-    {
-        QCTensorProps_t mapXProp = {
-                QC_TENSOR_TYPE_FLOAT_32,
-                { RemapConfig.inputConfigs[0].mapWidth, RemapConfig.inputConfigs[0].mapHeight, 0 },
-                2,
-        };
-        ret = mapXBufferDesc.buffer.Allocate( &mapXProp );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        ret = LoadMapRemap( mapXBufferDesc.buffer, "./data/test/Remap/mapX.raw" );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-
-        QCTensorProps_t mapYProp = {
-                QC_TENSOR_TYPE_FLOAT_32,
-                { RemapConfig.inputConfigs[0].mapWidth, RemapConfig.inputConfigs[0].mapHeight, 0 },
-                2,
-        };
-        ret = mapYBufferDesc.buffer.Allocate( &mapYProp );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        ret = LoadMapRemap( mapYBufferDesc.buffer, "./data/test/Remap/mapY.raw" );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        if ( nullptr != mapXBufferDesc.buffer.data() )
-        {
-            config.buffers.push_back( mapXBufferDesc );
-        }
-        else
-        {
-            printf( "mapXBufferDesc is nullptr\n" );
-        }
-        if ( nullptr != mapYBufferDesc.buffer.data() )
-        {
-            config.buffers.push_back( mapYBufferDesc );
-        }
-        else
-        {
-            printf( "mapYBufferDesc is nullptr\n" );
-        }
-    }
-
-    ret = pRemap->Initialize( config );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    QCImageProps_t imgPropInputs[RemapConfig.numOfInputs];
+    ImageProps_t imgPropInputs[RemapConfig.numOfInputs];
     for ( int i = 0; i < RemapConfig.numOfInputs; i++ )
     {
         imgPropInputs[i].batchSize = 1;
@@ -400,7 +389,7 @@ void AccuracyRemap( uint32_t inputNumberTest, QCProcessorType_e processorTest,
         }
     }
 
-    QCImageProps_t imgPropOutput;
+    ImageProps_t imgPropOutput;
     imgPropOutput.batchSize = RemapConfig.numOfInputs;
     imgPropOutput.width = RemapConfig.outputWidth;
     imgPropOutput.height = RemapConfig.outputHeight;
@@ -424,138 +413,134 @@ void AccuracyRemap( uint32_t inputNumberTest, QCProcessorType_e processorTest,
         imgPropOutput.numPlanes = 2;
     }
 
-    std::vector<QCImageProps_t> inputsProps;
-    std::vector<QCSharedBufferDescriptor_t> inputs;
+    uint32_t frameIdx = 0;
+    QCSharedFrameDescriptorNode frameDesc( RemapConfig.numOfInputs + 1 );
+
+    std::vector<ImageDescriptor_t> inputs;
+    inputs.reserve( RemapConfig.numOfInputs );
     for ( int i = 0; i < RemapConfig.numOfInputs; i++ )
     {
-        inputsProps.push_back( imgPropInputs[i] );
-        QCSharedBufferDescriptor_t buffer;
+        ImageDescriptor_t imageDesc;
         if ( QC_IMAGE_FORMAT_NV12_UBWC == RemapConfig.inputConfigs[i].inputFormat )
         {
-            ret = buffer.buffer.Allocate( RemapConfig.inputConfigs[i].inputWidth,
-                                          RemapConfig.inputConfigs[i].inputHeight,
-                                          RemapConfig.inputConfigs[i].inputFormat );
+            ret = bufMgr.Allocate( ImageBasicProps_t( RemapConfig.inputConfigs[i].inputWidth,
+                                                      RemapConfig.inputConfigs[i].inputHeight,
+                                                      RemapConfig.inputConfigs[i].inputFormat ),
+                                   imageDesc );
         }
         else
         {
-            ret = buffer.buffer.Allocate( &imgPropInputs[i] );
+            ret = bufMgr.Allocate( imgPropInputs[i], imageDesc );
         }
         ASSERT_EQ( QC_STATUS_OK, ret );
-        memset( buffer.buffer.data(), 0, buffer.buffer.size );
+        inputs.push_back( imageDesc );
+        ret = frameDesc.SetBuffer( frameIdx, inputs.back() );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+        frameIdx++;
+        config.buffers.push_back( inputs.back() );
+        bufferIds.push_back( globalIdx );
+        globalIdx++;
+    }
 
-        FILE *file1 = nullptr;
-        size_t length1 = 0;
-        file1 = fopen( pathTest.c_str(), "rb" );
-        if ( nullptr == file1 )
+    std::vector<ImageDescriptor_t> outputs;
+    outputs.reserve( 1 );
+    ImageDescriptor_t imageDesc;
+    ret = bufMgr.Allocate( imgPropOutput, imageDesc );
+    outputs.push_back( imageDesc );
+    ret = frameDesc.SetBuffer( frameIdx, outputs.back() );
+    ASSERT_EQ( QC_STATUS_OK, ret );
+    frameIdx++;
+    config.buffers.push_back( outputs.back() );
+    bufferIds.push_back( globalIdx );
+    globalIdx++;
+
+    TensorDescriptor_t mapXBufferDesc;
+    TensorDescriptor_t mapYBufferDesc;
+    if ( true == RemapConfig.bEnableUndistortion )
+    {
+        TensorProps_t mapXProp = {
+                QC_TENSOR_TYPE_FLOAT_32,
+                { RemapConfig.inputConfigs[0].mapWidth, RemapConfig.inputConfigs[0].mapHeight } };
+        ret = bufMgr.Allocate( mapXProp, mapXBufferDesc );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+        ret = LoadMapRemap( mapXBufferDesc, "./data/test/Remap/mapX.raw" );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+
+        TensorProps_t mapYProp = {
+                QC_TENSOR_TYPE_FLOAT_32,
+                { RemapConfig.inputConfigs[0].mapWidth, RemapConfig.inputConfigs[0].mapHeight } };
+        ret = bufMgr.Allocate( mapYProp, mapYBufferDesc );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+        ret = LoadMapRemap( mapYBufferDesc, "./data/test/Remap/mapY.raw" );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+        if ( nullptr != mapXBufferDesc.pBuf )
         {
-            printf( "could not open image file %s\n", pathTest.c_str() );
+            config.buffers.push_back( mapXBufferDesc );
+            bufferIds.push_back( globalIdx );
+            globalIdx++;
         }
         else
         {
-            fseek( file1, 0, SEEK_END );
-            length1 = (size_t) ftell( file1 );
-            if ( buffer.buffer.size != length1 )
-            {
-                printf( "image file %s size not match, need %d but got %d\n", pathTest.c_str(),
-                        (int) buffer.buffer.size, (int) length1 );
-            }
-            else
-            {
-                fseek( file1, 0, SEEK_SET );
-                auto r = fread( buffer.buffer.data(), 1, length1, file1 );
-                if ( length1 != r )
-                {
-                    printf( "failed to read image file %s, need %d but read %d\n", pathTest.c_str(),
-                            (int) length1, (int) r );
-                }
-            }
-            fclose( file1 );
+            printf( "mapXBufferDesc is nullptr\n" );
         }
-
-        inputs.push_back( buffer );
+        if ( nullptr != mapYBufferDesc.pBuf )
+        {
+            config.buffers.push_back( mapYBufferDesc );
+            bufferIds.push_back( globalIdx );
+            globalIdx++;
+        }
+        else
+        {
+            printf( "mapYBufferDesc is nullptr\n" );
+        }
     }
 
-    std::vector<QCImageProps_t> outputsProps;
-    std::vector<QCSharedBufferDescriptor_t> outputs;
-    outputsProps.push_back( imgPropOutput );
-    QCSharedBufferDescriptor_t buffer;
-    ret = buffer.buffer.Allocate( &imgPropOutput );
-    outputs.push_back( buffer );
+    dt.Set<uint32_t>( "static.bufferIds", bufferIds );
+    config.config = dt.Dump();
+    printf( "config: %s\n", config.config.c_str() );
+
+    ret = pRemap->Initialize( config );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = pRemap->Start();
     ASSERT_EQ( QC_STATUS_OK, ret );
 
-    QCSharedFrameDescriptorNode frameDesc( inputs.size() + outputs.size() );
-    uint32_t globalIdx = 0;
-    for ( auto &buffer : inputs )
+    for ( int i = 0; i < RemapConfig.numOfInputs; i++ )
     {
-        ret = frameDesc.SetBuffer( globalIdx, buffer );
+        memset( inputs[i].pBuf, 0, inputs[i].size );
+        ret = LoadImageRemap( inputs[i], pathTest );
         ASSERT_EQ( QC_STATUS_OK, ret );
-        globalIdx++;
     }
-    for ( auto &buffer : outputs )
-    {
-        ret = frameDesc.SetBuffer( globalIdx, buffer );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        globalIdx++;
-    }
+    memset( outputs[0].pBuf, 0, outputs[0].size );
 
     ret = pRemap->ProcessFrameDescriptor( frameDesc );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
     if ( true == saveOutput )
     {
-        uint8_t *ptr = (uint8_t *) outputs[0].buffer.data();
+        uint8_t *ptr = (uint8_t *) outputs[0].pBuf;
         FILE *fp = fopen( goldenPath.c_str(), "wb" );
         if ( nullptr != fp )
         {
-            fwrite( ptr, outputs[0].buffer.size, 1, fp );
+            fwrite( ptr, outputs[0].size, 1, fp );
             fclose( fp );
         }
     }
 
-    QCSharedBuffer_t golden;
-    (void) golden.Allocate( &imgPropOutput );
+    ImageDescriptor_t golden;
+    (void) bufMgr.Allocate( imgPropOutput, golden );
+    LoadImageRemap( golden, goldenPath );
 
-    FILE *file2 = nullptr;
-    size_t length2 = 0;
-    file2 = fopen( goldenPath.c_str(), "rb" );
-    if ( nullptr == file2 )
-    {
-        printf( "could not open golden file %s\n", goldenPath.c_str() );
-    }
-    else
-    {
-        fseek( file2, 0, SEEK_END );
-        length2 = (size_t) ftell( file2 );
-        if ( golden.size != length2 )
-        {
-            printf( "golden file %s size not match, need %d but got %d\n", goldenPath.c_str(),
-                    (int) golden.size, (int) length2 );
-        }
-        else
-        {
-            fseek( file2, 0, SEEK_SET );
-            auto r = fread( golden.data(), 1, length2, file2 );
-            if ( length2 != r )
-            {
-                printf( "failed to read golden file %s, need %d but read %d\n", pathTest.c_str(),
-                        (int) length2, (int) r );
-            }
-        }
-        fclose( file2 );
-    }
-
-    std::string md5Output = MD5Sum( outputs[0].buffer.data(), outputs[0].buffer.size );
+    std::string md5Output = MD5Sum( outputs[0].pBuf, outputs[0].size );
     printf( "output md5 = %s\n", md5Output.c_str() );
-    std::string md5Golden = MD5Sum( golden.data(), outputs[0].buffer.size );
+    std::string md5Golden = MD5Sum( golden.pBuf, outputs[0].size );
     printf( "golden md5 = %s\n", md5Golden.c_str() );
 
     if ( md5Output != md5Golden )   // check cosine similarity if md5 not match
     {
-        size_t outputSize = outputs[0].buffer.size;
-        uint8_t *outputData = (uint8_t *) outputs[0].buffer.data();
-        uint8_t *goldenData = (uint8_t *) golden.data();
+        size_t outputSize = outputs[0].size;
+        uint8_t *outputData = (uint8_t *) outputs[0].pBuf;
+        uint8_t *goldenData = (uint8_t *) golden.pBuf;
         float dot = 0.0;
         float norm1 = 1e-10;
         float norm2 = 1e-10;
@@ -587,21 +572,19 @@ void AccuracyRemap( uint32_t inputNumberTest, QCProcessorType_e processorTest,
     ret = pRemap->DeInitialize();
     ASSERT_EQ( QC_STATUS_OK, ret );
 
-    for ( auto &buffer : inputs )
+    for ( auto imageDesc : inputs )
     {
-        ret = buffer.buffer.Free();
-        ASSERT_EQ( QC_STATUS_OK, ret );
+        ret = bufMgr.Free( imageDesc );
     }
 
-    for ( auto &buffer : outputs )
+    for ( auto imageDesc : outputs )
     {
-        ret = buffer.buffer.Free();
-        ASSERT_EQ( QC_STATUS_OK, ret );
+        ret = bufMgr.Free( imageDesc );
     }
 
-    (void) mapXBufferDesc.buffer.Free();
-    (void) mapYBufferDesc.buffer.Free();
-    (void) golden.Free();
+    (void) bufMgr.Free( mapXBufferDesc );
+    (void) bufMgr.Free( mapYBufferDesc );
+    (void) bufMgr.Free( golden );
 
     reinterpret_cast<QC::Node::Remap *>( pRemap )->~Remap();
 }

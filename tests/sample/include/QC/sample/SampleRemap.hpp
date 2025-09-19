@@ -70,8 +70,9 @@ private:
     QC::Node::Remap m_remap;
     bool m_bEnableUndistortion = false;
 
-    QCSharedBufferDescriptor_t m_mapXBufferDesc[QC_MAX_INPUTS];
-    QCSharedBufferDescriptor_t m_mapYBufferDesc[QC_MAX_INPUTS];
+    TensorDescriptor_t m_mapXBufferDesc[QC_MAX_INPUTS];
+    TensorDescriptor_t m_mapYBufferDesc[QC_MAX_INPUTS];
+    BufferManager *m_pBufMgr = nullptr;
 };   // class SampleRemap
 
 }   // namespace sample

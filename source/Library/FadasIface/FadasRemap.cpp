@@ -196,45 +196,40 @@ FadasIface_FadasRemapPipeline_e FadasRemap::RemapGetPipelineDSP( QCImageFormat_e
 }
 
 QCStatus_e FadasRemap::CreatRemapTable( uint32_t inputId, uint32_t mapWidth, uint32_t mapHeight,
-                                        const QCSharedBuffer_t *pMapX,
-                                        const QCSharedBuffer_t *pMapY )
+                                        const TensorDescriptor_t &bufDescMapX,
+                                        const TensorDescriptor_t &bufDescMapY )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
     m_mapWidths[inputId] = mapWidth;
     m_mapHeights[inputId] = mapHeight;
 
-    if ( ( true == m_bEnableUndistortion ) && ( ( nullptr == pMapX ) || ( nullptr == pMapY ) ) )
+    if ( ( true == m_bEnableUndistortion ) &&
+         ( ( QC_BUFFER_TYPE_TENSOR != bufDescMapX.type ) || ( nullptr == bufDescMapX.pBuf ) ) )
     {
-        QC_ERROR( "Null remap pointer!" );
+        QC_ERROR( "Invalid mapX buffer desc!" );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else if ( ( true == m_bEnableUndistortion ) &&
-              ( ( QC_BUFFER_TYPE_TENSOR != pMapX->type ) || ( nullptr == pMapX->data() ) ) )
+              ( ( QC_BUFFER_TYPE_TENSOR != bufDescMapY.type ) || ( nullptr == bufDescMapY.pBuf ) ) )
     {
-        QC_ERROR( "Invalid mapX table!" );
+        QC_ERROR( "Invalid mapY buffer desc!" );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else if ( ( true == m_bEnableUndistortion ) &&
-              ( ( QC_BUFFER_TYPE_TENSOR != pMapY->type ) || ( nullptr == pMapY->data() ) ) )
+              ( ( QC_TENSOR_TYPE_FLOAT_32 != bufDescMapX.tensorType ) ||
+                ( 2 != bufDescMapX.numDims ) || ( mapWidth != bufDescMapX.dims[0] ) ||
+                ( mapHeight != bufDescMapX.dims[1] ) ) )
     {
-        QC_ERROR( "Invalid mapY table!" );
+        QC_ERROR( "mapX buffer desc size not match!" );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else if ( ( true == m_bEnableUndistortion ) &&
-              ( ( QC_TENSOR_TYPE_FLOAT_32 != pMapX->tensorProps.type ) ||
-                ( 2 != pMapX->tensorProps.numDims ) || ( mapWidth != pMapX->tensorProps.dims[0] ) ||
-                ( mapHeight != pMapX->tensorProps.dims[1] ) ) )
+              ( ( QC_TENSOR_TYPE_FLOAT_32 != bufDescMapY.tensorType ) ||
+                ( 2 != bufDescMapY.numDims ) || ( mapWidth != bufDescMapY.dims[0] ) ||
+                ( mapHeight != bufDescMapY.dims[1] ) ) )
     {
-        QC_ERROR( "mapX table size not match!" );
-        ret = QC_STATUS_BAD_ARGUMENTS;
-    }
-    else if ( ( true == m_bEnableUndistortion ) &&
-              ( ( QC_TENSOR_TYPE_FLOAT_32 != pMapY->tensorProps.type ) ||
-                ( 2 != pMapY->tensorProps.numDims ) || ( mapWidth != pMapY->tensorProps.dims[0] ) ||
-                ( mapHeight != pMapY->tensorProps.dims[1] ) ) )
-    {
-        QC_ERROR( "mapY table size not match!" );
+        QC_ERROR( "mapY buffer desc size not match!" );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
     else
@@ -254,14 +249,14 @@ QCStatus_e FadasRemap::CreatRemapTable( uint32_t inputId, uint32_t mapWidth, uin
                 uint64 retVal = 0;
                 if ( true == m_bEnableUndistortion )
                 {
-                    int32_t mapXFd = RegBuf( pMapX, FADAS_BUF_TYPE_IN );
-                    int32_t mapYFd = RegBuf( pMapY, FADAS_BUF_TYPE_IN );
+                    int32_t mapXFd = RegBuf( bufDescMapX, FADAS_BUF_TYPE_IN );
+                    int32_t mapYFd = RegBuf( bufDescMapY, FADAS_BUF_TYPE_IN );
                     retVal = FadasIface_FadasRemap_CreateMapFromMap(
                             m_handle64, &remapPtr, m_inputWidths[inputId], m_inputHeights[inputId],
                             m_mapWidths[inputId], m_mapHeights[inputId], mapXFd, mapYFd,
                             m_mapWidths[inputId] * sizeof( float ), pipeline, 0 );
-                    DeregBuf( pMapX->data() );
-                    DeregBuf( pMapY->data() );
+                    DeregBuf( bufDescMapX.pBuf );
+                    DeregBuf( bufDescMapY.pBuf );
                 }
                 else
                 {
@@ -298,7 +293,8 @@ QCStatus_e FadasRemap::CreatRemapTable( uint32_t inputId, uint32_t mapWidth, uin
                     remapPtr = s_FadasRemap_CreateMapFromMapGPU(
                             m_inputWidths[inputId], m_inputHeights[inputId], m_mapWidths[inputId],
                             m_mapHeights[inputId], m_mapWidths[inputId] * sizeof( float ),
-                            (float *) pMapX->data(), (float *) pMapY->data(), pipeline, 0, 1 );
+                            static_cast<float *>( bufDescMapX.pBuf ),
+                            static_cast<float *>( bufDescMapY.pBuf ), pipeline, 0, 1 );
                 }
                 else
                 {
@@ -335,7 +331,8 @@ QCStatus_e FadasRemap::CreatRemapTable( uint32_t inputId, uint32_t mapWidth, uin
                     remapPtr = FadasRemap_CreateMapFromMap(
                             m_inputWidths[inputId], m_inputHeights[inputId], m_mapWidths[inputId],
                             m_mapHeights[inputId], m_mapWidths[inputId] * sizeof( float ),
-                            (float *) pMapX->data(), (float *) pMapY->data(), pipeline, 0 );
+                            static_cast<float *>( bufDescMapX.pBuf ),
+                            static_cast<float *>( bufDescMapY.pBuf ), pipeline, 0 );
                 }
                 else
                 {
@@ -438,17 +435,20 @@ QCStatus_e FadasRemap::CreateRemapWorker( uint32_t inputId, QCImageFormat_e inpu
     return ret;
 }
 
-QCStatus_e FadasRemap::RemapRunCPU( const QCSharedBuffer_t *inputs, const QCSharedBuffer_t *output )
+QCStatus_e FadasRemap::RemapRunCPU( QCFrameDescriptorNodeIfs &frameDesc )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
     /*call unified RegBuf functions even the buffers may have been registered*/
     int32_t srcFds[QC_MAX_INPUTS];
     int32_t dstFd;
+    ImageDescriptor_t &bufDescOutput =
+            dynamic_cast<ImageDescriptor_t &>( frameDesc.GetBuffer( m_numOfInputs ) );
     for ( uint32_t inputId = 0; inputId < m_numOfInputs; inputId++ )
     {
-        const QCSharedBuffer_t *input = &inputs[inputId];
-        srcFds[inputId] = RegBuf( input, FADAS_BUF_TYPE_IN );
+        const ImageDescriptor_t &bufDescInput =
+                dynamic_cast<ImageDescriptor_t &>( frameDesc.GetBuffer( inputId ) );
+        srcFds[inputId] = RegBuf( bufDescInput, FADAS_BUF_TYPE_IN );
         if ( srcFds[inputId] < 0 )
         {
             QC_ERROR( "Input Buffer register failed!" );
@@ -458,7 +458,7 @@ QCStatus_e FadasRemap::RemapRunCPU( const QCSharedBuffer_t *inputs, const QCShar
     }
     if ( QC_STATUS_OK == ret )
     {
-        dstFd = RegBuf( output, FADAS_BUF_TYPE_OUT );
+        dstFd = RegBuf( bufDescOutput, FADAS_BUF_TYPE_OUT );
         if ( dstFd < 0 )
         {
             QC_ERROR( "Output buffer register failed!" );
@@ -468,19 +468,21 @@ QCStatus_e FadasRemap::RemapRunCPU( const QCSharedBuffer_t *inputs, const QCShar
 
     if ( QC_STATUS_OK == ret )
     {
-        size_t outputSize = output->size / output->imgProps.batchSize;
+        size_t outputSize = bufDescOutput.size / bufDescOutput.batchSize;
         for ( uint32_t inputId = 0; inputId < m_numOfInputs; inputId++ )
         {
-            uint8_t *pSrc = (uint8_t *) inputs[inputId].data();
-            uint8_t *pDst = (uint8_t *) output->data() + inputId * outputSize;
+            const ImageDescriptor_t &bufDescInput =
+                    dynamic_cast<ImageDescriptor_t &>( frameDesc.GetBuffer( inputId ) );
+            uint8_t *pSrc = static_cast<uint8_t *>( bufDescInput.pBuf );
+            uint8_t *pDst = static_cast<uint8_t *>( bufDescOutput.pBuf ) + inputId * outputSize;
 
             FadasImage_t srcImg = { 0 };
-            srcImg.props.width = inputs[inputId].imgProps.width;
-            srcImg.props.height = inputs[inputId].imgProps.height;
-            srcImg.props.numPlanes = inputs[inputId].imgProps.numPlanes;
-            for ( int i = 0; i < inputs[inputId].imgProps.numPlanes; i++ )
+            srcImg.props.width = bufDescInput.width;
+            srcImg.props.height = bufDescInput.height;
+            srcImg.props.numPlanes = bufDescInput.numPlanes;
+            for ( int i = 0; i < bufDescInput.numPlanes; i++ )
             {
-                srcImg.props.stride[i] = inputs[inputId].imgProps.stride[i];
+                srcImg.props.stride[i] = bufDescInput.stride[i];
             }
             srcImg.plane[0] = pSrc;
             if ( QC_IMAGE_FORMAT_UYVY == m_inputFormats[inputId] )
@@ -494,13 +496,13 @@ QCStatus_e FadasRemap::RemapRunCPU( const QCSharedBuffer_t *inputs, const QCShar
             else if ( QC_IMAGE_FORMAT_NV12 == m_inputFormats[inputId] )
             {
                 srcImg.props.format = FADAS_IMAGE_FORMAT_Y8UV8;
-                srcImg.plane[1] = pSrc + inputs[inputId].imgProps.planeBufSize[0];
+                srcImg.plane[1] = pSrc + bufDescInput.planeBufSize[0];
             }
             else if ( QC_IMAGE_FORMAT_NV12_UBWC == m_inputFormats[inputId] )
             {
                 srcImg.props.format = FADAS_IMAGE_FORMAT_UBWC_NV12_RH;
                 srcImg.props.numPlanes = 1;
-                srcImg.props.stride[0] = inputs[inputId].size / inputs[inputId].imgProps.height;
+                srcImg.props.stride[0] = bufDescInput.size / bufDescInput.height;
                 srcImg.props.stride[1] = 0;
                 srcImg.props.stride[2] = 0;
                 srcImg.props.stride[3] = 0;
@@ -513,8 +515,8 @@ QCStatus_e FadasRemap::RemapRunCPU( const QCSharedBuffer_t *inputs, const QCShar
             srcImg.bAllocated = false;
 
             FadasImage_t rgbImg{ 0 };
-            rgbImg.props.width = output->imgProps.width;
-            rgbImg.props.height = output->imgProps.height;
+            rgbImg.props.width = bufDescOutput.width;
+            rgbImg.props.height = bufDescOutput.height;
             if ( QC_IMAGE_FORMAT_RGB888 == m_outputFormat )
             {
                 rgbImg.props.format = FADAS_IMAGE_FORMAT_RGB888;
@@ -528,10 +530,10 @@ QCStatus_e FadasRemap::RemapRunCPU( const QCSharedBuffer_t *inputs, const QCShar
                 QC_ERROR( "Invalid output format!" );
                 ret = QC_STATUS_BAD_ARGUMENTS;
             }
-            rgbImg.props.numPlanes = output->imgProps.numPlanes;
-            for ( int i = 0; i < output->imgProps.numPlanes; i++ )
+            rgbImg.props.numPlanes = bufDescOutput.numPlanes;
+            for ( int i = 0; i < bufDescOutput.numPlanes; i++ )
             {
-                rgbImg.props.stride[i] = output->imgProps.stride[i];
+                rgbImg.props.stride[i] = bufDescOutput.stride[i];
             }
             rgbImg.plane[0] = pDst;
             rgbImg.bAllocated = false;
@@ -591,17 +593,20 @@ QCStatus_e FadasRemap::RemapRunCPU( const QCSharedBuffer_t *inputs, const QCShar
     return ret;
 }
 
-QCStatus_e FadasRemap::RemapRunDSP( const QCSharedBuffer_t *inputs, const QCSharedBuffer_t *output )
+QCStatus_e FadasRemap::RemapRunDSP( QCFrameDescriptorNodeIfs &frameDesc )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
     /*call unified RegBuf functions even the buffers may have been registered*/
     int32_t srcFds[QC_MAX_INPUTS];
     int32_t dstFd;
+    ImageDescriptor_t &bufDescOutput =
+            dynamic_cast<ImageDescriptor_t &>( frameDesc.GetBuffer( m_numOfInputs ) );
     for ( uint32_t inputId = 0; inputId < m_numOfInputs; inputId++ )
     {
-        const QCSharedBuffer_t *input = &inputs[inputId];
-        srcFds[inputId] = RegBuf( input, FADAS_BUF_TYPE_IN );
+        const ImageDescriptor_t &bufDescInput =
+                dynamic_cast<ImageDescriptor_t &>( frameDesc.GetBuffer( inputId ) );
+        srcFds[inputId] = RegBuf( bufDescInput, FADAS_BUF_TYPE_IN );
         if ( srcFds[inputId] < 0 )
         {
             QC_ERROR( "Input Buffer register failed!" );
@@ -611,7 +616,7 @@ QCStatus_e FadasRemap::RemapRunDSP( const QCSharedBuffer_t *inputs, const QCShar
     }
     if ( QC_STATUS_OK == ret )
     {
-        dstFd = RegBuf( output, FADAS_BUF_TYPE_OUT );
+        dstFd = RegBuf( bufDescOutput, FADAS_BUF_TYPE_OUT );
         if ( dstFd < 0 )
         {
             QC_ERROR( "Output buffer register failed!" );
@@ -621,24 +626,26 @@ QCStatus_e FadasRemap::RemapRunDSP( const QCSharedBuffer_t *inputs, const QCShar
 
     if ( QC_STATUS_OK == ret )
     {
-        size_t outputSize = output->size / output->imgProps.batchSize;
+        size_t outputSize = bufDescOutput.size / bufDescOutput.batchSize;
         FadasIface_FadasROI_t ROIs[QC_MAX_INPUTS];
         FadasIface_FadasImgProps_t srcImgProps[QC_MAX_INPUTS];
         uint32_t offsets[QC_MAX_INPUTS];
 
         for ( uint32_t inputId = 0; inputId < m_numOfInputs; inputId++ )
         {
+            const ImageDescriptor_t &bufDescInput =
+                    dynamic_cast<ImageDescriptor_t &>( frameDesc.GetBuffer( inputId ) );
             FadasIface_FadasImgProps_t srcImgProp;
-            srcImgProp.width = inputs[inputId].imgProps.width;
-            srcImgProp.height = inputs[inputId].imgProps.height;
-            srcImgProp.numPlanes = inputs[inputId].imgProps.numPlanes;
-            for ( int i = 0; i < inputs[inputId].imgProps.numPlanes; i++ )
+            srcImgProp.width = bufDescInput.width;
+            srcImgProp.height = bufDescInput.height;
+            srcImgProp.numPlanes = bufDescInput.numPlanes;
+            for ( int i = 0; i < bufDescInput.numPlanes; i++ )
             {
-                srcImgProp.stride[i] = inputs[inputId].imgProps.stride[i];
+                srcImgProp.stride[i] = bufDescInput.stride[i];
             }
-            for ( int i = 0; i < inputs[inputId].imgProps.numPlanes; i++ )
+            for ( int i = 0; i < bufDescInput.numPlanes; i++ )
             {
-                srcImgProp.actualHeight[i] = inputs[inputId].imgProps.actualHeight[i];
+                srcImgProp.actualHeight[i] = bufDescInput.actualHeight[i];
             }
             if ( QC_IMAGE_FORMAT_UYVY == m_inputFormats[inputId] )
             {
@@ -659,7 +666,7 @@ QCStatus_e FadasRemap::RemapRunDSP( const QCSharedBuffer_t *inputs, const QCShar
                 break;
             }
             srcImgProps[inputId] = srcImgProp;
-            offsets[inputId] = inputs[inputId].offset;
+            offsets[inputId] = bufDescInput.offset;
             ROIs[inputId].x = m_ROIs[inputId].x;
             ROIs[inputId].y = m_ROIs[inputId].y;
             ROIs[inputId].width = m_ROIs[inputId].width;
@@ -667,13 +674,13 @@ QCStatus_e FadasRemap::RemapRunDSP( const QCSharedBuffer_t *inputs, const QCShar
         }
 
         FadasIface_FadasImgProps_t dstImgProp;
-        dstImgProp.width = output->imgProps.width;
-        dstImgProp.height = output->imgProps.height;
+        dstImgProp.width = bufDescOutput.width;
+        dstImgProp.height = bufDescOutput.height;
         dstImgProp.format = FADAS_IMAGE_FORMAT_RGB888_NSP;
-        dstImgProp.numPlanes = output->imgProps.numPlanes;
-        for ( int i = 0; i < output->imgProps.numPlanes; i++ )
+        dstImgProp.numPlanes = bufDescOutput.numPlanes;
+        for ( int i = 0; i < bufDescOutput.numPlanes; i++ )
         {
-            dstImgProp.stride[i] = output->imgProps.stride[i];
+            dstImgProp.stride[i] = bufDescOutput.stride[i];
         }
 
         if ( QC_STATUS_OK == ret )
@@ -714,89 +721,81 @@ QCStatus_e FadasRemap::RemapRunDSP( const QCSharedBuffer_t *inputs, const QCShar
     return ret;
 }
 
-QCStatus_e FadasRemap::RemapRun( const QCSharedBuffer_t *inputs, const QCSharedBuffer_t *output )
+QCStatus_e FadasRemap::RemapRun( QCFrameDescriptorNodeIfs &frameDesc )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
-    if ( nullptr == inputs )
+    for ( uint32_t inputId = 0; inputId < m_numOfInputs; inputId++ )
     {
-        QC_ERROR( "NULL pointer for input buffers!" );
-        ret = QC_STATUS_BAD_ARGUMENTS;
-    }
-    else if ( nullptr == output )
-    {
-        QC_ERROR( "NULL pointer for output buffer!" );
-        ret = QC_STATUS_BAD_ARGUMENTS;
-    }
-    else
-    {
-        for ( uint32_t inputId = 0; inputId < m_numOfInputs; inputId++ )
-        {
-            if ( m_inputFormats[inputId] != inputs[inputId].imgProps.format )
-            {
-                QC_ERROR( "Format in input buffer and config not match!" );
-                ret = QC_STATUS_BAD_ARGUMENTS;
-            }
-            else if ( m_inputWidths[inputId] != inputs[inputId].imgProps.width )
-            {
-                QC_ERROR( "Width in input buffer and config not match!" );
-                ret = QC_STATUS_BAD_ARGUMENTS;
-            }
-            else if ( m_inputHeights[inputId] != inputs[inputId].imgProps.height )
-            {
-                QC_ERROR( "Height in input buffer and config not match!" );
-                ret = QC_STATUS_BAD_ARGUMENTS;
-            }
-            else if ( 1 != inputs[inputId].imgProps.batchSize )
-            {
-                QC_ERROR( "Batch in input buffer must be 1!" );
-                ret = QC_STATUS_BAD_ARGUMENTS;
-            }
-            else
-            {
-                QC_INFO( "Input image property check pass for id=%d!", inputId );
-            }
-            if ( QC_STATUS_OK != ret )
-            {
-                break;
-            }
-        }
+        ImageDescriptor_t &bufDescInput =
+                dynamic_cast<ImageDescriptor_t &>( frameDesc.GetBuffer( inputId ) );
 
-        if ( m_outputFormat != output->imgProps.format )
+        if ( m_inputFormats[inputId] != bufDescInput.format )
         {
-            QC_ERROR( "Format in output buffer and config not match!" );
+            QC_ERROR( "Format in input buffer and config not match!" );
             ret = QC_STATUS_BAD_ARGUMENTS;
         }
-        else if ( m_outputWidth != output->imgProps.width )
+        else if ( m_inputWidths[inputId] != bufDescInput.width )
         {
-            QC_ERROR( "Width in output buffer and config not match!" );
+            QC_ERROR( "Width in input buffer and config not match!" );
             ret = QC_STATUS_BAD_ARGUMENTS;
         }
-        else if ( m_outputHeight != output->imgProps.height )
+        else if ( m_inputHeights[inputId] != bufDescInput.height )
         {
-            QC_ERROR( "Height in output buffer and config not match!" );
+            QC_ERROR( "Height in input buffer and config not match!" );
             ret = QC_STATUS_BAD_ARGUMENTS;
         }
-        else if ( m_numOfInputs != output->imgProps.batchSize )
+        else if ( 1 != bufDescInput.batchSize )
         {
-            QC_ERROR( "Batch in output buffer and config not match!" );
+            QC_ERROR( "Batch in input buffer must be 1!" );
             ret = QC_STATUS_BAD_ARGUMENTS;
         }
         else
         {
-            QC_INFO( "Output image property check pass!" );
+            QC_INFO( "Input image property check pass for id=%d!", inputId );
         }
-
-        if ( QC_STATUS_OK == ret )
+        if ( QC_STATUS_OK != ret )
         {
-            if ( ( QC_PROCESSOR_HTP0 == m_processor ) || ( QC_PROCESSOR_HTP1 == m_processor ) )
-            {
-                ret = RemapRunDSP( inputs, output );
-            }
-            else
-            {
-                ret = RemapRunCPU( inputs, output );
-            }
+            break;
+        }
+    }
+
+    ImageDescriptor_t &bufDescOutput =
+            dynamic_cast<ImageDescriptor_t &>( frameDesc.GetBuffer( m_numOfInputs ) );
+    if ( m_outputFormat != bufDescOutput.format )
+    {
+        QC_ERROR( "Format in output buffer and config not match!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
+    }
+    else if ( m_outputWidth != bufDescOutput.width )
+    {
+        QC_ERROR( "Width in output buffer and config not match!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
+    }
+    else if ( m_outputHeight != bufDescOutput.height )
+    {
+        QC_ERROR( "Height in output buffer and config not match!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
+    }
+    else if ( m_numOfInputs != bufDescOutput.batchSize )
+    {
+        QC_ERROR( "Batch in output buffer and config not match!" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
+    }
+    else
+    {
+        QC_INFO( "Output image property check pass!" );
+    }
+
+    if ( QC_STATUS_OK == ret )
+    {
+        if ( ( QC_PROCESSOR_HTP0 == m_processor ) || ( QC_PROCESSOR_HTP1 == m_processor ) )
+        {
+            ret = RemapRunDSP( frameDesc );
+        }
+        else
+        {
+            ret = RemapRunCPU( frameDesc );
         }
     }
 

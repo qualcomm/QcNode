@@ -15,7 +15,6 @@
 #include "md5_utils.hpp"
 
 using namespace QC::Node;
-using namespace QC::component;
 using namespace QC::test::utils;
 using namespace QC::sample;
 

@@ -73,10 +73,6 @@ private:
     Logger &m_logger;
     RemapImplConfig_t m_config;
     QCObjectState_e m_state;
-
-    uint32_t m_inputNum;
-    uint32_t m_outputNum = 1;
-
     FadasRemap m_fadasRemapObj;
 
 };   // class RemapImpl

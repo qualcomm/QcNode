@@ -149,9 +149,9 @@ QCStatus_e RemapConfig::ParseStaticConfig( DataTree &dt, std::string &errors )
             if ( true == config.params.bEnableUndistortion )
             {
                 config.params.inputConfigs[inputId].remapTable.mapXBufferId =
-                        idt.Get<uint32_t>( "mapX", UINT32_MAX );
+                        idt.Get<uint32_t>( "mapXBufferId", UINT32_MAX );
                 config.params.inputConfigs[inputId].remapTable.mapYBufferId =
-                        idt.Get<uint32_t>( "mapY", UINT32_MAX );
+                        idt.Get<uint32_t>( "mapYBufferId", UINT32_MAX );
             }
 
             inputId++;

@@ -22,6 +22,7 @@ QCStatus_e SampleRemap::ParseConfig( SampleConfig_t &config )
     uint32_t mapWidths[QC_MAX_INPUTS];
     uint32_t mapHeights[QC_MAX_INPUTS];
     FadasROI_t ROIs[QC_MAX_INPUTS];
+    std::vector<uint32_t> bufferIds;
 
     m_dataTree.Set<std::string>( "static.name", m_name );
     m_dataTree.Set<uint32_t>( "static.id", 0 );
@@ -183,25 +184,20 @@ QCStatus_e SampleRemap::ParseConfig( SampleConfig_t &config )
         if ( true == m_bEnableUndistortion )
         {
             bool bAllocateOK = true;
-            QCTensorProps_t mapXProp;
+            TensorProps_t mapXProp;
             mapXProp = {
                     QC_TENSOR_TYPE_FLOAT_32,
-                    { mapWidths[i], mapHeights[i], 0 },
-                    2,
+                    { mapWidths[i], mapHeights[i] },
             };
-            ret = m_mapXBufferDesc[i].buffer.Allocate( &mapXProp );
+            ret = m_pBufMgr->Allocate( mapXProp, m_mapXBufferDesc[i] );
             if ( QC_STATUS_OK != ret )
             {
                 bAllocateOK = false;
                 QC_ERROR( "failed to allocate mapX%u!\n", i );
             }
-            QCTensorProps_t mapYProp;
-            mapYProp = {
-                    QC_TENSOR_TYPE_FLOAT_32,
-                    { mapWidths[i], mapHeights[i], 0 },
-                    2,
-            };
-            ret = m_mapYBufferDesc[i].buffer.Allocate( &mapYProp );
+            TensorProps_t mapYProp;
+            mapYProp = { QC_TENSOR_TYPE_FLOAT_32, { mapWidths[i], mapHeights[i] } };
+            ret = m_pBufMgr->Allocate( mapYProp, m_mapYBufferDesc[i] );
             if ( QC_STATUS_OK != ret )
             {
                 bAllocateOK = false;
@@ -215,13 +211,15 @@ QCStatus_e SampleRemap::ParseConfig( SampleConfig_t &config )
                                             "./data/test/remap/mapX.raw" );
                 std::string mapYPath = Get( config, "mapY_path" + std::to_string( i ),
                                             "./data/test/remap/mapY.raw" );
-                ret = LoadFile( m_mapXBufferDesc[i].buffer, mapXPath );
+                ret = LoadFile( dynamic_cast<QCBufferDescriptorBase_t &>( m_mapXBufferDesc[i] ),
+                                mapXPath );
                 if ( QC_STATUS_OK != ret )
                 {
                     QC_ERROR( "failed to read mapX table for input %u!\n", i );
                     bReadOK = false;
                 }
-                ret = LoadFile( m_mapYBufferDesc[i].buffer, mapYPath );
+                ret = LoadFile( dynamic_cast<QCBufferDescriptorBase_t &>( m_mapYBufferDesc[i] ),
+                                mapYPath );
                 if ( QC_STATUS_OK != ret )
                 {
                     QC_ERROR( "failed to read mapY table for input %u!\n", i );
@@ -233,8 +231,10 @@ QCStatus_e SampleRemap::ParseConfig( SampleConfig_t &config )
                 }
                 else
                 {
-                    inputDt.Set<uint32_t>( "mapX", i * 2 );
-                    inputDt.Set<uint32_t>( "mapY", i * 2 + 1 );
+                    inputDt.Set<uint32_t>( "mapXBufferId", i * 2 );
+                    bufferIds.push_back( i * 2 );
+                    inputDt.Set<uint32_t>( "mapYBufferId", i * 2 + 1 );
+                    bufferIds.push_back( i * 2 + 1 );
                 }
             }
         }
@@ -242,6 +242,10 @@ QCStatus_e SampleRemap::ParseConfig( SampleConfig_t &config )
     }
     m_dataTree.Set( "static.inputs", inputDts );
 
+    if ( 0 != bufferIds.size() )
+    {
+        m_dataTree.Set<uint32_t>( "static.bufferIds", bufferIds );
+    }
     QCNodeInit_t data = { m_dataTree.Dump() };
     QC_INFO( "config data: %s\n", data.config.c_str() );
 
@@ -287,9 +291,21 @@ QCStatus_e SampleRemap::Init( std::string name, SampleConfig_t &config )
     ret = SampleIF::Init( name );
     if ( QC_STATUS_OK == ret )
     {
+        m_pBufMgr = BufferManager::Get( m_nodeId, LOGGER_LEVEL_INFO );
+        if ( nullptr == m_pBufMgr )
+        {
+            QC_ERROR( "Failed to get buffer manager for %s %d: %s!", m_nodeId.name.c_str(),
+                      m_nodeId.id, name.c_str() );
+            ret = QC_STATUS_FAIL;
+        }
+    }
+
+    if ( QC_STATUS_OK == ret )
+    {
         TRACE_ON( GPU );
         ret = ParseConfig( config );
     }
+
     if ( QC_STATUS_OK == ret )
     {
         QCImageProps_t imgProp;
@@ -348,9 +364,10 @@ QCStatus_e SampleRemap::Init( std::string name, SampleConfig_t &config )
             }
             else
             {
-                ret = m_imagePool.Init( name, m_nodeId, LOGGER_LEVEL_INFO, m_poolSize, imgProp.batchSize,
-                                        m_outputWidth, m_outputHeight, m_outputFormat,
-                                        QC_MEMORY_ALLOCATOR_DMA_GPU, m_bufferCache );
+                ret = m_imagePool.Init( name, m_nodeId, LOGGER_LEVEL_INFO, m_poolSize,
+                                        imgProp.batchSize, m_outputWidth, m_outputHeight,
+                                        m_outputFormat, QC_MEMORY_ALLOCATOR_DMA_GPU,
+                                        m_bufferCache );
             }
         }
     }
@@ -363,7 +380,7 @@ QCStatus_e SampleRemap::Init( std::string name, SampleConfig_t &config )
         {
             if ( true == m_bEnableUndistortion )
             {
-                if ( nullptr != m_mapXBufferDesc[i].buffer.data() )
+                if ( nullptr != m_mapXBufferDesc[i].pBuf )
                 {
                     nodeCfg.buffers.push_back( m_mapXBufferDesc[i] );
                 }
@@ -371,7 +388,7 @@ QCStatus_e SampleRemap::Init( std::string name, SampleConfig_t &config )
                 {
                     QC_INFO( "m_mapXBufferDesc[%d] is nullptr\n", i );
                 }
-                if ( nullptr != m_mapYBufferDesc[i].buffer.data() )
+                if ( nullptr != m_mapYBufferDesc[i].pBuf )
                 {
                     nodeCfg.buffers.push_back( m_mapYBufferDesc[i] );
                 }
@@ -393,18 +410,6 @@ QCStatus_e SampleRemap::Init( std::string name, SampleConfig_t &config )
     if ( QC_STATUS_OK == ret )
     {
         ret = m_pub.Init( name, m_outputTopicName );
-    }
-
-    if ( QC_STATUS_OK == ret )
-    {
-        for ( uint32_t i = 0; i < m_numOfInputs; i++ )
-        {
-            if ( true == m_bEnableUndistortion )
-            {
-                (void) m_mapXBufferDesc[i].buffer.Free();
-                (void) m_mapYBufferDesc[i].buffer.Free();
-            }
-        }
     }
 
     return ret;
@@ -441,38 +446,27 @@ void SampleRemap::ThreadMain()
             std::shared_ptr<SharedBuffer_t> bufferOutput = m_imagePool.Get();
             if ( nullptr != bufferOutput )
             {
-                std::vector<QCSharedBuffer_t> inputs;
-                for ( auto &frame : frames.frames )
-                {
-                    inputs.push_back( frame.buffer->sharedBuffer );
-                }
-
                 PROFILER_BEGIN();
                 TRACE_BEGIN( frames.FrameId( 0 ) );
-
-                std::vector<QCSharedBufferDescriptor_t> bufferDescs;
-                bufferDescs.resize( inputs.size() + 1 );
                 frameDesc.Clear();
                 uint32_t globalIdx = 0;
 
-                if ( QC_STATUS_OK == ret )
+                for ( auto &frame : frames.frames )
                 {
-                    for ( auto &buffer : inputs )
+                    std::shared_ptr<SharedBuffer_t> sbuf = frame.buffer;
+                    QCBufferDescriptorBase_t &buffer = frame.GetBuffer();
+                    ImageDescriptor_t *pImage = dynamic_cast<ImageDescriptor_t *>( &buffer );
+                    ret = frameDesc.SetBuffer( globalIdx, *pImage );
+                    if ( QC_STATUS_OK != ret )
                     {
-                        bufferDescs[globalIdx].buffer = buffer;
-                        ret = frameDesc.SetBuffer( globalIdx, bufferDescs[globalIdx] );
-                        if ( QC_STATUS_OK != ret )
-                        {
-                            break;
-                        }
-                        globalIdx++;
+                        break;
                     }
+                    globalIdx++;
                 }
 
                 if ( QC_STATUS_OK == ret )
                 {
-                    bufferDescs[globalIdx].buffer = bufferOutput->sharedBuffer;
-                    ret = frameDesc.SetBuffer( globalIdx, bufferDescs[globalIdx] );
+                    ret = frameDesc.SetBuffer( globalIdx, bufferOutput->imgDesc );
                     if ( QC_STATUS_OK != ret )
                     {
                         break;
@@ -536,6 +530,21 @@ QCStatus_e SampleRemap::Deinit()
         ret = SampleIF::Deinit();
     }
     TRACE_END( SYSTRACE_TASK_DEINIT );
+
+    if ( QC_STATUS_OK == ret )
+    {
+        for ( uint32_t i = 0; i < m_numOfInputs; i++ )
+        {
+            if ( true == m_bEnableUndistortion )
+            {
+                (void) m_pBufMgr->Free( m_mapXBufferDesc[i] );
+                (void) m_pBufMgr->Free( m_mapYBufferDesc[i] );
+            }
+        }
+    }
+
+    BufferManager::Put( m_pBufMgr );
+    m_pBufMgr = nullptr;
 
     return ret;
 }

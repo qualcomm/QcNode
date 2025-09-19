@@ -6,8 +6,9 @@
 #define QC_FADAS_REMAP_HPP
 
 #include "FadasSrv.hpp"
-
-using namespace QC;
+#include "QC/Infras/Memory/ImageDescriptor.hpp"
+#include "QC/Infras/Memory/TensorDescriptor.hpp"
+#include "QC/Node/Ifs/QCFrameDescriptorNodeIfs.hpp"
 
 namespace QC
 {
@@ -26,16 +27,17 @@ public:
                                FadasNormlzParams_t normlzG, FadasNormlzParams_t normlzB,
                                bool bEnableUndistortion, bool bEnableNormalize );
     QCStatus_e CreatRemapTable( uint32_t inputId, uint32_t mapWidth, uint32_t mapHeight,
-                                const QCSharedBuffer_t *pMapX, const QCSharedBuffer_t *pMapY );
+                                const TensorDescriptor_t &bufDescMapX,
+                                const TensorDescriptor_t &bufDescMapY );
     QCStatus_e CreateRemapWorker( uint32_t inputId, QCImageFormat_e inputFormat,
                                   uint32_t inputWidth, uint32_t inputHeight, FadasROI_t ROI );
-    QCStatus_e RemapRun( const QCSharedBuffer_t *inputs, const QCSharedBuffer_t *output );
+    QCStatus_e RemapRun( QCFrameDescriptorNodeIfs &frameDesc );
     QCStatus_e DestroyWorkers();
     QCStatus_e DestroyMap();
 
 private:
-    QCStatus_e RemapRunCPU( const QCSharedBuffer_t *inputs, const QCSharedBuffer_t *output );
-    QCStatus_e RemapRunDSP( const QCSharedBuffer_t *inputs, const QCSharedBuffer_t *output );
+    QCStatus_e RemapRunCPU( QCFrameDescriptorNodeIfs &frameDesc );
+    QCStatus_e RemapRunDSP( QCFrameDescriptorNodeIfs &frameDesc );
     FadasRemapPipeline_e RemapGetPipelineCPU( QCImageFormat_e inputFormat,
                                               QCImageFormat_e outputFormat, bool bEnableNormalize );
     FadasIface_FadasRemapPipeline_e RemapGetPipelineDSP( QCImageFormat_e inputFormat,
