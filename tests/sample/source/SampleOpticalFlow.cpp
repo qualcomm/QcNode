@@ -1,3 +1,4 @@
+
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
@@ -14,7 +15,6 @@ namespace sample
 SampleOpticalFlow::SampleOpticalFlow() {}
 SampleOpticalFlow::~SampleOpticalFlow() {}
 
-void SampleOpticalFlow::OnDoneCb( const QCNodeEventInfo_t &eventInfo ) {}
 
 QCStatus_e SampleOpticalFlow::ParseConfig( SampleConfig_t &config )
 {
@@ -22,39 +22,28 @@ QCStatus_e SampleOpticalFlow::ParseConfig( SampleConfig_t &config )
 
     m_config.Set<std::string>( "name", m_name );
 
-    std::string evaModeStr = Get( config, "eva_mode", "dsp" );
-    m_config.Set<std::string>( "eva_mode", evaModeStr );
+    m_width = Get( config, "width", 1920 );
+    m_config.Set<uint32_t>( "width", m_width );
 
-    std::string dirStr = Get( config, "direction", "forward" );
-    m_config.Set<std::string>( "direction", dirStr );
-
-    m_width = Get( config, "width", 0 );
-    if ( m_width )
-    {
-        m_config.Set<uint32_t>( "width", m_width );
-    }
-    else
-    {
-        QC_ERROR( "invalid width %u\n", m_width );
-        ret = QC_STATUS_BAD_ARGUMENTS;
-    }
-
-    m_height = Get( config, "height", 0 );
-    if ( m_height )
-    {
-        m_config.Set<uint32_t>( "height", m_height );
-    }
-    else
-    {
-        QC_ERROR( "invalid height %u\n", m_height );
-        ret = QC_STATUS_BAD_ARGUMENTS;
-    }
+    m_height = Get( config, "height", 1024 );
+    m_config.Set<uint32_t>( "height", m_height );
 
     m_config.Set<std::string>( "format", Get( config, "format", "nv12" ) );
     m_config.Set<uint32_t>( "fps", Get( config, "fps", 30 ) );
 
     m_nStepSize = Get( config, "step_size", 1 );
-    m_config.Set<uint32_t>( "step_size", m_nStepSize );
+    if ( m_nStepSize == 1 )
+    {
+        m_config.Set<uint8_t>( "motionMapStepSize", MOTION_MAP_STEP_SIZE_1 );
+    }
+    else if ( m_nStepSize == 2 )
+    {
+        m_config.Set<uint8_t>( "motionMapStepSize", MOTION_MAP_STEP_SIZE_2 );
+    }
+    else if ( m_nStepSize == 4 )
+    {
+        m_config.Set<uint8_t>( "motionMapStepSize", MOTION_MAP_STEP_SIZE_4 );
+    }
 
     m_poolSize = Get( config, "pool_size", 4 );
     if ( m_poolSize )
@@ -66,6 +55,9 @@ QCStatus_e SampleOpticalFlow::ParseConfig( SampleConfig_t &config )
         QC_ERROR( "invalid pool_size = %d\n", m_poolSize );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
+
+    m_config.Set<uint32_t>( "edgeAlignMetric", 0 );
+    m_config.Set<bool>( "isFirstRequest", true );
 
     m_inputTopicName = Get( config, "input_topic", "" );
     if ( "" == m_inputTopicName )
@@ -96,8 +88,8 @@ QCStatus_e SampleOpticalFlow::Init( std::string name, SampleConfig_t &config )
         ret = ParseConfig( config );
     }
 
-    uint32_t width = ( m_width >> m_nStepSize );
-    uint32_t height = ( m_height >> m_nStepSize );
+    uint32_t width = m_width;
+    uint32_t height = m_height;
 
     if ( QC_STATUS_OK == ret )
     {
@@ -119,12 +111,12 @@ QCStatus_e SampleOpticalFlow::Init( std::string name, SampleConfig_t &config )
                                  mvConfTsProp, QC_MEMORY_ALLOCATOR_DMA_EVA );
     }
 
+
     if ( QC_STATUS_OK == ret )
     {
         using std::placeholders::_1;
 
-        QCNodeInit_t config = { .config = m_dataTree.Dump(),
-                                .callback = std::bind( &SampleOpticalFlow::OnDoneCb, this, _1 ) };
+        QCNodeInit_t config = { m_dataTree.Dump() };
 
         ret = m_of.Initialize( config );
     }
@@ -182,34 +174,35 @@ void SampleOpticalFlow::ThreadMain()
             std::shared_ptr<SharedBuffer_t> mvConf = m_mvConfPool.Get();
             if ( ( nullptr != mv ) && ( nullptr != mvConf ) )
             {
-                QCSharedBufferDescriptor_t buffDescRefImg;
-                QCSharedBufferDescriptor_t buffDescCurImg;
-                QCSharedBufferDescriptor_t buffDescMV;
-                QCSharedBufferDescriptor_t buffDescConf;
 
-                buffDescRefImg.buffer = m_LastFrames.SharedBuffer( 0 );
-                buffDescCurImg.buffer = frames.SharedBuffer( 0 );
-                buffDescMV.buffer = mv->sharedBuffer;
-                buffDescConf.buffer = mvConf->sharedBuffer;
+                QCBufferDescriptorBase_t &buffRefImg = m_LastFrames.GetBuffer( 0 );
+                QCBufferDescriptorBase_t &buffCurImg = frames.GetBuffer( 0 );
+                QCBufferDescriptorBase_t &buffMV = mv->buffer;
+                QCBufferDescriptorBase_t &buffConf = mvConf->buffer;
+
+                ImageDescriptor_t &buffRefImgDesc = dynamic_cast<ImageDescriptor_t &>( buffRefImg );
+                ImageDescriptor_t &buffCurImgDesc = dynamic_cast<ImageDescriptor_t &>( buffCurImg );
+                TensorDescriptor_t &buffMVDesc = dynamic_cast<TensorDescriptor_t &>( buffMV );
+                TensorDescriptor_t &buffConfDesc = dynamic_cast<TensorDescriptor_t &>( buffConf );
 
                 QCStatus_e status = frameDescriptor->SetBuffer(
                         static_cast<uint32_t>( QC_NODE_OF_REFERENCE_IMAGE_BUFF_ID ),
-                        buffDescRefImg );
+                        buffRefImgDesc );
                 if ( QC_STATUS_OK == status )
                 {
                     status = frameDescriptor->SetBuffer(
                             static_cast<uint32_t>( QC_NODE_OF_CURRENT_IMAGE_BUFF_ID ),
-                            buffDescCurImg );
+                            buffCurImgDesc );
                     if ( QC_STATUS_OK == status )
                     {
                         status = frameDescriptor->SetBuffer(
-                                static_cast<uint32_t>( QC_NODE_OF_MOTION_VECTORS_BUFF_ID ),
-                                buffDescMV );
+                                static_cast<uint32_t>( QC_NODE_OF_FWD_MOTION_BUFF_ID ),
+                                buffMVDesc );
                         if ( QC_STATUS_OK == status )
                         {
                             status = frameDescriptor->SetBuffer(
-                                    static_cast<uint32_t>( QC_NODE_OF_CONFIDENCE_BUFF_ID ),
-                                    buffDescConf );
+                                    static_cast<uint32_t>( QC_NODE_OF_FWD_CONF_BUFF_ID ),
+                                    buffConfDesc );
 
                             PROFILER_BEGIN();
                             TRACE_BEGIN( frames.FrameId( 0 ) );

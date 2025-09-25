@@ -14,16 +14,12 @@ namespace sample
 SampleDepthFromStereo::SampleDepthFromStereo() {}
 SampleDepthFromStereo::~SampleDepthFromStereo() {}
 
-void SampleDepthFromStereo::OnDoneCb( const QCNodeEventInfo_t &eventInfo ) {}
 
 QCStatus_e SampleDepthFromStereo::ParseConfig( SampleConfig_t &config )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
     m_config.Set<std::string>( "name", m_name );
-
-    std::string dirStr = Get( config, "direction", "l2r" );
-    m_config.Set<std::string>( "direction", dirStr );
 
     m_width = Get( config, "width", 1280 );
     m_config.Set<uint32_t>( "width", m_width );
@@ -103,9 +99,7 @@ QCStatus_e SampleDepthFromStereo::Init( std::string name, SampleConfig_t &config
     {
         using std::placeholders::_1;
 
-        QCNodeInit_t config = { .config = m_dataTree.Dump(),
-                                .callback =
-                                        std::bind( &SampleDepthFromStereo::OnDoneCb, this, _1 ) };
+        QCNodeInit_t config = { m_dataTree.Dump() };
 
         ret = m_dfs.Initialize( config );
     }
@@ -128,7 +122,7 @@ QCStatus_e SampleDepthFromStereo::Start()
     QCStatus_e ret = QC_STATUS_OK;
 
     TRACE_BEGIN( SYSTRACE_TASK_START );
-    ret = static_cast<QCStatus_e>( m_dfs.Start() );
+    ret = m_dfs.Start();
     TRACE_END( SYSTRACE_TASK_START );
     if ( QC_STATUS_OK == ret )
     {
@@ -161,34 +155,37 @@ void SampleDepthFromStereo::ThreadMain()
             std::shared_ptr<SharedBuffer_t> conf = m_confPool.Get();
             if ( ( nullptr != disp ) && ( nullptr != conf ) )
             {
-                QCSharedBufferDescriptor_t buffPriImg;
-                QCSharedBufferDescriptor_t buffAuxImg;
-                QCSharedBufferDescriptor_t buffDisp;
-                QCSharedBufferDescriptor_t buffConf;
 
-                buffPriImg.buffer = frames.SharedBuffer( 0 );
-                buffAuxImg.buffer = frames.SharedBuffer( 1 );
-                buffDisp.buffer = disp->sharedBuffer;
-                buffConf.buffer = conf->sharedBuffer;
+                QCBufferDescriptorBase_t &buffPriImg = frames.GetBuffer( 0 );
+                QCBufferDescriptorBase_t &buffAuxImg = frames.GetBuffer( 1 );
+                QCBufferDescriptorBase_t &buffDispMap = disp->buffer;
+                QCBufferDescriptorBase_t &buffConfMap = conf->buffer;
+
+
+                ImageDescriptor_t &buffPriImgDesc = dynamic_cast<ImageDescriptor_t &>( buffPriImg );
+                ImageDescriptor_t &buffAuxImgDesc = dynamic_cast<ImageDescriptor_t &>( buffAuxImg );
+                TensorDescriptor_t &buffDispMapDesc =
+                        dynamic_cast<TensorDescriptor_t &>( buffDispMap );
+                TensorDescriptor_t &buffConfMapDesc =
+                        dynamic_cast<TensorDescriptor_t &>( buffConfMap );
 
                 PROFILER_BEGIN();
                 TRACE_BEGIN( frames.FrameId( 0 ) );
-                memset( buffDisp.buffer.data(), 0, disp->sharedBuffer.size );
-                memset( buffConf.buffer.data(), 0, conf->sharedBuffer.size );
 
-                // TODO
-                // Add check of error code below
                 QCStatus_e status = frameDescriptor->SetBuffer(
-                        static_cast<uint32_t>( QC_NODE_DFS_PRIMARY_IMAGE_BUFF_ID ), buffPriImg );
+                        static_cast<uint32_t>( QC_NODE_DFS_PRIMARY_IMAGE_BUFF_ID ),
+                        buffPriImgDesc );
                 status = frameDescriptor->SetBuffer(
-                        static_cast<uint32_t>( QC_NODE_DFS_AUXILARY_IMAGE_BUFF_ID ), buffAuxImg );
+                        static_cast<uint32_t>( QC_NODE_DFS_AUXILARY_IMAGE_BUFF_ID ),
+                        buffAuxImgDesc );
                 status = frameDescriptor->SetBuffer(
-                        static_cast<uint32_t>( QC_NODE_DFS_DISPARITY_MAP_BUFF_ID ), buffDisp );
+                        static_cast<uint32_t>( QC_NODE_DFS_DISPARITY_MAP_BUFF_ID ),
+                        buffDispMapDesc );
                 status = frameDescriptor->SetBuffer(
                         static_cast<uint32_t>( QC_NODE_DFS_DISPARITY_CONFIDANCE_MAP_BUFF_ID ),
-                        buffConf );
+                        buffConfMapDesc );
 
-                ret = static_cast<QCStatus_e>( m_dfs.ProcessFrameDescriptor( *frameDescriptor ) );
+                ret = m_dfs.ProcessFrameDescriptor( *frameDescriptor );
 
                 if ( QC_STATUS_OK == ret )
                 {
@@ -229,7 +226,7 @@ QCStatus_e SampleDepthFromStereo::Stop()
     PROFILER_SHOW();
 
     TRACE_BEGIN( SYSTRACE_TASK_STOP );
-    ret = static_cast<QCStatus_e>( m_dfs.Stop() );
+    ret = m_dfs.Stop();
     TRACE_END( SYSTRACE_TASK_STOP );
 
 
@@ -241,7 +238,7 @@ QCStatus_e SampleDepthFromStereo::Deinit()
     QCStatus_e ret = QC_STATUS_OK;
 
     TRACE_BEGIN( SYSTRACE_TASK_DEINIT );
-    ret = static_cast<QCStatus_e>( m_dfs.DeInitialize() );
+    ret = m_dfs.DeInitialize();
     TRACE_END( SYSTRACE_TASK_DEINIT );
 
     return ret;

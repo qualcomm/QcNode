@@ -1,3 +1,4 @@
+
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
@@ -5,14 +6,16 @@
 #ifndef QC_NODE_DEPTH_FROM_STEREO_HPP
 #define QC_NODE_DEPTH_FROM_STEREO_HPP
 
-#include "QC/component/DepthFromStereo.hpp"
+#include "svStereoDisparity.h"
+#include "svUtils.h"
 #include "QC/Node/NodeBase.hpp"
 
 namespace QC
 {
 namespace Node
 {
-using namespace QC::component;
+
+using namespace SV;
 
 typedef enum
 {
@@ -23,13 +26,14 @@ typedef enum
     QC_NODE_DFS_LAST_BUFF_ID = 4
 } QCNodeDepthFromStereoBufferId_e;
 
+
 typedef struct DepthFromStereoBufferMapping
 {
     DepthFromStereoBufferMapping()
         : primaryImageBufferId( QC_NODE_DFS_PRIMARY_IMAGE_BUFF_ID ),
           auxilaryImageBufferId( QC_NODE_DFS_AUXILARY_IMAGE_BUFF_ID ),
           disparityMapBufferId( QC_NODE_DFS_DISPARITY_MAP_BUFF_ID ),
-          disparityConfidenceMapBufferId( QC_NODE_DFS_DISPARITY_CONFIDANCE_MAP_BUFF_ID ) {};
+          disparityConfidenceMapBufferId( QC_NODE_DFS_DISPARITY_CONFIDANCE_MAP_BUFF_ID ){};
 
     uint32_t primaryImageBufferId;
     uint32_t auxilaryImageBufferId;
@@ -37,11 +41,110 @@ typedef struct DepthFromStereoBufferMapping
     uint32_t disparityConfidenceMapBufferId;
 } DepthFromStereoBufferMapping_t;
 
-typedef struct DepthFromStereoConfig : public QCNodeConfigBase_t
+/** @brief DFS output map format. */
+typedef enum : uint8_t
 {
-    DepthFromStereo_Config_t config;
+    DISP_FORMAT_P010_LA_Y_ONLY = 0,
+    DISP_FORMAT_P010_MA_Y_ONLY,
+    DISP_FORMAT_P012_LA_Y_ONLY,
+    DISP_FORMAT_P012_LA_Y_ONLY_UBWC,
+    DISP_FORMAT_P012_MA_Y_ONLY,
+    DISP_FORMAT_P012_MA_Y_ONLY_UBWC,
+    DISP_FORMAT_MAX
+} DisparityFormat_e;
+
+/** @brief DFS processing mode. */
+typedef enum : uint8_t
+{
+    PROCESSING_MODE_AUTO = 0,
+    PROCESSING_MODE_DL,
+    PROCESSING_MODE_SGM,
+    PROCESSING_MODE_MAX
+} ProcessingMode_e;
+
+/** @brief Disparity map precision type. */
+typedef enum : uint8_t
+{
+    DISP_MAP_PRECISION_FRAC_6BIT = 0,
+    DISP_MAP_PRECISION_FRAC_4BIT,
+    DISP_MAP_PRECISION_INT,
+    DISP_MAP_PRECISION_MAX
+} DispMapPrecision_e;
+
+/** @brief DFS refinement level. */
+typedef enum : uint8_t
+{
+    REFINEMENT_LEVEL_NONE = 0,
+    REFINEMENT_LEVEL_REFINED_L1,
+    REFINEMENT_LEVEL_REFINED_L2,
+    REFINEMENT_LEVEL_MAX
+} RefinementLevel_e;
+
+/** @brief DFS search direction. */
+typedef enum : uint8_t
+{
+    SEARCH_DIRECTION_L2R = 0,
+    SEARCH_DIRECTION_R2L,
+    SEARCH_DIRECTION_MAX
+} SearchDirection_e;
+
+
+/** @brief DepthFromStereo component configuration */
+typedef struct DepthFromStereo_Config : public QCNodeConfigBase_t
+{
+    QCImageFormat_e imageFormat;
+    DisparityFormat_e disparityFormat;
+    uint32_t width;
+    uint32_t height;
+    uint32_t frameRate;
+    bool confidenceOutputEn;
+    ProcessingMode_e processingMode;
+    bool isFirstRequest;
+    float32_t noiseOffsetPri;
+    float32_t noiseOffsetAux;
+    uint8_t modelType;
+    uint8_t modelSwitchFrameCount;
+    float32_t prevDisparityFactor;
+    DispMapPrecision_e disparityMapPrecision;
+    RefinementLevel_e refinementLevel;
+    bool occlusionOutputEn;
+    bool disparityStatsEn;
+    bool rectificationErrorStatsEn;
+    bool chromaProcEN;
+    bool maskLowTextureEn;
+    uint32_t confidenceThreshold;
+    uint32_t disparityThreshold;
+    float32_t noiseScalePri;
+    float32_t noiseScaleAux;
+    float32_t rectificationErrTolerance;
+    float32_t segmentationThreshold;
+    float32_t textureThreshold;
+    SearchDirection_e searchDirection;
+    float32_t edgePenalty;
+    float32_t initialPenalty;
+    float32_t neighborPenalty;
+    float32_t smoothnessPenalty;
+    float32_t imageSharpnessThreshold;
+    float32_t farAwayDisparityLimit;
+    float32_t disparityEdgeThreshold;
+    uint32_t matchingCostMetric;
+    uint32_t textureMetric;
+    uint32_t edgeAlignMetric;
+    uint32_t disparityVarianceMetric;
+    uint32_t occlusionMetric;
+    float32_t disparityVarianceTolerance;
+    float32_t occlusionTolerance;
+    float32_t refinementThreshold;
+    uint32_t maxDisparityRange;
     DepthFromStereoBufferMapping_t bufferMap;
-} DepthFromStereoConfig_t;
+
+public:
+    DepthFromStereo_Config();
+    DepthFromStereo_Config( const DepthFromStereo_Config &rhs );
+    DepthFromStereo_Config &operator=( const DepthFromStereo_Config &rhs );
+
+} DepthFromStereo_Config_t;
+
 
 class DepthFromStereoConfigIfs : public NodeConfigIfs
 {
@@ -65,59 +168,59 @@ public:
      * @param[in] config The configuration string.
      * @param[out] errors The error string returned if there is an error.
      * @note The config is a JSON string according to the templates below.
-     * 1. Static configuration used for initialization:
+     *   1. Static configuration used for initialization:
      *   {
      *     "static": {
      *        "name": "The Node unique name, type: string, default: 'unnamed'",
      *        "id": "The Node unique ID, type: uint32_t, default: 0",
      *        "width": "The width in pixels of the I/O frame, type: uint32_t, default: 0",
      *        "height": "The height in pixels of the I/O frame, type: uint32_t, default: 0",
-     *        "fps": "The input frames per second, type: uint32_t, default: 0",
-     *        "direction": "EVA search direction, either left to right (l2r)
-     *                      or right to left (r2l), type: string, default: l2r"
-     *        "format": "output format support NV12, NV12_UBWC, P010, type: uint32_t,
-     *                   default: nv12",
-     *        "bHolefillEnable": "Enable post-processing hole-filling, type: bool,
-     *                            default: true",
-     *        "holeFillConfig": "Structure for post-processing hole-filling (see eva_dfs.h),
-     *                           type: EvaDFSHoleFillConfig_t",
-     *        "bAmFilterEnable": "Adaptive P1 penalty", type: bool,
-     *                            default: true"
-     *        "amFilterConfThreshold": "Enable adaptive median filtering for a final pass
-     *                                  of filtering on low confidence pixels,
-     *                                 type: uint8_t, default: 200"
-     *        "p1Config": "Defines penalty parameters for disparity changes of +/-1 pixel in
-     *                     SGM path propagation (see eva_dfs.h),
-     *                     type: EvaDFSP1Config_t",
-     *        "p2Config": "Defines penalty parameters for disparity changes of >1 pixel in
-     *                     SGM path propagation (see eva_dfs.h),
-     *                     type: EvaDFSP2Config_t",
-     *        "censusConfig": "Census block noise thresholding (see eva_dfs.h),
-     *                        type: EvaDFSCensusConfig_t",
-     *        "occlusionConf": "Weight used with occlusion estimation to generate
-     *                         final confidence map, type: uint8_t [0,32], default: 16
-     *        "mvVarConf": "Weight used with local neighborhood motion vector variance
-     *                      estimation to generate a final confidence map,
-     *                     type: uint8_t [0,32], default: 10",
-     *        "mvVarThresh": "Threshold offset for MV variance in confidence generation.
-     *                        Value = 0 allows most variance,
-     *                       type: uint8_t [0,3], default: 1",
-     *        "flatnessConf": "Weight used with flatness estimation to generate final
-     *                         confidence map,
-     *                        type: uint8_t [0,32], default: 6"
-     *        "flatnessThresh": "Threshold for flatness check in the SGM block,
-     *                          type: uint8_t [1,7], default: 3"
-     *        "bFlatnessOverride": "whether the final confidence value will be overridden
-     *                              by the flatness value or not,
-     *                             type: bool, default: false"
-     *        "rectificationErrorTolerance": "Defines DFS rectification error tolerance range.
-     *                                        If 0, DFS vertical search is disabled.
-     *                                        If non-zero, +-3 vertical search is enabled,
-     *                                       type: float [0,1], default: 0.29"
+     *        "frameRate": "Input frames per second, type: uint32_t, default: 30",
+     *        "format": "Input image format (e.g., NV12, NV12_UBWC, P010), type: uint32_t, default:nv12",
+     *        "confidenceOutputEn": "Enable confidence output, type: bool, default: false",
+     *        "processingMode": "Processing mode selector, type: ProcessingMode_e, default: PROCESSING_MODE_AUTO",
+     *        "isFirstRequest": "Indicates whether this is the first request, type: bool, default:true",
+     *        "noiseOffsetPrimary": "Primary noise offset, type: float32_t, default: 0.0f",
+     *        "noiseOffsetAux": "Auxiliary noise offset, type: float32_t, default: 0.0f",
+     *        "modelType": "Model type used for disparity computation (0-4), type: uint8_t, default:1",
+     *        "modelSwitchFrameCount": "Minimum frames before model switch, type: uint8_t, default:10",
+     *        "prevDisparityFactor": "Previous disparity factor for smoothing, type: float32_t, default: 1.0f",
+     *        "disparityMapPrecision": "Precision level for disparity map, type: DispMapPrecision_e, default: DISP_MAP_PRECISION_FRAC_6BIT",
+     *        "refinementLevel": "Refinement level applied during disparity estimation, type: RefinementLevel_e, default: REFINEMENT_LEVEL_REFINED_L2",
+     *        "occlusionOutputEn": "Enable occlusion output, type: bool, default: false",
+     *        "disparityStatsEn": "Enable disparity statistics tracking, type: bool, default: false",
+     *        "rectificationErrorStatsEn": "Enable rectification error statistics, type: bool, default: false",
+     *        "chromaProcEN": "Enable chrominance processing, type: bool, default: false",
+     *        "maskLowTextureEn": "Enable masking of low-texture regions, type: bool, default: false",
+     *        "confidenceThreshold": "Minimum confidence threshold, type: uint32_t, default: 210",
+     *        "disparityThreshold": "Maximum disparity threshold, type: uint32_t, default: 64",
+     *        "noiseScalePri": "Primary noise scaling factor, type: float32_t, default: 1.0f",
+     *        "noiseScaleAux": "Auxiliary noise scaling factor, type: float32_t, default: 1.0f",
+     *        "rectificationErrTolerance": "Rectification error tolerance, type: float32_t, default: 0.29",
+     *        "segmentationThreshold": "Segmentation threshold for region detection, type: float32_t, default: 0.5f",
+     *        "textureThreshold": "Texture threshold for feature detection, type: float32_t, default: 0.167f",
+     *        "searchDirection": "Search direction for stereo matching (0=L2R, 1=R2L), type: SearchDirection_e, default: SEARCH_DIRECTION_L2R",
+     *        "edgePenalty": "Penalty applied to edges during matching, type: float32_t, default: 0.0f",
+     *        "initialPenalty": "Initial penalty for disparity propagation, type: float32_t, default: 0.0f",
+     *        "neighborPenalty": "Penalty based on neighboring disparities, type: float32_t, default: 0.0f",
+     *        "smoothnessPenalty": "Smoothness constraint penalty, type: float32_t, default: 0.0f",
+     *        "imageSharpnessThreshold": "Threshold for image sharpness checks, type: float32_t, default: 0.4f",
+     *        "farAwayDisparityLimit": "Maximum disparity allowed for distant objects, type: float32_t, default: 0.0f",
+     *        "disparityEdgeThreshold": "Threshold for disparity edge detection, type: float32_t, default: 0.43f",
+     *        "matchingCostMetric": "Cost metric used in matching algorithm, type: uint32_t, default: 100",
+     *        "textureMetric": "Texture-based cost metric, type: uint32_t, default: 100",
+     *        "edgeAlignMetric": "Edge alignment metric used in SGM, type: uint32_t, default: 100",
+     *        "disparityVarianceMetric": "Variance metric used for disparity consistency, type: uint32_t, default: 100",
+     *        "occlusionMetric": "Occlusion detection metric, type: uint32_t, default: 100",
+     *        "disparityVarianceTolerance": "Tolerance for disparity variance checks, type: float32_t, default: 0.36f",
+     *        "occlusionTolerance": "Tolerance for occlusion detection, type: float32_t, default: 0.5f",
+     *        "refinementThreshold": "Threshold for refinement steps, type: float32_t, default: 0.75f",
+     *        "maxDisparityRange": "Maximum disparity range supported, type: uint32_t, default: 64" 
      *     }
      *   }
      * @return QC_STATUS_OK on success, other values on failure.
      */
+
     virtual QCStatus_e VerifyAndSet( const std::string config, std::string &errors );
 
     /**
@@ -139,8 +242,9 @@ private:
     QCStatus_e ParseStaticConfig( DataTree &dt, std::string &errors );
     QCStatus_e ApplyDynamicConfig( DataTree &dt, std::string &errors );
 
-    DepthFromStereoConfig_t m_config;
+    DepthFromStereo_Config_t m_config;
 };
+
 
 // TODO: how to handle NodeDepthFromStereoMonitorConfig
 typedef struct DepthFromStereoMonitorConfig : public QCNodeMonitoringBase_t
@@ -181,13 +285,20 @@ public:
      * @brief NodeDepthFromStereo Constructor
      * @return None
      */
-    DepthFromStereo() : m_configIfs( m_logger ) {};
+    DepthFromStereo()
+        : m_configIfs( m_logger ),
+          m_callback( nullptr ),
+          m_imageInfo(),
+          sessionConfigMap(),
+          configMap(),
+          m_session( nullptr ),
+          m_stereoDisparity( nullptr ){};
 
     /**
      * @brief NodeDepthFromStereo Destructor
      * @return None
      */
-    ~DepthFromStereo() {};
+    ~DepthFromStereo(){};
 
     /**
      * @brief Initializes Node Depth From Stereo.
@@ -243,18 +354,36 @@ public:
      * @brief Get the current state of the Node Depth From Stereo
      * @return The current state of the Node Depth From Stereo
      */
-    virtual QCObjectState_e GetState() { return m_dfs.GetState(); }
+    virtual QCObjectState_e GetState() { return m_state; }
 
 private:
-    QC::component::DepthFromStereo m_dfs;
     DepthFromStereoConfigIfs m_configIfs;
+    QCNodeEventCallBack_t m_callback;
     DepthFromStereoMonitoringIfs m_monitorIfs;
-
-    QCNodeEventCallBack_t m_callback = nullptr;
-    std::mutex m_lock;
+    ImageInfo m_imageInfo;
+    Session::ConfigMap sessionConfigMap;
+    StereoDisparity::ConfigMap configMap;
+    Session *m_session;
+    StereoDisparity *m_stereoDisparity;
+    QCObjectState_e m_state = QC_OBJECT_STATE_INITIAL;
+    std::map<void *, Buffer> m_memMap;
+    StereoDisparity::Penalties penalties;
+    StereoDisparity::FeatureNoiseToleranceOffset noiseToleranceOffset;
+    StereoDisparity::FeatureNoiseToleranceScale noiseToleranceScale;
+    PixelFormat GetInputImageFormat( QCImageFormat_e imageFormat );
+    PixelFormat GetDisparityMapFormat( DisparityFormat_e disparityFormat );
+    void UpdateIconfig( StereoDisparity::ConfigMap &configMap,
+                        DepthFromStereo_Config_t configuration );
+    QCStatus_e ValidateImageDesc( const ImageDescriptor_t &imgDesc,
+                                  const DepthFromStereo_Config_t &config );
+    void SetInitialFrameConfig( StereoDisparity::ConfigMap &configMapFrame,
+                                DepthFromStereo_Config_t configuration );
+    QCStatus_e RegisterMemory( const BufferDescriptor_t &bufferDesc, Buffer &pBuff );
 };
+
 
 }   // namespace Node
 }   // namespace QC
+
 
 #endif   // QC_NODE_DEPTH_FROM_STEREO_HPP
