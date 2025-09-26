@@ -1,6 +1,6 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
-// All rights reserved.
-// Confidential and Proprietary - Qualcomm Technologies, Inc.
+// SPDX-License-Identifier: BSD-3-Clause
+
 
 #include "QC/Infras/Memory/ManagerLocal.hpp"
 #include "QC/Infras/Log/Logger.hpp"

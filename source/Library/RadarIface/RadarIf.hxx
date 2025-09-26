@@ -1,6 +1,6 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
-// All rights reserved.
-// Confidential and Proprietary - Qualcomm Technologies, Inc.
+// SPDX-License-Identifier: BSD-3-Clause
+
 
 #ifndef QC_RADAR_EXT_IFACE_HPP
 #define QC_RADAR_EXT_IFACE_HPP

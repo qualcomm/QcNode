@@ -1,6 +1,6 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
-// All rights reserved.
-// Confidential and Proprietary - Qualcomm Technologies, Inc.
+// SPDX-License-Identifier: BSD-3-Clause
+
 #include "HTP/QnnHtpCommon.h"
 #include "HTP/QnnHtpMem.h"
 #include "HTP/QnnHtpProfile.h"
