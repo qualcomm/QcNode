@@ -438,6 +438,87 @@ int32_t FadasSrv::FadasMemMap( const QCSharedBuffer_t *pBuffer )
     return fd;
 }
 
+int32_t FadasSrv::FadasMemMapDSP( const QCBufferDescriptorBase_t &bufDesc )
+{
+    int ret = AEE_SUCCESS;
+    int32_t fd = -1;
+    int extDomainId = 0;
+    int domain = CDSP_DOMAIN_ID;
+    if ( QC_PROCESSOR_HTP1 == m_processor )
+    {
+        domain = CDSP1_DOMAIN_ID;
+    }
+    int client = s_client;
+    auto handle64 = s_handle64[m_processor];
+
+    extDomainId = get_extended_domains_id( domain, client );
+
+    void *ptr = bufDesc.pBuf;
+    size_t size = bufDesc.size;
+
+    fd = rpcmem_to_fd( ptr );
+    if ( fd < 0 )
+    {
+#if defined( __QNXNTO__ )
+        remote_register_buf_v2( extDomainId, ptr, size, 0 );
+#else
+        remote_register_buf_v2( extDomainId, ptr, size, static_cast<int>( bufDesc.dmaHandle ) );
+#endif
+        fd = rpcmem_to_fd( static_cast<void *>( ptr ) );
+        if ( fd < 0 )
+        {
+            QC_ERROR( "rpcmem_to_fd failed, fd = %d", fd );
+            ret = AEE_EFAILED;
+        }
+    }
+
+    if ( AEE_SUCCESS == ret )
+    {
+        ret = fastrpc_mmap( extDomainId, fd, ptr, 0, size, FASTRPC_MAP_FD_DELAYED );
+        if ( ( AEE_EALREADY != ret ) && ( AEE_SUCCESS != ret ) )
+        {
+            QC_ERROR( "Failed to fastrpc_mmap ptr %p(%d, %llu): ret = %x\n", ptr, fd, size, ret );
+            fd = -1;
+        }
+        else
+        {
+            ret = AEE_SUCCESS;
+        }
+    }
+
+    if ( AEE_SUCCESS == ret )
+    {
+        ret = FadasIface_mmap( handle64, fd, static_cast<uint32_t>( size ) );
+        if ( AEE_SUCCESS != ret )
+        {
+            QC_ERROR( "Failed to map ptr %p(%d, %llu): ret = %x\n", ptr, fd, size, ret );
+            fd = -1;
+        }
+        else
+        {
+            QC_INFO( "map ptr %p(%d, %llu) OK\n", ptr, fd, size );
+        }
+    }
+
+    return fd;
+}
+
+int32_t FadasSrv::FadasMemMap( const QCBufferDescriptorBase_t &bufDesc )
+{
+    int32_t fd = -1;
+
+    if ( ( QC_PROCESSOR_HTP0 == m_processor ) || ( QC_PROCESSOR_HTP1 == m_processor ) )
+    {
+        fd = FadasMemMapDSP( bufDesc );
+    }
+    else
+    {
+        fd = 1;
+    }
+
+    return fd;
+}
+
 QCStatus_e FadasSrv::FadasRegisterBufDSP( FadasBufType_e bufType, const uint8_t *bufPtr,
                                           int32_t bufFd, uint32_t bufSize, uint32_t bufOffset,
                                           uint32_t batch )
@@ -704,9 +785,181 @@ int32_t FadasSrv::RegBuf( const QCSharedBuffer_t *pBuffer, FadasBufType_e buffer
 
 int32_t FadasSrv::RegBuf( const QCBufferDescriptorBase_t &bufDesc, FadasBufType_e bufferType )
 {
-    /* TODO: FIXME to not use QCSharedBuffer_t */
-    QCSharedBuffer_t sbuf = bufDesc;
-    return RegBuf( &sbuf, bufferType );
+    std::lock_guard<std::mutex> l( s_coreLock[m_processor] );
+    int32_t fd = -1;
+
+    if ( ( bufferType <= FADAS_BUF_TYPE_NONE ) || ( bufferType >= FADAS_BUF_TYPE_END ) )
+    {
+        QC_ERROR( "invalid buffer type!" );
+    }
+    else if ( QC_BUFFER_TYPE_IMAGE == bufDesc.type )
+    {
+        const ImageDescriptor_t *pImageDesc = dynamic_cast<const ImageDescriptor_t *>( &bufDesc );
+        if ( nullptr != pImageDesc )
+        {
+            fd = RegisterImage( *pImageDesc, bufferType );
+        }
+        else
+        {
+            QC_ERROR( "dynamic_cast ImageDescriptor_t failed!" );
+        }
+    }
+    else if ( QC_BUFFER_TYPE_TENSOR == bufDesc.type )
+    {
+        const TensorDescriptor_t *pTensorDesc =
+                dynamic_cast<const TensorDescriptor_t *>( &bufDesc );
+        if ( nullptr != pTensorDesc )
+        {
+            fd = RegisterTensor( *pTensorDesc, bufferType );
+        }
+        else
+        {
+            QC_ERROR( "dynamic_cast TensorDescriptor_t failed!" );
+        }
+    }
+    else
+    {
+        QC_ERROR( "Shared buffer type is %d!", bufDesc.type );
+    }
+
+    return fd;
+}
+
+int32_t FadasSrv::RegisterImage( const ImageDescriptor_t &imageDesc, FadasBufType_e bufferType )
+{
+    QCStatus_e ret = QC_STATUS_OK;
+    int32_t fd = -1;
+
+    auto &memMap = s_memMaps[m_processor];
+    uint8_t *ptr = static_cast<uint8_t *>( imageDesc.pBuf );
+    size_t size = imageDesc.size;
+    size_t offset = imageDesc.offset;
+    uint32_t batch = imageDesc.batchSize;
+    size_t sizeOne = (size_t) ( imageDesc.size / batch );
+    QCImageFormat_e format = imageDesc.format;
+    uint32_t sizePlane0 = imageDesc.planeBufSize[0];
+    uint32_t sizePlane1 = imageDesc.planeBufSize[1];
+
+    auto it = memMap.find( imageDesc.pBuf );
+    if ( it == memMap.end() )
+    {
+        const QCBufferDescriptorBase_t &bufDesc =
+                dynamic_cast<const QCBufferDescriptorBase_t &>( imageDesc );
+        fd = FadasMemMap( bufDesc );
+        if ( 0 <= fd )
+        {
+            if ( FADAS_BUF_TYPE_IN == bufferType )
+            {
+                /*for input buffer the batch must be 1*/
+                if ( QC_IMAGE_FORMAT_NV12_UBWC == imageDesc.format )
+                /*for UBWC input, register all the 4 planes together once*/
+                {
+                    uint32_t sizeTotal = imageDesc.planeBufSize[0] + imageDesc.planeBufSize[1] +
+                                         imageDesc.planeBufSize[2] + imageDesc.planeBufSize[3];
+
+                    ret = FadasRegisterBuf( bufferType, ptr, fd, sizeTotal, offset, 1 );
+                }
+                else
+                {
+                    ret = FadasRegisterBuf( bufferType, ptr, fd, sizePlane0, offset, 1 );
+                    if ( QC_IMAGE_FORMAT_NV12 == format )
+                    { /* register both of plane0 and plane1 for NV12 format */
+                        ret = FadasRegisterBuf( bufferType, ptr, fd, sizePlane1,
+                                                sizePlane0 + offset, 1 );
+                    }
+                }
+            }
+            else
+            {
+                ret = FadasRegisterBuf( bufferType, ptr, fd, sizeOne, offset, batch );
+            }
+
+            if ( QC_STATUS_OK == ret )
+            {
+                memMap[imageDesc.pBuf] = { fd, size, offset, batch, ptr, sizeOne };
+            }
+            else
+            {
+                QC_ERROR( "Register Buffer(%p, %d, %d) failed!", ptr, fd, bufferType );
+                fd = -1;
+            }
+        }
+    }
+    else
+    {
+        if ( imageDesc.pBuf != it->second.ptr )
+        {
+            QC_ERROR( "Shared buffer already registered, but stored ptr not match, stored %d "
+                      "and given %d",
+                      it->second.ptr, imageDesc.pBuf );
+        }
+        else if ( imageDesc.size != it->second.size )
+        {
+            QC_ERROR( "Shared buffer already registered, but stored size not match, "
+                      "stored %d "
+                      "and given %d",
+                      it->second.size, imageDesc.size );
+        }
+        else if ( imageDesc.offset != it->second.offset )
+        {
+            QC_ERROR( "Shared buffer already registered, but stored offset not match, "
+                      "stored %d "
+                      "and given %d",
+                      it->second.offset, imageDesc.offset );
+        }
+        else if ( imageDesc.batchSize != it->second.batch )
+        {
+            QC_ERROR( "Shared buffer already registered, but stored batch not match, "
+                      "stored %d "
+                      "and given %d",
+                      it->second.batch, imageDesc.batchSize );
+        }
+        else
+        {
+            fd = it->second.fd;
+        };
+    }
+
+    return fd;
+}
+
+int32_t FadasSrv::RegisterTensor( const TensorDescriptor_t &tensorDesc, FadasBufType_e bufferType )
+{
+    QCStatus_e ret = QC_STATUS_OK;
+    int32_t fd = -1;
+    uint8_t *ptr = static_cast<uint8_t *>( tensorDesc.pBuf );
+    size_t size = tensorDesc.size;
+    size_t offset = tensorDesc.offset;
+    uint32_t batch = 1;
+    size_t sizeOne = tensorDesc.size / batch;
+
+    auto &memMap = s_memMaps[m_processor];
+    auto it = memMap.find( tensorDesc.pBuf );
+    if ( it == memMap.end() )
+    {
+        const QCBufferDescriptorBase_t &bufDesc =
+                dynamic_cast<const QCBufferDescriptorBase_t &>( tensorDesc );
+        fd = FadasMemMap( bufDesc );
+        if ( 0 <= fd )
+        {
+            ret = FadasRegisterBuf( bufferType, ptr, fd, sizeOne, offset, batch );
+            if ( QC_STATUS_OK == ret )
+            {
+                memMap[tensorDesc.pBuf] = { fd, size, offset, batch, ptr, sizeOne };
+            }
+            else
+            {
+                QC_ERROR( "Register Buffer(%p, %d, %d) failed!", ptr, fd, bufferType );
+                fd = -1;
+            }
+        }
+    }
+    else
+    {
+        fd = it->second.fd;
+    }
+
+    return fd;
 }
 
 void FadasSrv::DeregBuf( void *pBuffer )
