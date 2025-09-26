@@ -1,12 +1,13 @@
-#! /bin/bash
+#!/bin/bash
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
-# All rights reserved.
-# Confidential and Proprietary - Qualcomm Technologies, Inc.
+# SPDX-License-Identifier: BSD-3-Clause
 
 if [ ! -d $THIRD_PARTY_DIR ]; then
   mkdir -p $THIRD_PARTY_DIR
 fi
 cd $THIRD_PARTY_DIR
+
+LOCAL_CACHE_1=/prj/cv2x/sandiego/qride/release/qcnode/third_party
 
 qcdownload() {
   url=$1
@@ -15,7 +16,11 @@ qcdownload() {
   if [ ! -f $file ]; then
     counter=1
     while [ $counter -le 10 ]; do
-      wget $url -O $file --no-check-certificate
+      if [ -f $LOCAL_CACHE_1/$file ]; then
+        cp $LOCAL_CACHE_1/$file .
+      else
+        wget $url -O $file --no-check-certificate
+      fi
       md5_=($(md5sum $file))
       if [ "$md5_" = "$md5" ]; then
         echo "Package $file downloaded"
@@ -40,8 +45,7 @@ if [ "$ENABLE_TINYVIZ" == "ON" ] ; then
   qcdownload https://dl.dafont.com/dl/?f=liberation_sans liberation_sans.zip c553a360214638956a561ce5538e49cc
 fi # ENABLE_TINYVIZ
 
-qcdownload https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz json.tar.xz c23a33f04786d85c29fda8d16b5f0efd
+JSON_VERSION=3.11.3
+qcdownload https://github.com/nlohmann/json/releases/download/v${JSON_VERSION}/json.tar.xz json-${JSON_VERSION}.tar.xz c23a33f04786d85c29fda8d16b5f0efd
+ln -fs json-${JSON_VERSION}.tar.xz json.tar.xz
 qcdownload https://github.com/google/googletest/archive/refs/tags/release-1.10.0.tar.gz googletest-1.10.0.tar.gz ecd1fa65e7de707cd5c00bdac56022cd
-
-echo "Successfully get all dependent packages in $THIRD_PARTY_DIR"
-

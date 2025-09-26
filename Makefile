@@ -1,2 +1,0 @@
-LIST=
-include recurse.mk
