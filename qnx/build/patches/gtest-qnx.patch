@@ -1,0 +1,49 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index f11bbb52..4c8188aa 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -15,7 +15,7 @@ if (CMAKE_VERSION VERSION_LESS "3.1")
+ else()
+   set(CMAKE_CXX_STANDARD 11)
+   set(CMAKE_CXX_STANDARD_REQUIRED ON)
+-  if(NOT CYGWIN)
++  if(NOT CYGWIN AND NOT MSYS AND NOT ${CMAKE_SYSTEM_NAME} STREQUAL QNX)
+     set(CMAKE_CXX_EXTENSIONS OFF)
+   endif()
+ endif()
+diff --git a/googletest/CMakeLists.txt b/googletest/CMakeLists.txt
+index db292946..cdb0f4f0 100644
+--- a/googletest/CMakeLists.txt
++++ b/googletest/CMakeLists.txt
+@@ -138,6 +138,9 @@ if (DEFINED CMAKE_VERSION AND NOT "${CMAKE_VERSION}" VERSION_LESS "2.8.11")
+     "$<BUILD_INTERFACE:${gtest_build_include_dirs}>"
+     "$<INSTALL_INTERFACE:$<INSTALL_PREFIX>/${CMAKE_INSTALL_INCLUDEDIR}>")
+ endif()
++if(CMAKE_SYSTEM_NAME MATCHES "QNX")
++  target_link_libraries(gtest PUBLIC regex)
++endif()
+ target_link_libraries(gtest_main PUBLIC gtest)
+ 
+ ########################################################################
+diff --git a/googletest/src/gtest-death-test.cc b/googletest/src/gtest-death-test.cc
+index da09a1cf..43cbd78a 100644
+--- a/googletest/src/gtest-death-test.cc
++++ b/googletest/src/gtest-death-test.cc
+@@ -1288,7 +1288,7 @@ static void StackLowerThanAddress(const void* ptr,
+ // making comparison result unpredictable.
+ GTEST_ATTRIBUTE_NO_SANITIZE_HWADDRESS_
+ static void StackLowerThanAddress(const void* ptr, bool* result) {
+-  int dummy;
++  int dummy = 0;
+   *result = (&dummy < ptr);
+ }
+ 
+@@ -1296,7 +1296,7 @@ static void StackLowerThanAddress(const void* ptr, bool* result) {
+ GTEST_ATTRIBUTE_NO_SANITIZE_ADDRESS_
+ GTEST_ATTRIBUTE_NO_SANITIZE_HWADDRESS_
+ static bool StackGrowsDown() {
+-  int dummy;
++  int dummy = 0;
+   bool result;
+   StackLowerThanAddress(&dummy, &result);
+   return result;

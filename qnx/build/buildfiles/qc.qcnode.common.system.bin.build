@@ -1,0 +1,9 @@
+
+# QCNode sample apps
+
+PERM_BIN bin/qcnode/bin/QCNodeSampleApp=aarch64le/bin/qcnode/bin/QCNodeSampleApp
+PERM_BIN bin/qcnode/bin/QCNodeSharedRingInspect=aarch64le/bin/qcnode/bin/QCNodeSharedRingInspect
+PERM_BIN bin/qcnode/bin/qcrun=aarch64le/bin/qcnode/bin/qcrun
+[+optional]
+PERM_BIN bin/qcnode/bin/QCNodeQnnTest=aarch64le/bin/qcnode/bin/QCNodeQnnTest
+[-optional]
