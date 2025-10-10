@@ -1,5 +1,5 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
-// SPDX-License-Identifier: BSD-3-Clause
+// SPDX-License-Identifier: BSD-3-Clause-Clear
 
 #include "QC/Infras/Memory/SharedBuffer.hpp"
 #include "QC/sample/BufferManager.hpp"
