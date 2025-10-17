@@ -16,6 +16,21 @@
 
 #include "QnnImpl.hpp"
 
+#include "QnnLog.h"
+#include "QnnTypeMacros.hpp"
+
+#include "MockCLib.hpp"
+
+namespace QC
+{
+namespace Node
+{
+extern void QnnLog_Callback( const char *fmt, QnnLog_Level_t logLevel, uint64_t timestamp,
+                             va_list args );
+size_t memscpy( void *dst, size_t dstSize, const void *src, size_t copySize );
+}   // namespace Node
+}   // namespace QC
+
 
 using namespace QC;
 using namespace QC::Node;
@@ -109,14 +124,19 @@ protected:
 
     void SetLogLevel( std::string level ) { dt.Set<std::string>( "static.logLevel", level ); }
 
-    void Init( std::string name, std::string loadType, std::string modelPath,
-               std::string processorType )
+    void SetupConfig( std::string name, std::string loadType, std::string modelPath,
+                      std::string processorType, std::string type = "QNN", uint32_t id = 0,
+                      std::string perfProfile = "default", std::string priority = "normal" )
     {
+        dt = DataTree();
         dt.Set<std::string>( "static.name", name );
-        dt.Set<uint32_t>( "static.id", 0 );
+        dt.Set<uint32_t>( "static.id", id );
         dt.Set<std::string>( "static.loadType", loadType );
         dt.Set<std::string>( "static.modelPath", modelPath );
         dt.Set<std::string>( "static.processorType", processorType );
+        dt.Set<std::string>( "static.type", type );
+        dt.Set<std::string>( "static.perfProfile", perfProfile );
+        dt.Set<std::string>( "static.priority", priority );
 
         config.buffers.clear();
         config.callback = nullptr;
@@ -139,8 +159,40 @@ protected:
             config.buffers.push_back( ctxBufDesc );
         }
 
+        if ( globalBufferNames.size() > 0 )
+        {
+            std::vector<DataTree> globalBufferMaps;
+            for ( size_t i = 0; i < globalBufferNames.size(); i++ )
+            {
+                DataTree gbm;
+                gbm.Set<std::string>( "name", globalBufferNames[i] );
+                gbm.Set<uint32_t>( "id", globalBufferIds[i] );
+                globalBufferMaps.push_back( gbm );
+
+                if ( globalBufferIds[i] > bufferDescNum )
+                {
+                    bufferDescNum = globalBufferIds[i] + 1;
+                }
+            }
+            dt.Set( "static.globalBufferIdMap", globalBufferMaps );
+        }
+
         config.config = dt.Dump();
+    }
+
+    void Initialize( std::string name, std::string loadType, std::string modelPath,
+                     std::string processorType, std::string type = "QNN", uint32_t id = 0,
+                     std::string perfProfile = "default", std::string priority = "normal" )
+    {
+        SetupConfig( name, loadType, modelPath, processorType, type, id, perfProfile, priority );
         ret = qnn.Initialize( config );
+    }
+
+    void Init( std::string name, std::string loadType, std::string modelPath,
+               std::string processorType, std::string type = "QNN", uint32_t id = 0,
+               std::string perfProfile = "default", std::string priority = "normal" )
+    {
+        Initialize( name, loadType, modelPath, processorType, type, id, perfProfile, priority );
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
 
@@ -161,7 +213,12 @@ protected:
         ret = optionsDt.Get( "model.outputs", outputDts );
         ASSERT_EQ( QC_STATUS_OK, ret );
 
-        pFrameDesc = new NodeFrameDescriptor( inputDts.size() + outputDts.size() + 1 );
+        if ( 0 == bufferDescNum )
+        {
+            bufferDescNum = inputDts.size() + outputDts.size() + 1;
+        }
+
+        pFrameDesc = new NodeFrameDescriptor( bufferDescNum );
         uint32_t globalIdx = 0;
         inputs.reserve( inputDts.size() );
         for ( auto &inDt : inputDts )
@@ -173,7 +230,15 @@ protected:
             ret = bufMgr.Allocate( props, tensorDesc );
             ASSERT_EQ( QC_STATUS_OK, ret );
             inputs.push_back( tensorDesc );
-            ret = pFrameDesc->SetBuffer( globalIdx, inputs.back() );
+            if ( globalBufferIds.size() > 0 )
+            {
+                uint32_t globalIdxCfg = globalBufferIds[globalIdx];
+                ret = pFrameDesc->SetBuffer( globalIdxCfg, inputs.back() );
+            }
+            else
+            {
+                ret = pFrameDesc->SetBuffer( globalIdx, inputs.back() );
+            }
             ASSERT_EQ( QC_STATUS_OK, ret );
             globalIdx++;
         }
@@ -187,7 +252,15 @@ protected:
             ret = bufMgr.Allocate( props, tensorDesc );
             ASSERT_EQ( QC_STATUS_OK, ret );
             outputs.push_back( tensorDesc );
-            ret = pFrameDesc->SetBuffer( globalIdx, outputs.back() );
+            if ( globalBufferIds.size() > 0 )
+            {
+                uint32_t globalIdxCfg = globalBufferIds[globalIdx];
+                ret = pFrameDesc->SetBuffer( globalIdxCfg, outputs.back() );
+            }
+            else
+            {
+                ret = pFrameDesc->SetBuffer( globalIdx, outputs.back() );
+            }
             ASSERT_EQ( QC_STATUS_OK, ret );
             globalIdx++;
         }
@@ -215,6 +288,10 @@ protected:
     {
         ret = qnn.DeInitialize();
         ASSERT_EQ( QC_STATUS_OK, ret );
+
+        bufferDescNum = 0;
+        globalBufferNames.clear();
+        globalBufferIds.clear();
     }
 
     void TearDown() override
@@ -256,6 +333,10 @@ protected:
     std::shared_ptr<uint8_t> buffer = nullptr;
     uint64_t bufferSize{ 0 };
     QCBufferDescriptorBase_t ctxBufDesc;
+
+    std::vector<uint32_t> globalBufferIds;
+    std::vector<std::string> globalBufferNames;
+    uint32_t bufferDescNum = 0;
 };
 
 TEST_F( QnnTest, SANITY_General )
@@ -456,6 +537,9 @@ TEST_F( QnnTest, StateMachine )
     state = qnn.GetState();
     ASSERT_EQ( QC_OBJECT_STATE_READY, state );
 
+    ret = qnn.Initialize( config );
+    ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
+
     AllocateBuffers();
 
     ret = qnn.ProcessFrameDescriptor( *pFrameDesc );
@@ -644,6 +728,8 @@ TEST( QNN, DataType )
                qnn.SwitchFromQnnDataType( QNN_DATATYPE_UFIXED_POINT_32 ) );
 
     EXPECT_EQ( QC_TENSOR_TYPE_MAX, qnn.SwitchFromQnnDataType( QNN_DATATYPE_UNDEFINED ) );
+
+    QnnImplMonitorConfig_t &config = qnn.GetMonitorConifg();
 }
 
 TEST( QNN, CreateModelFromSo )
@@ -1115,73 +1201,11 @@ TEST( QNN, OneBufferMutipleTensors )
     ASSERT_EQ( QC_STATUS_OK, ret );
 }
 
-TEST( QNN, TestAccuracy )
+TEST_F( QnnTest, TestAccuracy )
 {
-    QCStatus_e ret = QC_STATUS_OK;
-    std::string errors;
-    Qnn qnn;
-    BufferManager bufMgr( { "TENSOR", QC_NODE_TYPE_QNN, 0 } );
-    DataTree dt;
-    dt.Set<std::string>( "static.name", "ACCURACY" );
-    dt.Set<uint32_t>( "static.id", 0 );
-    dt.Set<std::string>( "static.loadType", "binary" );
-
-    dt.Set<std::string>( "static.modelPath", "data/centernet/program.bin" );
-    dt.Set<std::string>( "static.processorType", "htp0" );
-
-    QCNodeInit_t config = { dt.Dump() };
-    ret = qnn.Initialize( config );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    ret = qnn.Start();
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    QCNodeConfigIfs &cfgIfs = qnn.GetConfigurationIfs();
-    const std::string &options = cfgIfs.GetOptions();
-
-    DataTree optionsDt;
-    std::vector<DataTree> inputDts;
-    std::vector<DataTree> outputDts;
-    ret = optionsDt.Load( options, errors );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    ret = optionsDt.Get( "model.inputs", inputDts );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-    ret = optionsDt.Get( "model.outputs", outputDts );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    NodeFrameDescriptor frameDesc( inputDts.size() + outputDts.size() + 1 );
-    uint32_t globalIdx = 0;
-    std::vector<TensorDescriptor_t> inputs;
-    inputs.reserve( inputDts.size() );
-    for ( auto &inDt : inputDts )
-    {
-        TensorProps_t props;
-        ret = ConvertDtToProps( inDt, props );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        TensorDescriptor_t tensorDesc;
-        ret = bufMgr.Allocate( props, tensorDesc );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        inputs.push_back( tensorDesc );
-        ret = frameDesc.SetBuffer( globalIdx, inputs.back() );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        globalIdx++;
-    }
-    std::vector<TensorDescriptor_t> outputs;
-    outputs.reserve( outputDts.size() );
-    for ( auto &outDt : outputDts )
-    {
-        TensorProps_t props;
-        ret = ConvertDtToProps( outDt, props );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        TensorDescriptor_t tensorDesc;
-        ret = bufMgr.Allocate( props, tensorDesc );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        outputs.push_back( tensorDesc );
-        ret = frameDesc.SetBuffer( globalIdx, outputs.back() );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        globalIdx++;
-    }
+    Init( "SANITY", "binary", "data/centernet/program.bin", "htp0" );
+    AllocateBuffers();
+    Start();
 
     std::vector<std::string> inputDataPaths;
     inputDataPaths.push_back( "data/test/qnn/centernet/gd_uint8_input.raw" );
@@ -1194,9 +1218,7 @@ TEST( QNN, TestAccuracy )
         memcpy( inputs[i].pBuf, pInputData, inputSize );
         free( pInputData );
     }
-
-    ret = qnn.ProcessFrameDescriptor( frameDesc );
-    ASSERT_EQ( QC_STATUS_OK, ret );
+    Execute();
 
     std::vector<std::string> outputDataPaths;
     outputDataPaths.push_back( "data/test/qnn/centernet/gd_uint8_output_0.raw" );
@@ -1216,22 +1238,8 @@ TEST( QNN, TestAccuracy )
         free( pOutputData );
     }
 
-    ret = qnn.Stop();
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    ret = qnn.DeInitialize();
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    for ( size_t i = 0; i < inputs.size(); ++i )
-    {
-        ret = bufMgr.Free( inputs[i] );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-    }
-    for ( size_t i = 0; i < outputs.size(); ++i )
-    {
-        ret = bufMgr.Free( outputs[i] );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-    }
+    Stop();
+    Deinit();
 }
 
 TEST( QNN, TwoModelWithSameBuffer )
@@ -1966,6 +1974,810 @@ TEST_F( QnnTest, CovLogLevel )
     Execute();
     Stop();
     Deinit();
+}
+
+TEST_F( QnnTest, QnnConfig )
+{
+    QCNodeConfigIfs &cfgIfs = qnn.GetConfigurationIfs();
+    SetupConfig( "", "binary", "data/centernet/program.bin", "htp0" );
+    ret = cfgIfs.VerifyAndSet( config.config, errors );
+    ASSERT_EQ( ret, QC_STATUS_BAD_ARGUMENTS );
+    ASSERT_EQ( errors, "no name specified, " );
+
+    SetupConfig( "QCFG", "binary", "data/centernet/program.bin", "htp0", "QNNx" );
+    ret = cfgIfs.VerifyAndSet( config.config, errors );
+    ASSERT_EQ( ret, QC_STATUS_BAD_ARGUMENTS );
+    ASSERT_EQ( errors, "the type is not QNN, " );
+
+    SetupConfig( "QCFG", "binary", "data/centernet/program.bin", "htp0", "QNNx", UINT32_MAX );
+    ret = cfgIfs.VerifyAndSet( config.config, errors );
+    ASSERT_EQ( ret, QC_STATUS_BAD_ARGUMENTS );
+    ASSERT_EQ( errors, "the type is not QNN, the id is empty, " );
+
+    SetupConfig( "QCFG", "binary", "data/centernet/program.bin", "htpx" );
+    ret = cfgIfs.VerifyAndSet( config.config, errors );
+    ASSERT_EQ( ret, QC_STATUS_BAD_ARGUMENTS );
+    ASSERT_EQ( errors, "the processorType htpx is invalid, " );
+
+    std::vector<std::string> validProcessors = { "htp0", "htp1", "htp2", "htp3", "cpu", "gpu" };
+    for ( auto &processor : validProcessors )
+    {
+        SetupConfig( "QCFG", "binary", "data/centernet/program.bin", processor );
+        ret = cfgIfs.VerifyAndSet( config.config, errors );
+        ASSERT_EQ( ret, QC_STATUS_OK );
+    }
+
+    SetupConfig( "QCFG", "binary", "data/centernet/program.bin", "htp0", "QNN", 1, "invalid perf" );
+    ret = cfgIfs.VerifyAndSet( config.config, errors );
+    ASSERT_EQ( ret, QC_STATUS_BAD_ARGUMENTS );
+    ASSERT_EQ( errors, "the perfProfile invalid perf is invalid, " );
+
+    std::vector<std::string> validPerfs = { "default",
+                                            "low_balanced",
+                                            "balanced",
+                                            "high_performance",
+                                            "sustained_high_performance",
+                                            "burst",
+                                            "low_power_saver",
+                                            "power_saver",
+                                            "high_power_saver",
+                                            "extreme_power_saver" };
+    for ( auto &perfProfile : validPerfs )
+    {
+        SetupConfig( "QCFG", "binary", "data/centernet/program.bin", "htp0", "QNN", 1,
+                     perfProfile );
+        ret = cfgIfs.VerifyAndSet( config.config, errors );
+        ASSERT_EQ( ret, QC_STATUS_OK );
+
+        Initialize( "QCFG", "binary", "data/centernet/program.bin", "htp0", "QNN", 1, perfProfile );
+        if ( ret != QC_STATUS_OK )
+        {
+            printf( "setting perf %s failed\n", perfProfile.c_str() );
+        }
+        else
+        {
+            printf( "setting perf %s OK\n", perfProfile.c_str() );
+            Deinit();
+        }
+    }
+
+    SetupConfig( "QCFG", "binary", "invalid.bin", "htp0" );
+    ret = cfgIfs.VerifyAndSet( config.config, errors );
+    ASSERT_EQ( ret, QC_STATUS_BAD_ARGUMENTS );
+    ASSERT_EQ( errors, "the modelPath <invalid.bin> is invalid, " );
+
+    SetupConfig( "QCFG", "invalid", "data/centernet/program.bin", "htp0" );
+    ret = cfgIfs.VerifyAndSet( config.config, errors );
+    ASSERT_EQ( ret, QC_STATUS_BAD_ARGUMENTS );
+    ASSERT_EQ( errors, "the loadType <invalid> is invalid, " );
+
+    SetupConfig( "QCFG", "buffer", "data/centernet/program.bin", "htp0" );
+    dt.Set<uint32_t>( "static.contextBufferId", UINT32_MAX );   // override with invalid ID
+    config.config = dt.Dump();
+    ret = cfgIfs.VerifyAndSet( config.config, errors );
+    ASSERT_EQ( ret, QC_STATUS_BAD_ARGUMENTS );
+    ASSERT_EQ( errors, "the contextBufferId is empty, " );
+
+    SetupConfig( "QCFG", "buffer", "data/centernet/program.bin", "htp0" );
+    std::vector<uint32_t> bufferIds;
+    dt.Set<uint32_t>( "static.bufferIds", bufferIds );
+    config.config = dt.Dump();
+    ret = cfgIfs.VerifyAndSet( config.config, errors );
+    ASSERT_EQ( ret, QC_STATUS_BAD_ARGUMENTS );
+    ASSERT_EQ( errors, "the bufferIds is invalid, " );
+
+
+    SetupConfig( "QCFG", "binary", "data/centernet/program.bin", "htp0", "QNN", 0, "default",
+                 "invprio" );
+    ret = cfgIfs.VerifyAndSet( config.config, errors );
+    ASSERT_EQ( ret, QC_STATUS_BAD_ARGUMENTS );
+    ASSERT_EQ( errors, "the priority is invalid, " );
+
+    std::vector<std::string> validPrios = { "low", "normal", "normal_high", "high" };
+    for ( auto &prio : validPrios )
+    {
+        SetupConfig( "QCFG", "binary", "data/centernet/program.bin", "htp0", "QNN", 0, "default",
+                     prio );
+        ret = cfgIfs.VerifyAndSet( config.config, errors );
+        ASSERT_EQ( ret, QC_STATUS_OK );
+    }
+
+    SetupConfig( "QCFG", "buffer", "data/centernet/program.bin", "htp0" );
+    dt.Set<std::string>( "static.udoPackages", "invalid" );
+    config.config = dt.Dump();
+    ret = cfgIfs.VerifyAndSet( config.config, errors );
+    ASSERT_EQ( ret, QC_STATUS_BAD_ARGUMENTS );
+    ASSERT_EQ( errors, "the udoPackages is invalid, " );
+
+    SetupConfig( "QCFG", "buffer", "data/centernet/program.bin", "htp0" );
+    std::vector<DataTree> udoPkgs;
+    DataTree udt;
+    udt.Set<std::string>( "udoLibPath", "" );
+    udt.Set<std::string>( "interfaceProvider", "" );
+    udoPkgs.push_back( udt );
+    dt.Set( "static.udoPackages", udoPkgs );
+    config.config = dt.Dump();
+    ret = cfgIfs.VerifyAndSet( config.config, errors );
+    ASSERT_EQ( ret, QC_STATUS_BAD_ARGUMENTS );
+    ASSERT_EQ( errors, "the udo 0 library path is empty, the udo 0 interface is empty, " );
+
+    SetupConfig( "QCFG", "buffer", "data/centernet/program.bin", "htp0" );
+    dt.Set<std::string>( "static.globalBufferIdMap", "invalid" );
+    config.config = dt.Dump();
+    ret = cfgIfs.VerifyAndSet( config.config, errors );
+    ASSERT_EQ( ret, QC_STATUS_BAD_ARGUMENTS );
+    ASSERT_EQ( errors, "the globalBufferIdMap is invalid, " );
+
+    {
+        SetupConfig( "QCFG", "buffer", "data/centernet/program.bin", "htp0" );
+        std::vector<DataTree> globalBufferMaps;
+        DataTree gbm;
+        gbm.Set<std::string>( "name", "" );
+        gbm.Set<uint32_t>( "id", UINT32_MAX );
+        globalBufferMaps.push_back( gbm );
+        dt.Set( "static.globalBufferIdMap", globalBufferMaps );
+        config.config = dt.Dump();
+        ret = cfgIfs.VerifyAndSet( config.config, errors );
+        ASSERT_EQ( ret, QC_STATUS_BAD_ARGUMENTS );
+        ASSERT_EQ( errors, "the globalIdMap 0 name is empty, the globalIdMap 0 id is empty, " );
+    }
+
+    {
+        SetupConfig( "QCFG", "buffer", "data/centernet/program.bin", "htp0" );
+        std::vector<DataTree> globalBufferMaps;
+        DataTree gbm;
+        gbm.Set<std::string>( "name", "input0" );
+        gbm.Set<uint32_t>( "id", 0 );
+        globalBufferMaps.push_back( gbm );
+        gbm.Set<std::string>( "name", "output0" );
+        gbm.Set<uint32_t>( "id", 1 );
+        globalBufferMaps.push_back( gbm );
+        dt.Set( "static.globalBufferIdMap", globalBufferMaps );
+        config.config = dt.Dump();
+        ret = cfgIfs.VerifyAndSet( config.config, errors );
+        ASSERT_EQ( ret, QC_STATUS_OK );
+
+        DataTree dtp;
+        dtp.Set<bool>( "dynamic.invalid", true );
+        ret = cfgIfs.VerifyAndSet( dtp.Dump(), errors );
+        ASSERT_EQ( QC_STATUS_UNSUPPORTED, ret );
+    }
+
+    {
+        Init( "SANITY", "binary", "data/centernet/program.bin", "htp0" );
+        std::string options = cfgIfs.GetOptions();
+        std::string options2 = cfgIfs.GetOptions();
+        ASSERT_EQ( options, options2 );
+        Deinit();
+    }
+}
+
+TEST_F( QnnTest, QnnMonitor )
+{
+    QCNodeMonitoringIfs &monitorIfs = qnn.GetMonitoringIfs();
+
+    ret = monitorIfs.VerifyAndSet( "{}", errors );
+    ASSERT_EQ( QC_STATUS_UNSUPPORTED, ret );
+
+    {
+        std::string options = monitorIfs.GetOptions();
+        ASSERT_EQ( options, "{}" );
+    }
+
+    {
+        uint32_t maxSize = monitorIfs.GetMaximalSize();
+        ASSERT_EQ( maxSize, sizeof( Qnn_Perf_t ) );
+    }
+
+    {
+        uint32_t curSize = monitorIfs.GetCurrentSize();
+        ASSERT_EQ( curSize, sizeof( Qnn_Perf_t ) );
+    }
+
+    {
+        uint32_t size = sizeof( Qnn_Perf_t );
+        ret = monitorIfs.Place( nullptr, size );
+        ASSERT_EQ( ret, QC_STATUS_BAD_ARGUMENTS );
+    }
+}
+
+TEST_F( QnnTest, GlobalBufferIdMap )
+{
+    globalBufferNames = std::vector<std::string>( { "input", "_256", "_259", "_262", "ERROR" } );
+    globalBufferIds = std::vector<uint32_t>( { 13, 21, 11, 9, 17 } );
+    Init( "QNN", "buffer", "data/centernet/program.bin", "htp0" );
+    AllocateBuffers();
+    Start();
+
+    std::vector<std::string> inputDataPaths;
+    inputDataPaths.push_back( "data/test/qnn/centernet/gd_uint8_input.raw" );
+    ASSERT_EQ( inputDataPaths.size(), inputs.size() );
+    for ( int i = 0; i < inputs.size(); ++i )
+    {
+        size_t inputSize = 0;
+        void *pInputData = LoadRaw( inputDataPaths[i], inputSize );
+        ASSERT_EQ( inputs[i].size, inputSize );
+        memcpy( inputs[i].pBuf, pInputData, inputSize );
+        free( pInputData );
+    }
+    Execute();
+
+    std::vector<std::string> outputDataPaths;
+    outputDataPaths.push_back( "data/test/qnn/centernet/gd_uint8_output_0.raw" );
+    outputDataPaths.push_back( "data/test/qnn/centernet/gd_uint8_output_1.raw" );
+    outputDataPaths.push_back( "data/test/qnn/centernet/gd_uint8_output_2.raw" );
+    ASSERT_EQ( outputDataPaths.size(), outputs.size() );
+
+    for ( size_t i = 0; i < outputs.size(); ++i )
+    {
+        size_t outputSize = 0;
+        void *pOutputData = LoadRaw( outputDataPaths[i], outputSize );
+        ASSERT_EQ( outputs[i].size, outputSize );
+        double cosSim = CosineSimilarity( (uint8_t *) pOutputData, (uint8_t *) outputs[i].pBuf,
+                                          outputSize );
+        printf( "output: %" PRIu64 ": cosine similarity = %f\n", i, (float) cosSim );
+        ASSERT_GT( cosSim, 0.99d );
+        free( pOutputData );
+    }
+
+    Stop();
+    Deinit();
+
+    // missing one
+    globalBufferNames = std::vector<std::string>( { "input", "_259", "_262", "ERROR" } );
+    globalBufferIds = std::vector<uint32_t>( { 13, 11, 9, 17 } );
+    Initialize( "QNN", "buffer", "data/centernet/program.bin", "htp0" );
+    ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+
+    // input with wrong name
+    globalBufferNames = std::vector<std::string>( { "inputxxx", "_256", "_259", "_262", "ERROR" } );
+    globalBufferIds = std::vector<uint32_t>( { 13, 21, 11, 9, 17 } );
+    Initialize( "QNN", "buffer", "data/centernet/program.bin", "htp0" );
+    ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+
+    // output with wrong name
+    globalBufferNames = std::vector<std::string>( { "input", "_256", "_259xx", "_262", "ERROR" } );
+    globalBufferIds = std::vector<uint32_t>( { 13, 21, 11, 9, 17 } );
+    Initialize( "QNN", "buffer", "data/centernet/program.bin", "htp0" );
+    ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+}
+
+void QnnLog_CallbackTest( QnnLog_Level_t logLevel, uint64_t timestamp, const char *fmt, ... )
+{
+    va_list args;
+    va_start( args, fmt );
+    QC::Node::QnnLog_Callback( fmt, logLevel, timestamp, args );
+    va_end( args );
+}
+
+TEST( QNN, LogCallback )
+{
+    QnnLog_CallbackTest( QNN_LOG_LEVEL_ERROR, 0, "error message: %d", 1234 );
+    QnnLog_CallbackTest( QNN_LOG_LEVEL_WARN, 1, "warn message: %d", 2234 );
+    QnnLog_CallbackTest( QNN_LOG_LEVEL_INFO, 2, "info message: %d", 3234 );
+    QnnLog_CallbackTest( QNN_LOG_LEVEL_VERBOSE, 3, "verbose message: %d", 4234 );
+    QnnLog_CallbackTest( QNN_LOG_LEVEL_DEBUG, 4, "debug message: %d", 5234 );
+    QnnLog_CallbackTest( QNN_LOG_LEVEL_MAX, 5, "max message: %d", 6234 );
+}
+
+TEST( QNN, memscpy )
+{
+    size_t copied;
+    uint8_t dst[32];
+    uint8_t src[64];
+
+    for ( size_t i = 0; i < sizeof( src ); i++ )
+    {
+        src[i] = i;
+    }
+
+    copied = QC::Node::memscpy( dst, 32, src, 64 );
+    ASSERT_EQ( copied, 32 );
+    ASSERT_EQ( 0, memcmp( src, dst, 32 ) );
+
+    copied = QC::Node::memscpy( nullptr, 32, src, 64 );
+    ASSERT_EQ( copied, 0 );
+
+    copied = QC::Node::memscpy( dst, 0, src, 64 );
+    ASSERT_EQ( copied, 0 );
+
+    copied = QC::Node::memscpy( dst, 32, nullptr, 64 );
+    ASSERT_EQ( copied, 0 );
+
+    copied = QC::Node::memscpy( dst, 32, src, 0 );
+    ASSERT_EQ( copied, 0 );
+}
+
+TEST( QNN, QnnImplUnitTest )
+{
+    QCStatus_e status;
+    QCNodeID_t nodeId;
+    Logger logger;
+    logger.Init( "UNIT_TEST" );
+
+    {
+        QnnImpl qnn( nodeId, logger );
+        status = qnn.GetQnnFunctionPointers( "libQnnNotExist.so", "libQnnModel.so", false );
+        ASSERT_EQ( QC_STATUS_FAIL, status );
+    }
+
+    {
+        QnnImpl qnn( nodeId, logger );
+        status = qnn.GetQnnFunctionPointers( "libQCNode.so", "libQnnModel.so", false );
+        ASSERT_EQ( QC_STATUS_FAIL, status );
+    }
+
+    {
+        QnnImpl qnn( nodeId, logger );
+        status = qnn.GetQnnFunctionPointers( "libQnnHtp.so", "libQnnModelNotExist.so", true );
+        ASSERT_EQ( QC_STATUS_FAIL, status );
+    }
+
+    {
+        QnnImpl qnn( nodeId, logger );
+        status = qnn.GetQnnFunctionPointers( "libQnnHtp.so", "libQCNode.so", true );
+        ASSERT_EQ( QC_STATUS_FAIL, status );
+    }
+
+    {
+        QnnImpl qnn( nodeId, logger );
+        status = qnn.GetQnnSystemFunctionPointers( "libQnnNotExist.so" );
+        ASSERT_EQ( QC_STATUS_FAIL, status );
+    }
+
+    {
+        QnnImpl qnn( nodeId, logger );
+        status = qnn.GetQnnSystemFunctionPointers( "libQCNode.so" );
+        ASSERT_EQ( QC_STATUS_FAIL, status );
+    }
+
+    {
+        Qnn_Tensor_t src;
+        QnnImpl qnn( nodeId, logger );
+        status = qnn.DeepCopyQnnTensorInfo( nullptr, &src );
+        ASSERT_EQ( QC_STATUS_FAIL, status );
+    }
+
+    {
+        Qnn_Tensor_t dst;
+        QnnImpl qnn( nodeId, logger );
+        status = qnn.DeepCopyQnnTensorInfo( &dst, nullptr );
+        ASSERT_EQ( QC_STATUS_FAIL, status );
+    }
+
+    {
+        uint32_t dims[4] = { 1, 2, 3, 4 };
+        Qnn_Tensor_t src = QNN_TENSOR_INIT, dst = QNN_TENSOR_INIT;
+        src.version = QNN_TENSOR_VERSION_1;
+        QNN_TENSOR_SET_NAME( &src, nullptr );
+        QNN_TENSOR_SET_DIMENSIONS( &src, dims );
+        QNN_TENSOR_SET_RANK( &src, 4 );
+        Qnn_QuantizeParams_t quantizeParams = QNN_QUANTIZE_PARAMS_INIT;
+        Qnn_ScaleOffset_t scaleOffsets[3] = { { 0.1, 100 }, { 0.2, 200 }, { 0.3, 300 } };
+        quantizeParams.quantizationEncoding = QNN_QUANTIZATION_ENCODING_AXIS_SCALE_OFFSET;
+        quantizeParams.axisScaleOffsetEncoding.axis = 2;
+        quantizeParams.axisScaleOffsetEncoding.numScaleOffsets = 3;
+        quantizeParams.axisScaleOffsetEncoding.scaleOffset = scaleOffsets;
+        QNN_TENSOR_SET_QUANT_PARAMS( &src, quantizeParams );
+        QnnImpl qnn( nodeId, logger );
+        status = qnn.DeepCopyQnnTensorInfo( &dst, &src );
+        ASSERT_EQ( QC_STATUS_OK, status );
+        ASSERT_EQ( nullptr, QNN_TENSOR_GET_NAME( &dst ) );
+        ASSERT_EQ( 4, QNN_TENSOR_GET_RANK( &dst ) );
+        ASSERT_EQ( QNN_TENSOR_GET_DIMENSIONS( &src )[0], QNN_TENSOR_GET_DIMENSIONS( &dst )[0] );
+        ASSERT_EQ( QNN_TENSOR_GET_DIMENSIONS( &src )[1], QNN_TENSOR_GET_DIMENSIONS( &dst )[1] );
+        ASSERT_EQ( QNN_TENSOR_GET_DIMENSIONS( &src )[2], QNN_TENSOR_GET_DIMENSIONS( &dst )[2] );
+        ASSERT_EQ( QNN_TENSOR_GET_DIMENSIONS( &src )[3], QNN_TENSOR_GET_DIMENSIONS( &dst )[3] );
+
+        Qnn_QuantizeParams_t qParams = QNN_TENSOR_GET_QUANT_PARAMS( &dst );
+        ASSERT_EQ( quantizeParams.quantizationEncoding, qParams.quantizationEncoding );
+        ASSERT_EQ( quantizeParams.axisScaleOffsetEncoding.axis,
+                   qParams.axisScaleOffsetEncoding.axis );
+        ASSERT_EQ( quantizeParams.axisScaleOffsetEncoding.numScaleOffsets,
+                   qParams.axisScaleOffsetEncoding.numScaleOffsets );
+        ASSERT_EQ( quantizeParams.axisScaleOffsetEncoding.scaleOffset[0].scale,
+                   qParams.axisScaleOffsetEncoding.scaleOffset[0].scale );
+        ASSERT_EQ( quantizeParams.axisScaleOffsetEncoding.scaleOffset[1].scale,
+                   qParams.axisScaleOffsetEncoding.scaleOffset[1].scale );
+        ASSERT_EQ( quantizeParams.axisScaleOffsetEncoding.scaleOffset[2].scale,
+                   qParams.axisScaleOffsetEncoding.scaleOffset[2].scale );
+        ASSERT_EQ( quantizeParams.axisScaleOffsetEncoding.scaleOffset[0].offset,
+                   qParams.axisScaleOffsetEncoding.scaleOffset[0].offset );
+        ASSERT_EQ( quantizeParams.axisScaleOffsetEncoding.scaleOffset[1].offset,
+                   qParams.axisScaleOffsetEncoding.scaleOffset[1].offset );
+        ASSERT_EQ( quantizeParams.axisScaleOffsetEncoding.scaleOffset[2].offset,
+                   qParams.axisScaleOffsetEncoding.scaleOffset[2].offset );
+
+        qnn.FreeQnnTensor( dst );
+
+        MockC_MallocCtrl( 1 );
+        status = qnn.DeepCopyQnnTensorInfo( &dst, &src );
+        ASSERT_EQ( QC_STATUS_NOMEM, status );
+
+        quantizeParams.axisScaleOffsetEncoding.numScaleOffsets = 0;
+        QNN_TENSOR_SET_QUANT_PARAMS( &src, quantizeParams );
+        status = qnn.DeepCopyQnnTensorInfo( &dst, &src );
+        ASSERT_EQ( QC_STATUS_FAIL, status );
+
+        quantizeParams.axisScaleOffsetEncoding.numScaleOffsets = 3;
+        quantizeParams.axisScaleOffsetEncoding.scaleOffset = nullptr;
+        QNN_TENSOR_SET_QUANT_PARAMS( &src, quantizeParams );
+        status = qnn.DeepCopyQnnTensorInfo( &dst, &src );
+        ASSERT_EQ( QC_STATUS_FAIL, status );
+
+        quantizeParams.quantizationEncoding = QNN_QUANTIZATION_ENCODING_BLOCK;
+        QNN_TENSOR_SET_QUANT_PARAMS( &src, quantizeParams );
+        status = qnn.DeepCopyQnnTensorInfo( &dst, &src );
+        ASSERT_EQ( QC_STATUS_UNSUPPORTED, status );
+
+        quantizeParams.quantizationEncoding = QNN_QUANTIZATION_ENCODING_UNDEFINED;
+        QNN_TENSOR_SET_QUANT_PARAMS( &src, quantizeParams );
+        status = qnn.DeepCopyQnnTensorInfo( &dst, &src );
+        ASSERT_EQ( QC_STATUS_OK, status );
+
+        qnn.FreeQnnTensor( dst );
+
+        QNN_TENSOR_SET_RANK( &src, 0 );
+        status = qnn.DeepCopyQnnTensorInfo( &dst, &src );
+        ASSERT_EQ( QC_STATUS_FAIL, status );
+
+        quantizeParams.quantizationEncoding = QNN_QUANTIZATION_ENCODING_AXIS_SCALE_OFFSET;
+        quantizeParams.axisScaleOffsetEncoding.scaleOffset = nullptr;
+        QNN_TENSOR_SET_QUANT_PARAMS( &dst, quantizeParams );
+        qnn.FreeQnnTensor( dst );
+
+        QNN_TENSOR_SET_RANK( &src, 4 );
+        QNN_TENSOR_SET_DIMENSIONS( &src, nullptr );
+        status = qnn.DeepCopyQnnTensorInfo( &dst, &src );
+        ASSERT_EQ( QC_STATUS_FAIL, status );
+    }
+
+    {
+        uint32_t dims[4] = { 1, 2, 3, 4 };
+        uint8_t isDynamic[4] = { 0, 1, 0, 0 };
+        Qnn_Tensor_t src = QNN_TENSOR_INIT, dst = QNN_TENSOR_INIT;
+        src.version = QNN_TENSOR_VERSION_2;
+        QNN_TENSOR_SET_NAME( &src, nullptr );
+        QNN_TENSOR_SET_DIMENSIONS( &src, dims );
+        QNN_TENSOR_SET_RANK( &src, 4 );
+        Qnn_QuantizeParams_t quantizeParams = QNN_QUANTIZE_PARAMS_INIT;
+        quantizeParams.quantizationEncoding = QNN_QUANTIZATION_ENCODING_UNDEFINED;
+        QNN_TENSOR_SET_QUANT_PARAMS( &src, quantizeParams );
+        QNN_TENSOR_SET_IS_DYNAMIC_DIMENSIONS( &src, isDynamic );
+        QnnImpl qnn( nodeId, logger );
+        status = qnn.DeepCopyQnnTensorInfo( &dst, &src );
+        ASSERT_EQ( QC_STATUS_OK, status );
+
+        qnn.FreeQnnTensor( dst );
+
+        MockC_MallocCtrl( 1 );
+        status = qnn.DeepCopyQnnTensorInfo( &dst, &src );
+        ASSERT_EQ( QC_STATUS_NOMEM, status );
+
+        MockC_MallocCtrl( 2 );
+        status = qnn.DeepCopyQnnTensorInfo( &dst, &src );
+        ASSERT_EQ( QC_STATUS_NOMEM, status );
+
+        Qnn_Tensor_t *tensorWrappers;
+
+        MockC_CallocCtrl( 1 );
+        status = qnn.CopyTensorsInfo( &src, tensorWrappers, 1 );
+        ASSERT_EQ( QC_STATUS_FAIL, status );
+
+        MockC_MallocCtrl( 1 );
+        status = qnn.CopyTensorsInfo( &src, tensorWrappers, 1 );
+        ASSERT_EQ( QC_STATUS_NOMEM, status );
+    }
+
+    {
+        uint32_t dims[4] = { 1, 2, 3, 4 };
+        Qnn_Tensor_t input = QNN_TENSOR_INIT, output = QNN_TENSOR_INIT;
+        input.version = QNN_TENSOR_VERSION_1;
+        QNN_TENSOR_SET_NAME( &input, "input" );
+        QNN_TENSOR_SET_DIMENSIONS( &input, dims );
+        QNN_TENSOR_SET_RANK( &input, 4 );
+        output.version = QNN_TENSOR_VERSION_1;
+        QNN_TENSOR_SET_NAME( &output, "output" );
+        QNN_TENSOR_SET_DIMENSIONS( &output, dims );
+        QNN_TENSOR_SET_RANK( &output, 4 );
+
+        QnnSystemContext_GraphInfoV1_t graphInfoSrc;
+        qnn_wrapper_api::GraphInfo_t graphInfoDst;
+
+        graphInfoSrc.graphName = "TestGraphV1";
+        graphInfoSrc.numGraphInputs = 1;
+        graphInfoSrc.numGraphOutputs = 1;
+        graphInfoSrc.graphInputs = &input;
+        graphInfoSrc.graphOutputs = &output;
+
+        QnnImpl qnn( nodeId, logger );
+
+        status = qnn.CopyGraphsInfoV1( &graphInfoSrc, &graphInfoDst );
+        ASSERT_EQ( QC_STATUS_OK, status );
+
+        MockC_MallocCtrl( 1 );
+        status = qnn.CopyGraphsInfoV1( &graphInfoSrc, &graphInfoDst );
+        ASSERT_EQ( QC_STATUS_FAIL, status );
+
+        MockC_CallocCtrl( 1 );
+        status = qnn.CopyGraphsInfoV1( &graphInfoSrc, &graphInfoDst );
+        ASSERT_EQ( QC_STATUS_FAIL, status );
+
+        MockC_CallocCtrl( 2 );
+        status = qnn.CopyGraphsInfoV1( &graphInfoSrc, &graphInfoDst );
+        ASSERT_EQ( QC_STATUS_FAIL, status );
+
+        graphInfoSrc.graphName = nullptr;
+        status = qnn.CopyGraphsInfoV1( &graphInfoSrc, &graphInfoDst );
+        ASSERT_EQ( QC_STATUS_OK, status );
+        graphInfoSrc.graphName = "TestGraphV1";
+
+        graphInfoSrc.graphInputs = nullptr;
+        status = qnn.CopyGraphsInfoV1( &graphInfoSrc, &graphInfoDst );
+        ASSERT_EQ( QC_STATUS_OK, status );
+
+        graphInfoSrc.graphInputs = &input;
+        graphInfoSrc.graphOutputs = nullptr;
+        status = qnn.CopyGraphsInfoV1( &graphInfoSrc, &graphInfoDst );
+        ASSERT_EQ( QC_STATUS_OK, status );
+        graphInfoSrc.graphOutputs = &output;
+
+        QnnSystemContext_GraphInfo_t graphsInput;
+        qnn_wrapper_api::GraphInfo_t **graphsInfo = nullptr;
+        graphsInput.version = QNN_SYSTEM_CONTEXT_GRAPH_INFO_VERSION_1;
+        graphsInput.graphInfoV1 = graphInfoSrc;
+
+        status = qnn.CopyGraphsInfo( nullptr, 1, graphsInfo );
+        ASSERT_EQ( QC_STATUS_FAIL, status );
+
+        status = qnn.CopyGraphsInfo( &graphsInput, 1, graphsInfo );
+        ASSERT_EQ( QC_STATUS_OK, status );
+
+        MockC_CallocCtrl( 1 );
+        status = qnn.CopyGraphsInfo( &graphsInput, 1, graphsInfo );
+        ASSERT_EQ( QC_STATUS_FAIL, status );
+
+        MockC_CallocCtrl( 2 );
+        status = qnn.CopyGraphsInfo( &graphsInput, 1, graphsInfo );
+        ASSERT_EQ( QC_STATUS_FAIL, status );
+
+        QnnSystemContext_GraphInfo_t graphsInputArr[2];
+        graphsInputArr[0].version = QNN_SYSTEM_CONTEXT_GRAPH_INFO_VERSION_1;
+        graphsInputArr[0].graphInfoV1 = graphInfoSrc;
+        graphsInputArr[1].version = QNN_SYSTEM_CONTEXT_GRAPH_INFO_UNDEFINED;
+        graphsInputArr[1].graphInfoV1 = graphInfoSrc;
+
+        status = qnn.CopyGraphsInfo( graphsInputArr, 2, graphsInfo );
+        ASSERT_EQ( QC_STATUS_UNSUPPORTED, status );
+
+        graphInfoSrc.graphName = nullptr;
+        graphsInputArr[0].graphInfoV1 = graphInfoSrc;
+        status = qnn.CopyGraphsInfo( graphsInputArr, 2, graphsInfo );
+        ASSERT_EQ( QC_STATUS_UNSUPPORTED, status );
+
+        QnnSystemContext_BinaryInfo_t binaryInfo;
+        uint32_t graphsCount = 0;
+
+        binaryInfo.version = QNN_SYSTEM_CONTEXT_BINARY_INFO_VERSION_1;
+        binaryInfo.contextBinaryInfoV1.numGraphs = 1;
+        binaryInfo.contextBinaryInfoV1.graphs = &graphsInput;
+        status = qnn.CopyMetadataToGraphsInfo( &binaryInfo, graphsInfo, graphsCount );
+        ASSERT_EQ( QC_STATUS_OK, status );
+
+        binaryInfo.version = QNN_SYSTEM_CONTEXT_BINARY_INFO_VERSION_2;
+        binaryInfo.contextBinaryInfoV2.numGraphs = 1;
+        binaryInfo.contextBinaryInfoV2.graphs = &graphsInput;
+        status = qnn.CopyMetadataToGraphsInfo( &binaryInfo, graphsInfo, graphsCount );
+        ASSERT_EQ( QC_STATUS_OK, status );
+
+        binaryInfo.version = QNN_SYSTEM_CONTEXT_BINARY_INFO_VERSION_3;
+        binaryInfo.contextBinaryInfoV3.numGraphs = 1;
+        binaryInfo.contextBinaryInfoV3.graphs = &graphsInput;
+        status = qnn.CopyMetadataToGraphsInfo( &binaryInfo, graphsInfo, graphsCount );
+        ASSERT_EQ( QC_STATUS_OK, status );
+
+        binaryInfo.version = QNN_SYSTEM_CONTEXT_BINARY_INFO_UNDEFINED;
+        status = qnn.CopyMetadataToGraphsInfo( &binaryInfo, graphsInfo, graphsCount );
+        ASSERT_EQ( QC_STATUS_UNSUPPORTED, status );
+
+        status = qnn.CopyMetadataToGraphsInfo( nullptr, graphsInfo, graphsCount );
+        ASSERT_EQ( QC_STATUS_FAIL, status );
+
+        binaryInfo.version = QNN_SYSTEM_CONTEXT_BINARY_INFO_VERSION_1;
+        binaryInfo.contextBinaryInfoV1.graphs = nullptr;
+        status = qnn.CopyMetadataToGraphsInfo( &binaryInfo, graphsInfo, graphsCount );
+        ASSERT_EQ( QC_STATUS_FAIL, status );
+
+        binaryInfo.version = QNN_SYSTEM_CONTEXT_BINARY_INFO_VERSION_2;
+        binaryInfo.contextBinaryInfoV2.graphs = nullptr;
+        status = qnn.CopyMetadataToGraphsInfo( &binaryInfo, graphsInfo, graphsCount );
+        ASSERT_EQ( QC_STATUS_FAIL, status );
+
+        binaryInfo.version = QNN_SYSTEM_CONTEXT_BINARY_INFO_VERSION_3;
+        binaryInfo.contextBinaryInfoV3.graphs = nullptr;
+        status = qnn.CopyMetadataToGraphsInfo( &binaryInfo, graphsInfo, graphsCount );
+        ASSERT_EQ( QC_STATUS_FAIL, status );
+
+        MockC_CallocCtrl( 1 );
+        binaryInfo.version = QNN_SYSTEM_CONTEXT_BINARY_INFO_VERSION_1;
+        binaryInfo.contextBinaryInfoV1.numGraphs = 1;
+        binaryInfo.contextBinaryInfoV1.graphs = &graphsInput;
+        status = qnn.CopyMetadataToGraphsInfo( &binaryInfo, graphsInfo, graphsCount );
+        ASSERT_EQ( QC_STATUS_FAIL, status );
+
+        MockC_CallocCtrl( 1 );
+        binaryInfo.version = QNN_SYSTEM_CONTEXT_BINARY_INFO_VERSION_2;
+        binaryInfo.contextBinaryInfoV2.numGraphs = 1;
+        binaryInfo.contextBinaryInfoV2.graphs = &graphsInput;
+        status = qnn.CopyMetadataToGraphsInfo( &binaryInfo, graphsInfo, graphsCount );
+        ASSERT_EQ( QC_STATUS_FAIL, status );
+
+        MockC_CallocCtrl( 1 );
+        binaryInfo.version = QNN_SYSTEM_CONTEXT_BINARY_INFO_VERSION_3;
+        binaryInfo.contextBinaryInfoV3.numGraphs = 1;
+        binaryInfo.contextBinaryInfoV3.graphs = &graphsInput;
+        status = qnn.CopyMetadataToGraphsInfo( &binaryInfo, graphsInfo, graphsCount );
+        ASSERT_EQ( QC_STATUS_FAIL, status );
+    }
+
+    {
+        uint32_t dims[4] = { 1, 2, 3, 4 };
+        Qnn_Tensor_t input = QNN_TENSOR_INIT, output = QNN_TENSOR_INIT;
+        input.version = QNN_TENSOR_VERSION_1;
+        QNN_TENSOR_SET_NAME( &input, "input" );
+        QNN_TENSOR_SET_DIMENSIONS( &input, dims );
+        QNN_TENSOR_SET_RANK( &input, 4 );
+        output.version = QNN_TENSOR_VERSION_1;
+        QNN_TENSOR_SET_NAME( &output, "output" );
+        QNN_TENSOR_SET_DIMENSIONS( &output, dims );
+        QNN_TENSOR_SET_RANK( &output, 4 );
+
+        QnnSystemContext_GraphInfoV3_t graphInfoSrc;
+        qnn_wrapper_api::GraphInfo_t graphInfoDst;
+
+        graphInfoSrc.graphName = "TestGraphV3";
+        graphInfoSrc.numGraphInputs = 1;
+        graphInfoSrc.numGraphOutputs = 1;
+        graphInfoSrc.graphInputs = &input;
+        graphInfoSrc.graphOutputs = &output;
+
+        QnnImpl qnn( nodeId, logger );
+
+        status = qnn.CopyGraphsInfoV3( &graphInfoSrc, &graphInfoDst );
+        ASSERT_EQ( QC_STATUS_OK, status );
+
+        MockC_MallocCtrl( 1 );
+        status = qnn.CopyGraphsInfoV3( &graphInfoSrc, &graphInfoDst );
+        ASSERT_EQ( QC_STATUS_FAIL, status );
+
+        MockC_CallocCtrl( 1 );
+        status = qnn.CopyGraphsInfoV3( &graphInfoSrc, &graphInfoDst );
+        ASSERT_EQ( QC_STATUS_FAIL, status );
+
+        MockC_CallocCtrl( 2 );
+        status = qnn.CopyGraphsInfoV3( &graphInfoSrc, &graphInfoDst );
+        ASSERT_EQ( QC_STATUS_FAIL, status );
+
+        graphInfoSrc.graphName = nullptr;
+        status = qnn.CopyGraphsInfoV3( &graphInfoSrc, &graphInfoDst );
+        ASSERT_EQ( QC_STATUS_OK, status );
+
+        graphInfoSrc.graphInputs = nullptr;
+        status = qnn.CopyGraphsInfoV3( &graphInfoSrc, &graphInfoDst );
+        ASSERT_EQ( QC_STATUS_OK, status );
+
+        graphInfoSrc.graphInputs = &input;
+        graphInfoSrc.graphOutputs = nullptr;
+        status = qnn.CopyGraphsInfoV3( &graphInfoSrc, &graphInfoDst );
+        ASSERT_EQ( QC_STATUS_OK, status );
+    }
+
+    {
+        QnnImpl qnn( nodeId, logger );
+        qnn_wrapper_api::GraphInfoPtr_t *graphsInfo[1] = { nullptr };
+        status = qnn.FreeGraphsInfo( nullptr, 1 );
+        ASSERT_EQ( QC_STATUS_FAIL, status );
+
+        status = qnn.FreeGraphsInfo( graphsInfo, 1 );
+        ASSERT_EQ( QC_STATUS_FAIL, status );
+    }
+
+    {
+        QnnImpl qnn( nodeId, logger );
+        QnnLog_Level_t level;
+
+        level = qnn.GetQnnLogLevel( LOGGER_LEVEL_VERBOSE );
+        ASSERT_EQ( level, QNN_LOG_LEVEL_VERBOSE );
+
+        level = qnn.GetQnnLogLevel( LOGGER_LEVEL_DEBUG );
+        ASSERT_EQ( level, QNN_LOG_LEVEL_DEBUG );
+
+        level = qnn.GetQnnLogLevel( LOGGER_LEVEL_INFO );
+        ASSERT_EQ( level, QNN_LOG_LEVEL_INFO );
+
+        level = qnn.GetQnnLogLevel( LOGGER_LEVEL_ERROR );
+        ASSERT_EQ( level, QNN_LOG_LEVEL_ERROR );
+
+        level = qnn.GetQnnLogLevel( LOGGER_LEVEL_WARN );
+        ASSERT_EQ( level, QNN_LOG_LEVEL_WARN );
+
+        level = qnn.GetQnnLogLevel( LOGGER_LEVEL_MAX );
+        ASSERT_EQ( level, QNN_LOG_LEVEL_WARN );
+    }
+
+    {
+        QnnImpl qnn( nodeId, logger );
+        uint32_t deviceId;
+
+        deviceId = qnn.GetQnnDeviceId( QNN_PROCESSOR_HTP0 );
+        ASSERT_EQ( deviceId, 0 );
+
+        deviceId = qnn.GetQnnDeviceId( QNN_PROCESSOR_HTP1 );
+        ASSERT_EQ( deviceId, 1 );
+
+        deviceId = qnn.GetQnnDeviceId( QNN_PROCESSOR_HTP2 );
+        ASSERT_EQ( deviceId, 2 );
+
+        deviceId = qnn.GetQnnDeviceId( QNN_PROCESSOR_HTP3 );
+        ASSERT_EQ( deviceId, 3 );
+
+        deviceId = qnn.GetQnnDeviceId( QNN_PROCESSOR_CPU );
+        ASSERT_EQ( deviceId, 0 );
+
+        deviceId = qnn.GetQnnDeviceId( QNN_PROCESSOR_GPU );
+        ASSERT_EQ( deviceId, 0 );
+
+        deviceId = qnn.GetQnnDeviceId( QNN_PROCESSOR_MAX );
+        ASSERT_EQ( deviceId, UINT32_MAX );
+    }
+
+    {
+        QnnImpl qnn( nodeId, logger );
+        QnnImplConfig_t &cfg = qnn.GetConifg();
+        cfg.loadType = QNN_LOAD_CONTEXT_BIN_FROM_FILE;
+        cfg.processorType = QNN_PROCESSOR_HTP0;
+        cfg.coreIds = { 0 };
+        cfg.priority = QNN_PRIORITY_NORMAL;
+        cfg.perfProfile = QNN_PERF_PROFILE_DEFAULT;
+        std::vector<std::reference_wrapper<QCBufferDescriptorBase>> buffers;
+
+        cfg.modelPath = "";
+        status = qnn.Initialize( nullptr, buffers );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
+
+        cfg.loadType = QNN_LOAD_CONTEXT_BIN_FROM_BUFFER;
+        cfg.contextBufferId = 1;
+        status = qnn.Initialize( nullptr, buffers );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
+
+        cfg.modelPath = "data/centernet/program.bin";
+        cfg.loadType = QNN_LOAD_CONTEXT_BIN_FROM_FILE;
+        cfg.processorType = QNN_PROCESSOR_MAX;
+        cfg.coreIds = { 0 };
+        status = qnn.Initialize( nullptr, buffers );
+        ASSERT_EQ( QC_STATUS_FAIL, status );
+
+        cfg.modelPath = "data/centernet/program.bin";
+        cfg.loadType = QNN_LOAD_CONTEXT_BIN_FROM_FILE;
+        cfg.processorType = QNN_PROCESSOR_HTP0;
+        cfg.coreIds = { UINT32_MAX };
+        status = qnn.Initialize( nullptr, buffers );
+        ASSERT_EQ( QC_STATUS_FAIL, status );
+    }
+}
+
+TEST_F( QnnTest, GetQnnFunctionPointersDllOpenFailed )
+{
+    // NOTE: do move libQnnHtp.so as libQnnHtp.so.bak and then recover it
+    Initialize( "DLOPEN", "binary", "data/centernet/program.bin", "htp0" );
+    ASSERT_EQ( ret, QC_STATUS_FAIL );
+}
+
+TEST_F( QnnTest, GetQnnSystemFunctionPointersDllOpenFailed )
+{
+    // NOTE: do move libQnnSystem.so as libQnnSystem.so.bak and then recover it
+    Initialize( "DLOPEN", "binary", "data/centernet/program.bin", "htp0" );
+    ASSERT_EQ( ret, QC_STATUS_FAIL );
 }
 
 #ifndef GTEST_QCNODE

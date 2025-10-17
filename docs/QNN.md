@@ -39,6 +39,7 @@
 |------------|-----------|-------------|------------------------|
 | `name`     | true      | string      | The Node unique name.  |
 | `id`       | true      | uint32_t    | The Node unique ID.    |
+| `logLevel` | false     | string      | The message log level. <br> Options: `VERBOSE`, `DEBUG`, `INFO`, `WARN`, `ERROR` <br> Default: `ERROR`   |
 | `processorType` | false | string     | The processor type. <br> Options: `htp0`, `htp1`, `htp2`, `htp3`, `cpu`, `gpu` <br> Default: `htp0` |
 | `coreIds`  | false     | uint32_t[]  | A list of core IDs. <br> Default: `[0]` |
 | `loadType` | false     | string      | The load type. <br> Options: `binary`, `library`, `buffer` <br> Default: `binary` |

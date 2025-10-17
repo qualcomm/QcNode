@@ -48,8 +48,14 @@ typedef Qnn_ErrorHandle_t ( *QnnInterfaceGetProvidersFn_t )( const QnnInterface_
 typedef Qnn_ErrorHandle_t ( *QnnSystemInterfaceGetProvidersFn_t )(
         const QnnSystemInterface_t ***providerList, uint32_t *numProviders );
 
-static void QnnLog_Callback( const char *fmt, QnnLog_Level_t logLevel, uint64_t timestamp,
-                             va_list args )
+#ifndef QCNODE_UNIT_TEST
+#define QC_QNN_LOCAL static
+#else
+#define QC_QNN_LOCAL
+#endif
+
+QC_QNN_LOCAL void QnnLog_Callback( const char *fmt, QnnLog_Level_t logLevel, uint64_t timestamp,
+                                   va_list args )
 {
 #ifndef DISABLE_QC_LOG
     switch ( logLevel )
@@ -76,7 +82,7 @@ static void QnnLog_Callback( const char *fmt, QnnLog_Level_t logLevel, uint64_t 
 #endif
 }
 
-static size_t memscpy( void *dst, size_t dstSize, const void *src, size_t copySize )
+QC_QNN_LOCAL size_t memscpy( void *dst, size_t dstSize, const void *src, size_t copySize )
 {
     size_t minSize = 0;
     if ( ( nullptr == dst ) || ( nullptr == src ) || ( 0 == dstSize ) || ( 0 == copySize ) )
@@ -85,7 +91,7 @@ static size_t memscpy( void *dst, size_t dstSize, const void *src, size_t copySi
     }
     else
     {
-        size_t minSize = copySize;
+        minSize = copySize;
         if ( dstSize < copySize )
         {
             minSize = dstSize;
@@ -372,7 +378,10 @@ QCStatus_e QnnImpl::DeepCopyQnnTensorInfo( Qnn_Tensor_t *dst, const Qnn_Tensor_t
                     QNN_TENSOR_GET_QUANT_PARAMS( src ).axisScaleOffsetEncoding.axis;
             qParams.axisScaleOffsetEncoding.numScaleOffsets =
                     QNN_TENSOR_GET_QUANT_PARAMS( src ).axisScaleOffsetEncoding.numScaleOffsets;
-            if ( QNN_TENSOR_GET_QUANT_PARAMS( src ).axisScaleOffsetEncoding.numScaleOffsets > 0 )
+            if ( ( QNN_TENSOR_GET_QUANT_PARAMS( src ).axisScaleOffsetEncoding.numScaleOffsets >
+                   0u ) &&
+                 ( nullptr !=
+                   QNN_TENSOR_GET_QUANT_PARAMS( src ).axisScaleOffsetEncoding.scaleOffset ) )
             {
                 qParams.axisScaleOffsetEncoding.scaleOffset = (Qnn_ScaleOffset_t *) malloc(
                         QNN_TENSOR_GET_QUANT_PARAMS( src ).axisScaleOffsetEncoding.numScaleOffsets *
@@ -399,6 +408,11 @@ QCStatus_e QnnImpl::DeepCopyQnnTensorInfo( Qnn_Tensor_t *dst, const Qnn_Tensor_t
                     status = QC_STATUS_NOMEM;
                 }
             }
+            else
+            {
+                QC_ERROR( "numScaleOffsets is 0 or scaleOffset is nullptr" );
+                status = QC_STATUS_FAIL;
+            }
         }
         else if ( QNN_QUANTIZATION_ENCODING_UNDEFINED ==
                   QNN_TENSOR_GET_QUANT_PARAMS( src ).quantizationEncoding )
@@ -414,16 +428,16 @@ QCStatus_e QnnImpl::DeepCopyQnnTensorInfo( Qnn_Tensor_t *dst, const Qnn_Tensor_t
         QNN_TENSOR_SET_QUANT_PARAMS( dst, qParams );
         QNN_TENSOR_SET_RANK( dst, QNN_TENSOR_GET_RANK( src ) );
         QNN_TENSOR_SET_DIMENSIONS( dst, nullptr );
-        if ( QNN_TENSOR_GET_RANK( src ) > 0 )
+        if ( ( QNN_TENSOR_GET_RANK( src ) > 0 ) && ( nullptr != QNN_TENSOR_GET_DIMENSIONS( src ) ) )
         {
             QNN_TENSOR_SET_DIMENSIONS(
                     dst, (uint32_t *) malloc( QNN_TENSOR_GET_RANK( src ) * sizeof( uint32_t ) ) );
             if ( nullptr != QNN_TENSOR_GET_DIMENSIONS( dst ) )
             {
-                memscpy( QNN_TENSOR_GET_DIMENSIONS( dst ),
-                         QNN_TENSOR_GET_RANK( src ) * sizeof( uint32_t ),
-                         QNN_TENSOR_GET_DIMENSIONS( src ),
-                         QNN_TENSOR_GET_RANK( src ) * sizeof( uint32_t ) );
+                (void) memscpy( QNN_TENSOR_GET_DIMENSIONS( dst ),
+                                QNN_TENSOR_GET_RANK( src ) * sizeof( uint32_t ),
+                                QNN_TENSOR_GET_DIMENSIONS( src ),
+                                QNN_TENSOR_GET_RANK( src ) * sizeof( uint32_t ) );
             }
             else
             {
@@ -436,10 +450,10 @@ QCStatus_e QnnImpl::DeepCopyQnnTensorInfo( Qnn_Tensor_t *dst, const Qnn_Tensor_t
                         dst, (uint8_t *) malloc( QNN_TENSOR_GET_RANK( src ) * sizeof( uint8_t ) ) );
                 if ( nullptr != QNN_TENSOR_GET_IS_DYNAMIC_DIMENSIONS( dst ) )
                 {
-                    memscpy( QNN_TENSOR_GET_IS_DYNAMIC_DIMENSIONS( dst ),
-                             QNN_TENSOR_GET_RANK( src ) * sizeof( uint8_t ),
-                             QNN_TENSOR_GET_IS_DYNAMIC_DIMENSIONS( src ),
-                             QNN_TENSOR_GET_RANK( src ) * sizeof( uint8_t ) );
+                    (void) memscpy( QNN_TENSOR_GET_IS_DYNAMIC_DIMENSIONS( dst ),
+                                    QNN_TENSOR_GET_RANK( src ) * sizeof( uint8_t ),
+                                    QNN_TENSOR_GET_IS_DYNAMIC_DIMENSIONS( src ),
+                                    QNN_TENSOR_GET_RANK( src ) * sizeof( uint8_t ) );
                 }
                 else
                 {
@@ -447,6 +461,11 @@ QCStatus_e QnnImpl::DeepCopyQnnTensorInfo( Qnn_Tensor_t *dst, const Qnn_Tensor_t
                     status = QC_STATUS_NOMEM;
                 }
             }
+        }
+        else
+        {
+            QC_ERROR( "rank is 0 or dimensions is nullptr" );
+            status = QC_STATUS_FAIL;
         }
         QNN_TENSOR_SET_SPARSE_PARAMS( dst, QNN_TENSOR_GET_SPARSE_PARAMS( src ) );
     }
@@ -484,7 +503,7 @@ QCStatus_e QnnImpl::CopyGraphsInfoV1( const QnnSystemContext_GraphInfoV1_t *grap
 {
     QCStatus_e status = QC_STATUS_OK;
     graphInfoDst->graphName = nullptr;
-    if ( graphInfoSrc->graphName )
+    if ( nullptr != graphInfoSrc->graphName )
     {
         graphInfoDst->graphName =
                 strndup( graphInfoSrc->graphName, strlen( graphInfoSrc->graphName ) );
@@ -498,7 +517,7 @@ QCStatus_e QnnImpl::CopyGraphsInfoV1( const QnnSystemContext_GraphInfoV1_t *grap
     {
         graphInfoDst->inputTensors = nullptr;
         graphInfoDst->numInputTensors = 0;
-        if ( graphInfoSrc->graphInputs )
+        if ( nullptr != graphInfoSrc->graphInputs )
         {
             status = CopyTensorsInfo( graphInfoSrc->graphInputs, graphInfoDst->inputTensors,
                                       graphInfoSrc->numGraphInputs );
@@ -512,7 +531,7 @@ QCStatus_e QnnImpl::CopyGraphsInfoV1( const QnnSystemContext_GraphInfoV1_t *grap
     {
         graphInfoDst->outputTensors = nullptr;
         graphInfoDst->numOutputTensors = 0;
-        if ( graphInfoSrc->graphOutputs )
+        if ( nullptr != graphInfoSrc->graphOutputs )
         {
             status = CopyTensorsInfo( graphInfoSrc->graphOutputs, graphInfoDst->outputTensors,
                                       graphInfoSrc->numGraphOutputs );
@@ -647,7 +666,6 @@ QCStatus_e QnnImpl::CopyGraphsInfo( const QnnSystemContext_GraphInfo_t *graphsIn
         }
         free( graphsInfo );
         graphsInfo = nullptr;
-        status = QC_STATUS_FAIL;
     }
     return status;
 }
@@ -665,9 +683,9 @@ QCStatus_e QnnImpl::CopyMetadataToGraphsInfo( const QnnSystemContext_BinaryInfo_
     else
     {
         graphsCount = 0;
-        if ( binaryInfo->version == QNN_SYSTEM_CONTEXT_BINARY_INFO_VERSION_1 )
+        if ( QNN_SYSTEM_CONTEXT_BINARY_INFO_VERSION_1 == binaryInfo->version )
         {
-            if ( binaryInfo->contextBinaryInfoV1.graphs )
+            if ( nullptr != binaryInfo->contextBinaryInfoV1.graphs )
             {
                 status = CopyGraphsInfo( binaryInfo->contextBinaryInfoV1.graphs,
                                          binaryInfo->contextBinaryInfoV1.numGraphs, graphsInfo );
@@ -676,10 +694,15 @@ QCStatus_e QnnImpl::CopyMetadataToGraphsInfo( const QnnSystemContext_BinaryInfo_
                     graphsCount = binaryInfo->contextBinaryInfoV1.numGraphs;
                 }
             }
+            else
+            {
+                QC_ERROR( "V1 graphs is nullptr." );
+                status = QC_STATUS_FAIL;
+            }
         }
-        else if ( binaryInfo->version == QNN_SYSTEM_CONTEXT_BINARY_INFO_VERSION_2 )
+        else if ( QNN_SYSTEM_CONTEXT_BINARY_INFO_VERSION_2 == binaryInfo->version )
         {
-            if ( binaryInfo->contextBinaryInfoV2.graphs )
+            if ( nullptr != binaryInfo->contextBinaryInfoV2.graphs )
             {
                 status = CopyGraphsInfo( binaryInfo->contextBinaryInfoV2.graphs,
                                          binaryInfo->contextBinaryInfoV2.numGraphs, graphsInfo );
@@ -688,10 +711,15 @@ QCStatus_e QnnImpl::CopyMetadataToGraphsInfo( const QnnSystemContext_BinaryInfo_
                     graphsCount = binaryInfo->contextBinaryInfoV2.numGraphs;
                 }
             }
+            else
+            {
+                QC_ERROR( "V2 graphs is nullptr." );
+                status = QC_STATUS_FAIL;
+            }
         }
-        else if ( binaryInfo->version == QNN_SYSTEM_CONTEXT_BINARY_INFO_VERSION_3 )
+        else if ( QNN_SYSTEM_CONTEXT_BINARY_INFO_VERSION_3 == binaryInfo->version )
         {
-            if ( binaryInfo->contextBinaryInfoV3.graphs )
+            if ( nullptr != binaryInfo->contextBinaryInfoV3.graphs )
             {
                 status = CopyGraphsInfo( binaryInfo->contextBinaryInfoV3.graphs,
                                          binaryInfo->contextBinaryInfoV3.numGraphs, graphsInfo );
@@ -700,17 +728,32 @@ QCStatus_e QnnImpl::CopyMetadataToGraphsInfo( const QnnSystemContext_BinaryInfo_
                     graphsCount = binaryInfo->contextBinaryInfoV3.numGraphs;
                 }
             }
+            else
+            {
+                QC_ERROR( "V3 graphs is nullptr." );
+                status = QC_STATUS_FAIL;
+            }
+        }
+        else
+        {
+            QC_ERROR( "binaryInfo version %d is not supported.", binaryInfo->version );
+            status = QC_STATUS_UNSUPPORTED;
         }
     }
     return status;
 }
 
-QCStatus_e QnnImpl::FreeQnnTensor( Qnn_Tensor_t &tensor )
+void QnnImpl::FreeQnnTensor( Qnn_Tensor_t &tensor )
 {
-    QCStatus_e status = QC_STATUS_OK;
     // free all pointer allocations in struct
-    free( (void *) QNN_TENSOR_GET_NAME( tensor ) );
-    free( QNN_TENSOR_GET_DIMENSIONS( tensor ) );
+    if ( nullptr != QNN_TENSOR_GET_NAME( tensor ) )
+    {
+        free( (void *) QNN_TENSOR_GET_NAME( tensor ) );
+    }
+    if ( nullptr != QNN_TENSOR_GET_DIMENSIONS( tensor ) )
+    {
+        free( QNN_TENSOR_GET_DIMENSIONS( tensor ) );
+    }
     if ( QNN_TENSOR_GET_IS_DYNAMIC_DIMENSIONS( tensor ) )
     {
         free( QNN_TENSOR_GET_IS_DYNAMIC_DIMENSIONS( tensor ) );
@@ -724,24 +767,16 @@ QCStatus_e QnnImpl::FreeQnnTensor( Qnn_Tensor_t &tensor )
             free( quant.axisScaleOffsetEncoding.scaleOffset );
         }
     }
-    return status;
 }
 
-QCStatus_e QnnImpl::FreeQnnTensors( Qnn_Tensor_t *&tensors, uint32_t numTensors )
+void QnnImpl::FreeQnnTensors( Qnn_Tensor_t *&tensors, uint32_t numTensors )
 {
-    QCStatus_e status = QC_STATUS_OK;
-    QCStatus_e status2;
     // free all pointer allocations in struct
     for ( size_t i = 0; i < numTensors; i++ )
     {
-        status2 = FreeQnnTensor( tensors[i] );
-        if ( status2 != QC_STATUS_OK )
-        {
-            status = status2;
-        }
+        FreeQnnTensor( tensors[i] );
     }
     free( tensors );
-    return status;
 }
 
 QCStatus_e QnnImpl::FreeGraphsInfo( qnn_wrapper_api::GraphInfoPtr_t **graphsInfo,
@@ -758,18 +793,9 @@ QCStatus_e QnnImpl::FreeGraphsInfo( qnn_wrapper_api::GraphInfoPtr_t **graphsInfo
         for ( uint32_t i = 0; i < numGraphs; i++ )
         {
             free( ( *graphsInfo )[i]->graphName );
-            status2 = FreeQnnTensors( ( *graphsInfo )[i]->inputTensors,
-                                      ( *graphsInfo )[i]->numInputTensors );
-            if ( status2 != QC_STATUS_OK )
-            {
-                status = status2;
-            }
-            status2 = FreeQnnTensors( ( *graphsInfo )[i]->outputTensors,
-                                      ( *graphsInfo )[i]->numOutputTensors );
-            if ( status2 != QC_STATUS_OK )
-            {
-                status = status2;
-            }
+            FreeQnnTensors( ( *graphsInfo )[i]->inputTensors, ( *graphsInfo )[i]->numInputTensors );
+            FreeQnnTensors( ( *graphsInfo )[i]->outputTensors,
+                            ( *graphsInfo )[i]->numOutputTensors );
         }
         free( **graphsInfo );
         free( *graphsInfo );
@@ -1296,6 +1322,7 @@ QCStatus_e QnnImpl::SetHtpPerformanceMode()
             {
                 QC_ERROR( "Failure in setPowerConfig() = %" PRIu64, retVal );
                 status = QC_STATUS_FAIL;
+                break;
             }
         }
     }
@@ -1329,13 +1356,8 @@ QnnImpl::Initialize( QCNodeEventCallBack_t callback,
     QCStatus_e status = QC_STATUS_OK;
     Qnn_ErrorHandle_t retVal;
 
-    if ( QC_OBJECT_STATE_INITIAL != m_state )
-    {
-        QC_ERROR( "QNN not in initial state!" );
-        status = QC_STATUS_BAD_STATE;
-    }
-    else if ( ( QNN_LOAD_CONTEXT_BIN_FROM_BUFFER != m_config.loadType ) &&
-              ( true == m_config.modelPath.empty() ) )
+    if ( ( QNN_LOAD_CONTEXT_BIN_FROM_BUFFER != m_config.loadType ) &&
+         ( true == m_config.modelPath.empty() ) )
     {
         QC_ERROR( "modelPath is null" );
         status = QC_STATUS_BAD_ARGUMENTS;
@@ -1456,6 +1478,8 @@ QnnImpl::Initialize( QCNodeEventCallBack_t callback,
             QC_ERROR( "Could not get backend version due to error = %" PRIu64, retVal );
             status = QC_STATUS_FAIL;
         }
+        QC_INFO( "QNN node version: %u.%u.%u", QC_QNN_VERSION_MAJOR, QC_QNN_VERSION_MINOR,
+                 QC_QNN_VERSION_PATCH );
         QC_INFO( "QNN build version: %s", QNN_SDK_BUILD_ID );
         QC_INFO( "QNN running core api version: %u.%u.%u, backend api version: %u.%u.%u",
                  version.coreApiVersion.major, version.coreApiVersion.minor,
@@ -1827,6 +1851,7 @@ QCStatus_e QnnImpl::GetMemHandle( const TensorDescriptor_t &tensorDesc, Qnn_MemH
 {
     QCStatus_e status = QC_STATUS_OK;
 
+    memHandle = nullptr;
     if ( ( QNN_PROCESSOR_HTP0 == m_config.processorType ) ||
          ( QNN_PROCESSOR_HTP1 == m_config.processorType ) ||
          ( QNN_PROCESSOR_HTP2 == m_config.processorType ) ||

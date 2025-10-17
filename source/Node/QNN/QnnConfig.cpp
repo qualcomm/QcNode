@@ -58,14 +58,7 @@ QnnConfig::ConvertTensorInfoListToJson( const std::vector<Qnn_Tensor_t> &infoLis
 QCStatus_e QnnConfig::VerifyStaticConfig( DataTree &dt, std::string &errors )
 {
     QCStatus_e status = QC_STATUS_OK;
-
     QCStatus_e status2;
-    std::string name = dt.Get<std::string>( "name", "" );
-    if ( "" == name )
-    {
-        errors += "the name is empty, ";
-        status = QC_STATUS_BAD_ARGUMENTS;
-    }
 
     std::string type = dt.Get<std::string>( "type", "QNN" );
     if ( "QNN" != type )
@@ -399,6 +392,11 @@ QCStatus_e QnnConfig::ApplyDynamicConfig( DataTree &dt, std::string &errors )
             QC_DEBUG( "%s perf OK", bEnablePerf ? "Enable" : "Disable" );
         }
     }
+    else
+    {
+        QC_ERROR( "only support dynamic enablePerf option" );
+        status = QC_STATUS_UNSUPPORTED;
+    }
 
     return status;
 }
@@ -407,7 +405,7 @@ QCStatus_e QnnConfig::VerifyAndSet( const std::string config, std::string &error
 {
     QCStatus_e status = QC_STATUS_OK;
 
-    status = NodeConfigIfs::VerifyAndSet( config, errors );
+    status = NodeConfigBase::VerifyAndSet( config, errors );
     if ( QC_STATUS_OK == status )
     {
         DataTree dt;
@@ -452,6 +450,7 @@ const std::string &QnnConfig::GetOptions()
             std::vector<DataTree> outputDts = ConvertTensorInfoListToJson( outputTensors );
             dt.Set( "model.inputs", inputDts );
             dt.Set( "model.outputs", outputDts );
+            dt.Set<uint32_t>( "version", QC_QNN_VERSION );
             m_options = dt.Dump();
             m_bOptionsBuilt = true;
         }

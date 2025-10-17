@@ -51,6 +51,7 @@ typedef enum
     QNN_PERF_PROFILE_HIGH_PERFORMANCE,
     QNN_PERF_PROFILE_SUSTAINED_HIGH_PERFORMANCE,
     QNN_PERF_PROFILE_BURST,
+    QNN_PERF_PROFILE_MAX,
 } Qnn_PerfProfile_e;
 
 /**
@@ -61,9 +62,9 @@ typedef enum
  * path to the UDO shared library.
  *
  * @param interfaceProvider A string specifying the name of the interface provider
- *                          responsible for implementing the UDO functionality.
- * @param udoLibPath        A string representing the file system path to the
- *                          UDO shared library (.so/.dll) that contains the implementation.
+ *                          responsible for implementing the UDO functionality.
+ * @param udoLibPath        A string representing the file system path to the
+ *                          UDO shared library (.so/.dll) that contains the implementation.
  */
 typedef struct
 {
@@ -117,8 +118,8 @@ typedef enum
  * @param processorType    Specifies the target hardware processor on which the model will run.
  *                         Typical values include CPU, HTP (Hexagon Tensor Processor), or GPU.
  *
- * @param coreIds          A list of core IDs representing the target hardware processors
- *                         on which the model will be executed.
+ * @param coreIds          A list of core IDs representing the target hardware processors
+ *                         on which the model will be executed.
  *
  * @param priority         Execution priority for the QNN model. May influence scheduling
  *                         and resource allocation in multi-model or multi-threaded environments.
@@ -232,7 +233,7 @@ public:
      * This function populates the provided vector with information about each input tensor,
      * including their names, types, dimensions, and quantization parameters.
      *
-     * @param[out] inputTensors  A reference to a vector that will be filled with input tensor
+     * @param[out] inputTensors  A reference to a vector that will be filled with input tensor
      * metadata.
      * @return QC_STATUS_OK if the operation is successful; an appropriate error code otherwise.
      */
@@ -244,7 +245,7 @@ public:
      * This function populates the provided vector with information about each output tensor,
      * including their names, types, dimensions, and quantization parameters.
      *
-     * @param[out] inputTensors  A reference to a vector that will be filled with output tensor
+     * @param[out] inputTensors  A reference to a vector that will be filled with output tensor
      * metadata.
      * @return QC_STATUS_OK if the operation is successful; an appropriate error code otherwise.
      */
@@ -272,8 +273,9 @@ public:
      */
     Qnn_DataType_t SwitchToQnnDataType( QCTensorType_e tensorType );
 
-
+#ifndef QCNODE_UNIT_TEST
 private:
+#endif
     typedef struct
     {
         Qnn_MemHandle_t memHandle;
@@ -300,7 +302,9 @@ private:
         NotifyParam_t *Pop();
     } NotifyParamQueue_t;
 
+#ifndef QCNODE_UNIT_TEST
 private:
+#endif
     static void QnnNotifyFn( void *pNotifyParam, Qnn_NotifyStatus_t notifyStatus );
     void QnnNotifyFn( NotifyParam_t *pNotifyParam, Qnn_NotifyStatus_t notifyStatus );
 
@@ -344,13 +348,15 @@ private:
     QCStatus_e CopyMetadataToGraphsInfo( const QnnSystemContext_BinaryInfo_t *binaryInfo,
                                          qnn_wrapper_api::GraphInfo_t **&graphsInfo,
                                          uint32_t &graphsCount );
-    QCStatus_e FreeQnnTensor( Qnn_Tensor_t &tensor );
-    QCStatus_e FreeQnnTensors( Qnn_Tensor_t *&tensors, uint32_t numTensors );
+    void FreeQnnTensor( Qnn_Tensor_t &tensor );
+    void FreeQnnTensors( Qnn_Tensor_t *&tensors, uint32_t numTensors );
     QCStatus_e FreeGraphsInfo( qnn_wrapper_api::GraphInfoPtr_t **graphsInfo, uint32_t numGraphs );
     QCStatus_e SetHtpPerformanceMode();
     QCStatus_e SetPerformanceMode();
 
+#ifndef QCNODE_UNIT_TEST
 private:
+#endif
     QCNodeID_t &m_nodeId;
     Logger &m_logger;
     QnnImplConfig_t m_config;

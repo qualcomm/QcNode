@@ -13,6 +13,14 @@ namespace QC
 namespace Node
 {
 
+/** @brief The QCNode QNN Version */
+#define QC_QNN_VERSION_MAJOR 2U
+#define QC_QNN_VERSION_MINOR 0U
+#define QC_QNN_VERSION_PATCH 0U
+
+#define QC_QNN_VERSION                                                                             \
+    ( ( QC_QNN_VERSION_MAJOR << 12U ) | ( QC_QNN_VERSION_MINOR << 8U ) | QC_QNN_VERSION_PATCH )
+
 /**
  * @brief Performance metrics for QNN model execution.
  *
@@ -62,7 +70,9 @@ public:
      * @param[in] pQnnImpl A pointer to the QnnImpl object to be used by QnnConfig.
      * @return None
      */
-    QnnConfig( Logger &logger, QnnImpl *pQnnImpl ) : NodeConfigIfs( logger ), m_pQnnImpl( pQnnImpl )
+    QnnConfig( Logger &logger, QnnImpl *pQnnImpl )
+        : NodeConfigBase( logger ),
+          m_pQnnImpl( pQnnImpl )
     {}
 
     /**
@@ -81,6 +91,9 @@ public:
      *     "static": {
      *        "name": "The Node unique name, type: string",
      *        "id": "The Node unique ID, type: uint32_t",
+     *        "logLevel": "The message log level, type: string,
+     *                     options: [VERBOSE, DEBUG, INFO, WARN, ERROR],
+     *                     default: ERROR"
      *        "processorType": "The processor type, type: string,
      *                          options: [ htp0, htp1, htp2, htp3, cpu, gpu ],
      *                          default: htp0",
