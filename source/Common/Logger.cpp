@@ -89,19 +89,33 @@ void Logger::Log( Logger_Level_e level, const char *pFormat, ... )
 {
     va_list args;
 
-    if ( ( level >= m_level ) && ( nullptr != m_hHandle ) )
+    if ( level >= m_level )
     {
         va_start( args, pFormat );
-        m_logFnc( m_hHandle, level, pFormat, args );
+        if ( nullptr != m_hHandle )
+        {
+            m_logFnc( m_hHandle, level, pFormat, args );
+        }
+        else
+        {
+            (void) vprintf( pFormat, args );
+        }
         va_end( args );
     }
 }
 
 void Logger::Log( Logger_Level_e level, const char *pFormat, va_list args )
 {
-    if ( ( level >= m_level ) && ( nullptr != m_hHandle ) )
+    if ( level >= m_level )
     {
-        m_logFnc( m_hHandle, level, pFormat, args );
+        if ( nullptr != m_hHandle )
+        {
+            m_logFnc( m_hHandle, level, pFormat, args );
+        }
+        else
+        {
+            (void) vprintf( pFormat, args );
+        }
     }
 }
 

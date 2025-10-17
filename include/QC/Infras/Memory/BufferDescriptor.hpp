@@ -81,7 +81,7 @@ public:
  * New Members:
  * @param validSize The size of valid data currently stored in the buffer.
  * @param offset The offset of the valid buffer within the shared buffer.
- * @param id The unique ID assigned by the buffer manager.
+ * @param id A identifier assigned by the user application to distinguish the buffer.
  *
  * @note The shared concept here means that pBuf, dmaHandle, and size are not changeable and
  * always represent one large DMA buffer allocated through platform DMA buffer-related APIs. For
@@ -100,7 +100,7 @@ public:
      * @param[in] other The buffer descriptor object from which buffer members are copied.
      * @return The updated buffer descriptor object.
      */
-    BufferDescriptor &operator=( BufferDescriptor &other );
+    BufferDescriptor &operator=( const BufferDescriptor &other );
 
     size_t validSize;
     size_t offset;

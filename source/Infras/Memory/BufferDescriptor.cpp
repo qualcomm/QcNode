@@ -9,7 +9,7 @@ namespace QC
 namespace Memory
 {
 
-BufferDescriptor &BufferDescriptor::operator=( BufferDescriptor &other )
+BufferDescriptor &BufferDescriptor::operator=( const BufferDescriptor &other )
 {
     if ( this != &other )
     {

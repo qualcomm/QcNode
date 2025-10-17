@@ -198,8 +198,8 @@ Unzip QNN SDK package to $WORKSPACE and rename as qnn_sdk.
 ```sh
 source $WORKSPACE/qnn_sdk/bin/envsetup.sh
 ```
-- Prepare multimedia and GLES dependency
-    - Find comdef.h, parserinternaldefs.h, gbm.h, gbm_priv.h, color_metadata.h in chipcode;
+- Prepare fastrpc, multimedia and GLES dependency
+    - Find rpcmem.h, comdef.h, parserinternaldefs.h, gbm.h, gbm_priv.h, color_metadata.h in chipcode;
     - copy it to path: $WORKSPACE/linux/sysroots/aarch64-oe-linux/usr/include
 
 - Build QCNode SDK:

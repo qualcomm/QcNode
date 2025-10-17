@@ -30,7 +30,7 @@ namespace Memory
  * @param pid The process ID of the buffer.
  * @param validSize The size of valid data currently stored in the buffer.
  * @param offset The offset of the valid buffer within the shared buffer.
- * @param id The unique ID assigned by the buffer manager.
+ * @param id A identifier assigned by the user application to distinguish the buffer.
  * @param format The image format.
  * @param batchSize The image batch size.
  * @param width The image width in pixels.

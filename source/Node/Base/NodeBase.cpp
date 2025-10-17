@@ -9,14 +9,15 @@ namespace QC
 namespace Node
 {
 
-const std::string NodeConfigIfs::s_QC_STATUS_UNSUPPORTED = "QC_STATUS_UNSUPPORTED";
+const std::string NodeConfigBase::s_QC_STATUS_UNSUPPORTED = "QC_STATUS_UNSUPPORTED";
 
-QCStatus_e NodeConfigIfs::VerifyAndSet( const std::string config, std::string &errors )
+QCStatus_e NodeConfigBase::VerifyAndSet( const std::string config, std::string &errors )
 {
     QCStatus_e status = QC_STATUS_OK;
     std::string name = "";
     Logger_Level_e loggerLevel = LOGGER_LEVEL_ERROR;
 
+    errors = "";
     status = m_dataTree.Load( config, errors );
     if ( ( QC_STATUS_OK == status ) && ( false == m_bLoggerInit ) )
     {
@@ -76,7 +77,7 @@ QCStatus_e NodeBase::Init( QCNodeID_t nodeId, Logger_Level_e level )
     m_nodeId = nodeId;
     status = (QCStatus_e) m_logger.Init( m_nodeId.name.c_str(), level );
     if ( QC_STATUS_BAD_STATE == status )
-    { /* logger used by QCNodeConfigIfs and already initialized */
+    { /* logger used by QCNodeConfigBase and already initialized */
         status = QC_STATUS_OK;
     }
     QC_LOG_DEBUG( "Init NodeBase %s(%u) type (%d) status=%d", m_nodeId.name.c_str(), m_nodeId.id,

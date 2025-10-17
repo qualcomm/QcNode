@@ -78,6 +78,16 @@ public:
     uint32_t GetDataSize() { return buffer->GetDataSize(); }
     QCImageProps_t GetImageProps() { return buffer->GetImageProps(); };
     QCTensorProps_t GetTensorProps() { return buffer->GetTensorProps(); };
+
+    void SetFrameId()
+    {
+        QCBufferDescriptorBase_t &bufDesc = GetBuffer();
+        BufferDescriptor_t *pBufDesc = dynamic_cast<BufferDescriptor_t *>( &bufDesc );
+        if ( nullptr != pBufDesc )
+        {
+            pBufDesc->id = frameId;
+        }
+    }
 } DataFrame_t;
 
 typedef struct
@@ -105,6 +115,7 @@ public:
     void Add( DataFrame_t &frame )
     {
         frame.Workaound();
+        frame.SetFrameId();
         frames.push_back( frame );
     }
 } DataFrames_t;

@@ -3,8 +3,8 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 
-#ifndef _QC_SAMPLE_IF_HPP_
-#define _QC_SAMPLE_IF_HPP_
+#ifndef QC_SAMPLE_IF_HPP
+#define QC_SAMPLE_IF_HPP
 
 #include "QC/Common/Types.hpp"
 #include "QC/Infras/Log/Logger.hpp"
@@ -256,4 +256,4 @@ private:
 }   // namespace sample
 }   // namespace QC
 
-#endif   // _QC_SAMPLE_IF_HPP_
+#endif   // QC_SAMPLE_IF_HPP

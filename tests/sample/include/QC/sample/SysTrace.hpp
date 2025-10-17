@@ -64,6 +64,7 @@ namespace sample
         m_systrace.Event( streamId, id );                                                          \
     } while ( 0 )
 #else
+#define TRACE_ON( processor )
 #define TRACE_BEGIN( id_or_cat )
 #define TRACE_END( id_or_cat )
 #define TRACE_EVENT( id_or_cat )
@@ -79,8 +80,8 @@ typedef enum
     SYSTRACE_PROCESSOR_HTP0_CORE1,
     SYSTRACE_PROCESSOR_HTP0_CORE2,
     SYSTRACE_PROCESSOR_HTP0_CORE3,
-    SYSTRACE__PROCESSOR_HTP2,
-    SYSTRACE__PROCESSOR_HTP3,
+    SYSTRACE_PROCESSOR_HTP2,
+    SYSTRACE_PROCESSOR_HTP3,
     SYSTRACE_PROCESSOR_CAMERA,
     SYSTRACE_PROCESSOR_VPU,
     SYSTRACE_PROCESSOR_DATA_READER,

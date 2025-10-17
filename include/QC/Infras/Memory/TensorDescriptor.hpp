@@ -85,7 +85,7 @@ public:
  * @param pid The process ID of the buffer.
  * @param validSize The size of valid data currently stored in the buffer.
  * @param offset The offset of the valid buffer within the shared buffer.
- * @param id The unique ID assigned by the buffer manager.
+ * @param id A identifier assigned by the user application to distinguish the buffer.
  *
  * New Members:
  * @param tensorType The tensor type.
@@ -102,7 +102,7 @@ public:
      * @return The updated tensor descriptor object.
      */
     TensorDescriptor &operator=( const BufferDescriptor &other );
-
+    TensorDescriptor &operator=( const TensorDescriptor &other );
 
     /**
      * @brief Sets up the tensor descriptor using another shared buffer object.

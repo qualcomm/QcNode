@@ -63,11 +63,22 @@ numRec = len(record)//reLen
 
 lastBEEvents = {} # cache the last B/E event
 
+def DecodeName(name):
+    name = bytes(name)
+    ln = 0
+    for b in name:
+        if b != 0:
+            ln += 1
+        else:
+            break
+    name = name[:ln]
+    return name.decode("utf-8")
+
 for i in range(numRec):
     raw = record[i*reLen: (i+1)*reLen]
     rec = SysTraceRecord()
     rec.from_buffer(raw)
-    name = bytes(rec.name).decode('utf-8').strip('\x00')
+    name = DecodeName(rec.name)
     ph = '%c'%(rec.ph)
     processor = ProcessorMap[rec.processor]
     cat = CatMap[rec.cat]
