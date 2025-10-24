@@ -130,6 +130,9 @@ public:
      *     "static": {
      *        "name": "The Node unique name, type: string",
      *        "id": "The Node unique ID, type: uint32_t",
+     *        "logLevel": "The message log level, type: string,
+     *                     options: [VERBOSE, DEBUG, INFO, WARN, ERROR],
+     *                     default: ERROR"
      *        "priority": "The performance priority level, type: string,
      *                     options: [low, normal, high]",
      *        "deviceId": "The device ID for OpenCL platform, type: uint32_t",
