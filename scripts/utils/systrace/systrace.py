@@ -6,118 +6,179 @@ import ctypes
 import argparse
 import json
 
-ProcessorMap = {
-  0 : "HTP0-CORE0",
-  1 : "HTP1",
-  2 : "CPU",
-  3 : "GPU",
-  4 : "HTP0-CORE1",
-  5 : "HTP0-CORE2",
-  6 : "HTP0-CORE3",
-  7 : "HTP2",
-  8 : "HTP3",
-  9 : "CAMERA",
-  10 : "VPU",
-  11 : "DATA_READER",
-  12 : "DATA_ONLINE",
+TraceTypeMap = {
+    0: "B",
+    1: "E",
+    2: "X",
+    3: "C",
 }
 
-CatMap = {
-  0 : "Init",
-  1 : "Start",
-  2 : "Execute",
-  3 : "Stop",
-  4 : "Deinit",
-  5 : "FrameReady",
-  6 : "VidcInputDone",
-  7 : "Vidc2ndOutputDone",
-  8 : "VidcInputDone",
-  9 : "Vidc2ndOutputDone",
-}
 
 class MyStructure(ctypes.Structure):
     _pack_ = 1
+
     def from_buffer(self, raw):
         ctypes.memmove(ctypes.pointer(self), raw, ctypes.sizeof(self))
 
-class SysTraceRecord(MyStructure):
-    _fields_ = [ ('id', ctypes.c_ulonglong),
-                 ('timestamp', ctypes.c_ulonglong),
-                 ('processor',ctypes.c_uint),
-                 ('cat',ctypes.c_uint),
-                 ('name',ctypes.c_ubyte*32),
-                 ('ph',ctypes.c_ubyte),
-                 ('reserved',ctypes.c_ubyte*7) ]
+
+class NodeTraceEventHeader(MyStructure):
+    _fields_ = [
+        ("timestamp", ctypes.c_uint64),
+        ("traceType", ctypes.c_int32),
+        ("lenName", ctypes.c_uint32),
+        ("lenProcessor", ctypes.c_uint32),
+        ("lenEventName", ctypes.c_uint32),
+        ("coreIdsMask", ctypes.c_uint32),
+        ("numArgs", ctypes.c_uint32),
+    ]
 
 
-parser = argparse.ArgumentParser(description='QC systrace parser')
-parser.add_argument('-i', '--input', type=str, default='qcnode_systrace.bin', help='the QC systrace bin file path')
-parser.add_argument('-o', '--output', type=str, default='qcnode_systrace.json', required=False, help='the output json file of the QC systrace')
-args = parser.parse_args()
+class NodeTraceEventArg(MyStructure):
+    _fields_ = [
+        ("argType", ctypes.c_int32),
+        ("lenName", ctypes.c_uint32),
+        ("lenValue", ctypes.c_uint32),
+    ]
+
+
+parser = argparse.ArgumentParser(description="QCNode systrace parser")
+parser.add_argument("-i", "--input", type=str, default="qcnode_systrace.bin", help="the QC systrace bin file path")
+parser.add_argument(
+    "-o",
+    "--output",
+    type=str,
+    default="qcnode_systrace.json",
+    required=False,
+    help="the output json file of the QCNode systrace",
+)
+pargs = parser.parse_args()
 
 events = []
-with open(args.input, 'rb') as f:
+with open(pargs.input, "rb") as f:
     record = f.read()
-reLen = ctypes.sizeof(SysTraceRecord)
-numRec = len(record)//reLen
+evthLen = ctypes.sizeof(NodeTraceEventHeader)
+arghLen = ctypes.sizeof(NodeTraceEventArg)
 
-lastBEEvents = {} # cache the last B/E event
+lastBEEvents = {}  # cache the last B/E event
 
-def DecodeName(name):
-    name = bytes(name)
-    ln = 0
-    for b in name:
-        if b != 0:
-            ln += 1
+offset = 0
+recordLen = len(record)
+
+
+def toCoreIds(coreIdsMask):
+    coreIds = []
+    for i in range(32):
+        if (coreIdsMask & (1 << i)) != 0:
+            coreIds.append(i)
+    return coreIds
+
+
+while offset < recordLen:
+    raw = record[offset : offset + evthLen]
+    evth = NodeTraceEventHeader()
+    evth.from_buffer(raw)
+    ph = TraceTypeMap[evth.traceType]
+    name = record[offset + evthLen : offset + evthLen + evth.lenName]
+    name = name.decode("utf-8")
+    processor = record[offset + evthLen + evth.lenName : offset + evthLen + evth.lenName + evth.lenProcessor]
+    processor = processor.decode("utf-8")
+    processor = processor.upper()
+    evtName = record[
+        offset
+        + evthLen
+        + evth.lenName
+        + evth.lenProcessor : offset
+        + evthLen
+        + evth.lenName
+        + evth.lenProcessor
+        + evth.lenEventName
+    ]
+    evtName = evtName.decode("utf-8")
+    offset += evthLen + evth.lenName + evth.lenProcessor + evth.lenEventName
+    args = {"timestamp": evth.timestamp}
+    if 0 != evth.coreIdsMask:
+        args["coreIds"] = toCoreIds(evth.coreIdsMask)
+    for i in range(evth.numArgs):
+        raw = record[offset : offset + arghLen]
+        argh = NodeTraceEventArg()
+        argh.from_buffer(raw)
+        argName = record[offset + arghLen : offset + arghLen + argh.lenName]
+        argName = argName.decode("utf-8")
+        argValue = record[offset + arghLen + argh.lenName : offset + arghLen + argh.lenName + argh.lenValue]
+        offset += arghLen + argh.lenName + argh.lenValue
+        if argh.argType == 0:  # string
+            argValue = argValue.decode("utf-8")
+        elif argh.argType == 1:
+            argValue = ctypes.c_double.from_buffer_copy(argValue).value
+        elif argh.argType == 2:
+            argValue = ctypes.c_float.from_buffer_copy(argValue).value
+        elif argh.argType == 3:
+            argValue = ctypes.c_uint64.from_buffer_copy(argValue).value
+        elif argh.argType == 4:
+            argValue = ctypes.c_uint32.from_buffer_copy(argValue).value
+        elif argh.argType == 5:
+            argValue = ctypes.c_uint16.from_buffer_copy(argValue).value
+        elif argh.argType == 6:
+            argValue = ctypes.c_uint8.from_buffer_copy(argValue).value
+        elif argh.argType == 7:
+            argValue = ctypes.c_int64.from_buffer_copy(argValue).value
+        elif argh.argType == 8:
+            argValue = ctypes.c_int32.from_buffer_copy(argValue).value
+        elif argh.argType == 9:
+            argValue = ctypes.c_int16.from_buffer_copy(argValue).value
+        elif argh.argType == 10:
+            argValue = ctypes.c_int8.from_buffer_copy(argValue).value
+        args[argName] = argValue
+    cat = evtName
+    ts = evth.timestamp
+    if ph in ["B", "E"]:
+        if "frameId" in args:
+            title = args["frameId"]
         else:
-            break
-    name = name[:ln]
-    return name.decode("utf-8")
-
-for i in range(numRec):
-    raw = record[i*reLen: (i+1)*reLen]
-    rec = SysTraceRecord()
-    rec.from_buffer(raw)
-    name = DecodeName(rec.name)
-    ph = '%c'%(rec.ph)
-    processor = ProcessorMap[rec.processor]
-    cat = CatMap[rec.cat]
-    ts = rec.timestamp
-    if ph in ['B', 'E']:
-        evt = { 'name': '%s'%(rec.id), 'cat': cat, 'ph': ph, 'pid': processor,
-                'tid': name, 'ts': ts, 'args': { 'id': rec.id, 'timestamp': ts } }
-        if cat  in ['Init', 'Start', 'Stop', 'Deinit']:
-            evt['name'] = cat
-        if cat in ['Execute'] and ph == 'B':
+            title = cat
+        evt = {
+            "name": "%s" % (title),
+            "cat": cat,
+            "ph": ph,
+            "pid": processor,
+            "tid": name,
+            "ts": ts,
+            "args": args,
+        }
+        if cat == "Start": print(evt)
+        if cat in ["Execute"] and ph == "B":
             # check the previous B and E is match, as if Execute failed, there will be no E
             if processor in lastBEEvents and name in lastBEEvents[processor]:
                 levt = lastBEEvents[processor][name]
-                if levt['ph'] != 'E':
+                if levt["ph"] != "E":
                     eevt = dict(levt)
-                    eevt['ph'] = 'E'
+                    eevt["ph"] = "E"
                     events.append(eevt)
-                    print('WARNING: %s %s %s Execute failed' %(eevt['pid'], eevt['tid'], eevt['name']))
+                    print("WARNING: %s %s %s Execute failed" % (eevt["pid"], eevt["tid"], eevt["name"]))
         if processor not in lastBEEvents:
             lastBEEvents[processor] = {}
         lastBEEvents[processor][name] = evt
-    elif ph in ['X']:
-        evt = { 'name': cat, 'cat': cat, 'ph': 'X', 'pid': processor, 'dur': 1,
-                'tid': name, 'ts': ts, 'args': { 'id': rec.id, 'timestamp': ts } }
-        if cat in ['FrameReady']:
-            evt['name'] = '%s'%(rec.id)
+    elif ph in ["X"]:
+        evt = {
+            "name": cat,
+            "cat": cat,
+            "ph": "X",
+            "pid": processor,
+            "dur": 1,
+            "tid": name,
+            "ts": ts,
+            "args": args,
+        }
+        if cat in ["FrameReady"]:
+            if "frameId" in args:
+                evt["name"] = "%s" % (args["frameId"])
     else:
         raise NotImplementedError
     events.append(evt)
 
 
-QCTrace = {
-  'traceEvents': events,
-  'displayTimeUnit': 'ns',
-  'otherData': {
-    'version': 'qcnode trace v1.0.0'
-  }
-}
+QCTrace = {"traceEvents": events, "displayTimeUnit": "ns", "otherData": {"version": "qcnode trace v1.0.0"}}
 
-with open(args.output, 'w') as f:
+with open(pargs.output, "w") as f:
     json.dump(QCTrace, f)
-    print('generare QC systrace:', f.name)
+    print("generare QCNode systrace:", f.name)

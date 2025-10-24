@@ -7,6 +7,7 @@
 #define QC_SAMPLE_SYSTRACE_HPP
 
 #include "QC/Common/Types.hpp"
+#include "QC/Infras/NodeTrace/NodeTrace.hpp"
 
 using namespace QC;
 
@@ -20,20 +21,10 @@ namespace QC
 {
 namespace sample
 {
-#define SYSTRACE_NAME_MAX 32
 
-/* ref:
- * https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU/preview
- */
+using namespace QC::Node;
 
-#define SYSTRACE_PHASE_BEGIN 'B'
-#define SYSTRACE_PHASE_END 'E'
-#define SYSTRACE_PHASE_COMPLETE 'X'
-#define SYSTRACE_PHASE_COUNTER 'C'
-
-
-#define __ENABLE_SYSTRACE__
-#ifdef __ENABLE_SYSTRACE__
+#ifdef QC_ENABLE_NODETRACE
 #define TRACE_ON( processor )                                                                      \
     do                                                                                             \
     {                                                                                              \
@@ -165,30 +156,7 @@ public:
     void Event( SysTrace_Category_e cat );
 
 private:
-    uint64_t Timestamp();
-
-private:
-    typedef struct
-    {
-        uint64_t id;
-        uint64_t timestamp;
-        SysTrace_ProcessorType_e processor = SYSTRACE_PROCESSOR_CPU;
-        SysTrace_Category_e cat;
-        char name[SYSTRACE_NAME_MAX];
-        char ph;
-        uint8_t reserved[7];
-    } SysTrace_Record_t;
-
-private:
-    static void SysTrace_CloseFile( void );
-
-private:
-    std::string m_name;
-    SysTrace_ProcessorType_e m_processor = SYSTRACE_PROCESSOR_MAX;
-    SysTrace_Record_t m_record = { 0 };
-
-    static std::mutex s_lock;
-    static FILE *s_pTraceFile;
+    QC_DECLARE_NODETRACE();
 };
 
 }   // namespace sample

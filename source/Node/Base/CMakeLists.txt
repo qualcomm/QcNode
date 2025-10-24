@@ -12,6 +12,11 @@ set( NODEBASE_SOURCES
     NodeFrameDescriptorPool.cpp
 )
 set( TARGET_LIBRARIES QCNodeCommon QCNodeVideoCodec )
+
+if ( ENABLE_TRACE )
+list( APPEND TARGET_LIBRARIES QCNodeTrace )
+endif()
+
 add_library( QCNodeBase STATIC ${NODEBASE_SOURCES} )
 set_property( TARGET QCNodeBase PROPERTY LINKER_LANGUAGE CXX )
 set_property( TARGET QCNodeBase PROPERTY POSITION_INDEPENDENT_CODE ON )

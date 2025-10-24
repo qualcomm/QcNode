@@ -5,15 +5,15 @@ The QCNodeSampleApp supports to collect QC component events and generate a final
 
 ## Collect the QC Systrace bin file
 
-Before start the QCNodeSampleApp, the environment variable "QC_SYSTRACE" must be specified to turn on the QCNodeSampleApp systrace. if no environment "QC_SYSTRACE" or it was not correct specified, the systrace will be off.
+Before start the QCNodeSampleApp, the environment variable "QC_NODETRACE" must be specified to turn on the QCNodeSampleApp systrace. if no environment "QC_NODETRACE" or it was not correct specified, the systrace will be off.
 
-Below is a sample command to specify environment "QC_SYSTRACE" that the QCNodeSampleApp will save the systrace events into file "/tmp/qcnode_systrace.bin"
+Below is a sample command to specify environment "QC_NODETRACE" that the QCNodeSampleApp will save the systrace events into file "/tmp/qcnode_systrace.bin"
 
 ```sh
-export QC_SYSTRACE=/tmp/qcnode_systrace.bin
+export QC_NODETRACE=/tmp/qcnode_systrace.bin
 ```
 
-After the environment "QC_SYSTRACE" was specified, start to run the QCNodeSampleApp and let it run for a while as wished and then stop it.
+After the environment "QC_NODETRACE" was specified, start to run the QCNodeSampleApp and let it run for a while as wished and then stop it.
 
 And pull the file "/tmp/qcnode_systrace.bin" from the target device to a ubuntu host PC.
 
