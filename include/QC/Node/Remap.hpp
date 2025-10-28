@@ -99,6 +99,9 @@ public:
      *     "static": {
      *        "name": "The Node unique name, type: string",
      *        "id": "The Node unique ID, type: uint32_t",
+     *        "logLevel": "The message log level, type: string,
+     *                     options: [VERBOSE, DEBUG, INFO, WARN, ERROR],
+     *                     default: ERROR"
      *        "processorType": "The processor type, type: string",
      *                      options: [cpu, gpu, htp0, htp1]",
      *        "outputWidth": "The output width, type: uint32_t",
