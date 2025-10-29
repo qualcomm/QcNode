@@ -362,6 +362,8 @@ QCStatus_e QnnConfig::ParseStaticConfig( DataTree &dt, std::string &errors )
 
         config.bDeRegisterAllBuffersWhenStop =
                 dt.Get<bool>( "deRegisterAllBuffersWhenStop", false );
+        config.bWeightSharingEnabled = dt.Get<bool>( "weightSharingEnabled", false );
+        config.bUseExtendedUdma = dt.Get<bool>( "extendedUdma", false );
     }
 
     return status;

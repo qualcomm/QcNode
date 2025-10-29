@@ -5,6 +5,7 @@
 #ifndef QC_NODE_QNN_IMPL_HPP
 #define QC_NODE_QNN_IMPL_HPP
 
+#include "HTP/QnnHtpContext.h"
 #include "HTP/QnnHtpDevice.h"
 #include "QC/Infras/Memory/TensorDescriptor.hpp"
 #include "QC/Infras/NodeTrace/NodeTrace.hpp"
@@ -149,6 +150,16 @@ typedef enum
  *
  * @param bDeRegisterAllBuffersWhenStop If true, all registered buffers will be deregistered
  *                         when the QNN node's Stop API is called.
+ *
+ * @param perfProfile      Specifies the performance profile to be used.
+ *
+ * @param bWeightSharingEnabled This field sets the weight sharing which is by default false.
+ *
+ * @param bUseExtendedUdma This field enables preparing graphs, associated with this context, with
+ *                      far-mapping enabled so that weights and spill/fill buffer are mapped to the
+ *                      far region of the DSP which is helpful if PD's limited VA space is
+ *                      exhausted. Total RAM usage may increase if used together with shared
+ *                      weights. Only available for Hexagon arch v81 and above.
  */
 typedef struct QnnImplConfig : public QCNodeConfigBase_t
 {
@@ -163,6 +174,8 @@ typedef struct QnnImplConfig : public QCNodeConfigBase_t
     std::vector<QCNodeBufferMapEntry_t> globalBufferIdMap;
     bool bDeRegisterAllBuffersWhenStop;
     Qnn_PerfProfile_e perfProfile;
+    bool bWeightSharingEnabled;
+    bool bUseExtendedUdma;
 } QnnImplConfig_t;
 
 // TODO
@@ -376,7 +389,7 @@ private:
     static std::map<void *, int> s_dmaMemRefMap[QNN_PROCESSOR_MAX];
     static std::map<Qnn_ProcessorType_e, std::string> s_Backends;
 
-    static constexpr size_t CONTEXT_CONFIG_SIZE = 1;
+    static constexpr size_t CONTEXT_CONFIG_SIZE = 3;
 
     Qnn_BackendHandle_t m_backendHandle = nullptr;
     Qnn_DeviceHandle_t m_deviceHandle = nullptr;
@@ -394,6 +407,8 @@ private:
     Qnn_ContextHandle_t m_context = nullptr;
     QnnContext_Config_t *m_contextConfig[CONTEXT_CONFIG_SIZE + 1] = { nullptr };
     QnnContext_Config_t m_contextConfigArray[CONTEXT_CONFIG_SIZE];
+    QnnHtpContext_CustomConfig_t m_useExtendedUdmaConfig;
+    QnnHtpContext_CustomConfig_t m_weightSharingEnabledConfig;
 
     bool m_bLoadFromCachedBinary = false;
 

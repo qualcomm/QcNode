@@ -16,7 +16,7 @@ namespace Node
 /** @brief The QCNode QNN Version */
 #define QCNODE_QNN_VERSION_MAJOR 2U
 #define QCNODE_QNN_VERSION_MINOR 0U
-#define QCNODE_QNN_VERSION_PATCH 1U
+#define QCNODE_QNN_VERSION_PATCH 2U
 
 #define QCNODE_QNN_VERSION                                                                         \
     ( ( QCNODE_QNN_VERSION_MAJOR << 12U ) | ( QCNODE_QNN_VERSION_MINOR << 8U ) |                   \
@@ -123,7 +123,14 @@ public:
      *           }
      *        ],
      *        "deRegisterAllBuffersWhenStop": "Flag to deregister all buffers when stopped,
-     *                   type: bool, default: false"
+     *                   type: bool, default: false",
+     *        "perfProfile": "Specifies perf profile to set, type: string,
+     *                  options: [ low_balanced, balanced, default, high_performance,
+     *                             sustained_high_performance, burst, low_power_saver,
+     *                             power_saver, high_power_saver, extreme_power_saver ],
+     *                  default: default",
+     *        "weightSharingEnabled": "Enables weight sharing, type: bool, default: false",
+     *        "extendedUdma": "Activates extended UDMA support, type: bool, default: false",
      *     }
      *   }
      *   @note: The udoPackages is a list and is optional.

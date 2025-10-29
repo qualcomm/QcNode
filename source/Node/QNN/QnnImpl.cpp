@@ -1638,11 +1638,36 @@ QnnImpl::Initialize( QCNodeEventCallBack_t callback,
              ( QNN_PROCESSOR_HTP2 == m_config.processorType ) ||
              ( QNN_PROCESSOR_HTP3 == m_config.processorType ) )
         {   // set up context priority
-            m_contextConfigArray[0].option = QNN_CONTEXT_CONFIG_OPTION_PRIORITY;
-            m_contextConfigArray[0].priority = m_config.priority;
-            m_contextConfig[0] = &m_contextConfigArray[0];
-            m_contextConfig[1] = nullptr;
+            size_t idx = 0;
+
             QC_INFO( "set context priority = %d", m_config.priority );
+            m_contextConfigArray[idx].option = QNN_CONTEXT_CONFIG_OPTION_PRIORITY;
+            m_contextConfigArray[idx].priority = m_config.priority;
+            m_contextConfig[idx] = &m_contextConfigArray[idx];
+            idx++;
+
+            QC_INFO( "set context weight sharing enabled = %s",
+                     m_config.bWeightSharingEnabled ? "true" : "false" );
+            m_contextConfigArray[idx].option = QNN_CONTEXT_CONFIG_OPTION_CUSTOM;
+            m_weightSharingEnabledConfig.option =
+                    QNN_HTP_CONTEXT_CONFIG_OPTION_WEIGHT_SHARING_ENABLED;
+            m_weightSharingEnabledConfig.weightSharingEnabled = m_config.bWeightSharingEnabled;
+            m_contextConfigArray[idx].customConfig = &m_weightSharingEnabledConfig;
+            m_contextConfig[idx] = &m_contextConfigArray[idx];
+            idx++;
+
+#if ( ( QNN_HTP_API_VERSION_MAJOR == 5 ) && ( QNN_HTP_API_VERSION_MINOR >= 35 ) ) ||               \
+        ( QNN_HTP_API_VERSION_MAJOR > 5 )
+            QC_INFO( "set context extended udma = %s",
+                     m_config.bUseExtendedUdma ? "true" : "false" );
+            m_contextConfigArray[idx].option = QNN_CONTEXT_CONFIG_OPTION_CUSTOM;
+            m_useExtendedUdmaConfig.option = QNN_HTP_CONTEXT_CONFIG_OPTION_USE_EXTENDED_UDMA;
+            m_useExtendedUdmaConfig.useExtendedUdma = m_config.bUseExtendedUdma;
+            m_contextConfigArray[idx].customConfig = &m_useExtendedUdmaConfig;
+            m_contextConfig[idx] = &m_contextConfigArray[idx];
+            idx++;
+#endif
+            m_contextConfig[idx] = nullptr;
         }
 
         switch ( m_config.loadType )

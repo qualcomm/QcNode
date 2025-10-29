@@ -581,6 +581,11 @@ int Usage( char *prog, int error )
             "    -f perf_profile:  perf profile to set, options: [low_balanced, balanced, default, "
             "high_performance, sustained_high_performance, burst, low_power_saver, power_saver, "
             "high_power_saver, extreme_power_saver]\n"
+            "    [-k attr -v value]\n"
+            "      attribute weight_sharing_enabled: enable the weight sharing or not, options: "
+            "[true, false]\n"
+            "      attribute extended_udma: enable the extended udma feature or not, options: "
+            "[true, false]\n"
             "  Repeat above options to create multiple testers\n"
             "  Other miscellaneous options:\n"
             "    -d: disable dumping outputs even if the input raw files specified\n",
@@ -592,9 +597,11 @@ int Usage( char *prog, int error )
 int main( int argc, char *argv[] )
 {
     std::vector<QnnTest_Parameters_t> paramsList;
+    std::string key;
+    std::string value;
 
     int flags, opt;
-    while ( ( opt = getopt( argc, argv, "af:n:m:p:c:b:u:t:l:i:P:S:q:dh" ) ) != -1 )
+    while ( ( opt = getopt( argc, argv, "af:n:m:p:c:b:u:t:l:i:P:S:q:dhk:v:" ) ) != -1 )
     {
         switch ( opt )
         {
@@ -746,6 +753,37 @@ int main( int argc, char *argv[] )
                 break;
             case 'h':
                 return Usage( argv[0], 0 );
+                break;
+            case 'k':
+                key = optarg;
+                break;
+            case 'v':
+                value = optarg;
+                if ( "weight_sharing_enabled" == key )
+                {
+                    QnnTest_Parameters_t &params = paramsList.back();
+                    bool bEnable = false;
+                    if ( "true" == value )
+                    {
+                        bEnable = true;
+                    }
+                    params.dt.Set<bool>( "weightSharingEnabled", bEnable );
+                }
+                else if ( "extended_udma" == key )
+                {
+                    QnnTest_Parameters_t &params = paramsList.back();
+                    bool bEnable = false;
+                    if ( "true" == value )
+                    {
+                        bEnable = true;
+                    }
+                    params.dt.Set<bool>( "extendedUdma", bEnable );
+                }
+                else
+                {
+                    printf( "invalid -k %s -v %s\n", key.c_str(), value.c_str() );
+                    return Usage( argv[0], 0 );
+                }
                 break;
             default:
                 return Usage( argv[0], -1 );
