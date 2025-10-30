@@ -16,6 +16,12 @@ namespace QC
 {
 
 #ifdef QC_ENABLE_NODETRACE
+#define QC_TRACE_IF( condition, ... )                                                              \
+    if ( condition )                                                                               \
+    {                                                                                              \
+        __VA_ARGS__;                                                                               \
+    }
+
 #define QC_TRACE_INIT( ... )                                                                       \
     do                                                                                             \
     {                                                                                              \
@@ -47,6 +53,7 @@ namespace QC
     } while ( 0 )
 
 #else
+#define QC_TRACE_IF( condition, ... )
 #define QC_TRACE_INIT( ... )
 #define QC_TRACE_BEGIN( name, ... )
 #define QC_TRACE_END( name, ... )

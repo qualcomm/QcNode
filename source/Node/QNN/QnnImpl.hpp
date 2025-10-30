@@ -7,6 +7,7 @@
 
 #include "HTP/QnnHtpDevice.h"
 #include "QC/Infras/Memory/TensorDescriptor.hpp"
+#include "QC/Infras/NodeTrace/NodeTrace.hpp"
 #include "QC/Node/QNN.hpp"
 #include "QnnInterface.h"
 #include "QnnWrapperUtils.hpp"
@@ -25,6 +26,12 @@ using namespace QC::Memory;
 #ifndef QNN_NOTIFY_PARAM_NUM
 /* @note this value must be power of 2 */
 #define QNN_NOTIFY_PARAM_NUM 8u
+#endif
+
+#define QNN_NOTIFY_MAGIC ( 0x464900544F4E4E51ull )
+
+#ifndef QNNIMPL_FRIEND_CLASS
+#define QNNIMPL_FRIEND_CLASS()
 #endif
 
 
@@ -187,8 +194,8 @@ public:
         : m_nodeId( nodeId ),
           m_logger( logger ),
           m_state( QC_OBJECT_STATE_INITIAL ) {};
-    QnnImplConfig_t &GetConifg() { return m_config; }
-    QnnImplMonitorConfig_t &GetMonitorConifg() { return m_monitorConfig; }
+    QnnImplConfig_t &GetConfig() { return m_config; }
+    QnnImplMonitorConfig_t &GetMonitorConfig() { return m_monitorConfig; }
 
     QCStatus_e Initialize( QCNodeEventCallBack_t callback,
                            std::vector<std::reference_wrapper<QCBufferDescriptorBase>> &buffers );
@@ -273,9 +280,7 @@ public:
      */
     Qnn_DataType_t SwitchToQnnDataType( QCTensorType_e tensorType );
 
-#ifndef QCNODE_UNIT_TEST
 private:
-#endif
     typedef struct
     {
         Qnn_MemHandle_t memHandle;
@@ -285,7 +290,8 @@ private:
 
     typedef struct
     {
-        QnnImpl *self;
+        uint64_t magic;
+        QnnImpl *pSelf;
         QCFrameDescriptorNodeIfs *pFrameDesc;
     } NotifyParam_t;
 
@@ -302,11 +308,9 @@ private:
         NotifyParam_t *Pop();
     } NotifyParamQueue_t;
 
-#ifndef QCNODE_UNIT_TEST
 private:
-#endif
     static void QnnNotifyFn( void *pNotifyParam, Qnn_NotifyStatus_t notifyStatus );
-    void QnnNotifyFn( NotifyParam_t *pNotifyParam, Qnn_NotifyStatus_t notifyStatus );
+    void QnnNotifyFn( NotifyParam_t &pNotifyParam, Qnn_NotifyStatus_t notifyStatus );
 
     QnnLog_Level_t GetQnnLogLevel( Logger_Level_e level );
     uint32_t GetQnnDeviceId( Qnn_ProcessorType_e processorType );
@@ -354,9 +358,11 @@ private:
     QCStatus_e SetHtpPerformanceMode();
     QCStatus_e SetPerformanceMode();
 
-#ifndef QCNODE_UNIT_TEST
+    static void QnnLog_Callback( const char *fmt, QnnLog_Level_t logLevel, uint64_t timestamp,
+                                 va_list args );
+    static size_t memscpy( void *dst, size_t dstSize, const void *src, size_t copySize );
+
 private:
-#endif
     QCNodeID_t &m_nodeId;
     Logger &m_logger;
     QnnImplConfig_t m_config;
@@ -411,6 +417,10 @@ private:
 
     std::vector<Qnn_Tensor_t> m_inputs;
     std::vector<Qnn_Tensor_t> m_outputs;
+
+    QC_DECLARE_NODETRACE();
+
+    QNNIMPL_FRIEND_CLASS();
 };
 
 }   // namespace Node

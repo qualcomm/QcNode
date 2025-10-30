@@ -14,6 +14,7 @@
 #include "md5_utils.hpp"
 #include "gtest/gtest.h"
 
+#define QNNIMPL_FRIEND_CLASS() friend class QnnImplTest
 #include "QnnImpl.hpp"
 
 #include "QnnLog.h"
@@ -21,13 +22,214 @@
 
 #include "MockCLib.hpp"
 
+#include "Mock/QnnInterfaceMock.hpp"
+
 namespace QC
 {
 namespace Node
 {
-extern void QnnLog_Callback( const char *fmt, QnnLog_Level_t logLevel, uint64_t timestamp,
-                             va_list args );
-size_t memscpy( void *dst, size_t dstSize, const void *src, size_t copySize );
+
+class QnnImplTest
+{
+public:
+    QnnImplTest( QCNodeID_t &nodeId, Logger &logger ) : qnn( nodeId, logger ) {}
+
+    QnnImplConfig_t &GetConfig() { return qnn.GetConfig(); }
+
+    QnnImplMonitorConfig_t &GetMonitorConfig() { return qnn.GetMonitorConfig(); }
+
+    QCStatus_e Initialize( QCNodeEventCallBack_t callback,
+                           std::vector<std::reference_wrapper<QCBufferDescriptorBase>> &buffers )
+    {
+        return qnn.Initialize( callback, buffers );
+    }
+
+    QCStatus_e Start() { return qnn.Start(); }
+
+    QCStatus_e ProcessFrameDescriptor( QCFrameDescriptorNodeIfs &frameDesc )
+    {
+        return qnn.ProcessFrameDescriptor( frameDesc );
+    }
+
+    QCStatus_e Stop() { return qnn.Stop(); }
+
+    QCStatus_e DeInitialize() { return qnn.DeInitialize(); }
+
+    QCStatus_e EnablePerf() { return qnn.EnablePerf(); }
+
+    QCStatus_e GetPerf( Qnn_Perf_t &perf ) { return qnn.GetPerf( perf ); }
+
+    QCStatus_e DisablePerf() { return qnn.DisablePerf(); }
+
+    QCObjectState_e GetState() { return qnn.GetState(); }
+
+    QCStatus_e GetInputTensors( std::vector<Qnn_Tensor_t> &inputTensors )
+    {
+        return qnn.GetInputTensors( inputTensors );
+    }
+
+    QCStatus_e GetOutputTensors( std::vector<Qnn_Tensor_t> &outputTensors )
+    {
+        return qnn.GetOutputTensors( outputTensors );
+    }
+
+    QCTensorType_e SwitchFromQnnDataType( Qnn_DataType_t dataType )
+    {
+        return qnn.SwitchFromQnnDataType( dataType );
+    }
+
+    Qnn_DataType_t SwitchToQnnDataType( QCTensorType_e tensorType )
+    {
+        return qnn.SwitchToQnnDataType( tensorType );
+    }
+
+    QnnLog_Level_t GetQnnLogLevel( Logger_Level_e level ) { return qnn.GetQnnLogLevel( level ); }
+
+    uint32_t GetQnnDeviceId( Qnn_ProcessorType_e processorType )
+    {
+        return qnn.GetQnnDeviceId( processorType );
+    }
+
+    QCStatus_e LoadOpPackages( std::vector<Qnn_UdoPackage_t> &udoPackages )
+    {
+        return qnn.LoadOpPackages( udoPackages );
+    }
+
+    QCStatus_e CreateFromModelSo( std::string modelFile )
+    {
+        return qnn.CreateFromModelSo( modelFile );
+    }
+
+    QCStatus_e CreateFromBinaryBuffer( QCBufferDescriptorBase &bufDesc )
+    {
+        return qnn.CreateFromBinaryBuffer( bufDesc );
+    }
+
+    QCStatus_e CreateFromBinaryFile( std::string modelFile )
+    {
+        return qnn.CreateFromBinaryFile( modelFile );
+    }
+
+    QCStatus_e SetupGlobalBufferIdMap() { return qnn.SetupGlobalBufferIdMap(); }
+
+    QCStatus_e ExtractProfilingEvent( QnnProfile_EventId_t profileEventId, Qnn_Perf_t &perf,
+                                      bool &bPerfDataValid )
+    {
+        return qnn.ExtractProfilingEvent( profileEventId, perf, bPerfDataValid );
+    }
+
+    QCStatus_e RemoteRegisterBuf( const TensorDescriptor_t &tensorDesc, int &fd )
+    {
+        return qnn.RemoteRegisterBuf( tensorDesc, fd );
+    }
+
+    QCStatus_e RegisterBufferToHTP( const TensorDescriptor_t &tensorDesc,
+                                    Qnn_MemHandle_t &memHandle )
+    {
+        return qnn.RegisterBufferToHTP( tensorDesc, memHandle );
+    }
+
+    QCStatus_e GetMemHandle( const TensorDescriptor_t &tensorDesc, Qnn_MemHandle_t &memHandle )
+    {
+        return qnn.GetMemHandle( tensorDesc, memHandle );
+    }
+
+    QCStatus_e RegisterTensor( const TensorDescriptor_t &tensorDesc )
+    {
+        return qnn.RegisterTensor( tensorDesc );
+    }
+
+    QCStatus_e ValidateTensor( const TensorDescriptor_t &tensorDesc, const Qnn_Tensor_t &tensor )
+    {
+        return qnn.ValidateTensor( tensorDesc, tensor );
+    }
+
+    QCStatus_e RemoteDeRegisterBuf( void *pData, size_t size )
+    {
+        return qnn.RemoteDeRegisterBuf( pData, size );
+    }
+
+    QCStatus_e DeRegisterAllBuffers() { return qnn.DeRegisterAllBuffers(); }
+
+    QCStatus_e Destroy() { return qnn.Destroy(); }
+
+    QCStatus_e GetQnnFunctionPointers( std::string backendPath, std::string modelPath,
+                                       bool loadModelLib )
+    {
+        return qnn.GetQnnFunctionPointers( backendPath, modelPath, loadModelLib );
+    }
+
+    QCStatus_e GetQnnSystemFunctionPointers( std::string systemLibraryPath )
+    {
+        return qnn.GetQnnSystemFunctionPointers( systemLibraryPath );
+    }
+
+    QCStatus_e DeepCopyQnnTensorInfo( Qnn_Tensor_t *dst, const Qnn_Tensor_t *src )
+    {
+        return qnn.DeepCopyQnnTensorInfo( dst, src );
+    }
+
+    QCStatus_e CopyTensorsInfo( const Qnn_Tensor_t *tensorsInfoSrc, Qnn_Tensor_t *&tensorWrappers,
+                                uint32_t tensorsCount )
+    {
+        return qnn.CopyTensorsInfo( tensorsInfoSrc, tensorWrappers, tensorsCount );
+    }
+
+    QCStatus_e CopyGraphsInfo( const QnnSystemContext_GraphInfo_t *graphsInput,
+                               const uint32_t numGraphs,
+                               qnn_wrapper_api::GraphInfo_t **&graphsInfo )
+    {
+        return qnn.CopyGraphsInfo( graphsInput, numGraphs, graphsInfo );
+    }
+
+    QCStatus_e CopyGraphsInfoV1( const QnnSystemContext_GraphInfoV1_t *graphInfoSrc,
+                                 qnn_wrapper_api::GraphInfo_t *graphInfoDst )
+    {
+        return qnn.CopyGraphsInfoV1( graphInfoSrc, graphInfoDst );
+    }
+
+    QCStatus_e CopyGraphsInfoV3( const QnnSystemContext_GraphInfoV3_t *graphInfoSrc,
+                                 qnn_wrapper_api::GraphInfo_t *graphInfoDst )
+    {
+        return qnn.CopyGraphsInfoV3( graphInfoSrc, graphInfoDst );
+    }
+
+    QCStatus_e CopyMetadataToGraphsInfo( const QnnSystemContext_BinaryInfo_t *binaryInfo,
+                                         qnn_wrapper_api::GraphInfo_t **&graphsInfo,
+                                         uint32_t &graphsCount )
+    {
+        return qnn.CopyMetadataToGraphsInfo( binaryInfo, graphsInfo, graphsCount );
+    }
+
+    void FreeQnnTensor( Qnn_Tensor_t &tensor ) { qnn.FreeQnnTensor( tensor ); }
+
+    void FreeQnnTensors( Qnn_Tensor_t *&tensors, uint32_t numTensors )
+    {
+        qnn.FreeQnnTensors( tensors, numTensors );
+    }
+
+    QCStatus_e FreeGraphsInfo( qnn_wrapper_api::GraphInfoPtr_t **graphsInfo, uint32_t numGraphs )
+    {
+        return qnn.FreeGraphsInfo( graphsInfo, numGraphs );
+    }
+
+    QCStatus_e SetHtpPerformanceMode() { return qnn.SetHtpPerformanceMode(); }
+
+    QCStatus_e SetPerformanceMode() { return qnn.SetPerformanceMode(); }
+
+    static void QnnLog_Callback( const char *fmt, QnnLog_Level_t logLevel, uint64_t timestamp,
+                                 va_list args )
+    {
+        return QnnImpl::QnnLog_Callback( fmt, logLevel, timestamp, args );
+    }
+    static size_t memscpy( void *dst, size_t dstSize, const void *src, size_t copySize )
+    {
+        return QnnImpl::memscpy( dst, dstSize, src, copySize );
+    }
+
+private:
+    QnnImpl qnn;
+};
 }   // namespace Node
 }   // namespace QC
 
@@ -729,7 +931,7 @@ TEST( QNN, DataType )
 
     EXPECT_EQ( QC_TENSOR_TYPE_MAX, qnn.SwitchFromQnnDataType( QNN_DATATYPE_UNDEFINED ) );
 
-    QnnImplMonitorConfig_t &config = qnn.GetMonitorConifg();
+    QnnImplMonitorConfig_t &config = qnn.GetMonitorConfig();
 }
 
 TEST( QNN, CreateModelFromSo )
@@ -2246,7 +2448,7 @@ void QnnLog_CallbackTest( QnnLog_Level_t logLevel, uint64_t timestamp, const cha
 {
     va_list args;
     va_start( args, fmt );
-    QC::Node::QnnLog_Callback( fmt, logLevel, timestamp, args );
+    QnnImplTest::QnnLog_Callback( fmt, logLevel, timestamp, args );
     va_end( args );
 }
 
@@ -2271,20 +2473,20 @@ TEST( QNN, memscpy )
         src[i] = i;
     }
 
-    copied = QC::Node::memscpy( dst, 32, src, 64 );
+    copied = QnnImplTest::memscpy( dst, 32, src, 64 );
     ASSERT_EQ( copied, 32 );
     ASSERT_EQ( 0, memcmp( src, dst, 32 ) );
 
-    copied = QC::Node::memscpy( nullptr, 32, src, 64 );
+    copied = QnnImplTest::memscpy( nullptr, 32, src, 64 );
     ASSERT_EQ( copied, 0 );
 
-    copied = QC::Node::memscpy( dst, 0, src, 64 );
+    copied = QnnImplTest::memscpy( dst, 0, src, 64 );
     ASSERT_EQ( copied, 0 );
 
-    copied = QC::Node::memscpy( dst, 32, nullptr, 64 );
+    copied = QnnImplTest::memscpy( dst, 32, nullptr, 64 );
     ASSERT_EQ( copied, 0 );
 
-    copied = QC::Node::memscpy( dst, 32, src, 0 );
+    copied = QnnImplTest::memscpy( dst, 32, src, 0 );
     ASSERT_EQ( copied, 0 );
 }
 
@@ -2294,53 +2496,52 @@ TEST( QNN, QnnImplUnitTest )
     QCNodeID_t nodeId;
     Logger logger;
     logger.Init( "UNIT_TEST" );
-
     {
-        QnnImpl qnn( nodeId, logger );
+        QnnImplTest qnn = QnnImplTest( nodeId, logger );
         status = qnn.GetQnnFunctionPointers( "libQnnNotExist.so", "libQnnModel.so", false );
         ASSERT_EQ( QC_STATUS_FAIL, status );
     }
 
     {
-        QnnImpl qnn( nodeId, logger );
+        QnnImplTest qnn( nodeId, logger );
         status = qnn.GetQnnFunctionPointers( "libQCNode.so", "libQnnModel.so", false );
         ASSERT_EQ( QC_STATUS_FAIL, status );
     }
 
     {
-        QnnImpl qnn( nodeId, logger );
+        QnnImplTest qnn( nodeId, logger );
         status = qnn.GetQnnFunctionPointers( "libQnnHtp.so", "libQnnModelNotExist.so", true );
         ASSERT_EQ( QC_STATUS_FAIL, status );
     }
 
     {
-        QnnImpl qnn( nodeId, logger );
+        QnnImplTest qnn( nodeId, logger );
         status = qnn.GetQnnFunctionPointers( "libQnnHtp.so", "libQCNode.so", true );
         ASSERT_EQ( QC_STATUS_FAIL, status );
     }
 
     {
-        QnnImpl qnn( nodeId, logger );
+        QnnImplTest qnn( nodeId, logger );
         status = qnn.GetQnnSystemFunctionPointers( "libQnnNotExist.so" );
         ASSERT_EQ( QC_STATUS_FAIL, status );
     }
 
     {
-        QnnImpl qnn( nodeId, logger );
+        QnnImplTest qnn( nodeId, logger );
         status = qnn.GetQnnSystemFunctionPointers( "libQCNode.so" );
         ASSERT_EQ( QC_STATUS_FAIL, status );
     }
 
     {
         Qnn_Tensor_t src;
-        QnnImpl qnn( nodeId, logger );
+        QnnImplTest qnn( nodeId, logger );
         status = qnn.DeepCopyQnnTensorInfo( nullptr, &src );
         ASSERT_EQ( QC_STATUS_FAIL, status );
     }
 
     {
         Qnn_Tensor_t dst;
-        QnnImpl qnn( nodeId, logger );
+        QnnImplTest qnn( nodeId, logger );
         status = qnn.DeepCopyQnnTensorInfo( &dst, nullptr );
         ASSERT_EQ( QC_STATUS_FAIL, status );
     }
@@ -2359,7 +2560,7 @@ TEST( QNN, QnnImplUnitTest )
         quantizeParams.axisScaleOffsetEncoding.numScaleOffsets = 3;
         quantizeParams.axisScaleOffsetEncoding.scaleOffset = scaleOffsets;
         QNN_TENSOR_SET_QUANT_PARAMS( &src, quantizeParams );
-        QnnImpl qnn( nodeId, logger );
+        QnnImplTest qnn( nodeId, logger );
         status = qnn.DeepCopyQnnTensorInfo( &dst, &src );
         ASSERT_EQ( QC_STATUS_OK, status );
         ASSERT_EQ( nullptr, QNN_TENSOR_GET_NAME( &dst ) );
@@ -2444,7 +2645,7 @@ TEST( QNN, QnnImplUnitTest )
         quantizeParams.quantizationEncoding = QNN_QUANTIZATION_ENCODING_UNDEFINED;
         QNN_TENSOR_SET_QUANT_PARAMS( &src, quantizeParams );
         QNN_TENSOR_SET_IS_DYNAMIC_DIMENSIONS( &src, isDynamic );
-        QnnImpl qnn( nodeId, logger );
+        QnnImplTest qnn( nodeId, logger );
         status = qnn.DeepCopyQnnTensorInfo( &dst, &src );
         ASSERT_EQ( QC_STATUS_OK, status );
 
@@ -2490,7 +2691,7 @@ TEST( QNN, QnnImplUnitTest )
         graphInfoSrc.graphInputs = &input;
         graphInfoSrc.graphOutputs = &output;
 
-        QnnImpl qnn( nodeId, logger );
+        QnnImplTest qnn( nodeId, logger );
 
         status = qnn.CopyGraphsInfoV1( &graphInfoSrc, &graphInfoDst );
         ASSERT_EQ( QC_STATUS_OK, status );
@@ -2641,7 +2842,7 @@ TEST( QNN, QnnImplUnitTest )
         graphInfoSrc.graphInputs = &input;
         graphInfoSrc.graphOutputs = &output;
 
-        QnnImpl qnn( nodeId, logger );
+        QnnImplTest qnn( nodeId, logger );
 
         status = qnn.CopyGraphsInfoV3( &graphInfoSrc, &graphInfoDst );
         ASSERT_EQ( QC_STATUS_OK, status );
@@ -2673,7 +2874,7 @@ TEST( QNN, QnnImplUnitTest )
     }
 
     {
-        QnnImpl qnn( nodeId, logger );
+        QnnImplTest qnn( nodeId, logger );
         qnn_wrapper_api::GraphInfoPtr_t *graphsInfo[1] = { nullptr };
         status = qnn.FreeGraphsInfo( nullptr, 1 );
         ASSERT_EQ( QC_STATUS_FAIL, status );
@@ -2683,7 +2884,7 @@ TEST( QNN, QnnImplUnitTest )
     }
 
     {
-        QnnImpl qnn( nodeId, logger );
+        QnnImplTest qnn( nodeId, logger );
         QnnLog_Level_t level;
 
         level = qnn.GetQnnLogLevel( LOGGER_LEVEL_VERBOSE );
@@ -2706,7 +2907,7 @@ TEST( QNN, QnnImplUnitTest )
     }
 
     {
-        QnnImpl qnn( nodeId, logger );
+        QnnImplTest qnn( nodeId, logger );
         uint32_t deviceId;
 
         deviceId = qnn.GetQnnDeviceId( QNN_PROCESSOR_HTP0 );
@@ -2732,8 +2933,8 @@ TEST( QNN, QnnImplUnitTest )
     }
 
     {
-        QnnImpl qnn( nodeId, logger );
-        QnnImplConfig_t &cfg = qnn.GetConifg();
+        QnnImplTest qnn( nodeId, logger );
+        QnnImplConfig_t &cfg = qnn.GetConfig();
         cfg.loadType = QNN_LOAD_CONTEXT_BIN_FROM_FILE;
         cfg.processorType = QNN_PROCESSOR_HTP0;
         cfg.coreIds = { 0 };
@@ -2777,6 +2978,74 @@ TEST_F( QnnTest, GetQnnSystemFunctionPointersDllOpenFailed )
 {
     // NOTE: do move libQnnSystem.so as libQnnSystem.so.bak and then recover it
     Initialize( "DLOPEN", "binary", "data/centernet/program.bin", "htp0" );
+    ASSERT_EQ( ret, QC_STATUS_FAIL );
+}
+
+
+TEST_F( QnnTest, MockQnnInterface )
+{
+    MockApi_ControlFnc_t MockApi_ControlFnc = MockQnn_GetControlFnc( "lib/libQnnHtp.so" );
+    ASSERT_NE( MockApi_ControlFnc, nullptr );
+    Qnn_ErrorHandle_t qnErrHandle = QNN_MIN_ERROR_COMMON;
+    MockApi_ControlFnc( MOCK_API_QNN_GET_INTERFACE_PROVIDER, MOCK_CONTROL_API_RETURN,
+                        &qnErrHandle );
+    Initialize( "MOCK", "binary", "data/centernet/program.bin", "htp0" );
+    ASSERT_EQ( ret, QC_STATUS_FAIL );
+
+    QnnInterface_t **interfaceProviders{ nullptr };
+    MockApi_ControlFnc( MOCK_API_QNN_GET_INTERFACE_PROVIDER, MOCK_CONTROL_API_OUT_PARAM0,
+                        &interfaceProviders );
+    Initialize( "MOCK", "binary", "data/centernet/program.bin", "htp0" );
+    ASSERT_EQ( ret, QC_STATUS_FAIL );
+
+    uint32_t numProviders = 0;
+    MockApi_ControlFnc( MOCK_API_QNN_GET_INTERFACE_PROVIDER, MOCK_CONTROL_API_OUT_PARAM1,
+                        &numProviders );
+    Initialize( "MOCK", "binary", "data/centernet/program.bin", "htp0" );
+    ASSERT_EQ( ret, QC_STATUS_FAIL );
+
+    MockApi_ControlFnc( MOCK_API_QNN_GET_INTERFACE_PROVIDER,
+                        MOCK_CONTROL_API_OUT_PARAM0_DECREASE_MAJOR_VERSION, nullptr );
+    Initialize( "MOCK", "binary", "data/centernet/program.bin", "htp0" );
+    ASSERT_EQ( ret, QC_STATUS_FAIL );
+
+    MockApi_ControlFnc( MOCK_API_QNN_GET_INTERFACE_PROVIDER,
+                        MOCK_CONTROL_API_OUT_PARAM0_DECREASE_MINOR_VERSION, nullptr );
+    Initialize( "MOCK", "binary", "data/centernet/program.bin", "htp0" );
+    ASSERT_EQ( ret, QC_STATUS_FAIL );
+
+    MockApi_ControlFnc( MOCK_API_QNN_LOG_CREATE, MOCK_CONTROL_API_RETURN, &qnErrHandle );
+    Initialize( "MOCK", "binary", "data/centernet/program.bin", "htp0" );
+    ASSERT_EQ( ret, QNN_SUCCESS );
+    Deinit();
+
+    MockApi_ControlFnc( MOCK_API_QNN_BACKEND_CREATE, MOCK_CONTROL_API_RETURN, &qnErrHandle );
+    Initialize( "MOCK", "binary", "data/centernet/program.bin", "htp0" );
+    ASSERT_EQ( ret, QC_STATUS_FAIL );
+
+    MockApi_ControlFnc( MOCK_API_QNN_BACKEND_GET_API_VERSION, MOCK_CONTROL_API_RETURN,
+                        &qnErrHandle );
+    Initialize( "MOCK", "binary", "data/centernet/program.bin", "htp0" );
+    ASSERT_EQ( ret, QC_STATUS_FAIL );
+
+    MockApi_ControlFnc( MOCK_API_QNN_DEVICE_GET_PLATFORM_INFO, MOCK_CONTROL_API_RETURN,
+                        &qnErrHandle );
+    Initialize( "MOCK", "binary", "data/centernet/program.bin", "htp0" );
+    ASSERT_EQ( ret, QC_STATUS_FAIL );
+
+    MockApi_ControlFnc( MOCK_API_QNN_DEVICE_GET_PLATFORM_INFO,
+                        MOCK_CONTROL_API_OUT_PARAM0_SET_PLATFORM_INFO_VERSION_INVALID,
+                        &qnErrHandle );
+    Initialize( "MOCK", "binary", "data/centernet/program.bin", "htp0" );
+    ASSERT_EQ( ret, QC_STATUS_UNSUPPORTED );
+
+    MockApi_ControlFnc( MOCK_API_QNN_DEVICE_GET_PLATFORM_INFO,
+                        MOCK_CONTROL_API_OUT_PARAM0_SET_PLATFORM_INFO_NUM_DEVICE_0, &qnErrHandle );
+    Initialize( "MOCK", "binary", "data/centernet/program.bin", "htp0" );
+    ASSERT_EQ( ret, QC_STATUS_FAIL );
+
+    MockApi_ControlFnc( MOCK_API_QNN_DEVICE_CREATE, MOCK_CONTROL_API_RETURN, &qnErrHandle );
+    Initialize( "MOCK", "binary", "data/centernet/program.bin", "htp0" );
     ASSERT_EQ( ret, QC_STATUS_FAIL );
 }
 

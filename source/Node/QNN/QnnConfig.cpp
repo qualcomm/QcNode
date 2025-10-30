@@ -219,7 +219,7 @@ QCStatus_e QnnConfig::ParseStaticConfig( DataTree &dt, std::string &errors )
 {
     QCStatus_e status = QC_STATUS_OK;
 
-    QnnImplConfig_t &config = m_pQnnImpl->GetConifg();
+    QnnImplConfig_t &config = m_pQnnImpl->GetConfig();
 
     status = VerifyStaticConfig( dt, errors );
     if ( QC_STATUS_OK == status )
@@ -450,7 +450,7 @@ const std::string &QnnConfig::GetOptions()
             std::vector<DataTree> outputDts = ConvertTensorInfoListToJson( outputTensors );
             dt.Set( "model.inputs", inputDts );
             dt.Set( "model.outputs", outputDts );
-            dt.Set<uint32_t>( "version", QC_QNN_VERSION );
+            dt.Set<uint32_t>( "version", QCNODE_QNN_VERSION );
             m_options = dt.Dump();
             m_bOptionsBuilt = true;
         }
@@ -465,7 +465,7 @@ const std::string &QnnConfig::GetOptions()
 
 const QCNodeConfigBase_t &QnnConfig::Get()
 {
-    return m_pQnnImpl->GetConifg();
+    return m_pQnnImpl->GetConfig();
 }
 
 }   // namespace Node

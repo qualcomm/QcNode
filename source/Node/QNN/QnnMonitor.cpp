@@ -24,7 +24,7 @@ const std::string &QnnMonitor::GetOptions()
 
 const QCNodeMonitoringBase_t &QnnMonitor::Get()
 {
-    return m_pQnnImpl->GetMonitorConifg();
+    return m_pQnnImpl->GetMonitorConfig();
 }
 
 

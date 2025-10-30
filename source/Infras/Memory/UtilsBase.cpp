@@ -97,7 +97,7 @@ UtilsBase::UtilsBase()
 
 UtilsBase::~UtilsBase()
 {
-    (void) (void) QC_LOGGER_DEINIT();
+    (void) QC_LOGGER_DEINIT();
 }
 
 QCStatus_e UtilsBase::MemoryMap( const QCBufferDescriptorBase_t &orig,

@@ -58,7 +58,7 @@ QCStatus_e NodeConfigBase::VerifyAndSet( const std::string config, std::string &
 
         if ( QC_STATUS_OK == status )
         {
-            status = (QCStatus_e) m_logger.Init( name.c_str(), loggerLevel );
+            status = m_logger.Init( name.c_str(), loggerLevel );
             if ( QC_STATUS_OK == status )
             {
                 m_bLoggerInit = true;
@@ -75,7 +75,7 @@ QCStatus_e NodeBase::Init( QCNodeID_t nodeId, Logger_Level_e level )
 {
     QCStatus_e status = QC_STATUS_OK;
     m_nodeId = nodeId;
-    status = (QCStatus_e) m_logger.Init( m_nodeId.name.c_str(), level );
+    status = m_logger.Init( m_nodeId.name.c_str(), level );
     if ( QC_STATUS_BAD_STATE == status )
     { /* logger used by QCNodeConfigBase and already initialized */
         status = QC_STATUS_OK;
@@ -88,7 +88,7 @@ QCStatus_e NodeBase::Init( QCNodeID_t nodeId, Logger_Level_e level )
 QCStatus_e NodeBase::DeInitialize()
 {
     QCStatus_e status = QC_STATUS_OK;
-    status = (QCStatus_e) m_logger.Deinit();
+    status = m_logger.Deinit();
     QC_LOG_DEBUG( "DeInit NodeBase %s(%u) type(%d) status=%d", m_nodeId.name.c_str(), m_nodeId.id,
                   m_nodeId.type, status );
     return status;

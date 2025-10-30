@@ -14,12 +14,13 @@ namespace Node
 {
 
 /** @brief The QCNode QNN Version */
-#define QC_QNN_VERSION_MAJOR 2U
-#define QC_QNN_VERSION_MINOR 0U
-#define QC_QNN_VERSION_PATCH 0U
+#define QCNODE_QNN_VERSION_MAJOR 2U
+#define QCNODE_QNN_VERSION_MINOR 0U
+#define QCNODE_QNN_VERSION_PATCH 1U
 
-#define QC_QNN_VERSION                                                                             \
-    ( ( QC_QNN_VERSION_MAJOR << 12U ) | ( QC_QNN_VERSION_MINOR << 8U ) | QC_QNN_VERSION_PATCH )
+#define QCNODE_QNN_VERSION                                                                         \
+    ( ( QCNODE_QNN_VERSION_MAJOR << 12U ) | ( QCNODE_QNN_VERSION_MINOR << 8U ) |                   \
+      QCNODE_QNN_VERSION_PATCH )
 
 /**
  * @brief Performance metrics for QNN model execution.

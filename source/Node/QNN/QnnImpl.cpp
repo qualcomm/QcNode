@@ -48,14 +48,8 @@ typedef Qnn_ErrorHandle_t ( *QnnInterfaceGetProvidersFn_t )( const QnnInterface_
 typedef Qnn_ErrorHandle_t ( *QnnSystemInterfaceGetProvidersFn_t )(
         const QnnSystemInterface_t ***providerList, uint32_t *numProviders );
 
-#ifndef QCNODE_UNIT_TEST
-#define QC_QNN_LOCAL static
-#else
-#define QC_QNN_LOCAL
-#endif
-
-QC_QNN_LOCAL void QnnLog_Callback( const char *fmt, QnnLog_Level_t logLevel, uint64_t timestamp,
-                                   va_list args )
+void QnnImpl::QnnLog_Callback( const char *fmt, QnnLog_Level_t logLevel, uint64_t timestamp,
+                               va_list args )
 {
 #ifndef DISABLE_QC_LOG
     switch ( logLevel )
@@ -82,7 +76,7 @@ QC_QNN_LOCAL void QnnLog_Callback( const char *fmt, QnnLog_Level_t logLevel, uin
 #endif
 }
 
-QC_QNN_LOCAL size_t memscpy( void *dst, size_t dstSize, const void *src, size_t copySize )
+size_t QnnImpl::memscpy( void *dst, size_t dstSize, const void *src, size_t copySize )
 {
     size_t minSize = 0;
     if ( ( nullptr == dst ) || ( nullptr == src ) || ( 0 == dstSize ) || ( 0 == copySize ) )
@@ -1356,6 +1350,50 @@ QnnImpl::Initialize( QCNodeEventCallBack_t callback,
     QCStatus_e status = QC_STATUS_OK;
     Qnn_ErrorHandle_t retVal;
 
+    QC_TRACE_INIT( [&]() {
+        std::ostringstream oss;
+        std::string processor = "unknown";
+        switch ( m_config.processorType )
+        {
+            case QNN_PROCESSOR_HTP0:
+                processor = "htp0";
+                break;
+            case QNN_PROCESSOR_HTP1:
+                processor = "htp1";
+                break;
+            case QNN_PROCESSOR_HTP2:
+                processor = "htp2";
+                break;
+            case QNN_PROCESSOR_HTP3:
+                processor = "htp3";
+                break;
+            case QNN_PROCESSOR_CPU:
+                processor = "cpu";
+                break;
+            case QNN_PROCESSOR_GPU:
+                processor = "gpu";
+                break;
+            default:
+                break;
+        }
+        oss << "{";
+        oss << "\"name\": \"" << m_nodeId.name << "\", ";
+        oss << "\"processor\": \"" << processor << "\", ";
+        oss << "\"coreIds\": [";
+        for ( size_t i = 0; i < m_config.coreIds.size(); ++i )
+        {
+            oss << m_config.coreIds[i];
+            if ( i != m_config.coreIds.size() - 1 )
+            {
+                oss << ", ";
+            }
+        }
+        oss << "]}";
+        return oss.str();
+    }() );
+
+    QC_TRACE_BEGIN( "Init", {} );
+
     if ( ( QNN_LOAD_CONTEXT_BIN_FROM_BUFFER != m_config.loadType ) &&
          ( true == m_config.modelPath.empty() ) )
     {
@@ -1478,8 +1516,8 @@ QnnImpl::Initialize( QCNodeEventCallBack_t callback,
             QC_ERROR( "Could not get backend version due to error = %" PRIu64, retVal );
             status = QC_STATUS_FAIL;
         }
-        QC_INFO( "QNN node version: %u.%u.%u", QC_QNN_VERSION_MAJOR, QC_QNN_VERSION_MINOR,
-                 QC_QNN_VERSION_PATCH );
+        QC_INFO( "QNN node version: %u.%u.%u", QCNODE_QNN_VERSION_MAJOR, QCNODE_QNN_VERSION_MINOR,
+                 QCNODE_QNN_VERSION_PATCH );
         QC_INFO( "QNN build version: %s", QNN_SDK_BUILD_ID );
         QC_INFO( "QNN running core api version: %u.%u.%u, backend api version: %u.%u.%u",
                  version.coreApiVersion.major, version.coreApiVersion.minor,
@@ -1690,6 +1728,8 @@ QnnImpl::Initialize( QCNodeEventCallBack_t callback,
         (void) Destroy();
     }
 
+    QC_TRACE_END( "Init", {} );
+
     return status;
 }
 
@@ -1784,6 +1824,8 @@ QCStatus_e QnnImpl::RegisterBufferToHTP( const TensorDescriptor_t &tensorDesc,
         if ( it == m_dmaMemInfoMap.end() )
         {
             int fd;
+            QC_TRACE_BEGIN( "Register", { QCNodeTraceArg( "handle", tensorDesc.dmaHandle ),
+                                          QCNodeTraceArg( "size", tensorDesc.size ) } );
             status = RemoteRegisterBuf( tensorDesc, fd );
             if ( QC_STATUS_OK == status )
             {
@@ -1832,6 +1874,7 @@ QCStatus_e QnnImpl::RegisterBufferToHTP( const TensorDescriptor_t &tensorDesc,
                     status = QC_STATUS_FAIL;
                 }
             }
+            QC_TRACE_END( "Register", {} );
         }
         else
         {
@@ -1872,6 +1915,8 @@ QCStatus_e QnnImpl::RegisterTensor( const TensorDescriptor_t &tensorDesc )
 QCStatus_e QnnImpl::Start()
 {
     QCStatus_e status = QC_STATUS_OK;
+
+    QC_TRACE_BEGIN( "Start", {} );
     if ( QC_OBJECT_STATE_READY == m_state )
     {
         m_state = QC_OBJECT_STATE_RUNNING;
@@ -1881,6 +1926,7 @@ QCStatus_e QnnImpl::Start()
         QC_ERROR( "QNN node start failed due to wrong state!" );
         status = QC_STATUS_BAD_STATE;
     }
+    QC_TRACE_END( "Start", {} );
 
     return status;
 }
@@ -1963,6 +2009,10 @@ QCStatus_e QnnImpl::ProcessFrameDescriptor( QCFrameDescriptorNodeIfs &frameDesc 
                     dynamic_cast<const TensorDescriptor_t *>( &bufDesc );
             if ( nullptr != pTensor )
             {
+                QC_TRACE_IF(
+                        0 == i,
+                        QC_TRACE_BEGIN( "Execute", { QCNodeTraceArg( "frameId", pTensor->id ) } ) );
+
                 status = ValidateTensor( *pTensor, m_graphsInfo[0]->inputTensors[i] );
                 if ( QC_STATUS_OK != status )
                 {
@@ -2060,13 +2110,14 @@ QCStatus_e QnnImpl::ProcessFrameDescriptor( QCFrameDescriptorNodeIfs &frameDesc 
             retVal = m_qnnFunctionPointers.qnnInterface.graphExecute(
                     hGraph, m_inputs.data(), m_inputs.size(), m_outputs.data(), m_outputs.size(),
                     m_profileBackendHandle, nullptr );
+            QC_TRACE_END( "Execute", {} );
         }
         else
         {
             pNotifyParam = m_notifyParamQ.Pop();
             if ( nullptr != pNotifyParam )
             {
-                pNotifyParam->self = this;
+                pNotifyParam->pSelf = this;
                 pNotifyParam->pFrameDesc = &frameDesc;
                 retVal = m_qnnFunctionPointers.qnnInterface.graphExecuteAsync(
                         hGraph, m_inputs.data(), m_inputs.size(), m_outputs.data(),
@@ -2085,6 +2136,7 @@ QCStatus_e QnnImpl::ProcessFrameDescriptor( QCFrameDescriptorNodeIfs &frameDesc 
             status = QC_STATUS_FAIL;
         }
     }
+
     return status;
 }
 
@@ -2092,6 +2144,7 @@ QCStatus_e QnnImpl::Stop()
 {
     QCStatus_e status = QC_STATUS_OK;
 
+    QC_TRACE_BEGIN( "Stop", {} );
     if ( ( QC_OBJECT_STATE_RUNNING == m_state ) || ( QC_OBJECT_STATE_ERROR == m_state ) )
     {
         if ( m_config.bDeRegisterAllBuffersWhenStop )
@@ -2105,6 +2158,7 @@ QCStatus_e QnnImpl::Stop()
         QC_ERROR( "QNN node stop failed due to wrong state!" );
         status = QC_STATUS_BAD_STATE;
     }
+    QC_TRACE_END( "Stop", {} );
 
     return status;
 }
@@ -2114,6 +2168,7 @@ QCStatus_e QnnImpl::DeInitialize()
     QCStatus_e status = QC_STATUS_OK;
     Qnn_ErrorHandle_t retVal = QNN_SUCCESS;
 
+    QC_TRACE_BEGIN( "DeInit", {} );
     if ( QC_OBJECT_STATE_READY != m_state )
     {
         QC_ERROR( "QNN node not in ready status!" );
@@ -2124,6 +2179,7 @@ QCStatus_e QnnImpl::DeInitialize()
     {
         status = Destroy();
     }
+    QC_TRACE_END( "DeInit", {} );
 
     return status;
 }
@@ -2506,16 +2562,39 @@ void QnnImpl::QnnNotifyFn( void *pNotifyParam, Qnn_NotifyStatus_t notifyStatus )
 {
     NotifyParam_t *pNotifyParam2 = static_cast<NotifyParam_t *>( pNotifyParam );
 
-    pNotifyParam2->self->QnnNotifyFn( pNotifyParam2, notifyStatus );
+    if ( nullptr != pNotifyParam2 )
+    {
+        if ( QNN_NOTIFY_MAGIC == pNotifyParam2->magic )
+        {
+            if ( nullptr != pNotifyParam2->pSelf )
+            {
+                pNotifyParam2->pSelf->QnnNotifyFn( *pNotifyParam2, notifyStatus );
+            }
+            else
+            {
+                QC_LOG_ERROR( "Qnn Notify param magic number correct but self is nullptr" );
+            }
+        }
+        else
+        {
+            QC_LOG_ERROR( "Qnn Notify param magic number not correct: %" PRIx64,
+                          pNotifyParam2->magic );
+        }
+    }
+    else
+    {
+        QC_LOG_ERROR( "Qnn Notify with nullptr" );
+    }
 }
 
-void QnnImpl::QnnNotifyFn( NotifyParam_t *pNotifyParam, Qnn_NotifyStatus_t notifyStatus )
+void QnnImpl::QnnNotifyFn( NotifyParam_t &notifyParam, Qnn_NotifyStatus_t notifyStatus )
 {
     if ( QNN_SUCCESS == notifyStatus.error )
     {
         if ( m_callback != nullptr )
         {
-            QCFrameDescriptorNodeIfs *pFrameDesc = pNotifyParam->pFrameDesc;
+            QC_TRACE_END( "Execute", {} );
+            QCFrameDescriptorNodeIfs *pFrameDesc = notifyParam.pFrameDesc;
             QCNodeEventInfo_t info( *pFrameDesc, m_nodeId, QC_STATUS_OK, GetState() );
             m_callback( info );
         }
@@ -2528,7 +2607,7 @@ void QnnImpl::QnnNotifyFn( NotifyParam_t *pNotifyParam, Qnn_NotifyStatus_t notif
     {
         if ( m_callback != nullptr )
         {
-            QCFrameDescriptorNodeIfs *pFrameDesc = pNotifyParam->pFrameDesc;
+            QCFrameDescriptorNodeIfs *pFrameDesc = notifyParam.pFrameDesc;
             QCBufferDescriptorBase_t errDesc;
             uint32_t globalBufferId =
                     m_config.globalBufferIdMap[static_cast<size_t>( m_inputTensorNum +
@@ -2554,7 +2633,7 @@ void QnnImpl::QnnNotifyFn( NotifyParam_t *pNotifyParam, Qnn_NotifyStatus_t notif
         }
     }
 
-    m_notifyParamQ.Push( pNotifyParam );
+    m_notifyParamQ.Push( &notifyParam );
 }
 
 
@@ -2868,6 +2947,7 @@ void QnnImpl::NotifyParamQueue::Init()
 
     for ( idx = 0; idx < QNN_NOTIFY_PARAM_NUM; idx++ )
     {
+        notifyParam[idx].magic = QNN_NOTIFY_MAGIC;
         ring[pushIdx % QNN_NOTIFY_PARAM_NUM] = idx;
         pushIdx++;
     }
