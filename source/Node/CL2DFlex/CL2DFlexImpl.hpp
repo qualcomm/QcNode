@@ -12,6 +12,7 @@
 #include <unistd.h>
 
 #include "OpenclIface.hpp"
+#include "QC/Infras/NodeTrace/NodeTrace.hpp"
 #include "QC/Node/CL2DFlex.hpp"
 
 #define QC_CL2DFLEX_ROI_NUMBER_MAX 100 /**<max number of roi parameters for ExecuteWithROI API*/
@@ -84,6 +85,8 @@ private:
 
     uint32_t m_inputNum;
     uint32_t m_outputNum = 1;
+
+    QC_DECLARE_NODETRACE();
 
 };   // class CL2DFlexImpl
 
