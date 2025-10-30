@@ -32,4 +32,6 @@ target_include_directories( QnnInterfaceMock PUBLIC
     ${QNN_SDK_ROOT}/include/QNN
 )
 
+set_target_properties(QnnInterfaceMock PROPERTIES NO_SONAME TRUE)
+
 install(TARGETS QnnInterfaceMock DESTINATION lib)

@@ -15,8 +15,6 @@ extern "C"
 typedef void *( *malloc_fnc_t )( size_t size );
 typedef void *( *calloc_fnc_t )( size_t nitems, size_t size );
 
-static void *s_hDll = nullptr;
-
 static malloc_fnc_t malloc_fnc = nullptr;
 static calloc_fnc_t calloc_fnc = nullptr;
 
@@ -38,16 +36,14 @@ void *malloc( size_t size )
     void *pData = nullptr;
     bool bReturnNull = false;
 
-    if ( nullptr == s_hDll )
+    if ( nullptr == malloc_fnc )
     {
-        s_hDll = dlopen( "libc.so", RTLD_LAZY );
-        malloc_fnc = (malloc_fnc_t) dlsym( s_hDll, "malloc" );
-        calloc_fnc = (calloc_fnc_t) dlsym( s_hDll, "calloc" );
+        malloc_fnc = (malloc_fnc_t) dlsym( RTLD_NEXT, "malloc" );
+        calloc_fnc = (calloc_fnc_t) dlsym( RTLD_NEXT, "calloc" );
     }
 
     if ( s_whenMallocToReturnNull > 0 )
     {
-        printf( "%d call malloc(%llu);\n", s_whenMallocToReturnNull, size );
         s_whenMallocToReturnNull--;
         if ( 0 == s_whenMallocToReturnNull )
         {
@@ -72,16 +68,14 @@ void *calloc( size_t nitems, size_t size )
     void *pData = nullptr;
     bool bReturnNull = false;
 
-    if ( nullptr == s_hDll )
+    if ( nullptr == malloc_fnc )
     {
-        s_hDll = dlopen( "libc.so", RTLD_LAZY );
-        malloc_fnc = (malloc_fnc_t) dlsym( s_hDll, "malloc" );
-        calloc_fnc = (calloc_fnc_t) dlsym( s_hDll, "calloc" );
+        malloc_fnc = (malloc_fnc_t) dlsym( RTLD_NEXT, "malloc" );
+        calloc_fnc = (calloc_fnc_t) dlsym( RTLD_NEXT, "calloc" );
     }
 
     if ( s_whenCallocToReturnNull > 0 )
     {
-        printf( "%d call calloc(%llu, %llu);\n", s_whenCallocToReturnNull, nitems, size );
         s_whenCallocToReturnNull--;
         if ( 0 == s_whenCallocToReturnNull )
         {

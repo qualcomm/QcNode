@@ -16,9 +16,7 @@ add_library( QnnSdkLibForTest STATIC
     ${PROJECT_SOURCE_DIR}/source/Node/QNN/QnnImpl.cpp
 )
 
-add_executable( gtest_NodeQnn gtest_NodeQnn.cpp 
-        MockCLib.cpp
-)
+add_executable( gtest_NodeQnn gtest_NodeQnn.cpp )
 
 if( DEFINED ENV{QNN_SDK_ROOT} )
     set( QNN_SDK_ROOT $ENV{QNN_SDK_ROOT} )
@@ -45,6 +43,6 @@ target_compile_definitions( QnnSdkLibForTest PRIVATE QCNODE_UNIT_TEST DISABLE_QC
 target_link_libraries( QnnSdkLibForTest QCNodeBase cdsprpc )
 
 target_compile_definitions( gtest_NodeQnn PUBLIC QCNODE_UNIT_TEST )
-target_link_libraries( gtest_NodeQnn gtest QnnSdkLibForTest QCNodeTestUtils BufferManager )
+target_link_libraries( gtest_NodeQnn gtest QnnSdkLibForTest QCNodeTestMockCLib QCNodeTestUtils BufferManager )
 install(TARGETS gtest_NodeQnn DESTINATION bin)
 

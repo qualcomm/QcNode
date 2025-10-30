@@ -2984,7 +2984,7 @@ TEST_F( QnnTest, GetQnnSystemFunctionPointersDllOpenFailed )
 
 TEST_F( QnnTest, MockQnnInterface )
 {
-    MockApi_ControlFnc_t MockApi_ControlFnc = MockQnn_GetControlFnc( "lib/libQnnHtp.so" );
+    MockApi_ControlFnc_t MockApi_ControlFnc = MockQnn_GetControlFnc( "libQnnHtp.so" );
     ASSERT_NE( MockApi_ControlFnc, nullptr );
     Qnn_ErrorHandle_t qnErrHandle = QNN_MIN_ERROR_COMMON;
     MockApi_ControlFnc( MOCK_API_QNN_GET_INTERFACE_PROVIDER, MOCK_CONTROL_API_RETURN,
