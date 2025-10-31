@@ -48,6 +48,7 @@ private:
 
 private:
     QC::Node::Voxelization m_voxel;
+    DataTree m_voxelConfig;
     DataTree m_config;
     DataTree m_dataTree;
     QCProcessorType_e m_processor;
@@ -58,8 +59,14 @@ private:
     std::string m_outputTopicName;
 
     std::thread m_thread;
-    SharedBufferPool m_coordsPool;
-    SharedBufferPool m_featuresPool;
+
+    SharedBufferPool m_outputPlrBufferPool;
+    SharedBufferPool m_outputFeatureBufferPool;
+    TensorDescriptor_t m_plrPointsTensor;
+    TensorDescriptor_t m_coordToPlrIdxTensor;
+
+    BufferManager *m_pBufMgr = nullptr;
+
     bool m_stop;
 
     DataSubscriber<DataFrames_t> m_sub;

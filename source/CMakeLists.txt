@@ -36,7 +36,6 @@ if ( ENABLE_FADAS )
   list( APPEND TARGET_LIBRARIES
             QCNodeRemap
             QCNodeVoxelization
-            QCNodeNodeVoxelization
   )
 endif()
 

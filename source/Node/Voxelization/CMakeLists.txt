@@ -1,8 +1,3 @@
-if( NOT TARGET QCNodeVoxelization )
-    message( STATUS "build without Voxelization" )
-    return()
-endif()
-
 set( HEADERS_DIR ${PROJECT_SOURCE_DIR}/include )
 
 set( QC_NODE_VOXELIZATION_HEADERS
@@ -11,19 +6,22 @@ set( QC_NODE_VOXELIZATION_HEADERS
 
 set( QC_NODE_VOXELIZATION_SOURCES
     Voxelization.cpp
+    VoxelizationImpl.cpp
+    VoxelizationConfig.cpp
+    VoxelizationMonitor.cpp
 )
 
-set( TARGET_LIBRARIES QCNodeVoxelization QCNodeBase )
+set( TARGET_LIBRARIES QCNodeBase )
 
-add_library( QCNodeNodeVoxelization OBJECT ${QC_NODE_VOXELIZATION_SOURCES} )
+list( APPEND TARGET_LIBRARIES FadasIface OpenclIface )
+list( APPEND HEADERS_DIR ${PROJECT_SOURCE_DIR}/source/Library/OpenclIface )
+add_library( QCNodeVoxelization OBJECT ${QC_NODE_VOXELIZATION_SOURCES} )
 
-set_property( TARGET QCNodeNodeVoxelization PROPERTY LINKER_LANGUAGE CXX )
-set_property( TARGET QCNodeNodeVoxelization PROPERTY POSITION_INDEPENDENT_CODE ON )
+set_property( TARGET QCNodeVoxelization PROPERTY LINKER_LANGUAGE CXX )
+set_property( TARGET QCNodeVoxelization PROPERTY POSITION_INDEPENDENT_CODE ON )
 
-target_include_directories( QCNodeNodeVoxelization PUBLIC ${HEADERS_DIR} )
+target_include_directories( QCNodeVoxelization PUBLIC ${HEADERS_DIR} )
 
-target_link_libraries( QCNodeNodeVoxelization PUBLIC ${TARGET_LIBRARIES} )
+target_link_libraries( QCNodeVoxelization PUBLIC ${TARGET_LIBRARIES} )
 
 install( FILES ${QC_NODE_VOXELIZATION_HEADERS} DESTINATION include/QC/Node )
-
-

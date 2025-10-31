@@ -163,132 +163,237 @@ QCStatus_e FadasPlrPreProc::CreatePreProc()
     return ret;
 }
 
-QCStatus_e FadasPlrPreProc::PointPillarRunCPU( const QCSharedBuffer_t *pInPts,
-                                               const QCSharedBuffer_t *pOutPlrs,
-                                               const QCSharedBuffer_t *pOutFeature )
+QCStatus_e FadasPlrPreProc::PointPillarRunCPU( const QCBufferDescriptorBase_t &inputPts,
+                                               const QCBufferDescriptorBase_t &outputPlrs,
+                                               const QCBufferDescriptorBase_t &outputFeature )
+
 {
     QCStatus_e ret = QC_STATUS_OK;
     FadasError_e error;
     int fdPts = -1;
     int fdOutPlrs = -1;
     int fdOutFeature = -1;
+    uint32_t numInputPts = 0;
+    uint32_t numOutputPlrs = 0;
+    void *pInputData = nullptr;
+    void *pOutputPlrData = nullptr;
+    void *pOutputFeatData = nullptr;
 
-    fdPts = RegBuf( pInPts, FADAS_BUF_TYPE_IN );
+    const TensorDescriptor_t *pInputTensor = dynamic_cast<const TensorDescriptor_t *>( &inputPts );
+    const TensorDescriptor_t *pOutputPlrTensor =
+            dynamic_cast<const TensorDescriptor_t *>( &outputPlrs );
+    const TensorDescriptor_t *pOutputFeatTensor =
+            dynamic_cast<const TensorDescriptor_t *>( &outputFeature );
+
+    fdPts = RegBuf( inputPts, FADAS_BUF_TYPE_IN );
     if ( fdPts < 0 )
     {
-        QC_ERROR( "register pInPts buffer fail!" );
         ret = QC_STATUS_INVALID_BUF;
+        QC_ERROR( "register inputPts buffer fail!" );
     }
 
     if ( QC_STATUS_OK == ret )
     {
-        fdOutPlrs = RegBuf( pOutPlrs, FADAS_BUF_TYPE_OUT );
+        fdOutPlrs = RegBuf( outputPlrs, FADAS_BUF_TYPE_OUT );
         if ( fdOutPlrs < 0 )
         {
-            QC_ERROR( "register pOutPlrs buffer fail!" );
             ret = QC_STATUS_INVALID_BUF;
+            QC_ERROR( "register outputPlrs buffer fail!" );
         }
     }
 
     if ( QC_STATUS_OK == ret )
     {
-        fdOutFeature = RegBuf( pOutFeature, FADAS_BUF_TYPE_OUT );
+        fdOutFeature = RegBuf( outputFeature, FADAS_BUF_TYPE_OUT );
         if ( fdOutFeature < 0 )
         {
-            QC_ERROR( "register pOutFeature buffer fail!" );
             ret = QC_STATUS_INVALID_BUF;
+            QC_ERROR( "register outputFeature buffer fail!" );
         }
     }
 
     if ( QC_STATUS_OK == ret )
     {
-        uint32_t numOutPlrs = 0;
-        uint32_t numPts = pInPts->tensorProps.dims[0];
-        const float32_t *pInPtsData = (const float32_t *) pInPts->data();
-        FadasVM_PointPillar_t *pOutPlrsData = (FadasVM_PointPillar_t *) pOutPlrs->data();
-        float32_t *pOutFeatureData = (float32_t *) pOutFeature->data();
-        error = FadasVM_PointPillar_Run( m_plrHandler.hHandle, numPts, pInPtsData, pOutPlrsData,
-                                         pOutFeatureData, &numOutPlrs );
+        if ( nullptr == pInputTensor )
+        {
+            ret = QC_STATUS_INVALID_BUF;
+            QC_ERROR( "pointer cast for pInputTensor is invalid" );
+        }
+        else
+        {
+            pInputData = pInputTensor->GetDataPtr();
+            numInputPts = pInputTensor->dims[0];
+        }
+    }
+
+    if ( QC_STATUS_OK == ret )
+    {
+        if ( nullptr == pOutputPlrTensor )
+        {
+            ret = QC_STATUS_INVALID_BUF;
+            QC_ERROR( "pointer cast for pOutputPlrTensor is invalid" );
+        }
+        else
+        {
+            pOutputPlrData = pOutputPlrTensor->GetDataPtr();
+        }
+    }
+
+    if ( QC_STATUS_OK == ret )
+    {
+        if ( nullptr == pOutputFeatTensor )
+        {
+            ret = QC_STATUS_INVALID_BUF;
+            QC_ERROR( "pointer cast for pOutputFeatTensor is invalid" );
+        }
+        else
+        {
+            pOutputFeatData = pOutputFeatTensor->GetDataPtr();
+        }
+    }
+
+    if ( QC_STATUS_OK == ret )
+    {
+        const float32_t *pInputDataFloat = (const float32_t *) pInputData;
+        FadasVM_PointPillar_t *pOutputPlrDataFvm = (FadasVM_PointPillar_t *) pOutputPlrData;
+        float32_t *pOutputFeatDataFloat = (float32_t *) pOutputFeatData;
+        error = FadasVM_PointPillar_Run( m_plrHandler.hHandle, numInputPts, pInputDataFloat,
+                                         pOutputPlrDataFvm, pOutputFeatDataFloat, &numOutputPlrs );
         if ( FADAS_ERROR_NONE != error )
         {
-            QC_ERROR( "CPU PointPillar Run fail: %d!", error );
             ret = QC_STATUS_FAIL;
+            QC_ERROR( "CPU PointPillar Run fail: %d!", error );
         }
     }
 
     return ret;
 }
 
-QCStatus_e FadasPlrPreProc::PointPillarRunDSP( const QCSharedBuffer_t *pInPts,
-                                               const QCSharedBuffer_t *pOutPlrs,
-                                               const QCSharedBuffer_t *pOutFeature )
+QCStatus_e FadasPlrPreProc::PointPillarRunDSP( const QCBufferDescriptorBase_t &inputPts,
+                                               const QCBufferDescriptorBase_t &outputPlrs,
+                                               const QCBufferDescriptorBase_t &outputFeature )
 {
     QCStatus_e ret = QC_STATUS_OK;
-    int32_t fdPts = -1;
-    int32_t fdOutPlrs = -1;
-    int32_t fdOutFeature = -1;
+    FadasError_e error;
+    int fdPts = -1;
+    int fdOutPlrs = -1;
+    int fdOutFeature = -1;
+    uint32_t numInputPts = 0;
+    uint32_t numOutputPlrs = 0;
+    size_t inputOffset = 0;
+    size_t outputPlrOffset = 0;
+    size_t outputFeatOffset = 0;
+    size_t outputPlrSize = 0;
+    size_t outputFeatSize = 0;
 
-    fdPts = RegBuf( pInPts, FADAS_BUF_TYPE_IN );
+    const TensorDescriptor_t *pInputTensor = dynamic_cast<const TensorDescriptor_t *>( &inputPts );
+    const TensorDescriptor_t *pOutputPlrTensor =
+            dynamic_cast<const TensorDescriptor_t *>( &outputPlrs );
+    const TensorDescriptor_t *pOutputFeatTensor =
+            dynamic_cast<const TensorDescriptor_t *>( &outputFeature );
+
+    fdPts = RegBuf( inputPts, FADAS_BUF_TYPE_IN );
     if ( fdPts < 0 )
     {
-        QC_ERROR( "register pInPts buffer fail!" );
         ret = QC_STATUS_INVALID_BUF;
+        QC_ERROR( "register inputPts buffer fail!" );
     }
 
     if ( QC_STATUS_OK == ret )
     {
-        fdOutPlrs = RegBuf( pOutPlrs, FADAS_BUF_TYPE_OUT );
+        fdOutPlrs = RegBuf( outputPlrs, FADAS_BUF_TYPE_OUT );
         if ( fdOutPlrs < 0 )
         {
-            QC_ERROR( "register pOutPlrs buffer fail!" );
             ret = QC_STATUS_INVALID_BUF;
+            QC_ERROR( "register outputPlrs buffer fail!" );
         }
     }
 
     if ( QC_STATUS_OK == ret )
     {
-        fdOutFeature = RegBuf( pOutFeature, FADAS_BUF_TYPE_OUT );
+        fdOutFeature = RegBuf( outputFeature, FADAS_BUF_TYPE_OUT );
         if ( fdOutFeature < 0 )
         {
-            QC_ERROR( "register pOutFeature buffer fail!" );
             ret = QC_STATUS_INVALID_BUF;
+            QC_ERROR( "register outputFeature buffer fail!" );
         }
     }
 
     if ( QC_STATUS_OK == ret )
     {
-        uint32_t numOutPlrs = 0;
-        uint32_t numPts = pInPts->tensorProps.dims[0];
+        if ( nullptr == pInputTensor )
+        {
+            ret = QC_STATUS_INVALID_BUF;
+            QC_ERROR( "pointer cast for pInputTensor is invalid" );
+        }
+        else
+        {
+            inputOffset = pInputTensor->offset;
+            numInputPts = pInputTensor->dims[0];
+        }
+    }
+
+    if ( QC_STATUS_OK == ret )
+    {
+        if ( nullptr == pOutputPlrTensor )
+        {
+            ret = QC_STATUS_INVALID_BUF;
+            QC_ERROR( "pointer cast for pOutputPlrTensor is invalid" );
+        }
+        else
+        {
+            outputPlrOffset = pOutputPlrTensor->offset;
+            outputPlrSize = pOutputPlrTensor->GetDataSize();
+        }
+    }
+
+    if ( QC_STATUS_OK == ret )
+    {
+        const TensorDescriptor_t *pOutputFeatTensor =
+                dynamic_cast<const TensorDescriptor_t *>( &outputFeature );
+        if ( nullptr == pOutputFeatTensor )
+        {
+            ret = QC_STATUS_INVALID_BUF;
+            QC_ERROR( "pointer cast for pOutputFeatTensor is invalid" );
+        }
+        else
+        {
+            outputFeatOffset = pOutputFeatTensor->offset;
+            outputFeatSize = pOutputFeatTensor->GetDataSize();
+        }
+    }
+
+    if ( QC_STATUS_OK == ret )
+    {
         AEEResult result = FadasIface_PointPillarRun(
-                m_handle64, m_plrHandler.handle64, numPts, fdPts, pInPts->offset,
-                (uint32_t) ( numPts * m_numInFeatureDim * (uint32_t) sizeof( float ) ), fdOutPlrs,
-                (uint32_t) ( pOutPlrs->offset ), pOutPlrs->size, fdOutFeature, pOutFeature->offset,
-                pOutFeature->size, &numOutPlrs );
+                m_handle64, m_plrHandler.handle64, numInputPts, fdPts, inputOffset,
+                (uint32_t) ( numInputPts * m_numInFeatureDim * (uint32_t) sizeof( float ) ),
+                fdOutPlrs, (uint32_t) outputPlrOffset, outputPlrSize, fdOutFeature,
+                outputFeatOffset, outputFeatSize, &numOutputPlrs );
         if ( AEE_SUCCESS != result )
         {
-            QC_ERROR( "DSP PointPillar Run fail: 0x%x!", result );
             ret = QC_STATUS_FAIL;
+            QC_ERROR( "DSP PointPillar Run fail: 0x%x!", result );
         }
     }
 
     return ret;
 }
 
-QCStatus_e FadasPlrPreProc::PointPillarRun( const QCSharedBuffer_t *pInPts,
-                                            const QCSharedBuffer_t *pOutPlrs,
-                                            const QCSharedBuffer_t *pOutFeature )
+QCStatus_e FadasPlrPreProc::PointPillarRun( const QCBufferDescriptorBase_t &inputPts,
+                                            const QCBufferDescriptorBase_t &outputPlrs,
+                                            const QCBufferDescriptorBase_t &outputFeature )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
     if ( ( QC_PROCESSOR_HTP0 == m_processor ) || ( QC_PROCESSOR_HTP1 == m_processor ) )
     {
-        ret = PointPillarRunDSP( pInPts, pOutPlrs, pOutFeature );
+        ret = PointPillarRunDSP( inputPts, outputPlrs, outputFeature );
     }
     else
     {
-        ret = PointPillarRunCPU( pInPts, pOutPlrs, pOutFeature );
+        ret = PointPillarRunCPU( inputPts, outputPlrs, outputFeature );
     }
-
 
     return ret;
 }
@@ -306,10 +411,10 @@ QCStatus_e FadasPlrPreProc::DestroyPreProc()
         ret = DestroyPreProcCPU();
     }
 
-
     return ret;
 }
 
 }   // namespace FadasIface
 }   // namespace libs
 }   // namespace QC
+

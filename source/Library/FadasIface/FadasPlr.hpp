@@ -28,18 +28,22 @@ public:
                           uint32_t numOutFeatureDim );
 
     QCStatus_e CreatePreProc();
-    QCStatus_e PointPillarRun( const QCSharedBuffer_t *pInPts, const QCSharedBuffer_t *pOutPlrs,
-                               const QCSharedBuffer_t *pOutFeature );
     QCStatus_e DestroyPreProc();
+
+    QCStatus_e PointPillarRun( const QCBufferDescriptorBase_t &inputPts,
+                               const QCBufferDescriptorBase_t &outputPlrs,
+                               const QCBufferDescriptorBase_t &outputFeature );
 
 private:
     QCStatus_e CreatePreProcCPU();
     QCStatus_e CreatePreProcDSP();
 
-    QCStatus_e PointPillarRunCPU( const QCSharedBuffer_t *pInPts, const QCSharedBuffer_t *pOutPlrs,
-                                  const QCSharedBuffer_t *pOutFeature );
-    QCStatus_e PointPillarRunDSP( const QCSharedBuffer_t *pInPts, const QCSharedBuffer_t *pOutPlrs,
-                                  const QCSharedBuffer_t *pOutFeature );
+    QCStatus_e PointPillarRunCPU( const QCBufferDescriptorBase_t &inputPts,
+                                  const QCBufferDescriptorBase_t &outputPlrs,
+                                  const QCBufferDescriptorBase_t &outputFeature );
+    QCStatus_e PointPillarRunDSP( const QCBufferDescriptorBase_t &inputPts,
+                                  const QCBufferDescriptorBase_t &outputPlrs,
+                                  const QCBufferDescriptorBase_t &outputFeature );
 
     QCStatus_e DestroyPreProcCPU();
     QCStatus_e DestroyPreProcDSP();
@@ -80,3 +84,4 @@ private:
 }   // namespace QC
 
 #endif   // QC_FADAS_PLR_HPP
+
