@@ -353,7 +353,6 @@ QCStatus_e SampleCL2DFlex::Init( std::string name, SampleConfig_t &config )
 
     if ( QC_STATUS_OK == ret )
     {
-        TRACE_ON( GPU );
         ret = ParseConfig( config );
     }
 
@@ -432,7 +431,6 @@ QCStatus_e SampleCL2DFlex::Init( std::string name, SampleConfig_t &config )
 
     if ( QC_STATUS_OK == ret )
     {
-        TRACE_BEGIN( SYSTRACE_TASK_INIT );
         nodeCfg.config = m_dataTree.Dump();
         for ( uint32_t i = 0; i < m_numOfInputs; i++ )
         {
@@ -468,7 +466,6 @@ QCStatus_e SampleCL2DFlex::Init( std::string name, SampleConfig_t &config )
             }
         }
         ret = m_cl2d.Initialize( nodeCfg );
-        TRACE_END( SYSTRACE_TASK_INIT );
     }
 
     if ( QC_STATUS_OK == ret )
@@ -488,9 +485,7 @@ QCStatus_e SampleCL2DFlex::Start()
 {
     QCStatus_e ret = QC_STATUS_OK;
 
-    TRACE_BEGIN( SYSTRACE_TASK_START );
     ret = m_cl2d.Start();
-    TRACE_END( SYSTRACE_TASK_START );
     if ( QC_STATUS_OK == ret )
     {
         m_stop = false;
@@ -516,7 +511,6 @@ void SampleCL2DFlex::ThreadMain()
             if ( nullptr != bufferOutput )
             {
                 PROFILER_BEGIN();
-                TRACE_BEGIN( frames.FrameId( 0 ) );
                 frameDesc.Clear();
                 uint32_t globalIdx = 0;
 
@@ -551,7 +545,6 @@ void SampleCL2DFlex::ThreadMain()
                 if ( QC_STATUS_OK == ret )
                 {
                     PROFILER_END();
-                    TRACE_END( frames.FrameId( 0 ) );
                     DataFrames_t outFrames;
                     DataFrame_t frame;
                     frame.buffer = bufferOutput;
@@ -580,9 +573,7 @@ QCStatus_e SampleCL2DFlex::Stop()
         m_thread.join();
     }
 
-    TRACE_BEGIN( SYSTRACE_TASK_STOP );
     ret = m_cl2d.Stop();
-    TRACE_END( SYSTRACE_TASK_STOP );
     PROFILER_SHOW();
 
     return ret;
@@ -592,9 +583,7 @@ QCStatus_e SampleCL2DFlex::Deinit()
 {
     QCStatus_e ret = QC_STATUS_OK;
 
-    TRACE_BEGIN( SYSTRACE_TASK_DEINIT );
     ret = m_cl2d.DeInitialize();
-    TRACE_END( SYSTRACE_TASK_DEINIT );
 
     BufferManager::Put( m_pBufMgr );
     m_pBufMgr = nullptr;

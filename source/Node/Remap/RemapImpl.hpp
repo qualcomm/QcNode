@@ -11,7 +11,9 @@
 #include <memory>
 #include <unistd.h>
 
+#include "QC/Infras/NodeTrace/NodeTrace.hpp"
 #include "QC/Node/Remap.hpp"
+
 
 namespace QC
 {
@@ -74,6 +76,8 @@ private:
     RemapImplConfig_t m_config;
     QCObjectState_e m_state;
     FadasRemap m_fadasRemapObj;
+
+    QC_DECLARE_NODETRACE();
 
 };   // class RemapImpl
 

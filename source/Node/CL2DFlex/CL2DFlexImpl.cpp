@@ -23,6 +23,7 @@ QCStatus_e CL2DFlexImpl::Start()
 {
     QCStatus_e status = QC_STATUS_OK;
 
+    QC_TRACE_BEGIN( "Start", {} );
     if ( QC_OBJECT_STATE_READY == m_state )
     {
         m_state = QC_OBJECT_STATE_RUNNING;
@@ -32,6 +33,7 @@ QCStatus_e CL2DFlexImpl::Start()
         QC_ERROR( "CL2DFlex node start failed due to wrong state!" );
         status = QC_STATUS_BAD_STATE;
     }
+    QC_TRACE_END( "Start", {} );
 
     return status;
 }
@@ -40,6 +42,7 @@ QCStatus_e CL2DFlexImpl::Stop()
 {
     QCStatus_e status = QC_STATUS_OK;
 
+    QC_TRACE_BEGIN( "Stop", {} );
     if ( QC_OBJECT_STATE_RUNNING == m_state )
     {
         m_state = QC_OBJECT_STATE_READY;
@@ -49,6 +52,7 @@ QCStatus_e CL2DFlexImpl::Stop()
         QC_ERROR( "CL2DFlex node stop failed due to wrong state!" );
         status = QC_STATUS_BAD_STATE;
     }
+    QC_TRACE_END( "Stop", {} );
 
     return status;
 }
@@ -58,6 +62,18 @@ CL2DFlexImpl::Initialize( std::vector<std::reference_wrapper<QCBufferDescriptorB
 {
     QCStatus_e status = QC_STATUS_OK;
 
+
+    QC_TRACE_INIT( [&]() {
+        std::ostringstream oss;
+        oss << "{";
+        oss << "\"name\": \"" << m_nodeId.name << "\", ";
+        oss << "\"processor\": \"" << "gpu" << "\", ";
+        oss << "\"coreIds\": [0]";
+        oss << "}";
+        return oss.str();
+    }() );
+
+    QC_TRACE_BEGIN( "Init", {} );
     if ( QC_OBJECT_STATE_INITIAL != m_state )
     {
         QC_ERROR( "CL2DFlex not in initial state!" );
@@ -176,6 +192,7 @@ CL2DFlexImpl::Initialize( std::vector<std::reference_wrapper<QCBufferDescriptorB
             m_state = QC_OBJECT_STATE_READY;
         }
     }
+    QC_TRACE_END( "Init", {} );
 
     return status;
 }
@@ -185,6 +202,7 @@ QCStatus_e CL2DFlexImpl::DeInitialize()
     QCStatus_e status = QC_STATUS_OK;
     QCStatus_e status2;
 
+    QC_TRACE_BEGIN( "DeInit", {} );
     if ( QC_OBJECT_STATE_READY != m_state )
     {
         QC_ERROR( "CL2DFlex node not in ready status!" );
@@ -214,6 +232,7 @@ QCStatus_e CL2DFlexImpl::DeInitialize()
             }
         }
     }
+    QC_TRACE_END( "DeInit", {} );
 
     return status;
 }
@@ -221,6 +240,7 @@ QCStatus_e CL2DFlexImpl::DeInitialize()
 QCStatus_e CL2DFlexImpl::ProcessFrameDescriptor( QCFrameDescriptorNodeIfs &frameDesc )
 {
     QCStatus_e status = QC_STATUS_OK;
+
     if ( QC_OBJECT_STATE_RUNNING != m_state )
     {
         QC_ERROR( "CL2DFlex node not in running status!" );
@@ -284,8 +304,11 @@ QCStatus_e CL2DFlexImpl::ProcessFrameDescriptor( QCFrameDescriptorNodeIfs &frame
                         }
                         else
                         {
+                            QC_TRACE_BEGIN( "Execute",
+                                            { QCNodeTraceArg( "frameId", inputBufDesc.id ) } );
                             status = m_pCL2DPipeline[inputId]->Execute( inputBufDesc,
                                                                         outputBufDesc );
+                            QC_TRACE_END( "Execute", {} );
                         }
                     }
                     if ( QC_STATUS_OK != status )
