@@ -3,6 +3,7 @@
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 #include "QC/Node/Voxelization.hpp"
+#include "QC/sample/BufferManager.hpp"
 #include "gtest/gtest.h"
 
 #include <chrono>
@@ -10,10 +11,13 @@
 #include <iostream>
 #include <string>
 
-using namespace QC::Node;
 using namespace QC;
+using namespace QC::Node;
+using namespace QC::sample;
 
 #define EXPAND_JSON( ... ) #__VA_ARGS__
+
+extern const size_t VOXELIZATION_PILLAR_COORDS_DIM;
 
 std::string g_Config_XYZR = EXPAND_JSON( {
     "static": {
@@ -34,9 +38,10 @@ std::string g_Config_XYZR = EXPAND_JSON( {
         "maxPointNumPerPlr": 32,
         "inputMode": "xyzr",
         "outputFeatureDimNum": 10,
-        "inputBufferIds": [0, 1, 2, 3],
-        "outputPlrBufferIds": [4, 5, 6, 7],
-        "outputFeatureBufferIds": [8, 9, 10, 11]
+        "outputPlrBufferIds": [0, 1, 2, 3],
+        "outputFeatureBufferIds": [4, 5, 6, 7],
+        "plrPointsBufferId": 8,
+        "coordToPlrIdxBufferId": 9
     }
 } );
 
@@ -59,15 +64,12 @@ std::string g_Config_XYZRT = EXPAND_JSON( {
         "maxPointNumPerPlr": 32,
         "inputMode": "xyzrt",
         "outputFeatureDimNum": 10,
-        "inputBufferIds": [0, 1, 2, 3],
-        "outputPlrBufferIds": [4, 5, 6, 7],
-        "outputFeatureBufferIds": [8, 9, 10, 11]
+        "outputPlrBufferIds": [0, 1, 2, 3],
+        "outputFeatureBufferIds": [4, 5, 6, 7],
+        "plrPointsBufferId": 8,
+        "coordToPlrIdxBufferId": 9
     }
 } );
-
-QCSharedBufferDescriptor_t g_inputBuffers[QC_MAX_INPUTS];
-QCSharedBufferDescriptor_t g_outputPlrBuffers[QC_MAX_INPUTS];
-QCSharedBufferDescriptor_t g_outputFeatureBuffers[QC_MAX_INPUTS];
 
 static void RandomGenPoints( float *pVoxels, uint32_t numPts )
 {
@@ -121,28 +123,44 @@ static void SANITY_Voxelization( std::string &jsonStr, std::string &processorTyp
     DataTree staticCfg;
     QCNodeInit_t config;
     std::string errors;
+    uint32_t globalIdx = 0;
 
+    float Xsize = 0;
+    float Ysize = 0;
+    float Zsize = 0;
+    float Xmin = 0;
+    float Ymin = 0;
+    float Zmin = 0;
+    float Xmax = 0;
+    float Ymax = 0;
+    float Zmax = 0;
     uint32_t maxPointNum = 0;
     uint32_t maxPlrNum = 0;
     uint32_t maxPointNumPerPlr = 0;
     uint32_t inputFeatureDimNum = 0;
     uint32_t outputFeatureDimNum = 0;
+    uint32_t plrPointsBufferId = 0;
+    uint32_t coordToPlrIdxBufferId = 0;
+    uint32_t gridXSize = 0;
+    uint32_t gridYSize = 0;
+    QCProcessorType_e processor;
 
-    std::vector<uint32_t> inputBufferIds;
     std::vector<uint32_t> outputPlrBufferIds;
     std::vector<uint32_t> outputFeatureBufferIds;
 
-    QCTensorProps_t inputTensorProp;
-    QCTensorProps_t outputPlrTensorProp;
-    QCTensorProps_t outputFeatureTensorProp;
+    TensorDescriptor_t inputTensor;
+    TensorDescriptor_t outputPlrTensor;
+    TensorDescriptor_t outputFeatureTensor;
+    TensorDescriptor_t plrPointsTensor;
+    TensorDescriptor_t coordToPlrIdxTensor;
 
-    uint32_t inputBufferId = 0;
-    uint32_t outputPlrBufferId = 6;
-    uint32_t outputFeatureBufferId = 9;
+    TensorProps_t inputTensorProp;
+    TensorProps_t outputPlrTensorProp;
+    TensorProps_t outputFeatureTensorProp;
+    TensorProps_t plrPointsTensorProp;
+    TensorProps_t coordToPlrIdxTensorProp;
 
-    std::vector<QCSharedBufferDescriptor_t> inputBuffers;
-    std::vector<QCSharedBufferDescriptor_t> outputPlrBuffers;
-    std::vector<QCSharedBufferDescriptor_t> outputFeatureBuffers;
+    BufferManager bufMgr = BufferManager( { "VOXEL", QC_NODE_TYPE_VOXEL, 0 } );
 
     QC::Node::Voxelization voxel;
 
@@ -160,15 +178,26 @@ static void SANITY_Voxelization( std::string &jsonStr, std::string &processorTyp
 
     if ( QC_STATUS_OK == ret )
     {
+        Xsize = staticCfg.Get<float>( "Xsize", 0 );
+        Ysize = staticCfg.Get<float>( "Ysize", 0 );
+        Zsize = staticCfg.Get<float>( "Zsize", 0 );
+        Xmin = staticCfg.Get<float>( "Xmin", 0 );
+        Ymin = staticCfg.Get<float>( "Ymin", 0 );
+        Zmin = staticCfg.Get<float>( "Zmin", 0 );
+        Xmax = staticCfg.Get<float>( "Xmax", 0 );
+        Ymax = staticCfg.Get<float>( "Ymax", 0 );
+        Zmax = staticCfg.Get<float>( "Zmax", 0 );
         maxPointNum = staticCfg.Get<uint32_t>( "maxPointNum", 0 );
         maxPlrNum = staticCfg.Get<uint32_t>( "maxPlrNum", 0 );
         maxPointNumPerPlr = staticCfg.Get<uint32_t>( "maxPointNumPerPlr", 0 );
         outputFeatureDimNum = staticCfg.Get<uint32_t>( "outputFeatureDimNum", 0 );
-        inputBufferIds = staticCfg.Get<uint32_t>( "inputBufferIds", std::vector<uint32_t>{} );
         outputPlrBufferIds =
                 staticCfg.Get<uint32_t>( "outputPlrBufferIds", std::vector<uint32_t>{} );
         outputFeatureBufferIds =
                 staticCfg.Get<uint32_t>( "outputFeatureBufferIds", std::vector<uint32_t>{} );
+        plrPointsBufferId = staticCfg.Get<uint32_t>( "plrPointsBufferId", 0 );
+        coordToPlrIdxBufferId = staticCfg.Get<uint32_t>( "coordToPlrIdxBufferId", 0 );
+        processor = staticCfg.GetProcessorType( "processorType", QC_PROCESSOR_HTP0 );
     }
 
     if ( QC_STATUS_OK == ret )
@@ -188,97 +217,119 @@ static void SANITY_Voxelization( std::string &jsonStr, std::string &processorTyp
 
     if ( ( maxPointNum > 0 ) && ( inputFeatureDimNum > 0 ) )
     {
-        inputTensorProp = {
-                QC_TENSOR_TYPE_FLOAT_32,
-                { maxPointNum, inputFeatureDimNum, 0 },
-                2,
-        };
+        inputTensorProp.tensorType = QC_TENSOR_TYPE_FLOAT_32;
+        inputTensorProp.dims[0] = maxPointNum;
+        inputTensorProp.dims[1] = inputFeatureDimNum;
+        inputTensorProp.dims[2] = 0;
+        inputTensorProp.numDims = 2;
     }
 
     if ( ( maxPlrNum > 0 ) && ( maxPointNumPerPlr > 0 ) && ( outputFeatureDimNum > 0 ) )
     {
         if ( inputMode == "xyzrt" )
         {
-            outputPlrTensorProp = {
-                    QC_TENSOR_TYPE_INT_32,
-                    { maxPlrNum, 2, 0 },
-                    2,
-            };
+            outputPlrTensorProp.tensorType = QC_TENSOR_TYPE_INT_32;
+            outputPlrTensorProp.dims[0] = maxPlrNum;
+            outputPlrTensorProp.dims[1] = 2;
+            outputPlrTensorProp.dims[2] = 0;
+            outputPlrTensorProp.numDims = 2;
         }
         else
         {
-            outputPlrTensorProp = {
-                    QC_TENSOR_TYPE_FLOAT_32,
-                    { maxPlrNum, VOXELIZATION_PILLAR_COORDS_DIM, 0 },
-                    2,
-            };
+            outputPlrTensorProp.tensorType = QC_TENSOR_TYPE_FLOAT_32;
+            outputPlrTensorProp.dims[0] = maxPlrNum;
+            outputPlrTensorProp.dims[1] = VOXELIZATION_PILLAR_COORDS_DIM;
+            outputPlrTensorProp.dims[2] = 0;
+            outputPlrTensorProp.numDims = 2;
         }
 
-        outputFeatureTensorProp = {
-                QC_TENSOR_TYPE_FLOAT_32,
-                { maxPlrNum, maxPointNumPerPlr, outputFeatureDimNum, 0 },
-                3,
-        };
+        outputFeatureTensorProp.tensorType = QC_TENSOR_TYPE_FLOAT_32;
+        outputFeatureTensorProp.dims[0] = maxPlrNum;
+        outputFeatureTensorProp.dims[1] = maxPointNumPerPlr;
+        outputFeatureTensorProp.dims[2] = outputFeatureDimNum;
+        outputFeatureTensorProp.dims[3] = 0;
+        outputFeatureTensorProp.numDims = 3;
+
+        size_t gridXSize = ceil( ( Xmax - Xmin ) / Xsize );
+        size_t gridYSize = ceil( ( Ymax - Ymin ) / Ysize );
+
+        plrPointsTensorProp.tensorType = QC_TENSOR_TYPE_INT_32;
+        plrPointsTensorProp.dims[0] = maxPlrNum + 1;
+        plrPointsTensorProp.dims[1] = 0;
+        plrPointsTensorProp.numDims = 1;
+
+        coordToPlrIdxTensorProp.tensorType = QC_TENSOR_TYPE_INT_32;
+        coordToPlrIdxTensorProp.dims[0] = (uint32_t) ( gridXSize * gridYSize * 2 );
+        coordToPlrIdxTensorProp.dims[1] = 0;
+        coordToPlrIdxTensorProp.numDims = 1;
     }
 
-    const uint32_t inputBufferNum = inputBufferIds.size();
+    const uint32_t inputBufferNum = 4;
     const uint32_t outputPlrBufferNum = outputPlrBufferIds.size();
     const uint32_t outputFeatureBufferNum = outputFeatureBufferIds.size();
-    const uint32_t bufferNum = inputBufferNum + outputPlrBufferNum + outputFeatureBufferNum;
-    QCSharedBufferDescriptor_t sharedBuffers[bufferNum];
+
+    TensorDescriptor_t inputTensors[inputBufferNum];
+    TensorDescriptor_t outputPlrTensors[outputPlrBufferNum];
+    TensorDescriptor_t outputFeatureTensors[outputFeatureBufferNum];
+
     QCSharedFrameDescriptorNode frameDesc( 3 );
 
     for ( uint32_t i = 0; i < inputBufferNum; i++ )
     {
-        uint32_t bufferIdx = inputBufferIds[i];
-        ret = sharedBuffers[bufferIdx].buffer.Allocate( &inputTensorProp );
+        ret = bufMgr.Allocate( inputTensorProp, inputTensors[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
 
-        if ( bufferIdx == inputBufferId )
+        uint32_t numPts = 0;
+        if ( nullptr == pcdFile )
         {
-            uint32_t numPts = 0;
             if ( nullptr == pcdFile )
             {
-                numPts = ( maxPointNum / 3 ) + rand() % ( 2 * maxPointNum / 3 );
-                RandomGenPoints( (float *) sharedBuffers[bufferIdx].buffer.data(), numPts );
+                std::cout << "point cloud file is not provided " << std::endl;
             }
-            else
-            {
-                LoadPoints( sharedBuffers[bufferIdx].buffer.data(),
-                            sharedBuffers[bufferIdx].buffer.size, numPts, pcdFile );
-            }
-            sharedBuffers[bufferIdx].buffer.tensorProps.dims[0] = numPts;
-            ASSERT_EQ( QC_STATUS_OK, ret );
         }
-
-        config.buffers.push_back( sharedBuffers[bufferIdx] );
+        else
+        {
+            LoadPoints( inputTensors[i].pBuf, inputTensors[i].size, numPts, pcdFile );
+            std::cout << "using point cloud file: " << pcdFile << std::endl;
+        }
+        inputTensors[i].dims[0] = numPts;
     }
 
     for ( uint32_t i = 0; i < outputPlrBufferNum; i++ )
     {
-        uint32_t bufferIdx = outputPlrBufferIds[i];
-        ret = sharedBuffers[bufferIdx].buffer.Allocate( &outputPlrTensorProp );
+        ret = bufMgr.Allocate( outputPlrTensorProp, outputPlrTensors[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
 
-        config.buffers.push_back( sharedBuffers[bufferIdx] );
+        config.buffers.push_back( outputPlrTensors[i] );
     }
 
     for ( uint32_t i = 0; i < outputFeatureBufferNum; i++ )
     {
-        uint32_t bufferIdx = outputFeatureBufferIds[i];
-        ret = sharedBuffers[bufferIdx].buffer.Allocate( &outputFeatureTensorProp );
+        ret = bufMgr.Allocate( outputFeatureTensorProp, outputFeatureTensors[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
 
-        config.buffers.push_back( sharedBuffers[bufferIdx] );
+        config.buffers.push_back( outputFeatureTensors[i] );
     }
 
-    ret = frameDesc.SetBuffer( 0, sharedBuffers[inputBufferId] );
+    if ( QC_PROCESSOR_GPU == processor )
+    {
+        ret = bufMgr.Allocate( plrPointsTensorProp, plrPointsTensor );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+
+        ret = bufMgr.Allocate( coordToPlrIdxTensorProp, coordToPlrIdxTensor );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+
+        config.buffers.push_back( plrPointsTensor );
+        config.buffers.push_back( coordToPlrIdxTensor );
+    }
+
+    ret = frameDesc.SetBuffer( 0, inputTensors[0] );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
-    ret = frameDesc.SetBuffer( 1, sharedBuffers[outputPlrBufferId] );
+    ret = frameDesc.SetBuffer( 1, outputPlrTensors[0] );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
-    ret = frameDesc.SetBuffer( 2, sharedBuffers[outputFeatureBufferId] );
+    ret = frameDesc.SetBuffer( 2, outputFeatureTensors[0] );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = voxel.Initialize( config );
@@ -298,22 +349,28 @@ static void SANITY_Voxelization( std::string &jsonStr, std::string &processorTyp
 
     for ( uint32_t i = 0; i < inputBufferNum; i++ )
     {
-        uint32_t bufferIdx = inputBufferIds[i];
-        ret = sharedBuffers[bufferIdx].buffer.Free();
+        ret = bufMgr.Free( inputTensors[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
 
     for ( uint32_t i = 0; i < outputPlrBufferNum; i++ )
     {
-        uint32_t bufferIdx = outputPlrBufferIds[i];
-        ret = sharedBuffers[bufferIdx].buffer.Free();
+        ret = bufMgr.Free( outputPlrTensors[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
 
-    for ( uint32_t i = 0; i < outputPlrBufferNum; i++ )
+    for ( uint32_t i = 0; i < outputFeatureBufferNum; i++ )
     {
-        uint32_t bufferIdx = outputFeatureBufferIds[i];
-        ret = sharedBuffers[bufferIdx].buffer.Free();
+        ret = bufMgr.Free( outputFeatureTensors[i] );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+    }
+
+    if ( QC_PROCESSOR_GPU == processor )
+    {
+        ret = bufMgr.Free( coordToPlrIdxTensor );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+
+        ret = bufMgr.Free( plrPointsTensor );
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
 }
@@ -322,9 +379,7 @@ TEST( FadasPlr, SANITY_VoxelizationCPU_XYZR )
 {
     std::string processorType = "cpu";
     std::string inputMode = "xyzr";
-    const char *pcdFile = "./data/test/pointpillar/pointcloud.bin";
-
-    SANITY_Voxelization( g_Config_XYZR, processorType, inputMode );
+    const char *pcdFile = "./data/test/voxelization/pointcloud.bin";
     SANITY_Voxelization( g_Config_XYZR, processorType, inputMode, pcdFile );
 }
 
@@ -332,29 +387,7 @@ TEST( FadasPlr, SANITY_VoxelizationGPU_XYZR )
 {
     std::string processorType = "gpu";
     std::string inputMode = "xyzr";
-    const char *pcdFile = "./data/test/pointpillar/pointcloud.bin";
-
-    SANITY_Voxelization( g_Config_XYZR, processorType, inputMode );
-    SANITY_Voxelization( g_Config_XYZR, processorType, inputMode, pcdFile );
-}
-
-TEST( FadasPlr, SANITY_VoxelizationHTP0_XYZR )
-{
-    std::string processorType = "htp0";
-    std::string inputMode = "xyzr";
-    const char *pcdFile = "./data/test/pointpillar/pointcloud.bin";
-
-    SANITY_Voxelization( g_Config_XYZR, processorType, inputMode );
-    SANITY_Voxelization( g_Config_XYZR, processorType, inputMode, pcdFile );
-}
-
-TEST( FadasPlr, SANITY_VoxelizationHTP1_XYZR )
-{
-    std::string processorType = "htp1";
-    std::string inputMode = "xyzr";
-    const char *pcdFile = "./data/test/pointpillar/pointcloud.bin";
-
-    SANITY_Voxelization( g_Config_XYZR, processorType, inputMode );
+    const char *pcdFile = "./data/test/voxelization/pointcloud.bin";
     SANITY_Voxelization( g_Config_XYZR, processorType, inputMode, pcdFile );
 }
 
@@ -362,12 +395,25 @@ TEST( FadasPlr, SANITY_VoxelizationGPU_XYZRT )
 {
     std::string processorType = "gpu";
     std::string inputMode = "xyzrt";
-    const char *pcdFile = "./data/test/pointpillar/pointcloud_XYZRT.bin";
-
-    SANITY_Voxelization( g_Config_XYZRT, processorType, inputMode );
+    const char *pcdFile = "./data/test/voxelization/pointcloud_XYZRT.bin";
     SANITY_Voxelization( g_Config_XYZRT, processorType, inputMode, pcdFile );
 }
 
+TEST( FadasPlr, SANITY_VoxelizationHTP0_XYZR )
+{
+    std::string processorType = "htp0";
+    std::string inputMode = "xyzr";
+    const char *pcdFile = "./data/test/voxelization/pointcloud.bin";
+    // SANITY_Voxelization( g_Config_XYZR, processorType, inputMode, pcdFile );
+}
+
+TEST( FadasPlr, SANITY_VoxelizationHTP1_XYZR )
+{
+    std::string processorType = "htp1";
+    std::string inputMode = "xyzr";
+    const char *pcdFile = "./data/test/voxelization/pointcloud.bin";
+    // SANITY_Voxelization( g_Config_XYZR, processorType, inputMode, pcdFile );
+}
 
 #ifndef GTEST_QCNODE
 int main( int argc, char **argv )

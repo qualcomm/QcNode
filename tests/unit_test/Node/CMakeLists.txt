@@ -6,7 +6,7 @@ add_subdirectory(Camera)
 add_subdirectory(VideoEncoder)
 if ( ENABLE_FADAS )
 add_subdirectory(Remap)
-add_subdirectory(PointPillar)
+add_subdirectory(Voxelization)
 endif()
 
 if ( ENABLE_RADAR AND NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" )

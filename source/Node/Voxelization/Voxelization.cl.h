@@ -232,3 +232,4 @@ static const char *s_pSourceVoxelization = KernelCode(
         } );
 
 #endif   // QC_VOXELIZATION_CLH
+

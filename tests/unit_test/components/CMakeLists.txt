@@ -9,10 +9,6 @@ if( ENABLE_DEMUXER )
     add_subdirectory(VideoDecoder)
 endif()
 
-if ( ENABLE_FADAS )
-  add_subdirectory(PointPillar)
-endif()
-
 if ( ENABLE_RADAR AND NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" )
   add_subdirectory(Radar)
 endif()
