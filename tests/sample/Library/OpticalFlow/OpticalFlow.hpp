@@ -2,8 +2,8 @@
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
-#ifndef QC_OPTICALFLOW_HPP
-#define QC_OPTICALFLOW_HPP
+#ifndef QC_SAMPLE_OPTICALFLOW_HPP
+#define QC_SAMPLE_OPTICALFLOW_HPP
 
 #include <cinttypes>
 #include <inttypes.h>
@@ -11,7 +11,9 @@
 #include <memory>
 #include <unistd.h>
 
-#include "QC/component/ComponentIF.hpp"
+#include "QC/Infras/Log/Logger.hpp"
+#include "QC/Infras/Memory/ImageDescriptor.hpp"
+#include "QC/Infras/Memory/TensorDescriptor.hpp"
 
 #include <eva_mem.h>
 #include <eva_of.h>
@@ -20,8 +22,10 @@
 
 namespace QC
 {
-namespace component
+namespace sample
 {
+
+using namespace QC::Memory;
 
 /** @brief OpticalFlow component configuration */
 typedef struct OpticalFlow_Config
@@ -57,25 +61,23 @@ public:
     OpticalFlow_Config &operator=( const OpticalFlow_Config &rhs );
 } OpticalFlow_Config_t;
 
-class OpticalFlow : public ComponentIF
+class OpticalFlow
 {
     /*=================================================================================================
     ** API Functions
     =================================================================================================*/
 
 public:
-    OpticalFlow();
+    OpticalFlow( Logger &logger );
     ~OpticalFlow();
 
     /**
      * @brief Initialize the OpticalFlow pipeline
      * @param[in] pName the OpticalFlow unique instance name
      * @param[in] pConfig the OpticalFlow configuration paramaters
-     * @param[in] level the logger message level
      * @return QC_STATUS_OK on success, others on failure
      */
-    QCStatus_e Init( const char *pName, const OpticalFlow_Config_t *pConfig,
-                     Logger_Level_e level = LOGGER_LEVEL_ERROR );
+    QCStatus_e Init( const char *pName, const OpticalFlow_Config_t *pConfig );
 
     /**
      * @brief Register buffers for OpticalFlow pipeline
@@ -85,7 +87,7 @@ public:
      * @note Register buffers for input and output data. This step could be done by user or skipped.
      * If skipped, all the buffers will be registered at execute step.
      */
-    QCStatus_e RegisterBuffers( const QCSharedBuffer_t *pBuffers, uint32_t numBuffers );
+    QCStatus_e RegisterBuffers( const BufferDescriptor_t *pBuffers, uint32_t numBuffers );
 
     /**
      * @brief Start the OpticalFlow pipeline
@@ -101,8 +103,8 @@ public:
      * @param[out] pConfBuf the motion vector confidence map buffer
      * @return QC_STATUS_OK on success, others on failure
      */
-    QCStatus_e Execute( const QCSharedBuffer_t *pRefImage, const QCSharedBuffer_t *pCurImage,
-                        const QCSharedBuffer_t *pOutMvBuf, const QCSharedBuffer_t *pConfBuf );
+    QCStatus_e Execute( const ImageDescriptor_t *pRefImage, const ImageDescriptor_t *pCurImage,
+                        const TensorDescriptor_t *pOutMvBuf, const TensorDescriptor_t *pConfBuf );
 
     /**
      * @brief Stop the OpticalFlow pipeline
@@ -118,7 +120,7 @@ public:
      * @note Deregister buffers for input and output data. This step could be done by user or
      * skipped. If skipped, all the buffers will be deregistered at deinit step.
      */
-    QCStatus_e DeRegisterBuffers( const QCSharedBuffer_t *pBuffers, uint32_t numBuffers );
+    QCStatus_e DeRegisterBuffers( const BufferDescriptor_t *pBuffers, uint32_t numBuffers );
 
     /**
      * @brief Deinitialize the OpticalFlow pipeline
@@ -134,10 +136,10 @@ private:
     QCStatus_e SetInitialFrameConfig();
     QCStatus_e UpdateIconfigOF( EvaConfigList_t *pConfigList );
 
-    QCStatus_e RegisterEvaMem( const QCSharedBuffer_t *pBuffer, EvaMem_t **pEvaMem );
+    QCStatus_e RegisterEvaMem( const BufferDescriptor_t *pBuffer, EvaMem_t **pEvaMem );
 
     QCStatus_e ValidateConfig( const OpticalFlow_Config_t *pConfig );
-    QCStatus_e ValidateImageBuffer( const QCSharedBuffer_t *pImage );
+    QCStatus_e ValidateImageBuffer( const ImageDescriptor_t *pImage );
 
     EvaColorFormat_e GetEvaColorFormat( QCImageFormat_e colorFormat );
 
@@ -153,9 +155,13 @@ private:
     EvaOFOutBuffReq_t m_outBufInfo;
 
     std::map<void *, EvaMem_t> m_evaMemMap;
+
+    Logger &m_logger;
+    QCObjectState_e m_state = QC_OBJECT_STATE_INITIAL;
+
 };   // class OpticalFlow
 
-}   // namespace component
+}   // namespace sample
 }   // namespace QC
 
-#endif   // QC_OPTICALFLOW_HPP
+#endif   // QC_SAMPLE_OPTICALFLOW_HPP

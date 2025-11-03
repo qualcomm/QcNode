@@ -2,17 +2,17 @@
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
-#include "QC/component/OpticalFlow.hpp"
+#include "OpticalFlow.hpp"
 
 namespace QC
 {
-namespace component
+namespace sample
 {
 
 #define QC_EVA_OF_NUM_ICONFIG 11
 #define QC_EVA_OF_NUM_FCONFIG 14
 
-#define ALIGN_S( size, align ) ( ( ( ( size ) + (align) -1 ) / ( align ) ) * ( align ) )
+#define ALIGN_S( size, align ) ( ( ( ( size ) + ( align ) - 1 ) / ( align ) ) * ( align ) )
 
 static const char *evaOFIConfigStrings[QC_EVA_OF_NUM_ICONFIG] = {
         EVA_OF_ICONFIG_ACTUAL_FPS,
@@ -97,7 +97,7 @@ OpticalFlow_Config &OpticalFlow_Config::operator=( const OpticalFlow_Config &rhs
     return *this;
 }
 
-OpticalFlow::OpticalFlow() {}
+OpticalFlow::OpticalFlow( Logger &logger ) : m_logger( logger ) {}
 
 OpticalFlow::~OpticalFlow() {}
 
@@ -248,29 +248,22 @@ EvaColorFormat_e OpticalFlow::GetEvaColorFormat( QCImageFormat_e colorFormat )
     return evaFormat;
 }
 
-QCStatus_e OpticalFlow::Init( const char *pName, const OpticalFlow_Config_t *pConfig,
-                              Logger_Level_e level )
+QCStatus_e OpticalFlow::Init( const char *pName, const OpticalFlow_Config_t *pConfig )
 {
     QCStatus_e ret = QC_STATUS_OK;
-    bool bIFInitOK = false;
     EvaStatus_e rc;
 
     EvaConfigList_t configList;
     EvaConfig_t configs[QC_EVA_OF_NUM_ICONFIG];
 
-    ret = ComponentIF::Init( pName, level );
+    ret = ValidateConfig( pConfig );
     if ( QC_STATUS_OK == ret )
-    {
-        bIFInitOK = true;
-        ret = ValidateConfig( pConfig );
-        if ( QC_STATUS_OK == ret )
-        { /* parameters are OK */
-            m_config = *pConfig;
-            m_outputWidth = ( m_config.width >> m_config.amFilter.nStepSize )
-                            << m_config.amFilter.nUpScale;
-            m_outputHeight = ( m_config.height >> m_config.amFilter.nStepSize )
-                             << m_config.amFilter.nUpScale;
-        }
+    { /* parameters are OK */
+        m_config = *pConfig;
+        m_outputWidth = ( m_config.width >> m_config.amFilter.nStepSize )
+                        << m_config.amFilter.nUpScale;
+        m_outputHeight = ( m_config.height >> m_config.amFilter.nStepSize )
+                         << m_config.amFilter.nUpScale;
     }
 
     if ( QC_STATUS_OK == ret )
@@ -337,11 +330,6 @@ QCStatus_e OpticalFlow::Init( const char *pName, const OpticalFlow_Config_t *pCo
             (void) EvaDeleteSession( m_hOFSession );
             m_hOFSession = nullptr;
         }
-
-        if ( bIFInitOK )
-        {
-            (void) ComponentIF::Deinit();
-        }
     }
     else
     {
@@ -351,7 +339,7 @@ QCStatus_e OpticalFlow::Init( const char *pName, const OpticalFlow_Config_t *pCo
     return ret;
 }
 
-QCStatus_e OpticalFlow::RegisterBuffers( const QCSharedBuffer_t *pBuffers, uint32_t numBuffers )
+QCStatus_e OpticalFlow::RegisterBuffers( const BufferDescriptor_t *pBuffers, uint32_t numBuffers )
 {
     QCStatus_e ret = QC_STATUS_OK;
     if ( ( QC_OBJECT_STATE_READY != m_state ) && ( QC_OBJECT_STATE_RUNNING != m_state ) )
@@ -517,33 +505,33 @@ QCStatus_e OpticalFlow::Start()
     return ret;
 }
 
-QCStatus_e OpticalFlow::RegisterEvaMem( const QCSharedBuffer_t *pBuffer, EvaMem_t **pEvaMem )
+QCStatus_e OpticalFlow::RegisterEvaMem( const BufferDescriptor_t *pBuffer, EvaMem_t **pEvaMem )
 {
     QCStatus_e ret = QC_STATUS_OK;
     EvaStatus_e rc;
     EvaMem_t mem;
 
-    auto it = m_evaMemMap.find( pBuffer->data() );
+    auto it = m_evaMemMap.find( pBuffer->GetDataPtr() );
     if ( it == m_evaMemMap.end() )
     {
         mem.nSize = pBuffer->size;
         mem.nOffset = pBuffer->offset;
-        mem.pAddress = pBuffer->data();
-        mem.hMemHandle = (void *) pBuffer->buffer.dmaHandle;
-        if ( 0 != ( pBuffer->buffer.flags & QC_BUFFER_FLAGS_CACHE_WB_WA ) )
+        mem.pAddress = pBuffer->GetDataPtr();
+        mem.hMemHandle = (void *) pBuffer->dmaHandle;
+        if ( QC_CACHEABLE_NON != pBuffer->cache )
         {
             mem.bCached = true;
         }
         rc = EvaMemRegister( m_hOFSession, &mem );
         if ( EVA_SUCCESS != rc )
         {
-            QC_ERROR( "EvaMemRegister(%p) failed: %d", pBuffer->data(), rc );
+            QC_ERROR( "EvaMemRegister(%p) failed: %d", pBuffer->GetDataPtr(), rc );
             ret = QC_STATUS_FAIL;
         }
         else
         {
-            m_evaMemMap[pBuffer->data()] = mem;
-            *pEvaMem = &m_evaMemMap[pBuffer->data()];
+            m_evaMemMap[pBuffer->GetDataPtr()] = mem;
+            *pEvaMem = &m_evaMemMap[pBuffer->GetDataPtr()];
         }
     }
     else
@@ -553,7 +541,7 @@ QCStatus_e OpticalFlow::RegisterEvaMem( const QCSharedBuffer_t *pBuffer, EvaMem_
     return ret;
 }
 
-QCStatus_e OpticalFlow::ValidateImageBuffer( const QCSharedBuffer_t *pImage )
+QCStatus_e OpticalFlow::ValidateImageBuffer( const ImageDescriptor_t *pImage )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
@@ -562,11 +550,10 @@ QCStatus_e OpticalFlow::ValidateImageBuffer( const QCSharedBuffer_t *pImage )
         QC_ERROR( "pImage is nullptr!" );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
-    else if ( ( QC_BUFFER_TYPE_IMAGE != pImage->type ) || ( nullptr == pImage->buffer.pData ) ||
-              ( m_config.format != pImage->imgProps.format ) ||
-              ( m_config.width != pImage->imgProps.width ) ||
-              ( m_config.height != pImage->imgProps.height ) ||
-              ( m_imageInfo.nPlanes != pImage->imgProps.numPlanes ) )
+    else if ( ( QC_BUFFER_TYPE_IMAGE != pImage->type ) || ( nullptr == pImage->pBuf ) ||
+              ( m_config.format != pImage->format ) || ( m_config.width != pImage->width ) ||
+              ( m_config.height != pImage->height ) ||
+              ( m_imageInfo.nPlanes != pImage->numPlanes ) )
     {
         QC_ERROR( "pImage is invalid!" );
         ret = QC_STATUS_INVALID_BUF;
@@ -575,16 +562,16 @@ QCStatus_e OpticalFlow::ValidateImageBuffer( const QCSharedBuffer_t *pImage )
     {
         for ( uint32_t i = 0; i < m_imageInfo.nPlanes; i++ )
         {
-            if ( m_imageInfo.nWidthStride[i] != pImage->imgProps.stride[i] )
+            if ( m_imageInfo.nWidthStride[i] != pImage->stride[i] )
             {
                 QC_ERROR( "pImage with invalid stride in plane %u: %u != %u", i,
-                          m_imageInfo.nWidthStride[i], pImage->imgProps.stride[i] );
+                          m_imageInfo.nWidthStride[i], pImage->stride[i] );
                 ret = QC_STATUS_INVALID_BUF;
             }
-            else if ( m_imageInfo.nAlignedSize[i] != pImage->imgProps.planeBufSize[i] )
+            else if ( m_imageInfo.nAlignedSize[i] != pImage->planeBufSize[i] )
             {
                 QC_ERROR( "pImage with invalid plane buf size in plane %u: %u != %u", i,
-                          m_imageInfo.nAlignedSize[i], pImage->imgProps.planeBufSize[i] );
+                          m_imageInfo.nAlignedSize[i], pImage->planeBufSize[i] );
                 ret = QC_STATUS_INVALID_BUF;
             }
             else
@@ -597,10 +584,10 @@ QCStatus_e OpticalFlow::ValidateImageBuffer( const QCSharedBuffer_t *pImage )
 }
 
 
-QCStatus_e OpticalFlow::Execute( const QCSharedBuffer_t *pRefImage,
-                                 const QCSharedBuffer_t *pCurImage,
-                                 const QCSharedBuffer_t *pOutMvBuf,
-                                 const QCSharedBuffer_t *pConfBuf )
+QCStatus_e OpticalFlow::Execute( const ImageDescriptor_t *pRefImage,
+                                 const ImageDescriptor_t *pCurImage,
+                                 const TensorDescriptor_t *pOutMvBuf,
+                                 const TensorDescriptor_t *pConfBuf )
 {
     QCStatus_e ret = QC_STATUS_OK;
     EvaStatus_e rc;
@@ -622,13 +609,12 @@ QCStatus_e OpticalFlow::Execute( const QCSharedBuffer_t *pRefImage,
         QC_ERROR( "pOutMvBuf is nullptr!" );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
-    else if ( ( QC_BUFFER_TYPE_TENSOR != pOutMvBuf->type ) ||
-              ( nullptr == pOutMvBuf->buffer.pData ) || ( 4 != pOutMvBuf->tensorProps.numDims ) ||
-              ( QC_TENSOR_TYPE_UINT_16 != pOutMvBuf->tensorProps.type ) ||
-              ( 1 != pOutMvBuf->tensorProps.dims[0] ) ||
-              ( ALIGN_S( m_outputHeight, 8 ) != pOutMvBuf->tensorProps.dims[1] ) ||
-              ( ALIGN_S( m_outputWidth * 2, 128 ) != pOutMvBuf->tensorProps.dims[2] ) ||
-              ( 1 != pOutMvBuf->tensorProps.dims[3] ) )
+    else if ( ( QC_BUFFER_TYPE_TENSOR != pOutMvBuf->type ) || ( nullptr == pOutMvBuf->pBuf ) ||
+              ( 4 != pOutMvBuf->numDims ) || ( QC_TENSOR_TYPE_UINT_16 != pOutMvBuf->tensorType ) ||
+              ( 1 != pOutMvBuf->dims[0] ) ||
+              ( ALIGN_S( m_outputHeight, 8 ) != pOutMvBuf->dims[1] ) ||
+              ( ALIGN_S( m_outputWidth * 2, 128 ) != pOutMvBuf->dims[2] ) ||
+              ( 1 != pOutMvBuf->dims[3] ) )
     {
         QC_ERROR( "pOutMvBuf is invalid!" );
         ret = QC_STATUS_INVALID_BUF;
@@ -638,13 +624,10 @@ QCStatus_e OpticalFlow::Execute( const QCSharedBuffer_t *pRefImage,
         QC_ERROR( "pConfBuf is nullptr!" );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
-    else if ( ( QC_BUFFER_TYPE_TENSOR != pConfBuf->type ) ||
-              ( nullptr == pConfBuf->buffer.pData ) || ( 4 != pConfBuf->tensorProps.numDims ) ||
-              ( QC_TENSOR_TYPE_UINT_8 != pConfBuf->tensorProps.type ) ||
-              ( 1 != pConfBuf->tensorProps.dims[0] ) ||
-              ( ALIGN_S( m_outputHeight, 8 ) != pConfBuf->tensorProps.dims[1] ) ||
-              ( ALIGN_S( m_outputWidth, 128 ) != pConfBuf->tensorProps.dims[2] ) ||
-              ( 1 != pConfBuf->tensorProps.dims[3] ) )
+    else if ( ( QC_BUFFER_TYPE_TENSOR != pConfBuf->type ) || ( nullptr == pConfBuf->pBuf ) ||
+              ( 4 != pConfBuf->numDims ) || ( QC_TENSOR_TYPE_UINT_8 != pConfBuf->tensorType ) ||
+              ( 1 != pConfBuf->dims[0] ) || ( ALIGN_S( m_outputHeight, 8 ) != pConfBuf->dims[1] ) ||
+              ( ALIGN_S( m_outputWidth, 128 ) != pConfBuf->dims[2] ) || ( 1 != pConfBuf->dims[3] ) )
     {
         QC_ERROR( "pConfBuf is invalid!" );
         ret = QC_STATUS_INVALID_BUF;
@@ -741,7 +724,7 @@ QCStatus_e OpticalFlow::Stop()
     return ret;
 }
 
-QCStatus_e OpticalFlow::DeRegisterBuffers( const QCSharedBuffer_t *pBuffers, uint32_t numBuffers )
+QCStatus_e OpticalFlow::DeRegisterBuffers( const BufferDescriptor_t *pBuffers, uint32_t numBuffers )
 {
     QCStatus_e ret = QC_STATUS_OK;
     EvaStatus_e rc;
@@ -765,7 +748,7 @@ QCStatus_e OpticalFlow::DeRegisterBuffers( const QCSharedBuffer_t *pBuffers, uin
     {
         for ( uint32_t i = 0; i < numBuffers; i++ )
         {
-            auto it = m_evaMemMap.find( pBuffers[i].data() );
+            auto it = m_evaMemMap.find( pBuffers[i].GetDataPtr() );
             if ( it != m_evaMemMap.end() )
             {
                 auto &mem = it->second;
@@ -826,17 +809,10 @@ QCStatus_e OpticalFlow::Deinit()
             ret = QC_STATUS_FAIL;
         }
         m_hOFSession = nullptr;
-
-        QCStatus_e ret2 = ComponentIF::Deinit();
-        if ( QC_STATUS_OK != ret2 )
-        {
-            QC_ERROR( "Deinit ComponentIF failed!" );
-            ret = ret2;
-        }
     }
 
     return ret;
 }
 
-}   // namespace component
+}   // namespace sample
 }   // namespace QC

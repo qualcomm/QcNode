@@ -18,9 +18,9 @@ This DepthFromStereo component offers a user-friendly API to leverage the EVA ha
 
 # 2. DepthFromStereo Data Structures
 
-- [DepthFromStereo_Config_t](../include/QC/component/DepthFromStereo.hpp#L55)
+- [DepthFromStereo_Config_t](DepthFromStereo.hpp#L55)
 
-This configuration data structure comes with a default initializer that sets up its members with suggested default values. Refer to [DepthFromStereo_Config::DepthFromStereo_Config](../source/components/DepthFromStereo/DepthFromStereo.cpp#L41). For startup, you only need to update the relevant information for the input image.
+This configuration data structure comes with a default initializer that sets up its members with suggested default values. Refer to [DepthFromStereo_Config::DepthFromStereo_Config](DepthFromStereo.cpp#L41). For startup, you only need to update the relevant information for the input image.
 
 ```c
     DepthFromStereo_Config_t config;
@@ -30,13 +30,13 @@ This configuration data structure comes with a default initializer that sets up 
 
 # 3. DepthFromStereo APIs
 
-- [Init](../include/QC/component/DepthFromStereo.hpp#L74)
-- [RegisterBuffers](../include/QC/component/DepthFromStereo.hpp#L85)
-- [Start](../include/QC/component/DepthFromStereo.hpp#L91)
-- [Execute](../include/QC/component/DepthFromStereo.hpp#L101)
-- [Stop](../include/QC/component/DepthFromStereo.hpp#L110)
-- [DeRegisterBuffers](../include/QC/component/DepthFromStereo.hpp#L120)
-- [Deinit](../include/QC/component/DepthFromStereo.hpp#L126)
+- [Init](DepthFromStereo.hpp#L74)
+- [RegisterBuffers](DepthFromStereo.hpp#L85)
+- [Start](DepthFromStereo.hpp#L91)
+- [Execute](DepthFromStereo.hpp#L101)
+- [Stop](DepthFromStereo.hpp#L110)
+- [DeRegisterBuffers](DepthFromStereo.hpp#L120)
+- [Deinit](DepthFromStereo.hpp#L126)
 
 
 # 4. DepthFromStereo Examples
@@ -44,7 +44,10 @@ This configuration data structure comes with a default initializer that sets up 
 ## 4.1 DepthFromStereo initialization
 
 ```c
-    DepthFromStereo dfs;
+    BufferManager bufMgr( { "DFS0", QC_NODE_TYPE_EVA_DFS, 0 } );
+    Logger logger;
+    logger.Init( "DFS0", LOGGER_LEVEL_ERROR );
+    DepthFromStereo dfs( logger );
 
     DepthFromStereo_Config_t config;
     config.width = 1280;
@@ -59,23 +62,19 @@ This configuration data structure comes with a default initializer that sets up 
     // below allocate a buffer to hold image
     QCSharedBuffer_t priImg;
     QCSharedBuffer_t auxImg;
-    ret = refImg.Allocate( 1280, 720, QC_IMAGE_FORMAT_NV12 );
-    ret = curImg.Allocate( 1280, 720, QC_IMAGE_FORMAT_NV12 );
+    ret = bufMgr.Allocate( ImageBasicProps_t( 1280, 720, QC_IMAGE_FORMAT_NV12 ), priImg );
+    ret = bufMgr.Allocate( ImageBasicProps_t( 1280, 720, QC_IMAGE_FORMAT_NV12 ), auxImg );
 
     // define the output tensor properties that used to allocate the output tensor buffer
-    QCTensorProps_t dispMapTsProp = {
-            QC_TENSOR_TYPE_UINT_16,
-            { 1, ALIGN_S( config.height, 2 ), ALIGN_S( config.width, 128 ), 1 },
-            4 };
-    QCTensorProps_t confMapTsProp = {
-            QC_TENSOR_TYPE_UINT_8,
-            { 1, ALIGN_S( config.height, 2 ), ALIGN_S( config.width, 128 ), 1 },
-            4 };
+    TensorProps_t dispMapTsProp( QC_TENSOR_TYPE_UINT_16,
+                                 { 1, ALIGN_S( 720, 2 ), ALIGN_S( 1280, 128 ), 1 } );
+    TensorProps_t confMapTsProp( QC_TENSOR_TYPE_UINT_8,
+                                 { 1, ALIGN_S( 720, 2 ), ALIGN_S( 1280, 128 ), 1 } );
     QCSharedBuffer_t dispMap;
     QCSharedBuffer_t confMap;
     // do allocate buffer to hold DFS output
-    ret = dispMap.Allocate( &dispMapTsProp );
-    ret = confMap.Allocate( &confMapTsProp );
+    ret = bufMgr.Allocate( dispMapTsProp, dispMap );
+    ret = bufMgr.Allocate( confMapTsProp, confMap );
 ```
 
 ## 4.3 Register buffer to DepthFromStereo
@@ -111,4 +110,4 @@ This step is optional, if it was not done, the Execute API will help to do the b
 
 ## 4.6 QC E2E sample
 
-The [SampleDepthFromStereo](../tests/sample/source/SampleDepthFromStereo.cpp#L145) and [SampleDepthFromStereoViz](../tests/sample/source/SampleDepthFromStereoViz.cpp#L212) is an end-to-end pipeline demo that demonstrates how to use the DepthFromStereo component. And the [SampleDepthFromStereoViz](../tests/sample/source/SampleDepthFromStereoViz.cpp#L212) demonstrates how to decode the DFS output.
+The [SampleDepthFromStereo](../../source/SampleDepthFromStereo.cpp#L145) and [SampleDepthFromStereoViz](../../source/SampleDepthFromStereoViz.cpp#L212) is an end-to-end pipeline demo that demonstrates how to use the DepthFromStereo component. And the [SampleDepthFromStereoViz](../../source/SampleDepthFromStereoViz.cpp#L212) demonstrates how to decode the DFS output.
