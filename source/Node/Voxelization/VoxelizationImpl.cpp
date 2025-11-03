@@ -46,12 +46,6 @@ VoxelizationImpl::Initialize( QCNodeEventCallBack_t callback,
             case QC_PROCESSOR_HTP1:
                 processor = "htp1";
                 break;
-            case QC_PROCESSOR_HTP2:
-                processor = "htp2";
-                break;
-            case QC_PROCESSOR_HTP3:
-                processor = "htp3";
-                break;
             case QC_PROCESSOR_CPU:
                 processor = "cpu";
                 break;
@@ -273,7 +267,12 @@ VoxelizationImpl::Initialize( QCNodeEventCallBack_t callback,
                 {
                     m_plrPointsTensor = *pPlrPointsBuffer;
                     ret = m_openCLSrvObj.RegBufferDesc( bufDesc, m_clPlrPointsBuffer );
-                    if ( QC_STATUS_OK != ret )
+                    if ( QC_STATUS_OK == ret )
+                    {
+                        // Mark buffer as registered for cleanup tracking
+                        m_clBufferDescMap[m_plrPointsTensor.dmaHandle] = m_clPlrPointsBuffer;
+                    }
+                    else
                     {
                         QC_ERROR( "Failed to register internal pillar points buffer" );
                     }
@@ -307,10 +306,15 @@ VoxelizationImpl::Initialize( QCNodeEventCallBack_t callback,
                 {
                     m_coordToPlrIdxTensor = *pCoordToPlrIdxBuffer;
                     ret = m_openCLSrvObj.RegBufferDesc( bufDesc, m_clCoordToPlrIdxBuffer );
-                    if ( QC_STATUS_OK != ret )
+                    if ( QC_STATUS_OK == ret )
                     {
-                        QC_ERROR(
-                                "Failed to register internal coordinate to pillar index buffer " );
+                        // Mark buffer as registered for cleanup tracking
+                        m_clBufferDescMap[m_coordToPlrIdxTensor.dmaHandle] =
+                                m_clCoordToPlrIdxBuffer;
+                    }
+                    else
+                    {
+                        QC_ERROR( "Failed to register internal coordinate to pillar index buffer" );
                     }
                 }
                 else
