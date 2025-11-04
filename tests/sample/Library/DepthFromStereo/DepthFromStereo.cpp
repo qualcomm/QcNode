@@ -2,17 +2,17 @@
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
-#include "QC/component/DepthFromStereo.hpp"
+#include "DepthFromStereo.hpp"
 
 namespace QC
 {
-namespace component
+namespace sample
 {
 
 #define QC_EVA_DFS_NUM_ICONFIG 6
 #define QC_EVA_DFS_NUM_FCONFIG 15
 
-#define ALIGN_S( size, align ) ( ( ( ( size ) + (align) -1 ) / ( align ) ) * ( align ) )
+#define ALIGN_S( size, align ) ( ( ( ( size ) + ( align ) - 1 ) / ( align ) ) * ( align ) )
 
 static const char *evaDFSIConfigStrings[QC_EVA_DFS_NUM_ICONFIG] = {
         EVA_DFS_ICONFIG_ACTUAL_FPS,         EVA_DFS_ICONFIG_OPERATIONAL_FPS,
@@ -92,7 +92,7 @@ DepthFromStereo_Config &DepthFromStereo_Config::operator=( const DepthFromStereo
     return *this;
 }
 
-DepthFromStereo::DepthFromStereo() {}
+DepthFromStereo::DepthFromStereo( Logger &logger ) : m_logger( logger ) {}
 
 DepthFromStereo::~DepthFromStereo() {}
 
@@ -225,28 +225,22 @@ EvaColorFormat_e DepthFromStereo::GetEvaColorFormat( QCImageFormat_e colorFormat
     return evaFormat;
 }
 
-QCStatus_e DepthFromStereo::Init( const char *pName, const DepthFromStereo_Config_t *pConfig,
-                                  Logger_Level_e level )
+QCStatus_e DepthFromStereo::Init( const char *pName, const DepthFromStereo_Config_t *pConfig )
 {
     QCStatus_e ret = QC_STATUS_OK;
-    bool bIFInitOK = false;
     EvaStatus_e rc;
 
     EvaConfigList_t configList;
     EvaConfig_t configs[QC_EVA_DFS_NUM_ICONFIG];
 
-    ret = ComponentIF::Init( pName, level );
+    ret = ValidateConfig( pConfig );
     if ( QC_STATUS_OK == ret )
-    {
-        bIFInitOK = true;
-        ret = ValidateConfig( pConfig );
-        if ( QC_STATUS_OK == ret )
-        { /* parameters are OK */
-            m_config = *pConfig;
-            m_outputWidth = m_config.width;
-            m_outputHeight = m_config.height;
-        }
+    { /* parameters are OK */
+        m_config = *pConfig;
+        m_outputWidth = m_config.width;
+        m_outputHeight = m_config.height;
     }
+
 
     if ( QC_STATUS_OK == ret )
     {
@@ -312,11 +306,6 @@ QCStatus_e DepthFromStereo::Init( const char *pName, const DepthFromStereo_Confi
             (void) EvaDeleteSession( m_hDFSSession );
             m_hDFSSession = nullptr;
         }
-
-        if ( bIFInitOK )
-        {
-            (void) ComponentIF::Deinit();
-        }
     }
     else
     {
@@ -326,7 +315,8 @@ QCStatus_e DepthFromStereo::Init( const char *pName, const DepthFromStereo_Confi
     return ret;
 }
 
-QCStatus_e DepthFromStereo::RegisterBuffers( const QCSharedBuffer_t *pBuffers, uint32_t numBuffers )
+QCStatus_e DepthFromStereo::RegisterBuffers( const BufferDescriptor_t *pBuffers,
+                                             uint32_t numBuffers )
 {
     QCStatus_e ret = QC_STATUS_OK;
     if ( ( QC_OBJECT_STATE_READY != m_state ) && ( QC_OBJECT_STATE_RUNNING != m_state ) )
@@ -493,33 +483,33 @@ QCStatus_e DepthFromStereo::Start()
     return ret;
 }
 
-QCStatus_e DepthFromStereo::RegisterEvaMem( const QCSharedBuffer_t *pBuffer, EvaMem_t **pEvaMem )
+QCStatus_e DepthFromStereo::RegisterEvaMem( const BufferDescriptor_t *pBuffer, EvaMem_t **pEvaMem )
 {
     QCStatus_e ret = QC_STATUS_OK;
     EvaStatus_e rc;
     EvaMem_t mem;
 
-    auto it = m_evaMemMap.find( pBuffer->data() );
+    auto it = m_evaMemMap.find( pBuffer->GetDataPtr() );
     if ( it == m_evaMemMap.end() )
     {
         mem.nSize = pBuffer->size;
         mem.nOffset = pBuffer->offset;
-        mem.pAddress = pBuffer->data();
-        mem.hMemHandle = (void *) pBuffer->buffer.dmaHandle;
-        if ( 0 != ( pBuffer->buffer.flags & QC_BUFFER_FLAGS_CACHE_WB_WA ) )
+        mem.pAddress = pBuffer->GetDataPtr();
+        mem.hMemHandle = (void *) pBuffer->dmaHandle;
+        if ( QC_CACHEABLE_NON != pBuffer->cache )
         {
             mem.bCached = true;
         }
         rc = EvaMemRegister( m_hDFSSession, &mem );
         if ( EVA_SUCCESS != rc )
         {
-            QC_ERROR( "EvaMemRegister(%p) failed: %d", pBuffer->data(), rc );
+            QC_ERROR( "EvaMemRegister(%p) failed: %d", pBuffer->GetDataPtr(), rc );
             ret = QC_STATUS_FAIL;
         }
         else
         {
-            m_evaMemMap[pBuffer->data()] = mem;
-            *pEvaMem = &m_evaMemMap[pBuffer->data()];
+            m_evaMemMap[pBuffer->GetDataPtr()] = mem;
+            *pEvaMem = &m_evaMemMap[pBuffer->GetDataPtr()];
         }
     }
     else
@@ -529,7 +519,7 @@ QCStatus_e DepthFromStereo::RegisterEvaMem( const QCSharedBuffer_t *pBuffer, Eva
     return ret;
 }
 
-QCStatus_e DepthFromStereo::ValidateImageBuffer( const QCSharedBuffer_t *pImage )
+QCStatus_e DepthFromStereo::ValidateImageBuffer( const ImageDescriptor_t *pImage )
 {
     QCStatus_e ret = QC_STATUS_OK;
 
@@ -538,11 +528,10 @@ QCStatus_e DepthFromStereo::ValidateImageBuffer( const QCSharedBuffer_t *pImage 
         QC_ERROR( "pImage is nullptr!" );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
-    else if ( ( QC_BUFFER_TYPE_IMAGE != pImage->type ) || ( nullptr == pImage->buffer.pData ) ||
-              ( m_config.format != pImage->imgProps.format ) ||
-              ( m_config.width != pImage->imgProps.width ) ||
-              ( m_config.height != pImage->imgProps.height ) ||
-              ( m_imageInfo.nPlanes != pImage->imgProps.numPlanes ) )
+    else if ( ( QC_BUFFER_TYPE_IMAGE != pImage->type ) || ( nullptr == pImage->pBuf ) ||
+              ( m_config.format != pImage->format ) || ( m_config.width != pImage->width ) ||
+              ( m_config.height != pImage->height ) ||
+              ( m_imageInfo.nPlanes != pImage->numPlanes ) )
     {
         QC_ERROR( "pImage is invalid!" );
         ret = QC_STATUS_INVALID_BUF;
@@ -551,16 +540,16 @@ QCStatus_e DepthFromStereo::ValidateImageBuffer( const QCSharedBuffer_t *pImage 
     {
         for ( uint32_t i = 0; i < m_imageInfo.nPlanes; i++ )
         {
-            if ( m_imageInfo.nWidthStride[i] != pImage->imgProps.stride[i] )
+            if ( m_imageInfo.nWidthStride[i] != pImage->stride[i] )
             {
                 QC_ERROR( "pImage with invalid stride in plane %u: %u != %u", i,
-                          m_imageInfo.nWidthStride[i], pImage->imgProps.stride[i] );
+                          m_imageInfo.nWidthStride[i], pImage->stride[i] );
                 ret = QC_STATUS_INVALID_BUF;
             }
-            else if ( m_imageInfo.nAlignedSize[i] != pImage->imgProps.planeBufSize[i] )
+            else if ( m_imageInfo.nAlignedSize[i] != pImage->planeBufSize[i] )
             {
                 QC_ERROR( "pImage with invalid plane buf size in plane %u: %u != %u", i,
-                          m_imageInfo.nAlignedSize[i], pImage->imgProps.planeBufSize[i] );
+                          m_imageInfo.nAlignedSize[i], pImage->planeBufSize[i] );
                 ret = QC_STATUS_INVALID_BUF;
             }
             else
@@ -573,10 +562,10 @@ QCStatus_e DepthFromStereo::ValidateImageBuffer( const QCSharedBuffer_t *pImage 
 }
 
 
-QCStatus_e DepthFromStereo::Execute( const QCSharedBuffer_t *pPriImage,
-                                     const QCSharedBuffer_t *pAuxImage,
-                                     const QCSharedBuffer_t *pDispMap,
-                                     const QCSharedBuffer_t *pConfMap )
+QCStatus_e DepthFromStereo::Execute( const ImageDescriptor_t *pPriImage,
+                                     const ImageDescriptor_t *pAuxImage,
+                                     const TensorDescriptor_t *pDispMap,
+                                     const TensorDescriptor_t *pConfMap )
 {
     QCStatus_e ret = QC_STATUS_OK;
     EvaStatus_e rc;
@@ -598,13 +587,10 @@ QCStatus_e DepthFromStereo::Execute( const QCSharedBuffer_t *pPriImage,
         QC_ERROR( "pDispMap is nullptr!" );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
-    else if ( ( QC_BUFFER_TYPE_TENSOR != pDispMap->type ) ||
-              ( nullptr == pDispMap->buffer.pData ) || ( 4 != pDispMap->tensorProps.numDims ) ||
-              ( QC_TENSOR_TYPE_UINT_16 != pDispMap->tensorProps.type ) ||
-              ( 1 != pDispMap->tensorProps.dims[0] ) ||
-              ( ALIGN_S( m_outputHeight, 2 ) != pDispMap->tensorProps.dims[1] ) ||
-              ( ALIGN_S( m_outputWidth, 128 ) != pDispMap->tensorProps.dims[2] ) ||
-              ( 1 != pDispMap->tensorProps.dims[3] ) )
+    else if ( ( QC_BUFFER_TYPE_TENSOR != pDispMap->type ) || ( nullptr == pDispMap->pBuf ) ||
+              ( 4 != pDispMap->numDims ) || ( QC_TENSOR_TYPE_UINT_16 != pDispMap->tensorType ) ||
+              ( 1 != pDispMap->dims[0] ) || ( ALIGN_S( m_outputHeight, 2 ) != pDispMap->dims[1] ) ||
+              ( ALIGN_S( m_outputWidth, 128 ) != pDispMap->dims[2] ) || ( 1 != pDispMap->dims[3] ) )
     {
         QC_ERROR( "pDispMap is invalid!" );
         ret = QC_STATUS_INVALID_BUF;
@@ -614,13 +600,10 @@ QCStatus_e DepthFromStereo::Execute( const QCSharedBuffer_t *pPriImage,
         QC_ERROR( "pConfMap is nullptr!" );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
-    else if ( ( QC_BUFFER_TYPE_TENSOR != pConfMap->type ) ||
-              ( nullptr == pConfMap->buffer.pData ) || ( 4 != pConfMap->tensorProps.numDims ) ||
-              ( QC_TENSOR_TYPE_UINT_8 != pConfMap->tensorProps.type ) ||
-              ( 1 != pConfMap->tensorProps.dims[0] ) ||
-              ( ALIGN_S( m_outputHeight, 1 ) != pConfMap->tensorProps.dims[1] ) ||
-              ( ALIGN_S( m_outputWidth, 128 ) != pConfMap->tensorProps.dims[2] ) ||
-              ( 1 != pConfMap->tensorProps.dims[3] ) )
+    else if ( ( QC_BUFFER_TYPE_TENSOR != pConfMap->type ) || ( nullptr == pConfMap->pBuf ) ||
+              ( 4 != pConfMap->numDims ) || ( QC_TENSOR_TYPE_UINT_8 != pConfMap->tensorType ) ||
+              ( 1 != pConfMap->dims[0] ) || ( ALIGN_S( m_outputHeight, 1 ) != pConfMap->dims[1] ) ||
+              ( ALIGN_S( m_outputWidth, 128 ) != pConfMap->dims[2] ) || ( 1 != pConfMap->dims[3] ) )
     {
         QC_ERROR( "pConfMap is invalid!" );
         ret = QC_STATUS_INVALID_BUF;
@@ -710,7 +693,7 @@ QCStatus_e DepthFromStereo::Stop()
     return ret;
 }
 
-QCStatus_e DepthFromStereo::DeRegisterBuffers( const QCSharedBuffer_t *pBuffers,
+QCStatus_e DepthFromStereo::DeRegisterBuffers( const BufferDescriptor_t *pBuffers,
                                                uint32_t numBuffers )
 {
     QCStatus_e ret = QC_STATUS_OK;
@@ -735,7 +718,7 @@ QCStatus_e DepthFromStereo::DeRegisterBuffers( const QCSharedBuffer_t *pBuffers,
     {
         for ( uint32_t i = 0; i < numBuffers; i++ )
         {
-            auto it = m_evaMemMap.find( pBuffers[i].data() );
+            auto it = m_evaMemMap.find( pBuffers[i].GetDataPtr() );
             if ( it != m_evaMemMap.end() )
             {
                 auto &mem = it->second;
@@ -796,17 +779,10 @@ QCStatus_e DepthFromStereo::Deinit()
             ret = QC_STATUS_FAIL;
         }
         m_hDFSSession = nullptr;
-
-        QCStatus_e ret2 = ComponentIF::Deinit();
-        if ( QC_STATUS_OK != ret2 )
-        {
-            QC_ERROR( "Deinit ComponentIF failed!" );
-            ret = ret2;
-        }
     }
 
     return ret;
 }
 
-}   // namespace component
+}   // namespace sample
 }   // namespace QC

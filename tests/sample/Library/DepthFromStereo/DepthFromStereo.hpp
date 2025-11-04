@@ -2,8 +2,8 @@
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
 
-#ifndef QC_DEPTH_FROM_STEREO_HPP
-#define QC_DEPTH_FROM_STEREO_HPP
+#ifndef QC_SAMPLE_DEPTH_FROM_STEREO_HPP
+#define QC_SAMPLE_DEPTH_FROM_STEREO_HPP
 
 #include <cinttypes>
 #include <inttypes.h>
@@ -11,7 +11,9 @@
 #include <memory>
 #include <unistd.h>
 
-#include "QC/component/ComponentIF.hpp"
+#include "QC/Infras/Log/Logger.hpp"
+#include "QC/Infras/Memory/ImageDescriptor.hpp"
+#include "QC/Infras/Memory/TensorDescriptor.hpp"
 
 #include <eva_dfs.h>
 #include <eva_mem.h>
@@ -20,8 +22,10 @@
 
 namespace QC
 {
-namespace component
+namespace sample
 {
+
+using namespace QC::Memory;
 
 /** @brief DepthFromStereo component configuration */
 typedef struct DepthFromStereo_Config
@@ -52,25 +56,23 @@ public:
     DepthFromStereo_Config &operator=( const DepthFromStereo_Config &rhs );
 } DepthFromStereo_Config_t;
 
-class DepthFromStereo : public ComponentIF
+class DepthFromStereo
 {
     /*=================================================================================================
     ** API Functions
     =================================================================================================*/
 
 public:
-    DepthFromStereo();
+    DepthFromStereo( Logger &logger );
     ~DepthFromStereo();
 
     /**
      * @brief Initialize the DepthFromStereo pipeline
      * @param[in] pName the DepthFromStereo unique instance name
      * @param[in] pConfig the DepthFromStereo configuration paramaters
-     * @param[in] level the logger message level
      * @return QC_STATUS_OK on success, others on failure
      */
-    QCStatus_e Init( const char *pName, const DepthFromStereo_Config_t *pConfig,
-                     Logger_Level_e level = LOGGER_LEVEL_ERROR );
+    QCStatus_e Init( const char *pName, const DepthFromStereo_Config_t *pConfig );
 
     /**
      * @brief Register buffers for DepthFromStereo pipeline
@@ -80,7 +82,7 @@ public:
      * @note Register buffers for input and output data. This step could be done by user or skipped.
      * If skipped, all the buffers will be registered at execute step.
      */
-    QCStatus_e RegisterBuffers( const QCSharedBuffer_t *pBuffers, uint32_t numBuffers );
+    QCStatus_e RegisterBuffers( const BufferDescriptor_t *pBuffers, uint32_t numBuffers );
 
     /**
      * @brief Start the DepthFromStereo pipeline
@@ -96,8 +98,8 @@ public:
      * @param[out] pConfMap the disparity confidence map buffer
      * @return QC_STATUS_OK on success, others on failure
      */
-    QCStatus_e Execute( const QCSharedBuffer_t *pPriImage, const QCSharedBuffer_t *pAuxImage,
-                        const QCSharedBuffer_t *pDispMap, const QCSharedBuffer_t *pConfMap );
+    QCStatus_e Execute( const ImageDescriptor_t *pPriImage, const ImageDescriptor_t *pAuxImage,
+                        const TensorDescriptor_t *pDispMap, const TensorDescriptor_t *pConfMap );
 
     /**
      * @brief Stop the DepthFromStereo pipeline
@@ -113,7 +115,7 @@ public:
      * @note Deregister buffers for input and output data. This step could be done by user or
      * skipped. If skipped, all the buffers will be deregistered at deinit step.
      */
-    QCStatus_e DeRegisterBuffers( const QCSharedBuffer_t *pBuffers, uint32_t numBuffers );
+    QCStatus_e DeRegisterBuffers( const BufferDescriptor_t *pBuffers, uint32_t numBuffers );
 
     /**
      * @brief Deinitialize the DepthFromStereo pipeline
@@ -129,10 +131,10 @@ private:
     QCStatus_e SetInitialFrameConfig();
     QCStatus_e UpdateIconfig( EvaConfigList_t *pConfigList );
 
-    QCStatus_e RegisterEvaMem( const QCSharedBuffer_t *pBuffer, EvaMem_t **pEvaMem );
+    QCStatus_e RegisterEvaMem( const BufferDescriptor_t *pBuffer, EvaMem_t **pEvaMem );
 
     QCStatus_e ValidateConfig( const DepthFromStereo_Config_t *pConfig );
-    QCStatus_e ValidateImageBuffer( const QCSharedBuffer_t *pImage );
+    QCStatus_e ValidateImageBuffer( const ImageDescriptor_t *pImage );
 
     EvaColorFormat_e GetEvaColorFormat( QCImageFormat_e colorFormat );
 
@@ -148,9 +150,13 @@ private:
     EvaDFSOutBuffReq_t m_outBufInfo;
 
     std::map<void *, EvaMem_t> m_evaMemMap;
+
+    Logger &m_logger;
+    QCObjectState_e m_state = QC_OBJECT_STATE_INITIAL;
+
 };   // class DepthFromStereo
 
-}   // namespace component
+}   // namespace sample
 }   // namespace QC
 
-#endif   // QC_DEPTH_FROM_STEREO_HPP
+#endif   // QC_SAMPLE_DEPTH_FROM_STEREO_HPP

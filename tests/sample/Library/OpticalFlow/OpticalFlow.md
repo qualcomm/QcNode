@@ -46,7 +46,10 @@ This configuration data structure comes with a default initializer that sets up 
 ## 4.1 OpticalFlow initialization
 
 ```c
-    OpticalFlow ofl;
+    BufferManager bufMgr( { "OFL0", QC_NODE_TYPE_EVA_DFS, 0 } );
+    Logger logger;
+    logger.Init( "OFL0", LOGGER_LEVEL_ERROR );
+    OpticalFlow ofl( logger );
 
     OpticalFlow_Config_t config;
     config.width = 1920;
@@ -62,24 +65,23 @@ This configuration data structure comes with a default initializer that sets up 
     // below allocate a buffer to hold image
     QCSharedBuffer_t refImg;
     QCSharedBuffer_t curImg;
-    ret = refImg.Allocate( 1920, 1024, QC_IMAGE_FORMAT_NV12 );
-    ret = curImg.Allocate( 1920, 1024, QC_IMAGE_FORMAT_NV12 );
+    ret = bufMgr.Allocate( ImageBasicProps_t( 1920, 1024, QC_IMAGE_FORMAT_NV12 ), refImg );
+    ret = bufMgr.Allocate( ImageBasicProps_t( 1920, 1024, QC_IMAGE_FORMAT_NV12 ), curImg );
 
     // below calculated the output motion vector width/hegith
     uint32_t width = ( config.width >> config.amFilter.nStepSize ) << config.amFilter.nUpScale;
     uint32_t height = ( config.height >> config.amFilter.nStepSize ) << config.amFilter.nUpScale;
 
     // define the output tensor properties that used to allocate the output tensor buffer
-    QCTensorProps_t mvFwdMapTsProp = {
-            QC_TENSOR_TYPE_UINT_16,
-            { 1, ALIGN_S( height, 8 ), ALIGN_S( width * 2, 128 ), 1 },
-            4 };
-    QCTensorProps_t mvConfTsProp = { QC_TENSOR_TYPE_UINT_8,
-                                           { 1, ALIGN_S( height, 8 ), ALIGN_S( width, 128 ), 1 },
-                                           4 };
+    TensorProps_t mvFwdMapTsProp( QC_TENSOR_TYPE_UINT_16,
+                                  { 1, ALIGN_S( height, 8 ), ALIGN_S( width * 2, 128 ), 1 } );
+    TensorProps_t mvConfTsProp( QC_TENSOR_TYPE_UINT_8,
+                                { 1, ALIGN_S( height, 8 ), ALIGN_S( width, 128 ), 1 } );
     // do allocate buffer to hold optical flow output
-    ret = mvFwdMap.Allocate( &mvFwdMapTsProp );
-    ret = mvConf.Allocate( &mvConfTsProp );
+    TensorDescriptor_t mvFwdMap;
+    TensorDescriptor_t mvConf;
+    ret = bufMgr.Allocate( mvFwdMapTsProp, mvFwdMap );
+    ret = bufMgr.Allocate( mvConfTsProp, mvConf );
 ```
 
 ## 4.3 Register buffer to optical flow
@@ -115,4 +117,4 @@ This step is optional, if it was not done, the Execute API will help to do the b
 
 ## 4.6 QC E2E sample
 
-The [SampleOpticalFlow](../tests/sample/source/SampleOpticalFlow.cpp#L186) and [SampleOpticalFlowViz](../tests/sample/source/SampleOpticalFlowViz.cpp#L328) is an end-to-end pipeline demo that demonstrates how to use the opticalflow component. And the [SampleOpticalFlowViz](../tests/sample/source/SampleOpticalFlowViz.cpp#L328) demonstrates how to decode the motion vector output.
+The [SampleOpticalFlow](../../source/SampleOpticalFlow.cpp#L186) and [SampleOpticalFlowViz](../../source/SampleOpticalFlowViz.cpp#L328) is an end-to-end pipeline demo that demonstrates how to use the opticalflow component. And the [SampleOpticalFlowViz](../../source/SampleOpticalFlowViz.cpp#L328) demonstrates how to decode the motion vector output.

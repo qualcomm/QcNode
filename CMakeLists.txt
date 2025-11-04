@@ -35,6 +35,7 @@ option(ENABLE_RSM_V2 "Enable RSM_V2 building" OFF)
 option(ENABLE_RADAR "Enable Radar building" OFF)
 option(ENABLE_C2C "Enable C2C building" OFF)
 option(ENABLE_TRACE "Enable Trace building" OFF)
+option(ENABLE_EVA_AUTO "Enable EVA AUTO building" OFF)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE RelWithDebInfo)

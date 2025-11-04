@@ -1,9 +1,5 @@
 add_subdirectory(Common)
 add_subdirectory(VideoEncoder)
-if ( ENABLE_EVA )
-  add_subdirectory(OpticalFlow)
-  add_subdirectory(DepthFromStereo)
-endif()
 
 if( ENABLE_DEMUXER )
     add_subdirectory(VideoDecoder)
