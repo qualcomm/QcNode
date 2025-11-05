@@ -1111,7 +1111,7 @@ QCStatus_e QnnImpl::SetHtpPerformanceMode()
             uint32_t coreId = m_config.coreIds[i];
             QnnDevice_HardwareDeviceInfo_t &hwDevice = m_platformInfo->v1.hwDevices[deviceId];
             deviceId = hwDevice.v1.deviceId;
-            coreId = hwDevice.v1.cores->v1.coreId;
+            coreId = hwDevice.v1.cores[coreId].v1.coreId;
             uint32_t powerConfigId = UINT32_MAX;
             retVal = m_perfInfra->createPowerConfigId( deviceId, coreId, &powerConfigId );
             if ( QNN_SUCCESS != retVal )
@@ -1690,7 +1690,6 @@ QnnImpl::Initialize( QCNodeEventCallBack_t callback,
                 }
                 break;
             }
-
             case QNN_LOAD_CONTEXT_BIN_FROM_FILE:
             default:
             {
