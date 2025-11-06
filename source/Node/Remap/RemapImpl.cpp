@@ -90,6 +90,9 @@ RemapImpl::Initialize( std::vector<std::reference_wrapper<QCBufferDescriptorBase
     }
     else
     {
+        QC_INFO( "REMAP node version: %u.%u.%u", QCNODE_REMAP_VERSION_MAJOR,
+                 QCNODE_REMAP_VERSION_MINOR, QCNODE_REMAP_VERSION_PATCH );
+
         status = m_fadasRemapObj.Init( m_config.params.processor, "Remap", LOGGER_LEVEL_ERROR );
         if ( QC_STATUS_OK != status )
         {

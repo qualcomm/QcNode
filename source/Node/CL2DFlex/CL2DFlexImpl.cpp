@@ -81,6 +81,9 @@ CL2DFlexImpl::Initialize( std::vector<std::reference_wrapper<QCBufferDescriptorB
     }
     else
     {
+        QC_INFO( "CL2DFLEX node version: %u.%u.%u", QCNODE_CL2DFLEX_VERSION_MAJOR,
+                 QCNODE_CL2DFLEX_VERSION_MINOR, QCNODE_CL2DFLEX_VERSION_PATCH );
+
         status = m_OpenclSrvObj.Init( "Opencl", LOGGER_LEVEL_ERROR, m_config.params.priority,
                                       m_config.params.deviceId );
         if ( QC_STATUS_OK != status )

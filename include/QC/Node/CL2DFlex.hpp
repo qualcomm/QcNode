@@ -12,6 +12,16 @@ namespace QC
 {
 namespace Node
 {
+
+/** @brief The QCNode CL2DFLEX Version */
+#define QCNODE_CL2DFLEX_VERSION_MAJOR 2U
+#define QCNODE_CL2DFLEX_VERSION_MINOR 0U
+#define QCNODE_CL2DFLEX_VERSION_PATCH 0U
+
+#define QCNODE_CL2DFLEX_VERSION                                                                    \
+    ( ( QCNODE_CL2DFLEX_VERSION_MAJOR << 12U ) | ( QCNODE_CL2DFLEX_VERSION_MINOR << 8U ) |         \
+      QCNODE_CL2DFLEX_VERSION_PATCH )
+
 using namespace QC::libs::OpenclIface;
 
 /*=================================================================================================
