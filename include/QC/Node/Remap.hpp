@@ -12,6 +12,16 @@ namespace QC
 {
 namespace Node
 {
+
+/** @brief The QCNode REMAP Version */
+#define QCNODE_REMAP_VERSION_MAJOR 2U
+#define QCNODE_REMAP_VERSION_MINOR 0U
+#define QCNODE_REMAP_VERSION_PATCH 0U
+
+#define QCNODE_REMAP_VERSION                                                                       \
+    ( ( QCNODE_REMAP_VERSION_MAJOR << 12U ) | ( QCNODE_REMAP_VERSION_MINOR << 8U ) |               \
+      QCNODE_REMAP_VERSION_PATCH )
+
 using namespace QC::libs::FadasIface;
 
 /*=================================================================================================
