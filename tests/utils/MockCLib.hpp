@@ -9,7 +9,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+void MockC_MallocCtrlSize( size_t size );
 void MockC_MallocCtrl( int whenToReturnNull );
 
+void MockC_CallocCtrlSize( size_t size );
 void MockC_CallocCtrl( int whenToReturnNull );
 #endif /* MOCK_C_LIB_HPP */

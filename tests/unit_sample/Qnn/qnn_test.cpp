@@ -111,7 +111,7 @@ typedef struct
     int delayMs = 0;
     int periodMs = 0;
     int batchMultiplier = 1;
-    boolean bAsync = false;
+    bool bAsync = false;
 } QnnTest_Parameters_t;
 
 static uint32_t s_nodeId = 0;

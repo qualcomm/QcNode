@@ -1,13 +1,14 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
+
 #include "QnnInterfaceMock.hpp"
 
 typedef Qnn_ErrorHandle_t ( *QnnInterfaceGetProvidersFn_t )( const QnnInterface_t ***providerList,
                                                              uint32_t *numProviders );
 
 static void *s_hDll = nullptr;
-static QnnInterfaceGetProvidersFn_t qnnInterfaceGetProvidersFn = nullptr;
+static QnnInterfaceGetProvidersFn_t s_qnnInterfaceGetProvidersFn = nullptr;
 
 class QNNClientLoader
 {
@@ -31,13 +32,13 @@ public:
             printf( "Successfully loaded %s\n", backendLibPath.c_str() );
         }
 
-        qnnInterfaceGetProvidersFn =
+        s_qnnInterfaceGetProvidersFn =
                 (QnnInterfaceGetProvidersFn_t) dlsym( s_hDll, "QnnInterface_getProviders" );
         const char *error = dlerror();
         if ( error != nullptr )
         {
             printf( "Failed to load symbol QnnInterface_getProviders: %s\n", error );
-            qnnInterfaceGetProvidersFn = nullptr;
+            s_qnnInterfaceGetProvidersFn = nullptr;
         }
         else
         {
@@ -203,6 +204,31 @@ Qnn_ErrorHandle_t QnnDevice_CreateFn( Qnn_LogHandle_t logger, const QnnDevice_Co
     return ret;
 }
 
+Qnn_ErrorHandle_t QnnBackend_RegisterOpPackageFn( Qnn_BackendHandle_t backend,
+                                                  const char *packagePath,
+                                                  const char *interfaceProvider,
+                                                  const char *target )
+{
+    printf( "call real QNN backendRegisterOpPackage\n" );
+    Qnn_ErrorHandle_t ret = s_RealInterface.QNN_INTERFACE_VER_NAME.backendRegisterOpPackage(
+            backend, packagePath, interfaceProvider, target );
+    if ( MOCK_CONTROL_API_NONE != s_MockParams[MOCK_API_QNN_BACKEND_REGISTER_OP_PACKAGE].action )
+    {
+        switch ( s_MockParams[MOCK_API_QNN_BACKEND_REGISTER_OP_PACKAGE].action )
+        {
+            case MOCK_CONTROL_API_RETURN:
+                ret = *(Qnn_ErrorHandle_t *) s_MockParams[MOCK_API_QNN_BACKEND_REGISTER_OP_PACKAGE]
+                               .param;
+                break;
+            default:
+                break;
+        }
+        s_MockParams[MOCK_API_QNN_BACKEND_REGISTER_OP_PACKAGE].action =
+                MOCK_CONTROL_API_NONE; /* consume it and invalide the control */
+    }
+    return ret;
+}
+
 
 Qnn_ErrorHandle_t QnnInterface_getProviders( const QnnInterface_t ***providerList,
                                              uint32_t *numProviders )
@@ -210,10 +236,10 @@ Qnn_ErrorHandle_t QnnInterface_getProviders( const QnnInterface_t ***providerLis
     Qnn_ErrorHandle_t ret;
     (void) s_qnnclientLoader;
 
-    if ( nullptr != qnnInterfaceGetProvidersFn )
+    if ( nullptr != s_qnnInterfaceGetProvidersFn )
     {
         printf( "call real QNN qnnInterfaceGetProvidersFn\n" );
-        ret = qnnInterfaceGetProvidersFn( providerList, numProviders );
+        ret = s_qnnInterfaceGetProvidersFn( providerList, numProviders );
         if ( QNN_SUCCESS == ret )
         {
             printf( "numProviders = %u\n", *numProviders );
@@ -234,6 +260,8 @@ Qnn_ErrorHandle_t QnnInterface_getProviders( const QnnInterface_t ***providerLis
             s_mockInterface.QNN_INTERFACE_VER_NAME.deviceGetPlatformInfo =
                     QnnDevice_GetPlatformInfoFn;
             s_mockInterface.QNN_INTERFACE_VER_NAME.deviceCreate = QnnDevice_CreateFn;
+            s_mockInterface.QNN_INTERFACE_VER_NAME.backendRegisterOpPackage =
+                    QnnBackend_RegisterOpPackageFn;
             s_qnnInterfaceHolder[0] = &s_mockInterface;
             *providerList = s_qnnInterfaceHolder;
         }
