@@ -12,7 +12,7 @@
 
 # 1. Remap Overview
 
-**QCNode Remap**  is based on [FastADAS Remap APIs](https://developer.qualcomm.com/sites/default/files/docs/adas-sdk/api/group__remap.html). It can do undistortion, downscaling, color conversion, normalization and ROI scaling in one singel API calling on specific processor(CPU, GPU or DSP). 
+**QCNode Remap**  is based on [FastADAS Remap APIs](https://docs.qualcomm.com/bundle/publicresource/topics/80-63309-1/remap.html). It can do undistortion, downscaling, color conversion, normalization and ROI scaling in one singel API calling on specific processor(CPU, GPU or DSP). 
 
 ### Key Features
 
@@ -297,4 +297,4 @@ The supported remap pipelines for different input/output image format on each pr
 
 - [gtest_Remap](../tests/unit_test/Node/Remap/gtest_Remap.cpp)
 - [SampleRemap](../tests/sample/source/SampleRemap.cpp)
-- [FastADAS Remap](https://developer.qualcomm.com/sites/default/files/docs/adas-sdk/api/group__remap.html)
+- [FastADAS Remap](https://docs.qualcomm.com/bundle/publicresource/topics/80-63309-1/remap.html)
