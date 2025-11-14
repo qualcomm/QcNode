@@ -101,6 +101,30 @@ Qnn_ErrorHandle_t QnnSystemContext_Create( QnnSystemContext_Handle_t *sysCtxHand
     return ret;
 }
 
+Qnn_ErrorHandle_t QnnSystemContext_FreeFn( QnnSystemContext_Handle_t sysCtxHandle )
+{
+    printf( "call real systemContextFree\n" );
+    Qnn_ErrorHandle_t ret =
+            s_RealInterface.QNN_SYSTEM_INTERFACE_VER_NAME.systemContextFree( sysCtxHandle );
+    if ( MOCK_QNN_SYSTEM_CONTROL_API_NONE !=
+         s_MockParams[MOCK_QNN_SYSTEM_API_QNN_SYSTEM_CONTEXT_FREE].action )
+    {
+        switch ( s_MockParams[MOCK_QNN_SYSTEM_API_QNN_SYSTEM_CONTEXT_FREE].action )
+        {
+            case MOCK_QNN_SYSTEM_CONTROL_API_RETURN:
+                ret = *(Qnn_ErrorHandle_t *)
+                               s_MockParams[MOCK_QNN_SYSTEM_API_QNN_SYSTEM_CONTEXT_FREE]
+                                       .param;
+                break;
+            default:
+                break;
+        }
+        s_MockParams[MOCK_QNN_SYSTEM_API_QNN_SYSTEM_CONTEXT_FREE].action =
+                MOCK_QNN_SYSTEM_CONTROL_API_NONE; /* consume it and invalide the control */
+    }
+    return ret;
+}
+
 Qnn_ErrorHandle_t QnnSystemInterface_getProviders( const QnnSystemInterface_t ***providerList,
                                                    uint32_t *numProviders )
 {
@@ -126,6 +150,8 @@ Qnn_ErrorHandle_t QnnSystemInterface_getProviders( const QnnSystemInterface_t **
             s_mockInterface = s_RealInterface;
             s_mockInterface.QNN_SYSTEM_INTERFACE_VER_NAME.systemContextCreate =
                     QnnSystemContext_Create;
+            s_mockInterface.QNN_SYSTEM_INTERFACE_VER_NAME.systemContextFree =
+                    QnnSystemContext_FreeFn;
             s_qnnInterfaceHolder[0] = &s_mockInterface;
             *providerList = s_qnnInterfaceHolder;
         }

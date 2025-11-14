@@ -98,7 +98,7 @@ size_t QnnImpl::memscpy( void *dst, size_t dstSize, const void *src, size_t copy
 }
 
 QCStatus_e QnnImpl::GetQnnFunctionPointers( std::string backendPath, std::string modelPath,
-                                            bool loadModelLib )
+                                            bool bLoadModelLib )
 {
     QCStatus_e status = QC_STATUS_OK;
     void *libModelHandle = nullptr;
@@ -174,7 +174,7 @@ QCStatus_e QnnImpl::GetQnnFunctionPointers( std::string backendPath, std::string
 
     if ( QC_STATUS_OK == status )
     {
-        if ( true == loadModelLib )
+        if ( true == bLoadModelLib )
         {
             QC_INFO( "Loading model shared library (%s)", modelPath.c_str() );
             libModelHandle = dlopen( modelPath.c_str(),
@@ -196,19 +196,6 @@ QCStatus_e QnnImpl::GetQnnFunctionPointers( std::string backendPath, std::string
                     status = QC_STATUS_FAIL;
                 }
             }
-
-            if ( QC_STATUS_OK == status )
-            {
-                std::string modelFreeFunc = "QnnModel_freeGraphsInfo";
-                m_qnnFunctionPointers.freeGraphInfoFnHandle =
-                        (QnnImplFreeGraphInfoFnHandleType_t) dlsym( libModelHandle,
-                                                                    modelFreeFunc.c_str() );
-                if ( nullptr == m_qnnFunctionPointers.freeGraphInfoFnHandle )
-                {
-                    QC_ERROR( "no symbol QnnModel_composeGraphs." );
-                    status = QC_STATUS_FAIL;
-                }
-            }
         }
         else
         {
@@ -219,7 +206,7 @@ QCStatus_e QnnImpl::GetQnnFunctionPointers( std::string backendPath, std::string
     if ( QC_STATUS_OK == status )
     {
         m_backendLibraryHandle = libBackendHandle;
-        if ( true == loadModelLib )
+        if ( true == bLoadModelLib )
         {
             m_modelLibraryHandle = libModelHandle;
         }
@@ -1325,16 +1312,25 @@ QCStatus_e QnnImpl::SetHtpPerformanceMode()
     return status;
 }
 
+bool QnnImpl::IsHtpProcessor()
+{
+    bool bIsHtp = false;
+    if ( ( m_config.processorType >= QNN_PROCESSOR_HTP0 ) &&
+         ( m_config.processorType <= QNN_PROCESSOR_HTP3 ) )
+    {
+        bIsHtp = true;
+    }
+    return bIsHtp;
+}
+
 QCStatus_e QnnImpl::SetPerformanceMode()
 {
     QCStatus_e status = QC_STATUS_OK;
 
     if ( QNN_PERF_PROFILE_DEFAULT != m_config.perfProfile )
     {
-        if ( ( QNN_PROCESSOR_HTP0 == m_config.processorType ) ||
-             ( QNN_PROCESSOR_HTP1 == m_config.processorType ) ||
-             ( QNN_PROCESSOR_HTP2 == m_config.processorType ) ||
-             ( QNN_PROCESSOR_HTP3 == m_config.processorType ) )
+        bool bIsHtp = IsHtpProcessor();
+        if ( true == bIsHtp )
         {
             status = SetHtpPerformanceMode();
         }
@@ -1633,10 +1629,8 @@ QnnImpl::Initialize( QCNodeEventCallBack_t callback,
 
     if ( QC_STATUS_OK == status )
     {
-        if ( ( QNN_PROCESSOR_HTP0 == m_config.processorType ) ||
-             ( QNN_PROCESSOR_HTP1 == m_config.processorType ) ||
-             ( QNN_PROCESSOR_HTP2 == m_config.processorType ) ||
-             ( QNN_PROCESSOR_HTP3 == m_config.processorType ) )
+        bool bIsHtp = IsHtpProcessor();
+        if ( true == bIsHtp )
         {   // set up context priority
             size_t idx = 0;
 
@@ -1890,7 +1884,7 @@ QCStatus_e QnnImpl::RegisterBufferToHTP( const TensorDescriptor_t &tensorDesc,
                 }
                 else
                 {
-                    (void) RemoteDeRegisterBuf( tensorDesc.pBuf, tensorDesc.size );
+                    RemoteDeRegisterBuf( tensorDesc.pBuf, tensorDesc.size );
                     QC_ERROR( "failed to map buffer %p(%d, %" PRIu64 ", %" PRIu64
                               ") for core %d, error %d\n",
                               tensorDesc.pBuf, fd, tensorDesc.size, tensorDesc.offset,
@@ -1919,10 +1913,8 @@ QCStatus_e QnnImpl::GetMemHandle( const TensorDescriptor_t &tensorDesc, Qnn_MemH
     QCStatus_e status = QC_STATUS_OK;
 
     memHandle = nullptr;
-    if ( ( QNN_PROCESSOR_HTP0 == m_config.processorType ) ||
-         ( QNN_PROCESSOR_HTP1 == m_config.processorType ) ||
-         ( QNN_PROCESSOR_HTP2 == m_config.processorType ) ||
-         ( QNN_PROCESSOR_HTP3 == m_config.processorType ) )
+    bool bIsHtp = IsHtpProcessor();
+    if ( true == bIsHtp )
     {
         status = RegisterBufferToHTP( tensorDesc, memHandle );
     }
@@ -2169,7 +2161,7 @@ QCStatus_e QnnImpl::Stop()
     QCStatus_e status = QC_STATUS_OK;
 
     QC_TRACE_BEGIN( "Stop", {} );
-    if ( ( QC_OBJECT_STATE_RUNNING == m_state ) || ( QC_OBJECT_STATE_ERROR == m_state ) )
+    if ( QC_OBJECT_STATE_RUNNING == m_state )
     {
         if ( m_config.bDeRegisterAllBuffersWhenStop )
         {
@@ -2367,9 +2359,8 @@ QCStatus_e QnnImpl::DisablePerf()
     return status;
 }
 
-QCStatus_e QnnImpl::RemoteDeRegisterBuf( void *pData, size_t size )
+void QnnImpl::RemoteDeRegisterBuf( void *pData, size_t size )
 {
-    QCStatus_e status = QC_STATUS_OK;
 #ifdef QC_USE_REMOTE_REGISTER_V2
     constexpr int client = 0;   // NOTE: default is 0
     int domain = CDSP_DOMAIN_ID;
@@ -2403,8 +2394,6 @@ QCStatus_e QnnImpl::RemoteDeRegisterBuf( void *pData, size_t size )
         /* buffer is possbile that remote_register_buf by others */
         QC_INFO( "Can't find buffer %p(%" PRIu64 ") in dma ref map", pData, size );
     }
-
-    return status;
 }
 
 QCStatus_e QnnImpl::DeRegisterAllBuffers()
@@ -2412,6 +2401,7 @@ QCStatus_e QnnImpl::DeRegisterAllBuffers()
     QCStatus_e status = QC_STATUS_OK;
     Qnn_ErrorHandle_t retVal;
     std::lock_guard<std::mutex> l( m_lock );
+    bool bIsHtp = IsHtpProcessor();
     for ( auto &kv : m_dmaMemInfoMap )
     {
         auto pData = kv.first;
@@ -2427,16 +2417,10 @@ QCStatus_e QnnImpl::DeRegisterAllBuffers()
             QC_INFO( "succeed to deregister buffer %p(%d, %" PRIu64 ") as %p for core %d", pData,
                      info.fd, info.size, info.memHandle, m_config.processorType );
         }
-        if ( ( QNN_PROCESSOR_HTP0 == m_config.processorType ) ||
-             ( QNN_PROCESSOR_HTP1 == m_config.processorType ) ||
-             ( QNN_PROCESSOR_HTP2 == m_config.processorType ) ||
-             ( QNN_PROCESSOR_HTP3 == m_config.processorType ) )
+
+        if ( true == bIsHtp )
         {
-            QCStatus_e status2 = RemoteDeRegisterBuf( pData, info.size );
-            if ( QC_STATUS_OK != status2 )
-            {
-                status = status2;
-            }
+            RemoteDeRegisterBuf( pData, info.size );
         }
     }
     m_dmaMemInfoMap.clear();

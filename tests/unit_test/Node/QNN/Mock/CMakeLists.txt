@@ -37,3 +37,4 @@ target_include_directories( QnnSystemInterfaceMock PUBLIC
 )
 set_target_properties(QnnSystemInterfaceMock PROPERTIES NO_SONAME TRUE)
 install(TARGETS QnnSystemInterfaceMock DESTINATION lib)
+

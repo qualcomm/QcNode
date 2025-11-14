@@ -189,13 +189,10 @@ typedef qnn_wrapper_api::ModelError_t ( *QnnImplComposeGraphsFnHandleType_t )(
         Qnn_BackendHandle_t, QNN_INTERFACE_VER_TYPE, Qnn_ContextHandle_t,
         const qnn_wrapper_api::GraphConfigInfo_t **, const uint32_t,
         qnn_wrapper_api::GraphInfo_t ***, uint32_t *, bool, QnnLog_Callback_t, QnnLog_Level_t );
-typedef qnn_wrapper_api::ModelError_t ( *QnnImplFreeGraphInfoFnHandleType_t )(
-        qnn_wrapper_api::GraphInfo_t ***, uint32_t );
 
 typedef struct QnnImplFunctionPointers
 {
     QnnImplComposeGraphsFnHandleType_t composeGraphsFnHandle;
-    QnnImplFreeGraphInfoFnHandleType_t freeGraphInfoFnHandle;
     QNN_INTERFACE_VER_TYPE qnnInterface;
     QNN_SYSTEM_INTERFACE_VER_TYPE qnnSystemInterface;
 } QnnImplFunctionPointers_t;
@@ -323,7 +320,7 @@ private:
 
 private:
     static void QnnNotifyFn( void *pNotifyParam, Qnn_NotifyStatus_t notifyStatus );
-    void QnnNotifyFn( NotifyParam_t &pNotifyParam, Qnn_NotifyStatus_t notifyStatus );
+    void QnnNotifyFn( NotifyParam_t &notifyParam, Qnn_NotifyStatus_t notifyStatus );
 
     QnnLog_Level_t GetQnnLogLevel( Logger_Level_e level );
     uint32_t GetQnnDeviceId( Qnn_ProcessorType_e processorType );
@@ -345,7 +342,7 @@ private:
 
     QCStatus_e ValidateTensor( const TensorDescriptor_t &tensorDesc, const Qnn_Tensor_t &tensor );
 
-    QCStatus_e RemoteDeRegisterBuf( void *pData, size_t size );
+    void RemoteDeRegisterBuf( void *pData, size_t size );
     QCStatus_e DeRegisterAllBuffers();
     QCStatus_e Destroy();
 
@@ -370,6 +367,7 @@ private:
     QCStatus_e FreeGraphsInfo( qnn_wrapper_api::GraphInfoPtr_t **graphsInfo, uint32_t numGraphs );
     QCStatus_e SetHtpPerformanceMode();
     QCStatus_e SetPerformanceMode();
+    bool IsHtpProcessor();
 
     static void QnnLog_Callback( const char *fmt, QnnLog_Level_t logLevel, uint64_t timestamp,
                                  va_list args );

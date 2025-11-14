@@ -14,20 +14,24 @@ extern "C"
 {
     void *malloc( size_t size );
     void *calloc( size_t nitems, size_t size );
+    size_t fread( void *ptr, size_t size, size_t nitems, FILE *stream );
 } /* extern "C" */
 
 
-typedef void *( *malloc_fnc_t )( size_t size );
-typedef void *( *calloc_fnc_t )( size_t nitems, size_t size );
+typedef void *( *MallocFnc_t )( size_t size );
+typedef void *( *CallocFnc_t )( size_t nitems, size_t size );
+typedef size_t ( *FreadFnc_t )( void *ptr, size_t size, size_t n, FILE *stream );
 
-static malloc_fnc_t malloc_fnc = nullptr;
-static calloc_fnc_t calloc_fnc = nullptr;
+static MallocFnc_t s_MallocFnc = nullptr;
+static CallocFnc_t s_CallocFnc = nullptr;
+static FreadFnc_t s_FreadFnc = nullptr;
 
 static int s_whenMallocToReturnNull = 0;
 static int s_whenCallocToReturnNull = 0;
 
 static size_t s_sizeMallocToReturnNull = 0;
 static size_t s_sizeCallocToReturnNull = 0;
+static size_t s_sizeFreadToReturnZero = 0;
 
 static uint32_t s_initMagic = 0;
 
@@ -36,12 +40,14 @@ static void MockC_EnsureInit( void )
     if ( MOCKC_INIT_MAGIC != s_initMagic )
     {
         s_initMagic = MOCKC_INIT_START_MAGIC;
-        malloc_fnc = (malloc_fnc_t) dlsym( RTLD_NEXT, "malloc" );
-        calloc_fnc = (calloc_fnc_t) dlsym( RTLD_NEXT, "calloc" );
+        s_MallocFnc = (MallocFnc_t) dlsym( RTLD_NEXT, "malloc" );
+        s_CallocFnc = (CallocFnc_t) dlsym( RTLD_NEXT, "calloc" );
+        s_FreadFnc = (FreadFnc_t) dlsym( RTLD_NEXT, "fread" );
         s_whenMallocToReturnNull = 0;
         s_whenCallocToReturnNull = 0;
         s_sizeMallocToReturnNull = 0;
         s_sizeCallocToReturnNull = 0;
+        s_sizeFreadToReturnZero = 0;
         s_initMagic = MOCKC_INIT_MAGIC;
     }
 }
@@ -65,6 +71,12 @@ void MockC_CallocCtrl( int whenToReturnNull )
 {
     s_whenCallocToReturnNull = whenToReturnNull;
 }
+
+void MockC_FreadCtrlSize( size_t size )
+{
+    s_sizeFreadToReturnZero = size;
+}
+
 
 void *malloc( size_t size )
 {
@@ -108,8 +120,9 @@ void *malloc( size_t size )
     }
     else
     {
-        pData = malloc_fnc( size );
+        pData = s_MallocFnc( size );
     }
+
     return pData;
 }
 
@@ -160,7 +173,36 @@ void *calloc( size_t nitems, size_t size )
     }
     else
     {
-        pData = calloc_fnc( nitems, size );
+        pData = s_CallocFnc( nitems, size );
     }
+
     return pData;
+}
+
+size_t fread( void *ptr, size_t size, size_t nitems, FILE *stream )
+{
+    bool bReturnZero = false;
+    size_t sizeRead = 0;
+
+    MockC_EnsureInit();
+
+    if ( s_sizeFreadToReturnZero > 0 )
+    {
+        if ( ( size * nitems ) == s_sizeFreadToReturnZero )
+        {
+            bReturnZero = true;
+            s_sizeFreadToReturnZero = 0;
+        }
+    }
+
+    if ( true == bReturnZero )
+    {
+        sizeRead = 0;
+    }
+    else
+    {
+        sizeRead = s_FreadFnc( ptr, size, nitems, stream );
+    }
+
+    return sizeRead;
 }

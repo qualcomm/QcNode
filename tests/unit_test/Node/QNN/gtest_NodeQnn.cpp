@@ -13,6 +13,12 @@
 #include "accuracy.hpp"
 #include "md5_utils.hpp"
 #include "gtest/gtest.h"
+#if defined( __QNXNTO__ )
+#include <pmem.h>
+#else
+extern "C" int rpcmem_to_dmabuf_fd( void *po );
+#endif
+#include <rpcmem.h>
 
 #define QNNIMPL_FRIEND_CLASS() friend class QnnImplTest
 #include "QnnImpl.hpp"
@@ -22,6 +28,7 @@
 
 #include "MockCLib.hpp"
 
+#include "Mock/QnnAddModelMock.hpp"
 #include "Mock/QnnInterfaceMock.hpp"
 #include "Mock/QnnSystemInterfaceMock.hpp"
 
@@ -145,10 +152,7 @@ public:
         return qnn.ValidateTensor( tensorDesc, tensor );
     }
 
-    QCStatus_e RemoteDeRegisterBuf( void *pData, size_t size )
-    {
-        return qnn.RemoteDeRegisterBuf( pData, size );
-    }
+    void RemoteDeRegisterBuf( void *pData, size_t size ) { qnn.RemoteDeRegisterBuf( pData, size ); }
 
     QCStatus_e DeRegisterAllBuffers() { return qnn.DeRegisterAllBuffers(); }
 
@@ -216,6 +220,8 @@ public:
 
     QCStatus_e SetHtpPerformanceMode() { return qnn.SetHtpPerformanceMode(); }
 
+    bool IsHtpProcessor() { return qnn.IsHtpProcessor(); }
+
     QCStatus_e SetPerformanceMode() { return qnn.SetPerformanceMode(); }
 
     static void QnnLog_Callback( const char *fmt, QnnLog_Level_t logLevel, uint64_t timestamp,
@@ -228,8 +234,21 @@ public:
         return QnnImpl::memscpy( dst, dstSize, src, copySize );
     }
 
-private:
+    static void QnnNotifyFn( void *pNotifyParam, Qnn_NotifyStatus_t notifyStatus )
+    {
+        QnnImpl::QnnNotifyFn( pNotifyParam, notifyStatus );
+    }
+    void QnnNotifyFn( QnnImpl::NotifyParam_t &notifyParam, Qnn_NotifyStatus_t notifyStatus )
+    {
+        qnn.QnnNotifyFn( notifyParam, notifyStatus );
+    }
+
+    static void QnnEventCallBack( const QCNodeEventInfo_t &info ) {}
+
+public:
+    QnnImpl::NotifyParam_t m_notifyParam;
     QnnImpl qnn;
+    QnnImpl::NotifyParam_t m_notifyParamH;
 };
 }   // namespace Node
 }   // namespace QC
@@ -550,6 +569,15 @@ TEST_F( QnnTest, SANITY_General )
     Execute();
     Stop();
     Deinit();
+
+#if ( QC_TARGET_SOC == 8650 )
+    Init( "SANITY_HTP1", "binary", "data/centernet/program.bin", "htp1" );
+    AllocateBuffers();
+    Start();
+    Execute();
+    Stop();
+    Deinit();
+#endif
 }
 
 TEST_F( QnnTest, CreateModelFromBuffer )
@@ -664,11 +692,51 @@ TEST_F( QnnTest, RegisterBuffer )
     Deinit();
 
     // give an invalid buffer id
-    bufferIds.push_back( bufferIds.size() + 5 );
+    bufferIds.push_back( bufferIds.size() );
     dt.Set<uint32_t>( "static.bufferIds", bufferIds );
     config.config = dt.Dump();
     ret = qnn.Initialize( config );
     ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+
+    BufferDescriptor_t bufDummy;
+    config.buffers.push_back( bufDummy );
+    dt.Set<uint32_t>( "static.bufferIds", bufferIds );
+    config.config = dt.Dump();
+    ret = qnn.Initialize( config );
+    ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
+
+    // give a invalid DMA memory
+    config.buffers.pop_back();
+    TensorDescriptor_t nonDmaDesc = inputs[0];
+    nonDmaDesc.pBuf = (void *) UINT64_MAX;
+    nonDmaDesc.dmaHandle = (uint64_t) UINT64_MAX;
+    config.buffers.push_back( nonDmaDesc );
+    dt.Set<uint32_t>( "static.bufferIds", bufferIds );
+    config.config = dt.Dump();
+    ret = qnn.Initialize( config );
+    ASSERT_EQ( QC_STATUS_FAIL, ret );
+
+    // give an rpcmem
+    config.buffers.pop_back();
+    TensorDescriptor_t rpcmemDesc = inputs[0];
+    rpcmemDesc.pBuf = rpcmem_alloc( RPCMEM_DEFAULT_HEAP, RPCMEM_DEFAULT_FLAGS, rpcmemDesc.size );
+#if defined( __QNXNTO__ )
+    pmem_handle_t pmemHandle;
+    int result = pmem_get_phandle( rpcmemDesc.pBuf, PMEM_DSP_ID, &pmemHandle );
+    ASSERT_EQ( 0, result );
+    rpcmemDesc.dmaHandle = (uint64_t) pmemHandle;
+#else
+    int dmaHandle = rpcmem_to_dmabuf_fd( rpcmemDesc.pBuf );
+    rpcmemDesc.dmaHandle = (uint64_t) dmaHandle;
+#endif
+    config.buffers.push_back( rpcmemDesc );
+    dt.Set<uint32_t>( "static.bufferIds", bufferIds );
+    config.config = dt.Dump();
+    ret = qnn.Initialize( config );
+    ASSERT_EQ( QC_STATUS_OK, ret );
+
+    ret = qnn.DeInitialize();
+    ASSERT_EQ( QC_STATUS_OK, ret );
 }
 
 TEST( QNN, LoadModel )
@@ -2382,6 +2450,10 @@ TEST_F( QnnTest, QnnMonitor )
         ret = monitorIfs.Place( nullptr, size );
         ASSERT_EQ( ret, QC_STATUS_BAD_ARGUMENTS );
     }
+
+    {
+        const QCNodeMonitoringBase_t &cfgBase = monitorIfs.Get();
+    }
 }
 
 TEST_F( QnnTest, GlobalBufferIdMap )
@@ -2498,7 +2570,7 @@ TEST( QNN, QnnImplUnitTest )
     Logger logger;
     logger.Init( "UNIT_TEST" );
     {
-        QnnImplTest qnn = QnnImplTest( nodeId, logger );
+        QnnImplTest qnn( nodeId, logger );
         status = qnn.GetQnnFunctionPointers( "libQnnNotExist.so", "libQnnModel.so", false );
         ASSERT_EQ( QC_STATUS_FAIL, status );
     }
@@ -2982,6 +3054,138 @@ TEST( QNN, QnnImplUnitTest )
         status = qnn.CreateFromBinaryFile( "data/centernet/program.bin" );
         ASSERT_EQ( QC_STATUS_FAIL, status );
     }
+
+    {
+        QnnImplTest qnn( nodeId, logger );
+        QnnImplConfig_t &cfg = qnn.GetConfig();
+        cfg.loadType = QNN_LOAD_CONTEXT_BIN_FROM_FILE;
+        cfg.processorType = QNN_PROCESSOR_HTP0;
+        cfg.coreIds = { 0 };
+        cfg.priority = QNN_PRIORITY_NORMAL;
+        cfg.perfProfile = QNN_PERF_PROFILE_DEFAULT;
+        cfg.modelPath = "data/centernet/program.bin";
+        std::vector<std::reference_wrapper<QCBufferDescriptorBase>> buffers;
+
+        status = qnn.EnablePerf();
+        ASSERT_EQ( QC_STATUS_BAD_STATE, status );
+
+        status = qnn.DisablePerf();
+        ASSERT_EQ( QC_STATUS_BAD_STATE, status );
+
+        status = qnn.Initialize( nullptr, buffers );
+        ASSERT_EQ( QC_STATUS_OK, status );
+
+        status = qnn.DisablePerf();
+        ASSERT_EQ( QC_STATUS_BAD_STATE, status );
+
+        status = qnn.DeInitialize();
+        ASSERT_EQ( QC_STATUS_OK, status );
+    }
+
+    {
+        QnnImplTest qnn( nodeId, logger );
+        QnnImplConfig_t &cfg = qnn.GetConfig();
+        cfg.loadType = QNN_LOAD_CONTEXT_BIN_FROM_FILE;
+        cfg.processorType = QNN_PROCESSOR_HTP0;
+        cfg.coreIds = { 0 };
+        cfg.priority = QNN_PRIORITY_NORMAL;
+        cfg.perfProfile = QNN_PERF_PROFILE_DEFAULT;
+        std::vector<std::reference_wrapper<QCBufferDescriptorBase>> buffers;
+
+        cfg.modelPath = "data/centernet/program.bin";
+        status = qnn.Initialize( nullptr, buffers );
+        ASSERT_EQ( QC_STATUS_OK, status );
+
+        cfg.perfProfile = QNN_PERF_PROFILE_MAX;
+        status = qnn.SetHtpPerformanceMode();
+        ASSERT_EQ( QC_STATUS_FAIL, status );
+
+        MockC_CallocCtrl( 2 );
+        status = qnn.CreateFromBinaryFile( cfg.modelPath );
+        ASSERT_EQ( QC_STATUS_FAIL, status );
+
+        status = qnn.DeInitialize();
+        ASSERT_EQ( QC_STATUS_OK, status );
+    }
+
+    {
+        QnnImplTest qnn( nodeId, logger );
+        QnnImplConfig_t &cfg = qnn.GetConfig();
+
+        cfg.processorType = QNN_PROCESSOR_HTP1;
+        ASSERT_EQ( qnn.IsHtpProcessor(), true );
+
+        cfg.processorType = QNN_PROCESSOR_HTP2;
+        ASSERT_EQ( qnn.IsHtpProcessor(), true );
+
+        cfg.processorType = QNN_PROCESSOR_HTP3;
+        ASSERT_EQ( qnn.IsHtpProcessor(), true );
+
+        cfg.processorType = QNN_PROCESSOR_CPU;
+        ASSERT_EQ( qnn.IsHtpProcessor(), false );
+
+        cfg.processorType = static_cast<Qnn_ProcessorType_e>( -1 );
+        ASSERT_EQ( qnn.IsHtpProcessor(), false );
+
+        cfg.processorType = QNN_PROCESSOR_CPU;
+        cfg.perfProfile = QNN_PERF_PROFILE_BURST;
+        status = qnn.SetPerformanceMode();
+        ASSERT_EQ( QC_STATUS_OK, status );
+    }
+
+    {
+        QnnImplTest qnn( nodeId, logger );
+        NodeFrameDescriptor frameDesc( 10 );
+        QnnImplTest::QnnNotifyFn( nullptr, { QNN_SUCCESS } );
+
+        qnn.m_notifyParam.magic = 0;
+        qnn.m_notifyParam.pFrameDesc = &frameDesc;
+        QnnImplTest::QnnNotifyFn( &qnn.m_notifyParam, { QNN_SUCCESS } );
+
+        qnn.m_notifyParam.magic = QNN_NOTIFY_MAGIC;
+        qnn.m_notifyParam.pSelf = nullptr;
+        QnnImplTest::QnnNotifyFn( &qnn.m_notifyParam, { QNN_SUCCESS } );
+
+        qnn.m_notifyParam.magic = QNN_NOTIFY_MAGIC;
+        qnn.m_notifyParam.pSelf = &qnn.qnn;
+        QnnImplTest::QnnNotifyFn( &qnn.m_notifyParam, { QNN_SUCCESS } );
+
+        qnn.m_notifyParam.magic = QNN_NOTIFY_MAGIC;
+        qnn.m_notifyParam.pSelf = &qnn.qnn;
+        QnnImplTest::QnnNotifyFn( &qnn.m_notifyParam, { QNN_MIN_ERROR_COMMON } );
+
+
+        QnnImplConfig_t &cfg = qnn.GetConfig();
+        cfg.loadType = QNN_LOAD_CONTEXT_BIN_FROM_FILE;
+        cfg.processorType = QNN_PROCESSOR_HTP0;
+        cfg.coreIds = { 0 };
+        cfg.priority = QNN_PRIORITY_NORMAL;
+        cfg.perfProfile = QNN_PERF_PROFILE_DEFAULT;
+        cfg.modelPath = "data/centernet/program.bin";
+        std::vector<std::reference_wrapper<QCBufferDescriptorBase>> buffers;
+
+        status = qnn.Initialize( QnnImplTest::QnnEventCallBack, buffers );
+        ASSERT_EQ( QC_STATUS_OK, status );
+
+        qnn.m_notifyParam.magic = QNN_NOTIFY_MAGIC;
+        qnn.m_notifyParam.pSelf = &qnn.qnn;
+        QnnImplTest::QnnNotifyFn( &qnn.m_notifyParam, { QNN_MIN_ERROR_COMMON } );
+
+        NodeFrameDescriptor frameDesc1( 1 );
+        qnn.m_notifyParamH = qnn.m_notifyParam;
+        qnn.m_notifyParamH.pFrameDesc = &frameDesc1;
+        QnnImplTest::QnnNotifyFn( &qnn.m_notifyParamH, { QNN_MIN_ERROR_COMMON } );
+
+        status = qnn.DeInitialize();
+        ASSERT_EQ( QC_STATUS_OK, status );
+    }
+
+    {
+        QnnImplTest qnn( nodeId, logger );
+        std::vector<Qnn_Tensor_t> outputTensors;
+        status = qnn.GetOutputTensors( outputTensors );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, status );
+    }
 }
 
 TEST_F( QnnTest, GetQnnFunctionPointersDllOpenFailed )
@@ -3003,71 +3207,72 @@ TEST_F( QnnTest, MockQnnInterface )
 {
     MockApi_ControlFnc_t MockApi_ControlFnc = MockQnn_GetControlFnc( "libQnnHtp.so" );
     ASSERT_NE( MockApi_ControlFnc, nullptr );
-    Qnn_ErrorHandle_t qnErrHandle = QNN_MIN_ERROR_COMMON;
+    Qnn_ErrorHandle_t qnnErrHandle = QNN_MIN_ERROR_COMMON;
     MockApi_ControlFnc( MOCK_API_QNN_GET_INTERFACE_PROVIDER, MOCK_CONTROL_API_RETURN,
-                        &qnErrHandle );
-    Initialize( "MOCK", "binary", "data/centernet/program.bin", "htp0" );
+                        &qnnErrHandle );
+    Initialize( "MOCK0", "binary", "data/centernet/program.bin", "htp0" );
     ASSERT_EQ( ret, QC_STATUS_FAIL );
 
     QnnInterface_t **interfaceProviders{ nullptr };
     MockApi_ControlFnc( MOCK_API_QNN_GET_INTERFACE_PROVIDER, MOCK_CONTROL_API_OUT_PARAM0,
                         &interfaceProviders );
-    Initialize( "MOCK", "binary", "data/centernet/program.bin", "htp0" );
+    Initialize( "MOCK1", "binary", "data/centernet/program.bin", "htp0" );
     ASSERT_EQ( ret, QC_STATUS_FAIL );
 
     uint32_t numProviders = 0;
     MockApi_ControlFnc( MOCK_API_QNN_GET_INTERFACE_PROVIDER, MOCK_CONTROL_API_OUT_PARAM1,
                         &numProviders );
-    Initialize( "MOCK", "binary", "data/centernet/program.bin", "htp0" );
+    Initialize( "MOCK2", "binary", "data/centernet/program.bin", "htp0" );
     ASSERT_EQ( ret, QC_STATUS_FAIL );
 
     MockApi_ControlFnc( MOCK_API_QNN_GET_INTERFACE_PROVIDER,
                         MOCK_CONTROL_API_OUT_PARAM0_DECREASE_MAJOR_VERSION, nullptr );
-    Initialize( "MOCK", "binary", "data/centernet/program.bin", "htp0" );
+    Initialize( "MOCK3", "binary", "data/centernet/program.bin", "htp0" );
     ASSERT_EQ( ret, QC_STATUS_FAIL );
 
     MockApi_ControlFnc( MOCK_API_QNN_GET_INTERFACE_PROVIDER,
                         MOCK_CONTROL_API_OUT_PARAM0_DECREASE_MINOR_VERSION, nullptr );
-    Initialize( "MOCK", "binary", "data/centernet/program.bin", "htp0" );
+    Initialize( "MOCK4", "binary", "data/centernet/program.bin", "htp0" );
     ASSERT_EQ( ret, QC_STATUS_FAIL );
 
-    MockApi_ControlFnc( MOCK_API_QNN_LOG_CREATE, MOCK_CONTROL_API_RETURN, &qnErrHandle );
-    Initialize( "MOCK", "binary", "data/centernet/program.bin", "htp0" );
-    ASSERT_EQ( ret, QNN_SUCCESS );
-    Deinit();
+    MockApi_ControlFnc( MOCK_API_QNN_LOG_CREATE, MOCK_CONTROL_API_RETURN, &qnnErrHandle );
+    Initialize( "MOCK5", "binary", "data/centernet/program.bin", "htp0" );
+    ASSERT_EQ( ret, QC_STATUS_OK );
+    ret = qnn.DeInitialize();
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
-    MockApi_ControlFnc( MOCK_API_QNN_BACKEND_CREATE, MOCK_CONTROL_API_RETURN, &qnErrHandle );
-    Initialize( "MOCK", "binary", "data/centernet/program.bin", "htp0" );
+    MockApi_ControlFnc( MOCK_API_QNN_BACKEND_CREATE, MOCK_CONTROL_API_RETURN, &qnnErrHandle );
+    Initialize( "MOCK6", "binary", "data/centernet/program.bin", "htp0" );
     ASSERT_EQ( ret, QC_STATUS_FAIL );
 
     MockApi_ControlFnc( MOCK_API_QNN_BACKEND_GET_API_VERSION, MOCK_CONTROL_API_RETURN,
-                        &qnErrHandle );
-    Initialize( "MOCK", "binary", "data/centernet/program.bin", "htp0" );
+                        &qnnErrHandle );
+    Initialize( "MOCK7", "binary", "data/centernet/program.bin", "htp0" );
     ASSERT_EQ( ret, QC_STATUS_FAIL );
 
     MockApi_ControlFnc( MOCK_API_QNN_DEVICE_GET_PLATFORM_INFO, MOCK_CONTROL_API_RETURN,
-                        &qnErrHandle );
-    Initialize( "MOCK", "binary", "data/centernet/program.bin", "htp0" );
+                        &qnnErrHandle );
+    Initialize( "MOCK8", "binary", "data/centernet/program.bin", "htp0" );
     ASSERT_EQ( ret, QC_STATUS_FAIL );
 
     MockApi_ControlFnc( MOCK_API_QNN_DEVICE_GET_PLATFORM_INFO,
                         MOCK_CONTROL_API_OUT_PARAM0_SET_PLATFORM_INFO_VERSION_INVALID,
-                        &qnErrHandle );
-    Initialize( "MOCK", "binary", "data/centernet/program.bin", "htp0" );
+                        &qnnErrHandle );
+    Initialize( "MOCK9", "binary", "data/centernet/program.bin", "htp0" );
     ASSERT_EQ( ret, QC_STATUS_UNSUPPORTED );
 
     MockApi_ControlFnc( MOCK_API_QNN_DEVICE_GET_PLATFORM_INFO,
-                        MOCK_CONTROL_API_OUT_PARAM0_SET_PLATFORM_INFO_NUM_DEVICE_0, &qnErrHandle );
-    Initialize( "MOCK", "binary", "data/centernet/program.bin", "htp0" );
+                        MOCK_CONTROL_API_OUT_PARAM0_SET_PLATFORM_INFO_NUM_DEVICE_0, &qnnErrHandle );
+    Initialize( "MOCK10", "binary", "data/centernet/program.bin", "htp0" );
     ASSERT_EQ( ret, QC_STATUS_FAIL );
 
-    MockApi_ControlFnc( MOCK_API_QNN_DEVICE_CREATE, MOCK_CONTROL_API_RETURN, &qnErrHandle );
-    Initialize( "MOCK", "binary", "data/centernet/program.bin", "htp0" );
+    MockApi_ControlFnc( MOCK_API_QNN_DEVICE_CREATE, MOCK_CONTROL_API_RETURN, &qnnErrHandle );
+    Initialize( "MOCK11", "binary", "data/centernet/program.bin", "htp0" );
     ASSERT_EQ( ret, QC_STATUS_FAIL );
 
     MockApi_ControlFnc( MOCK_API_QNN_BACKEND_REGISTER_OP_PACKAGE, MOCK_CONTROL_API_RETURN,
-                        &qnErrHandle );
-    SetupConfig( "MOCK", "binary", "data/centernet/program.bin", "htp0" );
+                        &qnnErrHandle );
+    SetupConfig( "MOCK12", "binary", "data/centernet/program.bin", "htp0" );
     std::vector<DataTree> udoPkgs;
     DataTree udt;
     udt.Set<std::string>( "udoLibPath", "libQnnAutoAiswOpPackage.so" );
@@ -3077,6 +3282,155 @@ TEST_F( QnnTest, MockQnnInterface )
     config.config = dt.Dump();
     ret = qnn.Initialize( config );
     ASSERT_EQ( ret, QC_STATUS_FAIL );
+
+
+    MockApi_ControlFnc( MOCK_API_QNN_GET_INTERFACE_PROVIDER,
+                        MOCK_CONTROL_API_OUT_PARAM0_SET_CONTEXT_CREATE_FROM_BINARY_INFO_NULL,
+                        nullptr );
+    Initialize( "MOCK13", "binary", "data/centernet/program.bin", "htp0" );
+    ASSERT_EQ( ret, QC_STATUS_FAIL );
+
+    MockApi_ControlFnc( MOCK_API_QNN_GET_INTERFACE_PROVIDER,
+                        MOCK_CONTROL_API_OUT_PARAM0_SET_GRAPH_RETRIEVE_NULL, nullptr );
+    Initialize( "MOCK14", "binary", "data/centernet/program.bin", "htp0" );
+    ASSERT_EQ( ret, QC_STATUS_FAIL );
+
+    MockApi_ControlFnc( MOCK_API_QNN_GRAPH_RETRIEVE, MOCK_CONTROL_API_RETURN, &qnnErrHandle );
+    Initialize( "MOCK15", "binary", "data/centernet/program.bin", "htp0" );
+    ASSERT_EQ( ret, QC_STATUS_FAIL );
+
+    Initialize( "MOCK16", "binary", "data/centernet/program.bin", "htp0" );
+    ASSERT_EQ( ret, QC_STATUS_OK );
+    AllocateBuffers();
+    Start();
+    MockApi_ControlFnc( MOCK_API_QNN_MEMORY_REGISTER, MOCK_CONTROL_API_RETURN, &qnnErrHandle );
+    ret = qnn.ProcessFrameDescriptor( *pFrameDesc );
+    ASSERT_EQ( QC_STATUS_FAIL, ret );
+    {
+        QCNodeConfigIfs &cfgIfs = qnn.GetConfigurationIfs();
+        DataTree dtp;
+        dtp.Set<bool>( "dynamic.enablePerf", true );
+        MockApi_ControlFnc( MOCK_API_QNN_PROFILE_CREATE, MOCK_CONTROL_API_RETURN, &qnnErrHandle );
+        ret = cfgIfs.VerifyAndSet( dtp.Dump(), errors );
+        ASSERT_EQ( QC_STATUS_FAIL, ret );
+
+        ret = cfgIfs.VerifyAndSet( dtp.Dump(), errors );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+
+        dtp.Set<bool>( "dynamic.enablePerf", false );
+        MockApi_ControlFnc( MOCK_API_QNN_PROFILE_FREE, MOCK_CONTROL_API_RETURN, &qnnErrHandle );
+        ret = cfgIfs.VerifyAndSet( dtp.Dump(), errors );
+        ASSERT_EQ( QC_STATUS_FAIL, ret );
+
+        ret = qnn.ProcessFrameDescriptor( *pFrameDesc );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+
+        MockApi_ControlFnc( MOCK_API_QNN_PROFILE_GET_EVENTS, MOCK_CONTROL_API_RETURN,
+                            &qnnErrHandle );
+        Qnn_Perf_t perf = { 0, 0, 0, 0 };
+        QCNodeMonitoringIfs &monitorIfs = qnn.GetMonitoringIfs();
+        uint32_t size = sizeof( perf );
+        ret = monitorIfs.Place( &perf, size );
+        ASSERT_EQ( QC_STATUS_FAIL, ret );
+
+        MockApi_ControlFnc( MOCK_API_QNN_PROFILE_GET_EVENT_DATA, MOCK_CONTROL_API_RETURN,
+                            &qnnErrHandle );
+        ret = monitorIfs.Place( &perf, size );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+    }
+    Stop();
+    MockApi_ControlFnc( MOCK_API_QNN_PROFILE_FREE, MOCK_CONTROL_API_RETURN, &qnnErrHandle );
+    ret = qnn.DeInitialize();
+    ASSERT_EQ( QC_STATUS_FAIL, ret );
+
+    {
+        Init( "MOCK17", "binary", "data/centernet/program.bin", "htp0" );
+        Start();
+        Execute();
+        Stop();
+        MockApi_ControlFnc( MOCK_API_QNN_MEMORY_DEREGISTER, MOCK_CONTROL_API_RETURN,
+                            &qnnErrHandle );
+        ret = qnn.DeInitialize();
+        ASSERT_EQ( QC_STATUS_FAIL, ret );
+    }
+
+    {
+        Init( "MOCK18", "binary", "data/centernet/program.bin", "htp0" );
+        MockApi_ControlFnc( MOCK_API_QNN_CONTEXT_FREE, MOCK_CONTROL_API_RETURN, &qnnErrHandle );
+        ret = qnn.DeInitialize();
+        ASSERT_EQ( QC_STATUS_FAIL, ret );
+    }
+
+    {
+        Init( "MOCK19", "binary", "data/centernet/program.bin", "htp0" );
+        MockApi_ControlFnc( MOCK_API_QNN_DEVICE_FREE, MOCK_CONTROL_API_RETURN, &qnnErrHandle );
+        ret = qnn.DeInitialize();
+        ASSERT_EQ( QC_STATUS_FAIL, ret );
+    }
+
+    {
+        Init( "MOCK20", "binary", "data/centernet/program.bin", "htp0" );
+        MockApi_ControlFnc( MOCK_API_QNN_DEVICE_FREE_PLATFORM_INFO, MOCK_CONTROL_API_RETURN,
+                            &qnnErrHandle );
+        ret = qnn.DeInitialize();
+        ASSERT_EQ( QC_STATUS_FAIL, ret );
+    }
+
+    {
+        Init( "MOCK21", "binary", "data/centernet/program.bin", "htp0" );
+        MockApi_ControlFnc( MOCK_API_QNN_BACKEND_FREE, MOCK_CONTROL_API_RETURN, &qnnErrHandle );
+        ret = qnn.DeInitialize();
+        ASSERT_EQ( QC_STATUS_FAIL, ret );
+    }
+
+    {
+        Init( "MOCK22", "binary", "data/centernet/program.bin", "htp0" );
+        MockApi_ControlFnc( MOCK_API_QNN_LOG_FREE, MOCK_CONTROL_API_RETURN, &qnnErrHandle );
+        ret = qnn.DeInitialize();
+        ASSERT_EQ( QC_STATUS_OK, ret );
+    }
+
+    {
+        size_t fileSize = 0;
+        FILE *pFile = fopen( "data/centernet/program.bin", "rb" );
+        ASSERT_NE( nullptr, pFile );
+        fseek( pFile, 0, SEEK_END );
+        fileSize = static_cast<uint32_t>( ftell( pFile ) );
+        fclose( pFile );
+        MockC_FreadCtrlSize( fileSize );
+        Initialize( "MOCK23", "binary", "data/centernet/program.bin", "htp0" );
+        ASSERT_EQ( ret, QC_STATUS_FAIL );
+    }
+
+    {
+        Initialize( "MOCK24", "binary", "data/centernet/program.bin", "htp0", "QNN", 0, "burst" );
+        ASSERT_EQ( ret, QC_STATUS_OK );
+        MockApi_ControlFnc( MOCK_API_QNN_INFRAS_DESTROY_POWER_CONFIG_ID, MOCK_CONTROL_API_RETURN,
+                            &qnnErrHandle );
+        ret = qnn.DeInitialize();
+        ASSERT_EQ( QC_STATUS_FAIL, ret );
+    }
+
+    {
+        MockApi_ControlFnc( MOCK_API_QNN_DEVICE_GET_INFRAS, MOCK_CONTROL_API_RETURN,
+                            &qnnErrHandle );
+        Initialize( "MOCK25", "binary", "data/centernet/program.bin", "htp0", "QNN", 0, "burst" );
+        ASSERT_EQ( ret, QC_STATUS_FAIL );
+    }
+
+    {
+        MockApi_ControlFnc( MOCK_API_QNN_INFRAS_CREAT_POWER_CONFIG_ID, MOCK_CONTROL_API_RETURN,
+                            &qnnErrHandle );
+        Initialize( "MOCK26", "binary", "data/centernet/program.bin", "htp0", "QNN", 0, "burst" );
+        ASSERT_EQ( ret, QC_STATUS_FAIL );
+    }
+
+    {
+        MockApi_ControlFnc( MOCK_API_QNN_INFRAS_SET_POWER_CONFIG_ID, MOCK_CONTROL_API_RETURN,
+                            &qnnErrHandle );
+        Initialize( "MOCK27", "binary", "data/centernet/program.bin", "htp0", "QNN", 0, "burst" );
+        ASSERT_EQ( ret, QC_STATUS_FAIL );
+    }
 }
 
 TEST_F( QnnTest, MockQnnSystemInterface )
@@ -3084,58 +3438,106 @@ TEST_F( QnnTest, MockQnnSystemInterface )
     MockQnnSystemApi_ControlFnc_t MockQnnSystemApi_ControlFnc =
             MockQnnSystem_GetControlFnc( "libQnnSystem.so" );
     ASSERT_NE( MockQnnSystemApi_ControlFnc, nullptr );
-    Qnn_ErrorHandle_t qnErrHandle = QNN_MIN_ERROR_COMMON;
+    Qnn_ErrorHandle_t qnnErrHandle = QNN_MIN_ERROR_COMMON;
     MockQnnSystemApi_ControlFnc( MOCK_QNN_SYSTEM_API_QNN_GET_INTERFACE_PROVIDER,
-                                 MOCK_QNN_SYSTEM_CONTROL_API_RETURN, &qnErrHandle );
-    Initialize( "MOCK", "binary", "data/centernet/program.bin", "htp0" );
+                                 MOCK_QNN_SYSTEM_CONTROL_API_RETURN, &qnnErrHandle );
+    Initialize( "MOCK0", "binary", "data/centernet/program.bin", "htp0" );
     ASSERT_EQ( ret, QC_STATUS_FAIL );
 
     QnnInterface_t **interfaceProviders{ nullptr };
     MockQnnSystemApi_ControlFnc( MOCK_QNN_SYSTEM_API_QNN_GET_INTERFACE_PROVIDER,
                                  MOCK_QNN_SYSTEM_CONTROL_API_OUT_PARAM0, &interfaceProviders );
-    Initialize( "MOCK", "binary", "data/centernet/program.bin", "htp0" );
+    Initialize( "MOCK1", "binary", "data/centernet/program.bin", "htp0" );
     ASSERT_EQ( ret, QC_STATUS_FAIL );
 
     uint32_t numProviders = 0;
     MockQnnSystemApi_ControlFnc( MOCK_QNN_SYSTEM_API_QNN_GET_INTERFACE_PROVIDER,
                                  MOCK_QNN_SYSTEM_CONTROL_API_OUT_PARAM1, &numProviders );
-    Initialize( "MOCK", "binary", "data/centernet/program.bin", "htp0" );
+    Initialize( "MOCK2", "binary", "data/centernet/program.bin", "htp0" );
     ASSERT_EQ( ret, QC_STATUS_FAIL );
 
     MockQnnSystemApi_ControlFnc( MOCK_QNN_SYSTEM_API_QNN_GET_INTERFACE_PROVIDER,
                                  MOCK_QNN_SYSTEM_CONTROL_API_OUT_PARAM0_DECREASE_MAJOR_VERSION,
                                  nullptr );
-    Initialize( "MOCK", "binary", "data/centernet/program.bin", "htp0" );
+    Initialize( "MOCK3", "binary", "data/centernet/program.bin", "htp0" );
     ASSERT_EQ( ret, QC_STATUS_FAIL );
 
     MockQnnSystemApi_ControlFnc( MOCK_QNN_SYSTEM_API_QNN_GET_INTERFACE_PROVIDER,
                                  MOCK_QNN_SYSTEM_CONTROL_API_OUT_PARAM0_DECREASE_MINOR_VERSION,
                                  nullptr );
-    Initialize( "MOCK", "binary", "data/centernet/program.bin", "htp0" );
+    Initialize( "MOCK4", "binary", "data/centernet/program.bin", "htp0" );
     ASSERT_EQ( ret, QC_STATUS_FAIL );
 
     MockQnnSystemApi_ControlFnc(
             MOCK_QNN_SYSTEM_API_QNN_GET_INTERFACE_PROVIDER,
             MOCK_QNN_SYSTEM_CONTROL_API_OUT_PARAM0_SET_SYSTEM_CONTEXT_CREATE_NULLPTR, nullptr );
-    Initialize( "MOCK", "binary", "data/centernet/program.bin", "htp0" );
+    Initialize( "MOCK5", "binary", "data/centernet/program.bin", "htp0" );
     ASSERT_EQ( ret, QC_STATUS_FAIL );
 
     MockQnnSystemApi_ControlFnc(
             MOCK_QNN_SYSTEM_API_QNN_GET_INTERFACE_PROVIDER,
             MOCK_QNN_SYSTEM_CONTROL_API_OUT_PARAM0_SET_SYSTEM_CONTEXT_GET_BINARY_INFO_NULLPTR,
             nullptr );
-    Initialize( "MOCK", "binary", "data/centernet/program.bin", "htp0" );
+    Initialize( "MOCK6", "binary", "data/centernet/program.bin", "htp0" );
     ASSERT_EQ( ret, QC_STATUS_FAIL );
 
     MockQnnSystemApi_ControlFnc(
             MOCK_QNN_SYSTEM_API_QNN_GET_INTERFACE_PROVIDER,
             MOCK_QNN_SYSTEM_CONTROL_API_OUT_PARAM0_SET_SYSTEM_CONTEXT_FREE_NULLPTR, nullptr );
-    Initialize( "MOCK", "binary", "data/centernet/program.bin", "htp0" );
+    Initialize( "MOCK7", "binary", "data/centernet/program.bin", "htp0" );
     ASSERT_EQ( ret, QC_STATUS_FAIL );
 
     MockQnnSystemApi_ControlFnc( MOCK_QNN_SYSTEM_API_QNN_SYSTEM_CONTEXT_CREATE,
-                                 MOCK_QNN_SYSTEM_CONTROL_API_RETURN, &qnErrHandle );
-    Initialize( "MOCK", "binary", "data/centernet/program.bin", "htp0" );
+                                 MOCK_QNN_SYSTEM_CONTROL_API_RETURN, &qnnErrHandle );
+    Initialize( "MOCK8", "binary", "data/centernet/program.bin", "htp0" );
+    ASSERT_EQ( ret, QC_STATUS_FAIL );
+
+
+    MockQnnSystemApi_ControlFnc( MOCK_QNN_SYSTEM_API_QNN_SYSTEM_CONTEXT_FREE,
+                                 MOCK_QNN_SYSTEM_CONTROL_API_RETURN, &qnnErrHandle );
+    Initialize( "MOCK9", "binary", "data/centernet/program.bin", "htp0" );
+    ASSERT_EQ( ret, QC_STATUS_OK );
+    ret = qnn.DeInitialize();
+    ASSERT_EQ( QC_STATUS_FAIL, ret );
+}
+
+TEST_F( QnnTest, MockQnnAddModel )
+{
+    MockApi_ControlFnc_t MockApi_ControlFnc = MockQnn_GetControlFnc( "libQnnCpu.so" );
+    ASSERT_NE( MockApi_ControlFnc, nullptr );
+    MockAddModelApi_ControlFnc_t MockAddModelApi_Control =
+            MockAddModel_GetControlFnc( "lib/libQnnAddModelMock.so" );
+    ASSERT_NE( MockAddModelApi_Control, nullptr );
+
+    Initialize( "MOCK-ADDMODEL", "library", "lib/libQnnAddModelMock.so", "cpu" );
+    ASSERT_EQ( ret, QC_STATUS_OK );
+    AllocateBuffers();
+    Start();
+    Execute();
+    Stop();
+    Deinit();
+
+    qnn_wrapper_api::ModelError_t err = qnn_wrapper_api::ModelError_t::MODEL_UNKNOWN_ERROR;
+
+    MockAddModelApi_Control( MOCK_ADD_MODEL_API_COMPOSE_GRAPH, MOCK_ADD_MODEL_CONTROL_API_RETURN,
+                             &err );
+    Initialize( "MOCK-ADDMODEL", "library", "lib/libQnnAddModelMock.so", "cpu" );
+    ASSERT_EQ( ret, QC_STATUS_FAIL );
+
+    uint32_t numGraphsInfo = 3;
+    MockAddModelApi_Control( MOCK_ADD_MODEL_API_COMPOSE_GRAPH,
+                             MOCK_ADD_MODEL_CONTROL_API_OUT_PARAM1, &numGraphsInfo );
+    Initialize( "MOCK-ADDMODEL", "library", "lib/libQnnAddModelMock.so", "cpu" );
+    ASSERT_EQ( ret, QC_STATUS_UNSUPPORTED );
+
+    Qnn_ErrorHandle_t qnnErrHandle = QNN_MIN_ERROR_COMMON;
+
+    MockApi_ControlFnc( MOCK_API_QNN_CONTEXT_CREATE, MOCK_CONTROL_API_RETURN, &qnnErrHandle );
+    Initialize( "MOCK-ADDMODEL", "library", "lib/libQnnAddModelMock.so", "cpu" );
+    ASSERT_EQ( ret, QC_STATUS_FAIL );
+
+    MockApi_ControlFnc( MOCK_API_QNN_GRAPH_FINALIZE, MOCK_CONTROL_API_RETURN, &qnnErrHandle );
+    Initialize( "MOCK-ADDMODEL", "library", "lib/libQnnAddModelMock.so", "cpu" );
     ASSERT_EQ( ret, QC_STATUS_FAIL );
 }
 

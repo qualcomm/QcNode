@@ -124,11 +124,11 @@ QCStatus_e SampleQnn::ParseConfig( SampleConfig_t &config )
     dt.Set<uint32_t>( "id", m_nodeId.id );
     dt.Set<std::string>( "type", "QNN" );
     dt.Set<std::string>( "modelPath", Get( config, "model_path", "" ) );
-    dt.Set<std::string>( "loadType", "binary" );
+    dt.Set<std::string>( "loadType", Get( config, "load_type", "binary" ) );
     dt.Set<std::string>( "processorType", Get( config, "processor", "htp0" ) );
     dt.Set<uint32_t>( "coreIds", coreIds );
     dt.Set( "udoPackages", udoPkgs );
-    dt.Set<std::string>( "perfProfile", Get( config, "perf_profile", "default" ) );
+    dt.Set<std::string>( "perfProfile", Get( config, "perf_profile", "burst" ) );
     dt.Set<bool>( "weightSharingEnabled", Get( config, "weight_sharing_enabled", false ) );
     dt.Set<bool>( "extendedUdma", Get( config, "extended_udma", false ) );
     m_dataTree.Set( "static", dt );
