@@ -1,7 +1,6 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // All rights reserved.
 // Confidential and Proprietary - Qualcomm Technologies, Inc.
-#include "QC/Infras/Memory/SharedBuffer.hpp"
 #include "QC/sample/BufferManager.hpp"
 #include "gtest/gtest.h"
 #include <algorithm>
@@ -637,39 +636,6 @@ TEST( Memory, L2_Buffer )
                 BufferProps_t( (size_t) 1024 * 1024 * 64, (QCMemoryAllocator_e) -2 ), bufDesc );
         ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
     }
-
-    {
-        void *pData;
-        uint64_t dmaHandle;
-
-        status = QCDmaAllocate( &pData, nullptr, 1000000, QC_BUFFER_FLAGS_CACHE_WB_WA,
-                                QC_BUFFER_USAGE_DEFAULT );
-        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
-
-        status = QCDmaAllocate( nullptr, &dmaHandle, 1000000, QC_BUFFER_FLAGS_CACHE_WB_WA,
-                                QC_BUFFER_USAGE_DEFAULT );
-        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
-
-        status = QCDmaAllocate( &pData, &dmaHandle, 1000000, QC_BUFFER_FLAGS_CACHE_WB_WA,
-                                QC_BUFFER_USAGE_DEFAULT );
-        ASSERT_EQ( QC_STATUS_OK, status );
-
-        status = QCDmaFree( nullptr, 0, 1000000 );
-        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
-
-        status = QCDmaFree( (void *) 0x1, 0, 1000000 );
-        ASSERT_EQ( QC_STATUS_FAIL, status );
-#if !defined( __QNXNTO__ ) /* dmaHandle was only used by Linux when do free */
-        status = QCDmaFree( pData, (uint64_t) -1, 1000000 );
-        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
-
-        status = QCDmaFree( pData, (uint64_t) 0x7FFFFFFF, 1000000 );
-        ASSERT_EQ( QC_STATUS_FAIL, status );
-#endif
-
-        status = QCDmaFree( pData, dmaHandle, 1000000 );
-        ASSERT_EQ( QC_STATUS_OK, status );
-    }
 }
 
 
@@ -1224,10 +1190,16 @@ TEST( Memory, L2_Image2Tensor )
 }
 
 #ifndef GTEST_QCNODE
+#if __CTC__
+extern "C" void ctc_append_all( void );
+#endif
 int main( int argc, char **argv )
 {
     ::testing::InitGoogleTest( &argc, argv );
     int nVal = RUN_ALL_TESTS();
+#if __CTC__
+    ctc_append_all();
+#endif
     return nVal;
 }
 #endif

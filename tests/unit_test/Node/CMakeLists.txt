@@ -15,3 +15,7 @@ if ( ENABLE_EVA )
 add_subdirectory(DepthFromStereo)
 add_subdirectory(OpticalFlow)
 endif()
+
+if ( ENABLE_RADAR AND NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" )
+add_subdirectory(Radar)
+endif()

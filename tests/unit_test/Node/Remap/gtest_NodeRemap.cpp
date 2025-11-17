@@ -241,7 +241,7 @@ void SanityRemap()
         imgPropOutput.numPlanes = 2;
     }
 
-    QCSharedFrameDescriptorNode frameDesc( RemapConfig.numOfInputs + 1 );
+    NodeFrameDescriptor frameDesc( RemapConfig.numOfInputs + 1 );
     uint32_t globalIdx = 0;
     std::vector<ImageDescriptor_t> inputs;
     inputs.reserve( RemapConfig.numOfInputs );
@@ -414,7 +414,7 @@ void AccuracyRemap( uint32_t inputNumberTest, QCProcessorType_e processorTest,
     }
 
     uint32_t frameIdx = 0;
-    QCSharedFrameDescriptorNode frameDesc( RemapConfig.numOfInputs + 1 );
+    NodeFrameDescriptor frameDesc( RemapConfig.numOfInputs + 1 );
 
     std::vector<ImageDescriptor_t> inputs;
     inputs.reserve( RemapConfig.numOfInputs );
@@ -620,10 +620,16 @@ TEST( NodeRemap, AccuracyGPU )
 #endif
 
 #ifndef GTEST_QCNODE
+#if __CTC__
+extern "C" void ctc_append_all( void );
+#endif
 int main( int argc, char **argv )
 {
     ::testing::InitGoogleTest( &argc, argv );
     int nVal = RUN_ALL_TESTS();
+#if __CTC__
+    ctc_append_all();
+#endif
     return nVal;
 }
 #endif

@@ -272,7 +272,7 @@ static void SANITY_Voxelization( std::string &jsonStr, std::string &processorTyp
     TensorDescriptor_t outputPlrTensors[outputPlrBufferNum];
     TensorDescriptor_t outputFeatureTensors[outputFeatureBufferNum];
 
-    QCSharedFrameDescriptorNode frameDesc( 3 );
+    NodeFrameDescriptor frameDesc( 3 );
 
     for ( uint32_t i = 0; i < inputBufferNum; i++ )
     {
@@ -416,10 +416,16 @@ TEST( FadasPlr, SANITY_VoxelizationHTP1_XYZR )
 }
 
 #ifndef GTEST_QCNODE
+#if __CTC__
+extern "C" void ctc_append_all( void );
+#endif
 int main( int argc, char **argv )
 {
     ::testing::InitGoogleTest( &argc, argv );
     int nVal = RUN_ALL_TESTS();
+#if __CTC__
+    ctc_append_all();
+#endif
     return nVal;
 }
 #endif

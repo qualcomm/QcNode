@@ -39,7 +39,7 @@ void ProcessDoneCb( const QCNodeEventInfo_t &eventInfo )
 
     QCFrameDescriptorNodeIfs &frameDescIfs = eventInfo.frameDesc;
     QCBufferDescriptorBase_t &bufDesc = frameDescIfs.GetBuffer( 0 );
-    QCSharedFrameDescriptorNode frameDesc( 1 );
+    NodeFrameDescriptor frameDesc( 1 );
 
     const CameraFrameDescriptor_t *pCamFrameDesc =
             dynamic_cast<const CameraFrameDescriptor_t *>( &bufDesc );
@@ -205,10 +205,16 @@ TEST( Camera, SANITY_Camera_OV3F_RequestMode )
 }
 
 #ifndef GTEST_QCNODE
+#if __CTC__
+extern "C" void ctc_append_all( void );
+#endif
 int main( int argc, char **argv )
 {
     ::testing::InitGoogleTest( &argc, argv );
     int nVal = RUN_ALL_TESTS();
+#if __CTC__
+    ctc_append_all();
+#endif
     return nVal;
 }
 #endif

@@ -40,7 +40,7 @@ target_include_directories( QCNodeQNN PUBLIC
     ${QNN_SDK_ROOT}/include/QNN
 )
 
-if( ENABLE_GCOV )
+if( ENABLE_GCOV OR ENABLE_CTC )
 target_compile_definitions( QCNodeQNN PRIVATE DISABLE_QC_LOG )
 endif()
 

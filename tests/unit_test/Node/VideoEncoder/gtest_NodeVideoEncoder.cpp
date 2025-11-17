@@ -551,10 +551,16 @@ TEST( NodeVideoEncoder, SANITY_VideoEncoder_InitError )
 }
 
 #ifndef GTEST_QCNODE
+#if __CTC__
+extern "C" void ctc_append_all( void );
+#endif
 int main( int argc, char **argv )
 {
     ::testing::InitGoogleTest( &argc, argv );
     int nVal = RUN_ALL_TESTS();
+#if __CTC__
+    ctc_append_all();
+#endif
     return nVal;
 }
 #endif

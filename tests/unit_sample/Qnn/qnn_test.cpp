@@ -594,6 +594,9 @@ int Usage( char *prog, int error )
     return error;
 }
 
+#if __CTC__
+extern "C" void ctc_append_all( void );
+#endif
 int main( int argc, char *argv[] )
 {
     std::vector<QnnTest_Parameters_t> paramsList;
@@ -839,6 +842,10 @@ int main( int argc, char *argv[] )
             runner->Deinit();
         }
     }
+
+#if __CTC__
+    ctc_append_all();
+#endif
 
     return 0;
 }
