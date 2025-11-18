@@ -39,7 +39,7 @@ void ProcessDoneCb( const QCNodeEventInfo_t &eventInfo )
 
     QCFrameDescriptorNodeIfs &frameDescIfs = eventInfo.frameDesc;
     QCBufferDescriptorBase_t &bufDesc = frameDescIfs.GetBuffer( 0 );
-    QCSharedFrameDescriptorNode frameDesc( 1 );
+    NodeFrameDescriptor frameDesc( 1 );
 
     const CameraFrameDescriptor_t *pCamFrameDesc =
             dynamic_cast<const CameraFrameDescriptor_t *>( &bufDesc );

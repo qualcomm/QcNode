@@ -28,4 +28,3 @@ const QCNodeMonitoringBase_t &CameraMonitor::Get()
 
 }   // namespace Node
 }   // namespace QC
-

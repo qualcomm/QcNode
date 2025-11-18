@@ -34,9 +34,12 @@ void SampleCamera::ProcessDoneCb( const QCNodeEventInfo_t &eventInfo )
         }
         else
         {
-            QCSharedFrameDescriptorNode frameDesc( 1 );
+            uint32_t streamId = pCamFrameDesc->streamId;
+            NodeFrameDescriptor frameDesc( 1 );
             (void) frameDesc.SetBuffer( 0, bufDesc );
+            m_profilers[streamId].Begin();
             status = m_camera.ProcessFrameDescriptor( frameDesc );
+            m_profilers[streamId].End();
             if ( QC_STATUS_OK != status )
             {
                 QC_ERROR( "Failed to process frame descriptor, status=%u", status );
@@ -131,8 +134,6 @@ QCStatus_e SampleCamera::ParseConfig( SampleConfig_t &config )
         {
             m_topicNameMap[streamId] = topicName;
         }
-
-        m_frameId[streamId] = 0;
     }
     m_config.Set( "streamConfigs", m_streamConfigs );
 
@@ -169,7 +170,7 @@ QCStatus_e SampleCamera::Init( std::string name, SampleConfig_t &config )
         using std::placeholders::_1;
         m_nodeCfg.config = m_dataTree.Dump();
         m_nodeCfg.callback = std::bind( &SampleCamera::ProcessDoneCb, this, _1 );
-        QC_INFO( "config: %s", m_nodeCfg.config );
+        QC_INFO( "config: %s", m_nodeCfg.config.c_str() );
     }
 
     if ( QC_STATUS_OK == ret )
@@ -213,9 +214,7 @@ QCStatus_e SampleCamera::Init( std::string name, SampleConfig_t &config )
 
     if ( QC_STATUS_OK == ret )
     {
-        TRACE_BEGIN( SYSTRACE_TASK_INIT );
         ret = m_camera.Initialize( m_nodeCfg );
-        TRACE_END( SYSTRACE_TASK_INIT );
     }
 
     if ( QC_STATUS_OK != ret )
@@ -233,12 +232,17 @@ QCStatus_e SampleCamera::Init( std::string name, SampleConfig_t &config )
         for ( uint32_t i = 0; i < numStream; i++ )
         {
             std::string topicName = m_topicNameMap[streamId];
+            std::string streamName = name + ".stream" + std::to_string( streamId );
             m_pubMap[streamId] = std::make_shared<DataPublisher<DataFrames_t>>();
-            ret = m_pubMap[streamId]->Init( name + "." + std::to_string( streamId ), topicName );
+            ret = m_pubMap[streamId]->Init( streamName, topicName );
             if ( QC_STATUS_OK != ret )
             {
                 QC_ERROR( "Create topic %s for stream %u failed: %d", topicName.c_str(), i, ret );
                 break;
+            }
+            else
+            {
+                m_profilers[streamId].Init( streamName );
             }
         }
     }
@@ -250,9 +254,7 @@ QCStatus_e SampleCamera::Start()
 {
     QCStatus_e ret = QC_STATUS_OK;
 
-    TRACE_BEGIN( SYSTRACE_TASK_START );
     ret = m_camera.Start();
-    TRACE_END( SYSTRACE_TASK_START );
 
     if ( QC_STATUS_OK != ret )
     {
@@ -279,15 +281,15 @@ void SampleCamera::ProcessFrame( CameraFrameDescriptor_t *pCamFrameDesc )
 
     DataFrames_t frames;
     DataFrame_t frame;
+    uint32_t streamId = pCamFrameDesc->streamId;
 
     SharedBuffer_t *pSharedBuffer = new SharedBuffer_t;
     pSharedBuffer->SetBuffer( *pCamFrameDesc );
-    pSharedBuffer->pubHandle =
-            (uint64_t) pCamFrameDesc->frameIdx + ( (uint64_t) pCamFrameDesc->streamId << 32 );
+    pSharedBuffer->pubHandle = (uint64_t) pCamFrameDesc->frameIdx + ( (uint64_t) streamId << 32 );
 
     std::shared_ptr<SharedBuffer_t> buffer( pSharedBuffer, [&]( SharedBuffer_t *pSharedBuffer ) {
         CameraFrameDescriptor_t camFrameDesc;
-        QCSharedFrameDescriptorNode frameDesc( 1 );
+        NodeFrameDescriptor frameDesc( 1 );
 
         uint32_t frameIdx = pSharedBuffer->pubHandle & 0xFFFFFFFFul;
         camFrameDesc = pSharedBuffer->imgDesc;
@@ -302,43 +304,33 @@ void SampleCamera::ProcessFrame( CameraFrameDescriptor_t *pCamFrameDesc )
         else if ( ( 0 != m_config.Get<uint32_t>( "clientId", UINT32_MAX ) ) &&
                   ( false == m_config.Get<bool>( "primary", true ) ) )
         {
-            /* do nothing for multi-client non-primary session */
+            m_profilers[streamId].Begin();
+            m_profilers[streamId].End();
         }
         else
         {
+            m_profilers[streamId].Begin();
             m_camera.ProcessFrameDescriptor( frameDesc );
+            m_profilers[streamId].End();
         }
 
         delete pSharedBuffer;
     } );
 
-    frame.frameId = m_frameId[pCamFrameDesc->streamId]++;
+    frame.frameId = pCamFrameDesc->id;
     frame.buffer = buffer;
     frame.timestamp = pCamFrameDesc->timestamp;
     frames.Add( frame );
 
-    uint32_t streamId = m_streamConfigs[0].Get<uint32_t>( "streamId", UINT32_MAX );
-    if ( streamId == pCamFrameDesc->streamId )
-    {
-        /* trace and profiling the first stream */
-        PROFILER_BEGIN();
-        PROFILER_END();
-        TRACE_EVENT( frame.frameId );
-    }
-    else
-    {
-        /* profiling the other streams */
-        TRACE_CAMERA_EVENT( pCamFrameDesc->streamId, frame.frameId );
-    }
 
-    auto it = m_pubMap.find( pCamFrameDesc->streamId );
+    auto it = m_pubMap.find( streamId );
     if ( m_pubMap.end() != it )
     {
         it->second->Publish( frames );
     }
     else
     {
-        QC_ERROR( "no publisher for stream %u", pCamFrameDesc->streamId );
+        QC_ERROR( "no publisher for stream %u", streamId );
     }
 
     if ( true == m_bImmediateRelease )
@@ -351,7 +343,7 @@ void SampleCamera::ProcessFrame( CameraFrameDescriptor_t *pCamFrameDesc )
         else
         {
             CameraFrameDescriptor_t camFrameDesc;
-            QCSharedFrameDescriptorNode frameDesc( 1 );
+            NodeFrameDescriptor frameDesc( 1 );
 
             uint32_t framdIdx = pSharedBuffer->pubHandle & 0xFFFFFFFFul;
             camFrameDesc = pSharedBuffer->imgDesc;
@@ -401,12 +393,7 @@ QCStatus_e SampleCamera::Stop()
         ProcessFrame( &camFrameDesc );
     }
 
-    TRACE_BEGIN( SYSTRACE_TASK_STOP );
-    QC_DEBUG( "Stopping camera begin" );
     ret = m_camera.Stop();
-    QC_DEBUG( "Stopping camera end" );
-    TRACE_END( SYSTRACE_TASK_STOP );
-    PROFILER_SHOW();
 
     return ret;
 }
@@ -415,9 +402,7 @@ QCStatus_e SampleCamera::Deinit()
 {
     QCStatus_e ret = QC_STATUS_OK;
 
-    TRACE_BEGIN( SYSTRACE_TASK_DEINIT );
     ret = m_camera.DeInitialize();
-    TRACE_END( SYSTRACE_TASK_DEINIT );
 
     return ret;
 }
@@ -426,4 +411,3 @@ REGISTER_SAMPLE( Camera, SampleCamera );
 
 }   // namespace sample
 }   // namespace QC
-
