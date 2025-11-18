@@ -498,7 +498,7 @@ QCStatus_e SampleCL2DFlex::Start()
 void SampleCL2DFlex::ThreadMain()
 {
     QCStatus_e ret;
-    QCSharedFrameDescriptorNode frameDesc( m_numOfInputs + 1 );
+    NodeFrameDescriptor frameDesc( m_numOfInputs + 1 );
     while ( false == m_stop )
     {
         DataFrames_t frames;

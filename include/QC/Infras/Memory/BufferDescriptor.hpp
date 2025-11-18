@@ -7,6 +7,7 @@
 
 #include "QC/Common/QCDefs.hpp"
 #include "QC/Common/Types.hpp"
+#include "QC/Infras/Memory/Ifs/QCBufferDescriptorBase.hpp"
 #include "QC/Infras/Memory/Ifs/QCMemoryDefs.hpp"
 #include "QC/Infras/Memory/SharedBuffer.hpp"
 
@@ -101,6 +102,7 @@ public:
      * @return The updated buffer descriptor object.
      */
     BufferDescriptor &operator=( const BufferDescriptor &other );
+    BufferDescriptor &operator=( const QCBufferDescriptorBase_t &other );
 
     size_t validSize;
     size_t offset;

@@ -345,7 +345,7 @@ QCStatus_e SamplePlrPre::Start()
 void SamplePlrPre::ThreadMain()
 {
     QCStatus_e ret = QC_STATUS_OK;
-    QCSharedFrameDescriptorNode frameDesc( 5 );
+    NodeFrameDescriptor frameDesc( 5 );
 
     while ( false == m_stop )
     {

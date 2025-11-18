@@ -64,7 +64,7 @@ void SampleVideoDecoder::OutFrameCallback( VideoFrameDescriptor &outFrame,
         NodeFrameDescriptor frameDesc( QC_NODE_VIDEO_DECODER_OUTPUT_BUFF_ID + 1 );
         frameDesc.SetBuffer( QC_NODE_VIDEO_DECODER_OUTPUT_BUFF_ID, buffDesc );
 
-        QC_DEBUG( "dec-out-buf back, handle:0x%x", pSharedBuffer->sharedBuffer.buffer.dmaHandle );
+        QC_DEBUG( "dec-out-buf back, handle:0x%x", buffDesc.dmaHandle );
 
         m_decoder.ProcessFrameDescriptor( frameDesc );
         delete pSharedBuffer;

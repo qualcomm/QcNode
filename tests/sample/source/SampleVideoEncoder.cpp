@@ -64,7 +64,7 @@ void SampleVideoEncoder::OutFrameCallback( VideoFrameDescriptor &outFrame,
         NodeFrameDescriptor frameDesc( QC_NODE_VIDEO_ENCODER_OUTPUT_BUFF_ID + 1 );
         frameDesc.SetBuffer( QC_NODE_VIDEO_ENCODER_OUTPUT_BUFF_ID, buffDesc );
 
-        QC_DEBUG( "enc-out-buf back, handle:0x%x", pSharedBuffer->sharedBuffer.buffer.dmaHandle );
+        QC_DEBUG( "enc-out-buf back, handle:0x%x", buffDesc.dmaHandle );
 
         m_encoder.ProcessFrameDescriptor( frameDesc );
         delete pSharedBuffer;

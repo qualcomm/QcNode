@@ -14,7 +14,6 @@
 #include "QC/Common/Types.hpp"
 #include "QC/Infras/Log/Logger.hpp"
 #include "QC/Infras/Memory/ImageDescriptor.hpp"
-#include "QC/Infras/Memory/SharedBuffer.hpp"
 #include "QC/Infras/Memory/TensorDescriptor.hpp"
 
 using namespace QC;

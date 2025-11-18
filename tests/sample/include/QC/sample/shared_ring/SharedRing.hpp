@@ -102,7 +102,7 @@ typedef struct SharedRing_DataFrame
     float quantScale;
     int32_t quantOffset;
     char name[SHARED_RING_NAME_MAX];
-    uint8_t reserved[1024 - ( sizeof( QCSharedBuffer_t ) + sizeof( uint64_t ) * 2 +
+    uint8_t reserved[1024 - ( sizeof( SharedRing_BufferDesc_t ) + sizeof( uint64_t ) * 2 +
                               sizeof( float ) + sizeof( int32_t ) + SHARED_RING_NAME_MAX )];
 
 public:

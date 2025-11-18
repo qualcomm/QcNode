@@ -691,50 +691,6 @@ QCStatus_e SampleIF::DeRegisterBuffers( std::string name )
     return ret;
 }
 
-QCStatus_e SampleIF::LoadFile( QCSharedBuffer_t buffer, std::string path )
-{
-    QCStatus_e ret = QC_STATUS_OK;
-    FILE *file = nullptr;
-    size_t length = 0;
-    size_t size = buffer.size;
-
-    file = fopen( path.c_str(), "rb" );
-    if ( nullptr == file )
-    {
-        QC_ERROR( "Failed to open file %s", path.c_str() );
-        ret = QC_STATUS_FAIL;
-    }
-
-    if ( QC_STATUS_OK == ret )
-    {
-        fseek( file, 0, SEEK_END );
-        length = (size_t) ftell( file );
-        if ( size != length )
-        {
-            QC_ERROR( "Invalid file size for %s, need %d but got %d", path.c_str(), size, length );
-            ret = QC_STATUS_FAIL;
-        }
-    }
-
-    if ( QC_STATUS_OK == ret )
-    {
-        fseek( file, 0, SEEK_SET );
-        auto r = fread( buffer.data(), 1, length, file );
-        if ( length != r )
-        {
-            QC_ERROR( "failed to read map table file %s", path.c_str() );
-            ret = QC_STATUS_FAIL;
-        }
-    }
-
-    if ( nullptr != file )
-    {
-        fclose( file );
-    }
-
-    return ret;
-}
-
 QCStatus_e SampleIF::LoadFile( QCBufferDescriptorBase_t &bufferDesc, std::string path )
 {
     QCStatus_e ret = QC_STATUS_OK;

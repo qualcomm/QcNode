@@ -28,6 +28,25 @@ BufferDescriptor &BufferDescriptor::operator=( const BufferDescriptor &other )
     return *this;
 }
 
+BufferDescriptor &BufferDescriptor::operator=( const QCBufferDescriptorBase_t &other )
+{
+    if ( this != &other )
+    {
+        this->name = other.name;
+        this->pBuf = other.pBuf;
+        this->size = other.size;
+        this->type = other.type;
+        this->dmaHandle = other.dmaHandle;
+        this->validSize = other.size;
+        this->offset = 0;
+        this->id = UINT64_MAX;
+        this->pid = other.pid;
+        this->allocatorType = other.allocatorType;
+        this->cache = other.cache;
+    }
+    return *this;
+}
+
 }   // namespace Memory
 
 }   // namespace QC

@@ -103,6 +103,7 @@ public:
      */
     TensorDescriptor &operator=( const BufferDescriptor &other );
     TensorDescriptor &operator=( const TensorDescriptor &other );
+    TensorDescriptor &operator=( const QCBufferDescriptorBase_t &other );
 
     /**
      * @brief Sets up the tensor descriptor using another shared buffer object.

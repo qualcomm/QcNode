@@ -257,6 +257,28 @@ ImageDescriptor &ImageDescriptor::operator=( const ImageDescriptor &other )
     return *this;
 }
 
+ImageDescriptor &ImageDescriptor::operator=( const QCBufferDescriptorBase_t &other )
+{
+    if ( this != &other )
+    {
+        const ImageDescriptor_t *pImageDesc = static_cast<const ImageDescriptor_t *>( &other );
+        const BufferDescriptor_t *pBufDesc = static_cast<const BufferDescriptor_t *>( &other );
+        if ( nullptr != pImageDesc )
+        {
+            ImageDescriptor::operator=( *pImageDesc );
+        }
+        else if ( nullptr != pBufDesc )
+        {
+            ImageDescriptor::operator=( *pBufDesc );
+        }
+        else
+        {
+            BufferDescriptor::operator=( other );
+        }
+    }
+    return *this;
+}
+
 ImageDescriptor &ImageDescriptor::operator=( const QCSharedBuffer_t &other )
 {
     static const QCMemoryAllocator_e s_Usage2Allocator[] = {

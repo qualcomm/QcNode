@@ -6,7 +6,6 @@
 #ifndef QC_SAMPLE_TINYVIZ_CAM_INFO_HPP
 #define QC_SAMPLE_TINYVIZ_CAM_INFO_HPP
 
-#include "QC/Infras/Memory/SharedBuffer.hpp"
 #include "QC/sample/DataTypes.hpp"
 #include "TextRenderer.hpp"
 #include <deque>

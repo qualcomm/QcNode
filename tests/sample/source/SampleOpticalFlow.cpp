@@ -155,8 +155,7 @@ QCStatus_e SampleOpticalFlow::Start()
 void SampleOpticalFlow::ThreadMain()
 {
     QCStatus_e ret;
-    QCFrameDescriptorNodeIfs *frameDescriptor =
-            new QCSharedFrameDescriptorNode( QC_NODE_OF_LAST_BUFF_ID );
+    QCFrameDescriptorNodeIfs *frameDescriptor = new NodeFrameDescriptor( QC_NODE_OF_LAST_BUFF_ID );
     while ( false == m_stop )
     {
         DataFrames_t frames;
@@ -239,8 +238,7 @@ void SampleOpticalFlow::ThreadMain()
             m_LastFrames = frames;
         }
     }
-    reinterpret_cast<QCSharedFrameDescriptorNode *>( frameDescriptor )
-            ->~QCSharedFrameDescriptorNode();
+    reinterpret_cast<NodeFrameDescriptor *>( frameDescriptor )->~NodeFrameDescriptor();
 }
 
 QCStatus_e SampleOpticalFlow::Stop()

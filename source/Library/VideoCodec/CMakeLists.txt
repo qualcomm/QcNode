@@ -10,7 +10,7 @@ set( VIDEOCODEC_SOURCES
     VidcNodeBase.cpp
 )
 
-set( TARGET_LIBRARIES QCNodeComponentCommon QCNodeMemory )
+set( TARGET_LIBRARIES QCNodeMemory )
 
 if( "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" )
     list( APPEND TARGET_LIBRARIES vidc vidc_client mmosal )

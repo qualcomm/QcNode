@@ -23,7 +23,6 @@ extern "C"
 #include "QC/Infras/Log/Logger.hpp"
 #include "QC/Infras/Memory/Ifs/QCBufferDescriptorBase.hpp"
 #include "QC/Infras/Memory/ImageDescriptor.hpp"
-#include "QC/Infras/Memory/SharedBuffer.hpp"
 #include "QC/Infras/Memory/TensorDescriptor.hpp"
 namespace QC
 {
@@ -70,7 +69,6 @@ class FadasSrv
 public:
     QCStatus_e Init( QCProcessorType_e coreId, const char *pName, Logger_Level_e level );
     QCStatus_e Deinit();
-    int32_t RegBuf( const QCSharedBuffer_t *pBuffer, FadasBufType_e bufferType );
     int32_t RegBuf( const QCBufferDescriptorBase_t &bufDesc, FadasBufType_e bufferType );
     void DeregBuf( void *pBuffer );
     remote_handle64 GetRemoteHandle64();
@@ -91,9 +89,6 @@ private:
     QCStatus_e InitCPU();
     QCStatus_e InitGPU();
     QCStatus_e InitDSP( QCProcessorType_e coreId );
-    int32_t FadasMemMapDSP( const QCSharedBuffer_t *pBuffer );
-    int32_t FadasMemMapCPU( const QCSharedBuffer_t *pBuffer );
-    int32_t FadasMemMap( const QCSharedBuffer_t *pBuffer );
     int32_t FadasMemMapDSP( const QCBufferDescriptorBase_t &bufDesc );
     int32_t FadasMemMap( const QCBufferDescriptorBase_t &bufDesc );
     QCStatus_e FadasRegisterBufDSP( FadasBufType_e bufType, const uint8_t *bufPtr, int32_t bufFd,
@@ -104,8 +99,6 @@ private:
                                     uint32_t bufSize, uint32_t bufOffset, uint32_t batch );
     QCStatus_e FadasRegisterBuf( FadasBufType_e bufType, uint8_t *bufPtr, int32_t bufFd,
                                  uint32_t bufSize, uint32_t bufOffset, uint32_t batch );
-    int32_t RegisterImage( const QCSharedBuffer_t *pBuffer, FadasBufType_e bufferType );
-    int32_t RegisterTensor( const QCSharedBuffer_t *pBuffer, FadasBufType_e bufferType );
     int32_t RegisterImage( const ImageDescriptor_t &imageDesc, FadasBufType_e bufferType );
     int32_t RegisterTensor( const TensorDescriptor_t &tensorDesc, FadasBufType_e bufferType );
 

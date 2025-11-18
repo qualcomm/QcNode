@@ -207,10 +207,16 @@ public:
 typedef struct ImageDescriptor : public BufferDescriptor
 {
 public:
-    ImageDescriptor() : BufferDescriptor(),
-        format(QC_IMAGE_FORMAT_MAX), batchSize(0), width(0), height(0), numPlanes(0)
+    ImageDescriptor()
+        : BufferDescriptor(),
+          format( QC_IMAGE_FORMAT_MAX ),
+          batchSize( 0 ),
+          width( 0 ),
+          height( 0 ),
+          numPlanes( 0 )
     {
-        for (unsigned int i = 0; i < QC_NUM_IMAGE_PLANES; i++) {
+        for ( unsigned int i = 0; i < QC_NUM_IMAGE_PLANES; i++ )
+        {
             stride[i] = 0;
             actualHeight[i] = 0;
             planeBufSize[i] = 0;
@@ -224,6 +230,7 @@ public:
      */
     ImageDescriptor &operator=( const BufferDescriptor &other );
     ImageDescriptor &operator=( const ImageDescriptor &other );
+    ImageDescriptor &operator=( const QCBufferDescriptorBase_t &other );
 
     /**
      * @brief Initializes the image descriptor using another shared buffer object.

@@ -54,6 +54,12 @@ endif()
 
 set( TARGET_LIBRARIES QCNodeCommon )
 
+if( "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" AND "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "aarch64" )
+    list( APPEND TARGET_LIBRARIES kiumd apdf aosal )
+    list( APPEND HEADERS_DIR ${CMAKE_SYSROOT}/usr/include/WF )
+    list( APPEND HEADERS_DIR ${CMAKE_SYSROOT}/usr/include/linux-ark )
+endif()
+
 add_library( QCNodeMemory OBJECT ${MEMORY_SOURCES} )
 
 set_property( TARGET QCNodeMemory PROPERTY LINKER_LANGUAGE CXX )

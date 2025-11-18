@@ -10,7 +10,6 @@
 #else
 #include "QC/Infras/Memory/DMABUFFAllocator.hpp"
 #endif
-#include "QC/Infras/Memory/SharedBuffer.hpp"
 #include <functional>
 #include <memory>
 #include <unistd.h>

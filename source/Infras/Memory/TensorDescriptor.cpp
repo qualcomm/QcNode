@@ -31,6 +31,28 @@ TensorDescriptor &TensorDescriptor::operator=( const TensorDescriptor &other )
     return *this;
 }
 
+TensorDescriptor &TensorDescriptor::operator=( const QCBufferDescriptorBase_t &other )
+{
+    if ( this != &other )
+    {
+        const TensorDescriptor_t *pTensorDesc = static_cast<const TensorDescriptor_t *>( &other );
+        const BufferDescriptor_t *pBufDesc = static_cast<const BufferDescriptor_t *>( &other );
+        if ( nullptr != pTensorDesc )
+        {
+            TensorDescriptor::operator=( *pTensorDesc );
+        }
+        else if ( nullptr != pBufDesc )
+        {
+            TensorDescriptor::operator=( *pBufDesc );
+        }
+        else
+        {
+            BufferDescriptor::operator=( other );
+        }
+    }
+    return *this;
+}
+
 TensorDescriptor &TensorDescriptor::operator=( const QCSharedBuffer_t &other )
 {
     static const QCMemoryAllocator_e s_Usage2Allocator[] = {

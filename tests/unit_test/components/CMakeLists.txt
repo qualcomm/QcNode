@@ -1,4 +1,3 @@
-add_subdirectory(Common)
 
 if ( ENABLE_RADAR AND NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" )
   add_subdirectory(Radar)

@@ -211,9 +211,6 @@ void SampleGL2DFlex::ThreadMain()
                 PROFILER_BEGIN();
                 TRACE_BEGIN( frames.FrameId( 0 ) );
 
-                void *pOutputData = buffer->sharedBuffer.data();
-                memset( pOutputData, 0, buffer->sharedBuffer.size );
-
                 {
                     QCBufferDescriptorBase_t &bufDesc = buffer->GetBuffer();
                     ImageDescriptor_t *pImage = dynamic_cast<ImageDescriptor_t *>( &bufDesc );

@@ -137,7 +137,7 @@ void SampleDepthFromStereo::ThreadMain()
 {
     QCStatus_e ret;
     QCFrameDescriptorNodeIfs *frameDescriptor =
-            new QCSharedFrameDescriptorNode( QC_NODE_DFS_LAST_BUFF_ID );
+            new NodeFrameDescriptor( QC_NODE_DFS_LAST_BUFF_ID );
     while ( false == m_stop )
     {
         DataFrames_t frames;
@@ -209,8 +209,8 @@ void SampleDepthFromStereo::ThreadMain()
             }
         }
     }
-    reinterpret_cast<QCSharedFrameDescriptorNode *>( frameDescriptor )
-            ->~QCSharedFrameDescriptorNode();
+    reinterpret_cast<NodeFrameDescriptor *>( frameDescriptor )
+            ->~NodeFrameDescriptor();
 }
 
 QCStatus_e SampleDepthFromStereo::Stop()
