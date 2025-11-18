@@ -93,6 +93,8 @@ typedef void ( *VideoCodec_OutFrameCallback_t )( VideoFrameDescriptor &outFrameD
 typedef void ( *VideoCodec_EventCallback_t )( VideoCodec_EventType_e eventId,
                                               const void *pEvent, void *pPrivData );
 
+typedef struct VidcNodeBase_Config VidcNodeBase_Config_t;
+
 /** @brief Top level control for interfacing with vidc based driver */
 class VidcDrvClient
 {
@@ -102,9 +104,8 @@ public:
     /** @brief Default destructor */
     ~VidcDrvClient() = default;
 
-    QCStatus_e Initialize( QCNodeInit_t &config );
-
-    void Init( const string &name, Logger_Level_e level, VideoEncDecType_e type );
+    void Init( const string &name, Logger_Level_e level, VideoEncDecType_e type,
+               const VidcNodeBase_Config_t &config);
 
     /**
      * @brief open driver and register callback
@@ -159,8 +160,8 @@ public:
     *         Driver would de-register buffer address from driver buffer pool.
     * @note:  API type: Synchronous.
     */
-    QCStatus_e FreeBuffer( VideoCodec_BufType_e bufferType,
-                           const std::vector<std::reference_wrapper<VideoFrameDescriptor_t>> &buffers );
+    QCStatus_e FreeBuffers( VideoCodec_BufType_e bufferType,
+                            const std::vector<std::reference_wrapper<VideoFrameDescriptor_t>> &buffers );
 
     QCStatus_e StopDecoder();
     QCStatus_e StopEncoder();

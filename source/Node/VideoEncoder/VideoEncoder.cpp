@@ -190,7 +190,7 @@ QCStatus_e VideoEncoder::Initialize( QCNodeInit_t &config )
 
     if ( QC_STATUS_OK == status )
     {
-        m_drvClient.Init( m_name.c_str(), m_logger.GetLevel(), VIDEO_ENC );
+        m_drvClient.Init( m_name.c_str(), m_logger.GetLevel(), VIDEO_ENC, *m_pConfig );
         status = m_drvClient.OpenDriver(InFrameCallback, OutFrameCallback, EventCallback, this);
     }
     else
@@ -237,9 +237,6 @@ QCStatus_e VideoEncoder::Initialize( QCNodeInit_t &config )
 
     if ( QC_STATUS_OK == status )
     {
-        const uint32_t numInAppAllocBuffers =
-                        m_pConfig->bInputDynamicMode ? 0 : m_pConfig->numInputBufferReq;
-
         status = AllocateBuffer(config.buffers, 0, VIDEO_CODEC_BUF_INPUT);
         if ( QC_STATUS_OK == status ) {
             for ( auto &buffer : m_inputBufferList )
@@ -251,14 +248,16 @@ QCStatus_e VideoEncoder::Initialize( QCNodeInit_t &config )
 
             if (QC_STATUS_OK != status)
             {
-                QC_ERROR( "Input buffer descriptors are not properly initializded, Diniting vidc");
+                QC_ERROR( "Input buffer descriptors are not properly initialized, Diniting vidc");
                 m_state = QC_OBJECT_STATE_ERROR;
             }
         }
 
         if (QC_STATUS_OK == status)
         {
-            status = AllocateBuffer(config.buffers, numInAppAllocBuffers, VIDEO_CODEC_BUF_OUTPUT);
+            status = AllocateBuffer(config.buffers,
+                                    m_pConfig->bInputDynamicMode ? 0 : m_pConfig->numInputBufferReq,
+                                    VIDEO_CODEC_BUF_OUTPUT);
             if ( QC_STATUS_OK == status ) {
                 for ( auto &buffer : m_outputBufferList )
                 {
@@ -284,13 +283,6 @@ QCStatus_e VideoEncoder::Initialize( QCNodeInit_t &config )
             }
         }
     }
-
-    if ( QC_STATUS_OK == status )
-    {
-        status = PostInit( );
-        PrintEncoderConfig();
-        QC_INFO( "video-encoder init done" );
-    }
     else
     {
         QC_ERROR( "Something wrong happened in driver NegotiateBufferReq for output, Deiniting vidc" );
@@ -299,26 +291,34 @@ QCStatus_e VideoEncoder::Initialize( QCNodeInit_t &config )
 
     if ( QC_STATUS_OK == status )
     {
+        status = PostInit( );
+        PrintEncoderConfig();
+        QC_INFO( "video-encoder init done" );
+    }
+
+    if ( QC_STATUS_OK == status )
+    {
         status = ValidateBuffers( );
     }
-    else {
+    else
+    {
         QC_ERROR( "video-encoder %s buffers init error: %d", m_name.c_str(), status );
         m_state = QC_OBJECT_STATE_ERROR;
     }
 
-     if (QC_STATUS_OK != status)
+    if (QC_STATUS_OK != status)
     {
         QC_ERROR( "video-encoder initialization failed, cleaning up resources" );
 
         // Clean up buffers first
         if ( !m_outputBufferList.empty() )
         {
-            (void) FreeOutputBuffer();
+            (void) FreeOutputBuffers();
             m_outputBufferList.clear();
         }
         if ( !m_inputBufferList.empty() )
         {
-            (void) FreeInputBuffer();
+            (void) FreeInputBuffers();
             m_inputBufferList.clear();
         }
 

@@ -72,7 +72,7 @@ QCStatus_e VideoDecoder::Initialize( QCNodeInit_t &config )
 
     if ( QC_STATUS_OK == status )
     {
-        m_drvClient.Init( m_name, m_logger.GetLevel(), VIDEO_DEC );
+        m_drvClient.Init( m_name, m_logger.GetLevel(), VIDEO_DEC, *m_pConfig );
         status = m_drvClient.OpenDriver(InFrameCallback, OutFrameCallback, EventCallback, this);
     }
     else
@@ -102,9 +102,6 @@ QCStatus_e VideoDecoder::Initialize( QCNodeInit_t &config )
 
     if ( QC_STATUS_OK == status )
     {
-        const uint32_t numInAppAllocBuffers =
-                        m_pConfig->bInputDynamicMode ? 0 : m_pConfig->numInputBufferReq;
-
         status = AllocateBuffer(config.buffers, 0, VIDEO_CODEC_BUF_INPUT);
         if ( QC_STATUS_OK == status ) {
             for ( auto &buffer : m_inputBufferList )
@@ -123,7 +120,9 @@ QCStatus_e VideoDecoder::Initialize( QCNodeInit_t &config )
 
         if (QC_STATUS_OK == status)
         {
-            status = AllocateBuffer(config.buffers, numInAppAllocBuffers, VIDEO_CODEC_BUF_OUTPUT);
+            status = AllocateBuffer(config.buffers,
+                                    m_pConfig->bInputDynamicMode ? 0 : m_pConfig->numInputBufferReq,
+                                    VIDEO_CODEC_BUF_OUTPUT);
             if ( QC_STATUS_OK == status ) {
                 for ( auto &buffer : m_outputBufferList )
                 {
@@ -145,16 +144,16 @@ QCStatus_e VideoDecoder::Initialize( QCNodeInit_t &config )
             status = SetBuffer(VIDEO_CODEC_BUF_INPUT);
         }
     }
+    else
+    {
+        QC_ERROR( "Something wrong happened in buffer allocation or SetBuffer, Deiniting vidc" );
+        m_state = QC_OBJECT_STATE_ERROR;
+    }
 
     if ( QC_STATUS_OK == status )
     {
         status = PostInit( );
         QC_INFO( "video-decoder init done" );
-    }
-    else
-    {
-        QC_ERROR( "Something wrong happened in driver NegotiateBufferReq for output, Deiniting vidc" );
-        m_state = QC_OBJECT_STATE_ERROR;
     }
 
     if ( QC_STATUS_OK == status )
@@ -173,12 +172,12 @@ QCStatus_e VideoDecoder::Initialize( QCNodeInit_t &config )
         // Clean up buffers first
         if ( !m_outputBufferList.empty() )
         {
-            (void) FreeOutputBuffer();
+            (void) FreeOutputBuffers();
             m_outputBufferList.clear();
         }
         if ( !m_inputBufferList.empty() )
         {
-            (void) FreeInputBuffer();
+            (void) FreeInputBuffers();
             m_inputBufferList.clear();
         }
 
@@ -299,15 +298,15 @@ QCStatus_e VideoDecoder::ValidateConfig( )
         }
     }
 
-    if ( ( QC_STATUS_OK == ret ) &&
-                    ( VIDC_COLOR_FORMAT_UNUSED == VidcNodeBase::GetVidcFormat( m_pConfig->outFormat ) ) )
+    if ( ( QC_STATUS_OK == ret ) && ( QC_IMAGE_FORMAT_COMPRESSED_H265 != m_pConfig->inFormat ) &&
+         ( QC_IMAGE_FORMAT_COMPRESSED_H264 != m_pConfig->inFormat ) )
     {
-        QC_ERROR( "input format: %d not supported!", m_pConfig->outFormat );
+        QC_ERROR( "input format: %d not supported!", m_pConfig->inFormat );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     if ( ( QC_STATUS_OK == ret ) && ( QC_IMAGE_FORMAT_NV12 != m_pConfig->outFormat ) &&
-                    ( QC_IMAGE_FORMAT_P010 != m_pConfig->outFormat ) )
+         ( QC_IMAGE_FORMAT_P010 != m_pConfig->outFormat ) )
     {
         QC_ERROR( "output format: %d not supported!", m_pConfig->outFormat );
         ret = QC_STATUS_BAD_ARGUMENTS;

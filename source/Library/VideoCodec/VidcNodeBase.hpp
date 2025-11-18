@@ -129,8 +129,8 @@ public:
      */
     QCStatus_e SetBuffer( VideoCodec_BufType_e bufferType );
 
-    QCStatus_e FreeOutputBuffer( );
-    QCStatus_e FreeInputBuffer( );
+    QCStatus_e FreeOutputBuffers( );
+    QCStatus_e FreeInputBuffers( );
 
     QCStatus_e ValidateBuffer( const VideoFrameDescriptor &vidFrmDesc, VideoCodec_BufType_e bufferType );
     QCStatus_e ValidateBuffers ( );

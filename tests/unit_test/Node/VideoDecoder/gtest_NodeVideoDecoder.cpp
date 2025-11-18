@@ -36,7 +36,7 @@ void OnDoneCb( const QCNodeEventInfo_t &eventInfo )
     // INPUT frame:
     QCBufferDescriptorBase_t &inBufDesc =
             frameDesc.GetBuffer( QC_NODE_VIDEO_DECODER_INPUT_BUFF_ID );
-    const VideoFrameDescriptor *pInSharedBuffer = static_cast<VideoFrameDescriptor *>( &inBufDesc );
+    const VideoFrameDescriptor *pInSharedBuffer = dynamic_cast<VideoFrameDescriptor *>( &inBufDesc );
 
     if ( nullptr != pInSharedBuffer )
     {
@@ -53,7 +53,7 @@ void OnDoneCb( const QCNodeEventInfo_t &eventInfo )
     // OUTPUT frame:
     QCBufferDescriptorBase_t &outBufDesc =
             frameDesc.GetBuffer( QC_NODE_VIDEO_DECODER_OUTPUT_BUFF_ID );
-    const VideoFrameDescriptor *pOutSharedBuffer = static_cast<VideoFrameDescriptor *>( &outBufDesc );
+    const VideoFrameDescriptor *pOutSharedBuffer = dynamic_cast<VideoFrameDescriptor *>( &outBufDesc );
 
     if ( nullptr != pOutSharedBuffer )
     {
@@ -66,148 +66,6 @@ void OnDoneCb( const QCNodeEventInfo_t &eventInfo )
 
     // Send signal
     g_OutCondVar.notify_one();
-}
-
-TEST( NodeVideoDecoder, SANITY_VideoDecoder_Dynamic )
-{
-    QCStatus_e ret;
-    std::string errors;
-    BufferManager bufMgr = BufferManager( { "VDEC", QC_NODE_TYPE_VDEC, 0 } );
-    QCNodeIfs *pNodeVide = new QC::Node::VideoDecoder();
-    DataTree dt;
-    dt.Set<std::string>( "static.name", "SANITY_VideoDecoder_Dynamic" );
-    dt.Set<uint32_t>( "id", 1 );
-    dt.Set<std::string>( "static.logLevel", "ERROR" );
-    dt.Set<uint32_t>( "width", 176 );
-    dt.Set<uint32_t>( "height", 144 );
-    dt.Set<bool>( "inputDynamicMode", true );
-    dt.Set<bool>( "outputDynamicMode", true );
-    dt.Set<uint32_t>( "numInputBufferReq", 4 );
-    dt.Set<uint32_t>( "numOutputBufferReq", 4 );
-    dt.Set<uint32_t>( "frameRate", 30 );
-    dt.Set<std::string>( "inputImageFormat", "nv12" );
-    dt.Set<std::string>( "outputImageFormat", "h265" );
-
-    QCNodeInit_t config = { .config = dt.Dump(), .callback = OnDoneCb };
-
-    printf( "config: %s\n", config.config.c_str() );
-
-    ret = pNodeVide->Initialize( config );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-    ASSERT_EQ( QC_OBJECT_STATE_READY, pNodeVide->GetState() );
-
-    QCNodeConfigIfs &cfgIfs = pNodeVide->GetConfigurationIfs();
-    const std::string &options = cfgIfs.GetOptions();
-
-    ASSERT_EQ( QC_OBJECT_STATE_READY, pNodeVide->GetState() );
-
-    printf( "options: %s\n", options.c_str() );
-
-    DataTree optionsDt;
-    ret = optionsDt.Load( options, errors );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    uint32_t numInputBufferReq;
-    uint32_t numOutputBufferReq;
-    uint32_t width;
-    uint32_t height;
-    uint32_t frameRate;
-    bool bInputDynamicMode;
-    bool bOutputDynamicMode;
-
-    width = dt.Get( "width", 0 );
-    height = dt.Get( "height", 0 );
-    frameRate = dt.Get( "frameRate", 0 );
-
-    bInputDynamicMode = dt.Get( "inputDynamicMode", 1 );
-    bOutputDynamicMode = dt.Get( "outputDynamicMode", 1 );
-    numInputBufferReq = dt.Get( "numInputBufferReq", 1 );
-    numOutputBufferReq = dt.Get( "numOutputBufferReq", 1 );
-
-    QCImageFormat_e inFormat = dt.GetImageFormat( "inputImageFormat", QC_IMAGE_FORMAT_NV12 );
-    QCImageFormat_e outFormat =
-            dt.GetImageFormat( "outputImageFormat", QC_IMAGE_FORMAT_COMPRESSED_H264 );
-
-    ret = pNodeVide->Start();
-    ASSERT_EQ( QC_STATUS_OK, ret );
-    ASSERT_EQ( QC_OBJECT_STATE_RUNNING, pNodeVide->GetState() );
-
-    NodeFrameDescriptor frameDesc( QC_NODE_VIDEO_DECODER_EVENT_BUFF_ID + 1 );
-
-    std::vector<VideoFrameDescriptor_t> inputs;
-    std::vector<VideoFrameDescriptor_t> outputs;
-
-    for ( uint32_t i = 0; i < numInputBufferReq; i++ )
-    {
-        VideoFrameDescriptor_t bufDesc;
-        ret = bufMgr.Allocate( ImageBasicProps( width, height, inFormat ), bufDesc );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        inputs.push_back( bufDesc );
-    }
-
-    for ( uint32_t i = 0; i < numOutputBufferReq; i++ )
-    {
-        ImageProps_t imgProps;
-        imgProps.batchSize = 1;
-        imgProps.width = width;
-        imgProps.height = height;
-        imgProps.numPlanes = 1;
-        imgProps.planeBufSize[0] = 118784;
-        imgProps.format = outFormat;
-        VideoFrameDescriptor_t bufDesc;
-        ret = bufMgr.Allocate( imgProps, bufDesc );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        outputs.push_back( bufDesc );
-    }
-
-    frameDesc.Clear();
-
-    uint32_t nr = std::min( numInputBufferReq, numOutputBufferReq );
-
-    ASSERT_EQ( QC_OBJECT_STATE_RUNNING, pNodeVide->GetState() );
-
-    for ( uint32_t i = 0; i < nr; i++ )
-    {
-        //  Set up an input buffer for the frame
-        ret = frameDesc.SetBuffer( QC_NODE_VIDEO_DECODER_INPUT_BUFF_ID, inputs[i] );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        //  Set up an output buffer for the frame
-        ret = frameDesc.SetBuffer( QC_NODE_VIDEO_DECODER_OUTPUT_BUFF_ID, outputs[i] );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        //  Process the frame
-        ret = pNodeVide->ProcessFrameDescriptor( frameDesc );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-    }
-
-    ASSERT_EQ( QC_OBJECT_STATE_RUNNING, pNodeVide->GetState() );
-
-    // wait input done signal
-    std::unique_lock<std::mutex> inLock( g_InMutex );
-    g_InCondVar.wait( inLock );
-
-    // wait output done signal
-    std::unique_lock<std::mutex> outLock( g_OutMutex );
-    g_OutCondVar.wait( outLock );
-
-    ASSERT_EQ( QC_OBJECT_STATE_RUNNING, pNodeVide->GetState() );
-
-    ret = pNodeVide->Stop();
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    ret = pNodeVide->DeInitialize();
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    for ( auto &output : outputs )
-    {
-        ret = bufMgr.Free( output );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-    }
-
-    for ( auto &input : inputs )
-    {
-        ret = bufMgr.Free( input );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-    }
 }
 
 TEST( Demuxer, SANITY_Demuxer )
@@ -234,7 +92,7 @@ TEST( Demuxer, SANITY_Demuxer )
     ASSERT_EQ( QC_STATUS_OK, ret );
 }
 
-void VdTestDynamic( uint32_t bufferNum, const char *outFmt, const char *videoFile )
+void VdTestDynamic( uint32_t bufferNum, QCImageFormat_e outFormat, const char *videoFile )
 {
     QCStatus_e ret;
     std::string errors;
@@ -247,17 +105,32 @@ void VdTestDynamic( uint32_t bufferNum, const char *outFmt, const char *videoFil
     VideoDecoder_Config_t vidcDecoderConfig;
     VidcDemuxer_VideoInfo_t videoInfo;
     VidcDemuxer_FrameInfo_t frameInfo;
+    uint32_t frameNum = 10;
 
-    dt.Set<std::string>( "static.name", "SANITY_VideoDecoder_Dynamic" );
+    vidcDemuxConfig.pVideoFileName = videoFile;
+    vidcDemuxConfig.startFrameIdx = 0;
+
+    ASSERT_EQ( QC_OBJECT_STATE_INITIAL, vidcDecoder.GetState() );
+
+    ret = vidcDemuxer.Init( &vidcDemuxConfig );
+    ASSERT_EQ( QC_STATUS_OK, ret );
+
+    ret = vidcDemuxer.GetVideoInfo( videoInfo );
+    ASSERT_EQ( QC_STATUS_OK, ret );
+
+    dt.Set<std::string>( "name", "SANITY_VideoDecoder_Dynamic" );
     dt.Set<uint32_t>( "id", 1 );
-    dt.Set<std::string>( "static.logLevel", "ERROR" );
-    dt.Set<bool>( "inputDynamicMode", true );
-    dt.Set<bool>( "outputDynamicMode", true );
+    dt.Set<std::string>( "logLevel", "ERROR" );
+    dt.Set<uint32_t>( "width", videoInfo.frameWidth );
+    dt.Set<uint32_t>( "height", videoInfo.frameHeight );
+    dt.Set<bool>( "bInputDynamicMode", true );
+    dt.Set<bool>( "bOutputDynamicMode", true );
     dt.Set<uint32_t>( "numInputBufferReq", bufferNum );
     dt.Set<uint32_t>( "numOutputBufferReq", bufferNum );
     dt.Set<uint32_t>( "frameRate", 30 );
 
     const char* inFmt = nullptr;
+    const char* outFmt = nullptr;
 
     switch( videoInfo.format ) {
     case QC_IMAGE_FORMAT_RGB888:
@@ -285,22 +158,53 @@ void VdTestDynamic( uint32_t bufferNum, const char *outFmt, const char *videoFil
         inFmt = "h264";
         break;
     case QC_IMAGE_FORMAT_COMPRESSED_H265:
-        inFmt = "265";
+        inFmt = "h265";
         break;
     default:
         printf("error: unrecognized input format %s\n", inFmt);
+        return;
+    }
+
+    switch( outFormat ) {
+    case QC_IMAGE_FORMAT_RGB888:
+        outFmt = "rgb888";
+        break;
+    case QC_IMAGE_FORMAT_BGR888:
+        outFmt = "bgr888";
+        break;
+    case QC_IMAGE_FORMAT_UYVY:
+        outFmt = "uyvy";
+        break;
+    case QC_IMAGE_FORMAT_NV12:
+        outFmt = "nv12";
+        break;
+    case QC_IMAGE_FORMAT_P010:
+        outFmt = "p010";
+        break;
+    case QC_IMAGE_FORMAT_NV12_UBWC:
+        outFmt = "nv12_ubwc";
+        break;
+    case QC_IMAGE_FORMAT_TP10_UBWC:
+        outFmt = "tp10_ubwc";
+        break;
+    case QC_IMAGE_FORMAT_COMPRESSED_H264:
+        outFmt = "h264";
+        break;
+    case QC_IMAGE_FORMAT_COMPRESSED_H265:
+        outFmt = "h265";
+        break;
+    default:
+        printf("error: unrecognized input format %s\n", inFmt);
+        return;
     }
 
     dt.Set<std::string>( "inputImageFormat", inFmt );
     dt.Set<std::string>( "outputImageFormat", outFmt );
 
-    ret = vidcDemuxer.Init( &vidcDemuxConfig );
-    ASSERT_EQ( QC_STATUS_OK, ret );
+    DataTree dataTree;
+    dataTree.Set( "static", dt );
 
-    ret = vidcDemuxer.GetVideoInfo( videoInfo );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    QCNodeInit_t config = { .config = dt.Dump(), .callback = OnDoneCb };
+    QCNodeInit_t config = { .config = dataTree.Dump(), .callback = OnDoneCb };
 
     printf( "config: %s\n", config.config.c_str() );
 
@@ -315,21 +219,8 @@ void VdTestDynamic( uint32_t bufferNum, const char *outFmt, const char *videoFil
     ret = optionsDt.Load( options, errors );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
-    uint32_t numInputBufferReq;
-    uint32_t numOutputBufferReq;
-    uint32_t width;
-    uint32_t height;
-    QCImageFormat_e inFormat;
-    QCImageFormat_e outFormat;
-    uint32_t frameRate;
-    bool bInputDynamicMode;
-    bool bOutputDynamicMode;
-
-    inFormat = dt.GetImageFormat( "inputImageFormat", QC_IMAGE_FORMAT_NV12 );
-    outFormat = dt.GetImageFormat( "outputImageFormat", QC_IMAGE_FORMAT_COMPRESSED_H265 );
-    width = dt.Get( "width", videoInfo.frameWidth );
-    height = dt.Get( "height", videoInfo.frameHeight );
-    frameRate = dt.Get( "frameRate", videoInfo.frameRate);
+    uint32_t numInputBufferReq = dt.Get( "numInputBufferReq", bufferNum );
+    uint32_t numOutputBufferReq = dt.Get( "numOutputBufferReq", bufferNum );
 
     printf( "options: %s\n", options.c_str() );
 
@@ -337,63 +228,97 @@ void VdTestDynamic( uint32_t bufferNum, const char *outFmt, const char *videoFil
     ASSERT_EQ( QC_STATUS_OK, ret );
     ASSERT_EQ( QC_OBJECT_STATE_RUNNING, pNodeVide->GetState() );
 
-    NodeFrameDescriptor frameDesc( QC_NODE_VIDEO_DECODER_EVENT_BUFF_ID + 1 );
-
     std::vector<VideoFrameDescriptor_t> inputs;
     std::vector<VideoFrameDescriptor_t> outputs;
+    ImageDescriptor_t imgDesc;
 
     for ( uint32_t i = 0; i < numInputBufferReq; i++ )
     {
+        ImageProps_t inputImgProps;
+        inputImgProps.batchSize = 1;
+        inputImgProps.width = videoInfo.frameWidth;
+        inputImgProps.height = videoInfo.frameHeight;
+        inputImgProps.numPlanes = 1;
+        inputImgProps.planeBufSize[0] = videoInfo.maxFrameSize;
+        inputImgProps.format = videoInfo.format;
         VideoFrameDescriptor_t bufDesc;
-        ret = bufMgr.Allocate( ImageBasicProps( width, height, inFormat ), bufDesc );
+        ret = bufMgr.Allocate( inputImgProps, bufDesc );
         ASSERT_EQ( QC_STATUS_OK, ret );
         inputs.push_back( bufDesc );
     }
 
     for ( uint32_t i = 0; i < numOutputBufferReq; i++ )
     {
-        ImageProps_t imgProps;
-        imgProps.batchSize = 1;
-        imgProps.width = videoInfo.frameWidth;
-        imgProps.height = videoInfo.frameHeight;
-        imgProps.numPlanes = 1;
-        imgProps.planeBufSize[0] = videoInfo.maxFrameSize;
-        imgProps.format = videoInfo.format;
         VideoFrameDescriptor_t bufDesc;
-        ret = bufMgr.Allocate( imgProps, bufDesc );
+        ret = bufMgr.Allocate( ImageBasicProps( videoInfo.frameWidth, videoInfo.frameHeight,
+                                                outFormat ),
+                               bufDesc );
         ASSERT_EQ( QC_STATUS_OK, ret );
         outputs.push_back( bufDesc );
     }
 
-    frameDesc.Clear();
+    NodeFrameDescriptor inFrameDesc( QC_NODE_VIDEO_DECODER_INPUT_BUFF_ID + 1 );
+    inFrameDesc.Clear();
+
+    NodeFrameDescriptor outFrameDesc( QC_NODE_VIDEO_DECODER_OUTPUT_BUFF_ID + 1 );
+    outFrameDesc.Clear();
 
     uint32_t nr = std::min( numInputBufferReq, numOutputBufferReq );
 
     ASSERT_EQ( QC_OBJECT_STATE_RUNNING, pNodeVide->GetState() );
 
-    for ( uint32_t i = 0; i < nr; i++ )
+    for ( uint32_t i = 0; i < numInputBufferReq; i++ )
     {
-        //  Set up an input buffer for the frame
-        ret = frameDesc.SetBuffer( QC_NODE_VIDEO_DECODER_INPUT_BUFF_ID, inputs[i] );
+        ret = vidcDemuxer.GetFrame( inputs[i], frameInfo );
         ASSERT_EQ( QC_STATUS_OK, ret );
-        //  Set up an output buffer for the frame
-        ret = frameDesc.SetBuffer( QC_NODE_VIDEO_DECODER_OUTPUT_BUFF_ID, outputs[i] );
+
+        inputs[i].timestampNs = frameInfo.startTime;
+        inputs[i].appMarkData = i;
+        //  Set up an input buffer for the frame
+        ret = inFrameDesc.SetBuffer( QC_NODE_VIDEO_DECODER_INPUT_BUFF_ID, inputs[i] );
         ASSERT_EQ( QC_STATUS_OK, ret );
         //  Process the frame
-        ret = pNodeVide->ProcessFrameDescriptor( frameDesc );
+        ret = pNodeVide->ProcessFrameDescriptor( inFrameDesc );
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
 
-    ASSERT_EQ( QC_OBJECT_STATE_RUNNING, pNodeVide->GetState() );
+    for ( uint32_t i = 0; i < numOutputBufferReq; i++ )
+    {
+        std::this_thread::sleep_for( std::chrono::milliseconds( 30 ) );
 
-    // wait input done signal
-    std::unique_lock<std::mutex> inLock( g_InMutex );
-    g_InCondVar.wait( inLock );
+        //  Set up an output buffer for the frame
+        ret = outFrameDesc.SetBuffer( QC_NODE_VIDEO_DECODER_OUTPUT_BUFF_ID, outputs[i] );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+        //  Process the frame
+        ret = pNodeVide->ProcessFrameDescriptor( outFrameDesc );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+    }
 
-    // wait output done signal
-    std::unique_lock<std::mutex> outLock( g_OutMutex );
-    g_OutCondVar.wait( outLock );
+    for ( uint32_t i = bufferNum; i < frameNum; i++ )
+    {
+        uint32_t bufferIdx = i % bufferNum;
+        ret = vidcDemuxer.GetFrame( inputs[bufferIdx], frameInfo );
+        ASSERT_EQ( QC_STATUS_OK, ret );
 
+        inputs[bufferIdx].timestampNs = frameInfo.startTime;
+        inputs[bufferIdx].appMarkData = i;
+
+        ret = inFrameDesc.SetBuffer( QC_NODE_VIDEO_DECODER_INPUT_BUFF_ID, inputs[bufferIdx] );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+        //  Process the frame
+        ret = pNodeVide->ProcessFrameDescriptor( inFrameDesc );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+
+        std::unique_lock<std::mutex> outLock( g_OutMutex );
+        g_OutCondVar.wait( outLock );
+
+        //  Set up an output buffer for the frame
+        ret = outFrameDesc.SetBuffer( QC_NODE_VIDEO_DECODER_OUTPUT_BUFF_ID, outputs[bufferIdx] );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+        //  Process the frame
+        ret = pNodeVide->ProcessFrameDescriptor( outFrameDesc );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+    }
 
     ASSERT_EQ( QC_OBJECT_STATE_RUNNING, pNodeVide->GetState() );
 
@@ -417,160 +342,18 @@ void VdTestDynamic( uint32_t bufferNum, const char *outFmt, const char *videoFil
 
 }
 
-#if 0
-void Vd2TestDynamic( uint32_t bufferNum, QCImageFormat_e outFormat, char *videoFile )
-{
-    QCStatus_e ret;
-    char pName[20] = "VidcDecoder";
-    uint32_t frameNum = 10;
-
-    VidcDemuxer vidcDemuxer;
-    VideoDecoder vidcDecoder;
-    VidcDemuxer_Config_t vidcDemuxConfig;
-    VideoDecoder_Config_t vidcDecoderConfig;
-    VidcDemuxer_VideoInfo_t videoInfo;
-    VidcDemuxer_FrameInfo_t frameInfo;
-    vidcDemuxConfig.pVideoFileName = videoFile;
-    vidcDemuxConfig.startFrameIdx = 0;
-    vidcDecoderConfig.bInputDynamicMode = true;
-    vidcDecoderConfig.bOutputDynamicMode = true;
-    vidcDecoderConfig.numInputBufferReq = bufferNum;
-    vidcDecoderConfig.numOutputBufferReq = bufferNum;
-
-    QCSharedBuffer_t inputBuffers[bufferNum];
-    QCSharedBuffer_t outputBuffers[bufferNum];
-
-    ASSERT_EQ( QC_OBJECT_STATE_INITIAL, vidcDecoder.GetState() );
-
-    ret = vidcDemuxer.Init( &vidcDemuxConfig );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    ret = vidcDemuxer.GetVideoInfo( videoInfo );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    ImageProps_t inputImgProps;
-    inputImgProps.batchSize = 1;
-    inputImgProps.width = videoInfo.frameWidth;
-    inputImgProps.height = videoInfo.frameHeight;
-    inputImgProps.numPlanes = 1;
-    inputImgProps.planeBufSize[0] = videoInfo.maxFrameSize;
-    inputImgProps.format = videoInfo.format;
-
-    vidcDecoderConfig.width = videoInfo.frameWidth;
-    vidcDecoderConfig.height = videoInfo.frameHeight;
-    vidcDecoderConfig.inFormat = videoInfo.format;
-    vidcDecoderConfig.outFormat = outFormat;
-    vidcDecoderConfig.frameRate = 30;
-
-    ret = vidcDecoder.Init( vidcDecoderConfig );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-    ASSERT_EQ( QC_OBJECT_STATE_READY, vidcDecoder.GetState() );
-
-    for ( uint32_t i = 0; i < bufferNum; i++ )
-    {
-        ret = inputBuffers[i].Allocate( &inputImgProps );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-    }
-
-    for ( uint32_t i = 0; i < bufferNum; i++ )
-    {
-        ret = outputBuffers[i].Allocate( videoInfo.frameWidth, videoInfo.frameHeight, outFormat );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-    }
-
-    ret = vidcDecoder.RegisterCallback( VdInputDoneCb, VdOutputDoneCb, VdEventCb,
-                                        (void *) &vidcDecoder );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    ret = vidcDecoder.Start();
-    ASSERT_EQ( QC_STATUS_OK, ret );
-    ASSERT_EQ( QC_OBJECT_STATE_RUNNING, vidcDecoder.GetState() );
-
-    VideoDecoder_InputFrame_t inputFrame;
-    VideoDecoder_OutputFrame_t outputFrame;
-    ImageDescriptor_t imgDesc;
-
-    for ( uint32_t i = 0; i < bufferNum; i++ )
-    {
-        inputFrame.sharedBuffer = inputBuffers[i];
-        imgDesc = inputFrame.sharedBuffer;
-        ret = vidcDemuxer.GetFrame( imgDesc, frameInfo );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-
-        inputFrame.timestampNs = frameInfo.startTime;
-        inputFrame.appMarkData = i;
-
-        ret = vidcDecoder.SubmitInputFrame( &inputFrame );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-    }
-
-    for ( uint32_t i = 0; i < bufferNum; i++ )
-    {
-        outputFrame.sharedBuffer = outputBuffers[i];
-
-        std::this_thread::sleep_for( std::chrono::milliseconds( 30 ) );
-        ret = vidcDecoder.SubmitOutputFrame( &outputFrame );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-    }
-
-    for ( uint32_t i = bufferNum; i < frameNum; i++ )
-    {
-        uint32_t bufferIdx = i % bufferNum;
-        inputFrame.sharedBuffer = inputBuffers[bufferIdx];
-        outputFrame.sharedBuffer = outputBuffers[bufferIdx];
-        imgDesc = inputFrame.sharedBuffer;
-        ret = vidcDemuxer.GetFrame( imgDesc, frameInfo );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-
-        inputFrame.timestampNs = frameInfo.startTime;
-        inputFrame.appMarkData = i;
-
-        ret = vidcDecoder.SubmitInputFrame( &inputFrame );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-
-        std::unique_lock<std::mutex> outLock( s_OutMutex );
-        s_OutCondVar.wait( outLock );
-        ret = vidcDecoder.SubmitOutputFrame( &outputFrame );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-    }
-
-    ret = vidcDecoder.Stop();
-    ASSERT_EQ( QC_STATUS_OK, ret );
-    ASSERT_EQ( QC_OBJECT_STATE_READY, vidcDecoder.GetState() );
-
-    ret = vidcDecoder.Deinit();
-    ASSERT_EQ( QC_STATUS_OK, ret );
-    ASSERT_EQ( QC_OBJECT_STATE_INITIAL, vidcDecoder.GetState() );
-
-    ret = vidcDemuxer.DeInit();
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    for ( uint32_t i = 0; i < bufferNum; i++ )
-    {
-        ret = inputBuffers[i].Free();
-        ASSERT_EQ( QC_STATUS_OK, ret );
-    }
-
-    for ( uint32_t i = 0; i < bufferNum; i++ )
-    {
-        ret = outputBuffers[i].Free();
-        ASSERT_EQ( QC_STATUS_OK, ret );
-    }
-}
-#endif
-
 TEST( Decoder, SANITY_Decoder_Dynamic_HEVC_NV12 )
 {
     uint32_t bufferNum = 4;
     char videoFile[] = "./data/test/VideoDecoder/test.mp4";
-    VdTestDynamic( bufferNum, "nv12", videoFile );
+    VdTestDynamic( bufferNum, QC_IMAGE_FORMAT_NV12, videoFile );
 }
 
 TEST( Decoder, SANITY_Decoder_Dynamic_HEVC_P010 )
 {
     uint32_t bufferNum = 4;
     char videoFile[] = "./data/test/VideoDecoder/test.mp4";
-    VdTestDynamic( bufferNum, "p010", videoFile );
+    VdTestDynamic( bufferNum, QC_IMAGE_FORMAT_P010, videoFile );
 }
 
 

@@ -17,7 +17,7 @@ VidcDemuxer::VidcDemuxer() : m_fileSource( FileSourceCallback, this, false ) {}
 
 VidcDemuxer::~VidcDemuxer() {}
 
-QCStatus_e VidcDemuxer::Init( VidcDemuxer_Config_t *pConfig )
+QCStatus_e VidcDemuxer::Init( const VidcDemuxer_Config_t *pConfig )
 {
     QCStatus_e ret = QC_STATUS_OK;
 

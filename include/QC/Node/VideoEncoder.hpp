@@ -177,7 +177,7 @@ private:
     QCStatus_e ApplyDynamicConfig( DataTree &dt, std::string &errors );
 
     VideoEncoder_Config_t m_config;
-    std::string m_options;
+    std::string m_options = "{}";
 };
 
 typedef struct VideoEncoderMonitorConfig : public QCNodeMonitoringBase_t

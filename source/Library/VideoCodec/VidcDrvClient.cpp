@@ -19,6 +19,7 @@
 #include "QC/Common/Types.hpp"
 #include "QC/Infras/Log/Logger.hpp"
 #include "VidcDrvClient.hpp"
+#include "VidcNodeBase.hpp"
 
 namespace QC {
 namespace Node {
@@ -126,9 +127,12 @@ static const char* VidcErrToStr( vidc_status_type err )
     return ret;
 }
 
-void VidcDrvClient::Init( const string &name, Logger_Level_e level, VideoEncDecType_e type )
+void VidcDrvClient::Init( const string &name, Logger_Level_e level, VideoEncDecType_e type,
+                          const VidcNodeBase_Config_t &nodeConfig )
 {
     QC_LOGGER_INIT( name.c_str(), level );
+    m_bufNum[VIDEO_CODEC_BUF_INPUT] = nodeConfig.numInputBufferReq;
+    m_bufNum[VIDEO_CODEC_BUF_OUTPUT] = nodeConfig.numOutputBufferReq;
     m_encDecType = type;
 }
 
@@ -364,6 +368,7 @@ QCStatus_e VidcDrvClient::SetDynamicMode( VideoCodec_BufType_e type, bool mode )
     ret = SetDrvProperty( VIDC_I_BUFFER_ALLOC_MODE, sizeof( buffer_alloc_mode ),
                           (uint8_t &) ( buffer_alloc_mode ) );
 
+
     return ret;
 }
 
@@ -572,8 +577,8 @@ QCStatus_e VidcDrvClient::SetBuffer( VideoCodec_BufType_e bufferType,
     return ret;
 }
 
-QCStatus_e VidcDrvClient::FreeBuffer( VideoCodec_BufType_e bufferType,
-                                      const std::vector<std::reference_wrapper<VideoFrameDescriptor_t>> &buffers )
+QCStatus_e VidcDrvClient::FreeBuffers( VideoCodec_BufType_e bufferType,
+                                       const std::vector<std::reference_wrapper<VideoFrameDescriptor_t>> &buffers )
 {
     int32_t i, rc = 0;
     QCStatus_e ret = QC_STATUS_OK;
@@ -649,7 +654,8 @@ QCStatus_e VidcDrvClient::EmptyBuffer( VideoFrameDescriptor &frameDesc )
 
         auto it = m_inputMap.find( handle );
 
-        if ( true == m_bInputDynamicMode ) {
+        if ( true == m_bInputDynamicMode )
+        {
             if ( m_inputMap.end() != it )
             {
                 QC_DEBUG( "find handle 0x%x", handle );
@@ -681,8 +687,7 @@ QCStatus_e VidcDrvClient::EmptyBuffer( VideoFrameDescriptor &frameDesc )
         }
         else /* false == m_bInputDynamicMode */
         {
-            if ( ( m_inputMap.end() != it ) &&
-                            ( false == it->second.bUsedFlag ) )
+            if ( ( m_inputMap.end() != it ) && ( false == it->second.bUsedFlag ) )
             {
                 QC_DEBUG( "find handle 0x%x", handle );
                 it->second.bUsedFlag = true;
@@ -700,7 +705,7 @@ QCStatus_e VidcDrvClient::EmptyBuffer( VideoFrameDescriptor &frameDesc )
     if ( QC_STATUS_OK == ret )
     {
         rc = device_ioctl( m_pIoHandle, VIDC_IOCTL_EMPTY_INPUT_BUFFER, (uint8_t *) ( &frameData ),
-                           sizeof( vidc_frame_data_type ), nullptr, 0 );
+                           sizeof( frameData ), nullptr, 0 );
         if ( VIDC_ERR_NONE == rc )
         {
             QC_DEBUG( "SubmitInputFrame VIDC_IOCTL_EMPTY_INPUT_BUFFER succeeded. frameTs: %" PRIu64
@@ -731,18 +736,54 @@ QCStatus_e VidcDrvClient::FillBuffer( VideoFrameDescriptor &frameDesc )
     if ( QC_STATUS_OK == ret )
     {
         std::unique_lock<std::mutex> auto_lock( m_outLock );
-        if ( ( m_outputMap.end() != m_outputMap.find( handle ) ) &&
-             ( false == m_outputMap[handle].bUsedFlag ) )
+
+        auto it = m_outputMap.find( handle );
+
+        if ( true == m_bOutputDynamicMode )
         {
-            QC_DEBUG( "find handle 0x%x", handle );
-            m_outputMap[handle].bUsedFlag = true;
+            if ( m_outputMap.end() != it )
+            {
+                QC_DEBUG( "find handle 0x%x", handle );
+                if ( false == it->second.bUsedFlag )
+                {
+                    it->second.bUsedFlag = true;
+                    it->second.outFrameDesc.timestampNs = frameDesc.timestampNs;
+                    it->second.outFrameDesc.appMarkData = frameDesc.appMarkData;
+                }
+                else
+                {
+                    QC_ERROR( "input buffer not available now!" );
+                    ret = QC_STATUS_NOMEM;
+                }
+            }
+            else if ( m_outputMap.size() < m_bufNum[VIDEO_CODEC_BUF_OUTPUT] )
+            {
+                auto result = m_outputMap.emplace(handle, VideoCodec_OutputInfo_t());
+                result.first->second.bUsedFlag = true;
+                result.first->second.outFrameDesc = frameDesc;
+                result.first->second.outFrameDesc.timestampNs = frameDesc.timestampNs;
+                result.first->second.outFrameDesc.appMarkData = frameDesc.appMarkData;
+            }
+            else
+            {
+                QC_ERROR( "No empty input buffer available!" );
+                ret = QC_STATUS_NOMEM;
+            }
         }
-        else
+        else /* false == m_bOutputDynamicMode */
         {
-            QC_ERROR( "No empty output buffer available!" );
-            ret = QC_STATUS_NOMEM;
+            if ( ( m_outputMap.end() != it ) && ( false == it->second.bUsedFlag ) )
+            {
+                QC_DEBUG( "find handle 0x%x", handle );
+                it->second.bUsedFlag = true;
+            }
+            else
+            {
+                QC_ERROR( "No empty output buffer available!" );
+                ret = QC_STATUS_NOMEM;
+            }
         }
-    }
+    } /* m_outLock released */
 
     if ( QC_STATUS_OK == ret )
     {
@@ -756,12 +797,12 @@ QCStatus_e VidcDrvClient::FillBuffer( VideoFrameDescriptor &frameDesc )
 #endif
         frameData.frm_clnt_data = handle;
 
-        QC_DEBUG( "FillBuffer, frame_handle=0x%x , frameData.frame_addr=0x%x "
+        QC_DEBUG( "FillBuffer: frame_handle=0x%x , frameData.frame_addr=0x%x "
                   "frameData.alloc_len %" PRIu32 " frameData.data_len=%" PRIu32,
                   handle, frameData.frame_addr, frameData.alloc_len, frameData.data_len );
 
         rc = device_ioctl( m_pIoHandle, VIDC_IOCTL_FILL_OUTPUT_BUFFER, (uint8_t *) ( &frameData ),
-                           sizeof( vidc_frame_data_type ), nullptr, 0 );
+                           sizeof( frameData ), nullptr, 0 );
         if ( VIDC_ERR_NONE != rc )
         {
             QC_ERROR( "FillBuffer 0x%x failed rc 0x%x", handle, rc );

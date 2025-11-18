@@ -285,12 +285,12 @@ QCStatus_e VidcNodeBase::DeInitialize()
 
     if ( QC_STATUS_OK == ret )
     {
-        ret = FreeInputBuffer();
+        ret = FreeInputBuffers();
     }
 
     if ( QC_STATUS_OK == ret )
     {
-        ret = FreeOutputBuffer();
+        ret = FreeOutputBuffers();
     }
 
     if ( QC_STATUS_OK == ret )
@@ -484,10 +484,12 @@ QCStatus_e VidcNodeBase::InitBufferForNonDynamicMode( const std::vector<std::ref
     int32_t i = 0, bufNum;
     QCStatus_e ret = QC_STATUS_OK;
 
-    if (VIDEO_CODEC_BUF_INPUT == bufferType) {
+    if (VIDEO_CODEC_BUF_INPUT == bufferType)
+    {
         bufNum = m_pConfig->numInputBufferReq;
     }
-    else { /* VIDEO_CODEC_BUF_OUTPUT */
+    else /* VIDEO_CODEC_BUF_OUTPUT */
+    {
         bufNum = m_pConfig->numOutputBufferReq;
     }
 
@@ -501,7 +503,8 @@ QCStatus_e VidcNodeBase::InitBufferForNonDynamicMode( const std::vector<std::ref
             i++;
         }
     }
-    else { /* VIDEO_CODEC_BUF_OUTPUT */
+    else /* VIDEO_CODEC_BUF_OUTPUT */
+    {
         for ( QCBufferDescriptorBase_t &buf : buffers)
         {
             if (i >= bufferIdx && i < bufferIdx + bufNum ) {
@@ -645,29 +648,24 @@ QCStatus_e VidcNodeBase::NegotiateBufferReq( VideoCodec_BufType_e bufType )
     return ret;
 }
 
-QCStatus_e VidcNodeBase::FreeInputBuffer()
+QCStatus_e VidcNodeBase::FreeInputBuffers()
 {
     QCStatus_e ret = QC_STATUS_OK;
 
-    for ( auto buffer : m_inputBufferList )   // it means non dynamic mode
-    {
-        QC_DEBUG( "FreeInputBuffer begin" );
-        ret = m_drvClient.FreeBuffer( VIDEO_CODEC_BUF_INPUT, m_inputBufferList );
-    }
+    QC_DEBUG( "FreeInputBuffers begin" );
+    ret = m_drvClient.FreeBuffers( VIDEO_CODEC_BUF_INPUT, m_inputBufferList );
+    QC_DEBUG( "FreeInputBuffers end" );
 
     return ret;
 }
 
-QCStatus_e VidcNodeBase::FreeOutputBuffer()
+QCStatus_e VidcNodeBase::FreeOutputBuffers()
 {
     QCStatus_e ret = QC_STATUS_OK;
 
-    if ( !m_outputBufferList.empty() )   // it means non dynamic mode
-    {
-        QC_DEBUG( "FreeOutputBuffer begin" );
-        ret = m_drvClient.FreeBuffer( VIDEO_CODEC_BUF_OUTPUT, m_outputBufferList );
-        QC_DEBUG( "FreeOutputBuffer end" );
-    }
+    QC_DEBUG( "FreeOutputBuffers begin" );
+    ret = m_drvClient.FreeBuffers( VIDEO_CODEC_BUF_OUTPUT, m_outputBufferList );
+    QC_DEBUG( "FreeOutputBuffers end" );
 
     return ret;
 }
