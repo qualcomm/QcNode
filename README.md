@@ -10,7 +10,7 @@ Below is a summary information of the current implemented components.
 
 | QCNode |  QNX PVM  | HGY PVM  | Library  |   Processor     |  Feaures |
 |-----------|------------|-------------|----------|-----------------|---------------------------------------|
-| [Camera](./docs/camera.md) | YES| YES | qcarcam | Camera | camera streaming |
+| [Camera](./docs/Camera.md) | YES| YES | qcarcam | Camera | camera streaming |
 | [Remap](./docs/remap.md)| YES | YES | FastADAS | CPU, HTP0, HTP1, GPU | Color Conversion, ROI Crop, Downscaling, Undistortion |
 | [QNN](./docs/QNN.md) | YES| YES | QNN | CPU, GPU, HTP0, HTP1 | AI model inference |
 | [VideoEncoder](./docs/videoencoder.md) | YES| YES | vidc | VPU | Encode image to video frame |

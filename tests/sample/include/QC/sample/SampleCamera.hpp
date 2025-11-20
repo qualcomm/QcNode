@@ -59,12 +59,10 @@ private:
     DataTree m_config;
     DataTree m_dataTree;
     QCNodeInit_t m_nodeCfg;
+    std::vector<DataTree> m_streamConfigs;
 
     std::map<uint32_t, std::string> m_topicNameMap;
     std::map<uint32_t, std::shared_ptr<DataPublisher<DataFrames_t>>> m_pubMap;
-
-    uint64_t m_frameId[MAX_CAMERA_STREAM] = { 0 };
-    std::vector<DataTree> m_streamConfigs;
 
     bool m_bImmediateRelease = false;
     bool m_bIgnoreError = false;
@@ -76,6 +74,7 @@ private:
     std::queue<CameraFrameDescriptor_t> m_camFrameQueue;
 
     std::vector<SharedBufferPool> m_frameBufferPools;
+    Profiler m_profilers[QCNODE_CAMERA_MAX_STREAM_NUM];
 
 };   // class SampleCamera
 
@@ -83,4 +82,3 @@ private:
 }   // namespace QC
 
 #endif   // QC_SAMPLE_CAMERA_HPP
-

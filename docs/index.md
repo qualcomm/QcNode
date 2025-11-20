@@ -9,7 +9,7 @@
   - [The QCNode Logger](./logger.md)
 
 - The QCNode components
-  - [The QCNode Camera](./camera.md)
+  - [The QCNode Camera](./Camera.md)
   - [The QCNode QNN](./QNN.md)
   - [The QCNode Remap](./remap.md)
   - [The QCNode VideoEncoder](./videoencoder.md)

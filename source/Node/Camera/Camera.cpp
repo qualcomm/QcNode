@@ -100,4 +100,3 @@ QCObjectState_e Camera::GetState()
 
 }   // namespace Node
 }   // namespace QC
-
