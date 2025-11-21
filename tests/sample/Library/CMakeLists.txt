@@ -21,3 +21,7 @@ if ( ENABLE_EVA_AUTO )
   add_subdirectory(OpticalFlow)
   add_subdirectory(DepthFromStereo)
 endif()
+
+if ( ENABLE_RESMON )
+  add_subdirectory(ResMonitor)
+endif()

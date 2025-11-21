@@ -28,6 +28,7 @@
     - [2.24 QCNode Radar Sample](#224-qcnode-radar-sample)
     - [2.25 QCNode C2C Sample](#225-qcnode-c2c-sample)
     - [2.26 QCNode Temporal Sample](#226-qcnode-temporal-sample)
+    - [2.27 QCNode ResMon Sample](#227-qcnode-resmon-sample)
   - [3. Typical QCNode Sample Application pipelines](#3-typical-qcnode-sample-application-pipelines)
     - [3.1 4 DataReader based QNN perception pipelines](#31-4-datareader-based-qnn-perception-pipelines)
     - [3.2 1 DataReader and 1 Camera AR231 based QNN perception pipelines](#32-1-datareader-and-1-camera-ar231-based-qnn-perception-pipelines)
@@ -926,6 +927,34 @@ The command line template example:
     -k output_topic -v /sensor/camera/VAD0/temp \
 ```
 
+### 2.27 QCNode ResMon Sample
+
+The Sample ResMon gets the real-time system loading, including CPU utilization, GPU utilization, NSP0/NSP1 utilization and DDR bandwidth. Users can configure the sampling interval and total sampling duration, and optionally enable loop mode. When loop mode is enabled, the total sampling duration is ignored, and ResMon will continue running indefinitely.
+
+| attribute        | required | type        | default | comments |
+|------------------|----------|-------------|---------|----------|
+| metrics          | true     | string list | -       | The metric names for ResMon. Options: cpu_util, gpu_util, nsp0_util, nsp1_util, ddr_bw |
+| loop_mode        | true     | bool        | true    | The option to enable loop mode |
+| sample_interval  | true     | int         | 5000    | The ResMon sampling iterval in ms |
+| total_time       | false    | int         | 0       | The ResMon total sampling time in ms |
+
+loop mode:
+```sh
+  -n RESMON -t ResMon \
+    -k metrics -v cpu_util,gpu_util,nsp0_util,nsp1_util,ddr_bw \
+    -k loop_mode -v true \
+    -k sample_interval -v 1000
+```
+
+non-loop mode:
+```sh
+  -n RESMON -t ResMon \
+    -k metrics -v cpu_util,gpu_util,nsp0_util,nsp1_util,ddr_bw \
+    -k loop_mode -v false \
+    -k sample_interval -v 1000 \
+    -k total_time -v 10000
+```
+
 ## 3. Typical QCNode Sample Application pipelines
 
 ### 3.1 4 DataReader based QNN perception pipelines
@@ -1135,3 +1164,4 @@ export QC_LOG_LEVEL=INFO
     -k output_topic -v /sensor/camera/CAM0/objs \
   -n VIZ -t TinyViz -k cameras -v CAM0 -k winH -v 1050 -d
 ```
+
