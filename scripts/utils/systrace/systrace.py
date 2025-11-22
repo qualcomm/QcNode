@@ -169,6 +169,37 @@ while offset < recordLen:
         if cat in ["FrameReady"]:
             if "frameId" in args:
                 evt["name"] = "%s" % (args["frameId"])
+    elif ph in ["C"]:
+        args.pop("timestamp")
+        keys = list(args.keys())
+        tid_name = keys[0]
+        pid_name = ""
+        evt = {
+            "name": tid_name,
+            "ph": "C",
+            "pid": pid_name,
+            "tid": tid_name,
+            "ts": ts,
+            "args": args
+        }
+        if "CPU" in tid_name:
+            pid_name = "CPU Utilization"
+        elif "GPU" in tid_name:
+            pid_name = "GPU Utilization"
+            tid_name = args["GPU process name"] + " (%)"
+            util_val = args["GPU busy percentage (%)"]
+            args.clear()
+            args[tid_name] = util_val
+            evt["args"] = args
+        elif "NSP0" in tid_name:
+            pid_name = "NSP0 Metrics"
+        elif "NSP1" in tid_name:
+            pid_name = "NSP1 Metrics"
+        elif "DDR" in tid_name:
+            pid_name = "DDR Metrics"
+        evt["name"] = tid_name
+        evt["pid"] = pid_name
+        evt["tid"] = tid_name
     else:
         raise NotImplementedError
     events.append(evt)

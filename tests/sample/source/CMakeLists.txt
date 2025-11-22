@@ -113,6 +113,11 @@ if ( ENABLE_C2C )
   list( APPEND TARGET_LIBRARIES c2c )
 endif()
 
+if ( ENABLE_RESMON )
+  list( APPEND QCNODE_SAMPLE_SOURCES SampleResMon.cpp )
+  list( APPEND TARGET_LIBRARIES ResMonitor )
+endif()
+
 add_library( QCNodeSample SHARED ${QCNODE_SAMPLE_SOURCES} )
 
 set_property( TARGET QCNodeSample PROPERTY LINKER_LANGUAGE CXX )

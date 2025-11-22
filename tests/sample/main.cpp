@@ -105,10 +105,6 @@ int main( int argc, char *argv[] )
     QCStatus_e ret;
     int timeS = 0;
     std::vector<SampleIF *> samples;
-
-    signal( SIGINT, SignalHandler );
-    signal( SIGTERM, SignalHandler );
-
     std::vector<PipelineConfig_t> pipelineConfigs;
     std::string key;
     int opt;
@@ -197,6 +193,9 @@ int main( int argc, char *argv[] )
             printf( "Start %s OK\n", sample->GetName() );
         }
     }
+
+    signal( SIGINT, SignalHandler );
+    signal( SIGTERM, SignalHandler );
 
     {
         // wait for signal
