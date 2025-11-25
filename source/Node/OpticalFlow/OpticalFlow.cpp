@@ -382,7 +382,11 @@ QCStatus_e OpticalFlowConfigIfs::VerifyAndSet( const std::string config, std::st
 
 const std::string &OpticalFlowConfigIfs::GetOptions()
 {
-    return NodeConfigIfs::s_QC_STATUS_UNSUPPORTED;
+    DataTree dt;
+    dt.Set<uint32_t>( "version", QCNODE_OFL_VERSION );
+    m_options = dt.Dump();
+
+    return m_options;
 }
 
 
@@ -423,51 +427,6 @@ PixelFormat OpticalFlow::GetMotionMapFormat( MotionMapFormat_e motionMapFormat )
         case MOTION_FORMAT_12_LA:
         {
             format = PixelFormat::MOTION_MAP_12_LA;
-            break;
-        }
-        case MOTION_FORMAT_12_LA_UBWC:
-        {
-            format = PixelFormat::MOTION_MAP_12_LA_UBWC;
-            break;
-        }
-        case MOTION_FORMAT_12_LA_PLANAR:
-        {
-            format = PixelFormat::MOTION_MAP_12_LA_PLANAR;
-            break;
-        }
-        case MOTION_FORMAT_12_LA_PLANAR_UBWC:
-        {
-            format = PixelFormat::MOTION_MAP_12_LA_PLANAR_UBWC;
-            break;
-        }
-        case MOTION_FORMAT_12_MA:
-        {
-            format = PixelFormat::MOTION_MAP_12_MA;
-            break;
-        }
-        case MOTION_FORMAT_12_MA_UBWC:
-        {
-            format = PixelFormat::MOTION_MAP_12_MA_UBWC;
-            break;
-        }
-        case MOTION_FORMAT_12_MA_PLANAR:
-        {
-            format = PixelFormat::MOTION_MAP_12_MA_PLANAR;
-            break;
-        }
-        case MOTION_FORMAT_12_MA_PLANAR_UBWC:
-        {
-            format = PixelFormat::MOTION_MAP_12_MA_PLANAR_UBWC;
-            break;
-        }
-        case MOTION_FORMAT_16:
-        {
-            format = PixelFormat::MOTION_MAP_16;
-            break;
-        }
-        case MOTION_FORMAT_16_UBWC:
-        {
-            format = PixelFormat::MOTION_MAP_16_UBWC;
             break;
         }
         default:
@@ -642,7 +601,7 @@ QCStatus_e OpticalFlow::RegisterMemory( const BufferDescriptor_t &bufferDesc, Bu
     Status eStatus = Status::EFAIL;
     Buffer buff;
 
-    if ( bufferDesc.GetDataPtr() == nullptr )
+    if ( bufferDesc.pBuf == nullptr )
     {
         QC_ERROR( "OpticalFlow: Buffer data ptr is nullptr" );
         ret = QC_STATUS_INVALID_BUF;
@@ -659,7 +618,7 @@ QCStatus_e OpticalFlow::RegisterMemory( const BufferDescriptor_t &bufferDesc, Bu
 
             buff.nSize = bufferDesc.GetDataSize();
             buff.nOffset = bufferDesc.offset;
-            buff.pAddress = bufferDesc.GetDataPtr();
+            buff.pAddress = bufferDesc.pBuf;
             buff.hHandle = (BufferHandle) bufferDesc.dmaHandle;
 
             eStatus = BufferRegister( m_session, buff );

@@ -17,6 +17,14 @@ namespace Node
 
 using namespace SV;
 
+/** @brief The QCNode OpticalFlow Version */
+#define QCNODE_OFL_VERSION_MAJOR 2U
+#define QCNODE_OFL_VERSION_MINOR 0U
+#define QCNODE_OFL_VERSION_PATCH 0U
+
+#define QCNODE_OFL_VERSION                                                                         \
+    ( ( QCNODE_OFL_VERSION_MAJOR << 12U ) | ( QCNODE_OFL_VERSION_MINOR << 8U ) |                   \
+      QCNODE_OFL_VERSION_PATCH )
 
 typedef enum
 {
@@ -53,15 +61,6 @@ typedef struct OpticalFlowBufferMapping
 typedef enum : uint8_t
 {
     MOTION_FORMAT_12_LA = 0,
-    MOTION_FORMAT_12_LA_UBWC,
-    MOTION_FORMAT_12_LA_PLANAR,
-    MOTION_FORMAT_12_LA_PLANAR_UBWC,
-    MOTION_FORMAT_12_MA,
-    MOTION_FORMAT_12_MA_UBWC,
-    MOTION_FORMAT_12_MA_PLANAR,
-    MOTION_FORMAT_12_MA_PLANAR_UBWC,
-    MOTION_FORMAT_16,
-    MOTION_FORMAT_16_UBWC,
     MOTION_FORMAT_MAX
 } MotionMapFormat_e;
 
@@ -256,6 +255,7 @@ private:
     QCStatus_e ApplyDynamicConfig( DataTree &dt, std::string &errors );
 
     OpticalFlow_Config_t m_config;
+    std::string m_options;
 };
 
 // TODO: how to handle OpticalFlowMonitorConfig

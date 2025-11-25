@@ -427,7 +427,11 @@ QCStatus_e DepthFromStereoConfigIfs::VerifyAndSet( const std::string config, std
 
 const std::string &DepthFromStereoConfigIfs::GetOptions()
 {
-    return NodeConfigIfs::s_QC_STATUS_UNSUPPORTED;
+    DataTree dt;
+    dt.Set<uint32_t>( "version", QCNODE_DFS_VERSION );
+    m_options = dt.Dump();
+
+    return m_options;
 }
 
 
@@ -464,34 +468,9 @@ PixelFormat DepthFromStereo::GetDisparityMapFormat( DisparityFormat_e disparityF
 
     switch ( disparityFormat )
     {
-        case DISP_FORMAT_P010_LA_Y_ONLY:
-        {
-            format = PixelFormat::P010_LA_Y_ONLY;
-            break;
-        }
-        case DISP_FORMAT_P010_MA_Y_ONLY:
-        {
-            format = PixelFormat::P010_MA_Y_ONLY;
-            break;
-        }
         case DISP_FORMAT_P012_LA_Y_ONLY:
         {
             format = PixelFormat::P012_LA_Y_ONLY;
-            break;
-        }
-        case DISP_FORMAT_P012_LA_Y_ONLY_UBWC:
-        {
-            format = PixelFormat::P012_LA_Y_ONLY_UBWC;
-            break;
-        }
-        case DISP_FORMAT_P012_MA_Y_ONLY:
-        {
-            format = PixelFormat::P012_MA_Y_ONLY;
-            break;
-        }
-        case DISP_FORMAT_P012_MA_Y_ONLY_UBWC:
-        {
-            format = PixelFormat::P012_MA_Y_ONLY_UBWC;
             break;
         }
         default:

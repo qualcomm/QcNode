@@ -17,6 +17,15 @@ namespace Node
 
 using namespace SV;
 
+/** @brief The QCNode Depth from Stereo Version */
+#define QCNODE_DFS_VERSION_MAJOR 2U
+#define QCNODE_DFS_VERSION_MINOR 0U
+#define QCNODE_DFS_VERSION_PATCH 0U
+
+#define QCNODE_DFS_VERSION                                                                         \
+    ( ( QCNODE_DFS_VERSION_MAJOR << 12U ) | ( QCNODE_DFS_VERSION_MINOR << 8U ) |                   \
+      QCNODE_DFS_VERSION_PATCH )
+
 typedef enum
 {
     QC_NODE_DFS_PRIMARY_IMAGE_BUFF_ID = 0,
@@ -44,12 +53,7 @@ typedef struct DepthFromStereoBufferMapping
 /** @brief DFS output map format. */
 typedef enum : uint8_t
 {
-    DISP_FORMAT_P010_LA_Y_ONLY = 0,
-    DISP_FORMAT_P010_MA_Y_ONLY,
-    DISP_FORMAT_P012_LA_Y_ONLY,
-    DISP_FORMAT_P012_LA_Y_ONLY_UBWC,
-    DISP_FORMAT_P012_MA_Y_ONLY,
-    DISP_FORMAT_P012_MA_Y_ONLY_UBWC,
+    DISP_FORMAT_P012_LA_Y_ONLY = 0,
     DISP_FORMAT_MAX
 } DisparityFormat_e;
 
@@ -243,6 +247,7 @@ private:
     QCStatus_e ApplyDynamicConfig( DataTree &dt, std::string &errors );
 
     DepthFromStereo_Config_t m_config;
+    std::string m_options;
 };
 
 
