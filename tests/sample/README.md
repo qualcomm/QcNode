@@ -29,6 +29,7 @@
     - [2.25 QCNode C2C Sample](#225-qcnode-c2c-sample)
     - [2.26 QCNode Temporal Sample](#226-qcnode-temporal-sample)
     - [2.27 QCNode ResMon Sample](#227-qcnode-resmon-sample)
+    - [2.28 QCNode Genie Sample](#228-qcnode-genie-sample)
   - [3. Typical QCNode Sample Application pipelines](#3-typical-qcnode-sample-application-pipelines)
     - [3.1 4 DataReader based QNN perception pipelines](#31-4-datareader-based-qnn-perception-pipelines)
     - [3.2 1 DataReader and 1 Camera AR231 based QNN perception pipelines](#32-1-datareader-and-1-camera-ar231-based-qnn-perception-pipelines)
@@ -953,6 +954,30 @@ non-loop mode:
     -k loop_mode -v false \
     -k sample_interval -v 1000 \
     -k total_time -v 10000
+```
+
+### 2.28 QCNode Genie Sample
+
+| attribute            | required | type      | default       | comments |
+|----------------------|----------|-----------|---------------|----------|
+| config               | true     | string    |       -       | The Genie Dialog JSON configuration file. |
+| embedding_table      | true     | string    |       -       | Token-to-Embedding lookup table provided as a file. |
+| lut_data_type        | true     | string    | float32       | Token-to-Embedding lookup table data type, options from [float32,ufixed_point8,ufixed_point16,sfixed_point8,sfixed_point16] |
+| lut_scale | false    | float     | 1.0f          | The quantization scale of the Token-to-Embedding lookup table |
+| lut_offset| false    | int       | 0             | The quantization offset of the Token-to-Embedding lookup table |
+| input_data_type        | true     | string    | float32       | Input data type, options from [float32,ufixed_point8,ufixed_point16,sfixed_point8,sfixed_point16] |
+| input_scale | false    | float     | 1.0f          | The quantization scale of the input |
+| input_offset| false    | int       | 0             | The quantization offset of the input |
+| input_topic          | true     | string    |      -        | the input topic name |
+| output_topic         | true     | string    |      -        | the output topic name |
+
+The command line template example:
+
+```sh
+  -n GENIE0 -t Genie -k config -v qwen2vl.json \
+    -k embedding_table -v embedding_weights_152064x3584_ssd.bin \
+    -k input_topic -v /sensor/genie/embeding/raw \
+    -k output_topic -v /sensor/genie/decoder/text \
 ```
 
 ## 3. Typical QCNode Sample Application pipelines
