@@ -205,7 +205,7 @@ public:
      * Note: if the logger object is not initialized or the initialization is failed, the message
      * will be dropped, and this API will return without any fault or error.
      */
-    void Log( Logger_Level_e level, const char *pFormat, ... );
+    void Log( Logger_Level_e level, const char *pFormat, ... ) const;
 
     /**
      * @brief Do log a message
@@ -216,7 +216,7 @@ public:
      * Note: if the logger object is not initialized or the initialization is failed, the message
      * will be dropped, and this API will return without any fault or error.
      */
-    void Log( Logger_Level_e level, const char *pFormat, va_list args );
+    void Log( Logger_Level_e level, const char *pFormat, va_list args ) const;
 
     /**
      * @brief Get the acutal logger level of this logger

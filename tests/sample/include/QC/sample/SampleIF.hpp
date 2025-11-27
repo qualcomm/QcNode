@@ -6,6 +6,7 @@
 #ifndef QC_SAMPLE_IF_HPP
 #define QC_SAMPLE_IF_HPP
 
+#include "QC/Common/DataTree.hpp"
 #include "QC/Common/Types.hpp"
 #include "QC/Infras/Log/Logger.hpp"
 #include "QC/sample/DataBroker.hpp"
@@ -28,6 +29,8 @@ namespace QC
 {
 namespace sample
 {
+
+using namespace QC::Node;
 
 typedef std::map<std::string, std::string> SampleConfig_t;
 
@@ -243,6 +246,7 @@ protected:
     QCNodeID_t m_nodeId;
     Profiler m_profiler;
     SysTrace m_systrace;
+    QC_DECLARE_NODETRACE();
     QC_DECLARE_LOGGER();
 
 private:

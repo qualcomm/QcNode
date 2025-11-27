@@ -85,7 +85,7 @@ QCStatus_e Logger::Init( const char *pName, Logger_Level_e level )
     return ret;
 }
 
-void Logger::Log( Logger_Level_e level, const char *pFormat, ... )
+void Logger::Log( Logger_Level_e level, const char *pFormat, ... ) const
 {
     va_list args;
 
@@ -104,7 +104,7 @@ void Logger::Log( Logger_Level_e level, const char *pFormat, ... )
     }
 }
 
-void Logger::Log( Logger_Level_e level, const char *pFormat, va_list args )
+void Logger::Log( Logger_Level_e level, const char *pFormat, va_list args ) const
 {
     if ( level >= m_level )
     {

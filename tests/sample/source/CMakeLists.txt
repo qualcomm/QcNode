@@ -62,6 +62,11 @@ endif()
 
 set( TARGET_LIBRARIES QCNode SharedRing BufferManager )
 
+if ( ENABLE_GENIE )
+  list( APPEND QCNODE_SAMPLE_SOURCES SampleGenie.cpp )
+  list( APPEND TARGET_LIBRARIES Genie )
+endif()
+
 if( NOT TARGET TinyViz )
   message(STATUS "build sample without TinyViz")
 else()
