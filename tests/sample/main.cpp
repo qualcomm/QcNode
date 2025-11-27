@@ -89,7 +89,7 @@ typedef struct
 
 int Usage( const char *program, int error )
 {
-    printf( "Usage: %s -n name -t type -k key -v value [-d] [-T run_time_seconds] [-h]\n"
+    printf( "Usage: %s -n name -t type -k key -v value [-d] [-T run_time_seconds] [-h] [-V]\n"
             "examples:\n"
             "%s -n CAM0 -t camera -k input_id -v 0 -k width -v 1920 -k height -v 1024 \\\n"
             "    -k topic -v /sensor/camera/CAM0/raw \\\n"
@@ -108,7 +108,7 @@ int main( int argc, char *argv[] )
     std::vector<PipelineConfig_t> pipelineConfigs;
     std::string key;
     int opt;
-    while ( ( opt = getopt( argc, argv, "dn:t:k:v:hT:" ) ) != -1 )
+    while ( ( opt = getopt( argc, argv, "dn:t:k:v:hT:V" ) ) != -1 )
     {
         switch ( opt )
         {
@@ -144,6 +144,10 @@ int main( int argc, char *argv[] )
                 break;
             case 'T':
                 timeS = atoi( optarg );
+                break;
+            case 'V':
+                SampleIF::ShowVersion();
+                return 0;
                 break;
             default:
                 return Usage( argv[0], -1 );

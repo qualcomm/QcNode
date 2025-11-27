@@ -395,6 +395,12 @@ QCStatus_e SampleVideoDecoder::ParseConfig( SampleConfig_t &config )
     return ret;
 }
 
+
+const uint32_t SampleVideoDecoder::GetVersion() const
+{
+    return QCNODE_VIDEODECODER_VERSION;
+}
+
 REGISTER_SAMPLE( VideoDecoder, SampleVideoDecoder );
 
 }   // namespace sample

@@ -66,6 +66,7 @@ Note: the "-n componentX_name -t componentX_type" must be in the begin for each 
 | -v        | true     | string    | The attribute value for the previous attribute name |
 | -d        | false    |   -       | Direct the QCNode log to stdout |
 | -T        | false    | int       | Specify the time in seconds that the QCNodeSampleApp runs, if not specified or value 0, it means that the QCNodeSampleApp will run forever until stop signal(Ctrl + C).  |
+| -V        | false    |   -       | Prints the QCNode application version information to the standard output. |
 
 ## 2. QCNode Samples
 

@@ -8,7 +8,6 @@
 #include <mutex>
 #include <queue>
 
-#include "QC/Infras/Memory/SharedBuffer.hpp"
 #include "QC/Infras/NodeTrace/NodeTrace.hpp"
 #include "QC/Node/Camera.hpp"
 

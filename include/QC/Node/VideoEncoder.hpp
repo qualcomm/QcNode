@@ -21,6 +21,15 @@
 namespace QC::Node
 {
 
+/** @brief The QCNode VideoEncoder Version */
+#define QCNODE_VIDEOENCODER_VERSION_MAJOR 2U
+#define QCNODE_VIDEOENCODER_VERSION_MINOR 0U
+#define QCNODE_VIDEOENCODER_VERSION_PATCH 0U
+
+#define QCNODE_VIDEOENCODER_VERSION                                                                \
+    ( ( QCNODE_VIDEOENCODER_VERSION_MAJOR << 16U ) | ( QCNODE_VIDEOENCODER_VERSION_MINOR << 8U ) | \
+      QCNODE_VIDEOENCODER_VERSION_PATCH )
+
 /** @brief This data type list the different rate control mode */
 typedef enum
 {

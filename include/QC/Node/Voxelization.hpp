@@ -12,6 +12,15 @@ namespace QC
 namespace Node
 {
 
+/** @brief The QCNode Voxelization Version */
+#define QCNODE_VOXELIZATION_VERSION_MAJOR 2U
+#define QCNODE_VOXELIZATION_VERSION_MINOR 0U
+#define QCNODE_VOXELIZATION_VERSION_PATCH 0U
+
+#define QCNODE_VOXELIZATION_VERSION                                                                \
+    ( ( QCNODE_VOXELIZATION_VERSION_MAJOR << 16U ) | ( QCNODE_VOXELIZATION_VERSION_MINOR << 8U ) | \
+      QCNODE_VOXELIZATION_VERSION_PATCH )
+
 /**
  * @brief Represents the Voxelization implementation used by NodeVoxelization
  *

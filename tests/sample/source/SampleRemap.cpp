@@ -538,6 +538,11 @@ QCStatus_e SampleRemap::Deinit()
     return ret;
 }
 
+const uint32_t SampleRemap::GetVersion() const
+{
+    return QCNODE_REMAP_VERSION;
+}
+
 REGISTER_SAMPLE( Remap, SampleRemap );
 
 }   // namespace sample

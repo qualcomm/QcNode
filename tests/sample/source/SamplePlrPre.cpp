@@ -439,6 +439,11 @@ QCStatus_e SamplePlrPre::Deinit()
     return ret;
 }
 
+const uint32_t SamplePlrPre::GetVersion() const
+{
+    return QCNODE_VOXELIZATION_VERSION;
+}
+
 REGISTER_SAMPLE( PlrPre, SamplePlrPre );
 
 }   // namespace sample

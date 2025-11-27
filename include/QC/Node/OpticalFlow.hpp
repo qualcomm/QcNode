@@ -23,7 +23,7 @@ using namespace SV;
 #define QCNODE_OFL_VERSION_PATCH 0U
 
 #define QCNODE_OFL_VERSION                                                                         \
-    ( ( QCNODE_OFL_VERSION_MAJOR << 12U ) | ( QCNODE_OFL_VERSION_MINOR << 8U ) |                   \
+    ( ( QCNODE_OFL_VERSION_MAJOR << 16U ) | ( QCNODE_OFL_VERSION_MINOR << 8U ) |                   \
       QCNODE_OFL_VERSION_PATCH )
 
 typedef enum

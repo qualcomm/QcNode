@@ -553,6 +553,11 @@ QCStatus_e SampleQnn::Deinit()
     return ret;
 }
 
+const uint32_t SampleQnn::GetVersion() const
+{
+    return QCNODE_QNN_VERSION;
+}
+
 REGISTER_SAMPLE( Qnn, SampleQnn );
 
 }   // namespace sample

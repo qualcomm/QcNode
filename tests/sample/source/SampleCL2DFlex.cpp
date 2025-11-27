@@ -591,6 +591,11 @@ QCStatus_e SampleCL2DFlex::Deinit()
     return ret;
 }
 
+const uint32_t SampleCL2DFlex::GetVersion() const
+{
+    return QCNODE_CL2DFLEX_VERSION;
+}
+
 REGISTER_SAMPLE( CL2DFlex, SampleCL2DFlex );
 
 }   // namespace sample

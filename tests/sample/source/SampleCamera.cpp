@@ -407,6 +407,11 @@ QCStatus_e SampleCamera::Deinit()
     return ret;
 }
 
+const uint32_t SampleCamera::GetVersion() const
+{
+    return QCNODE_CAMERA_VERSION;
+}
+
 REGISTER_SAMPLE( Camera, SampleCamera );
 
 }   // namespace sample

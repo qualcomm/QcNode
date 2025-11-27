@@ -420,6 +420,11 @@ QCStatus_e SampleVideoEncoder::ParseConfig( SampleConfig_t &config )
     return ret;
 }
 
+const uint32_t SampleVideoEncoder::GetVersion() const
+{
+    return QCNODE_VIDEOENCODER_VERSION;
+}
+
 REGISTER_SAMPLE( VideoEncoder, SampleVideoEncoder );
 
 }   // namespace sample

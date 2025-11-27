@@ -56,6 +56,27 @@ void SampleIF::RegisterSample( std::string name, Sample_CreateFunction_t createF
     }
 }
 
+void SampleIF::ShowVersion()
+{
+    SampleIF *sample = nullptr;
+    printf( "Version:\n" );
+    for ( auto it : s_SampleMap )
+    {
+        std::string name = it.first;
+        Sample_CreateFunction_t createFnc = it.second;
+        sample = createFnc();
+        uint32_t version = sample->GetVersion();
+        if ( 0u != version )
+        {
+            uint8_t major = version >> 16;
+            uint8_t minor = ( version >> 8 ) & 0xFF;
+            uint8_t patch = version & 0xFF;
+            printf( "  %s: %d.%d.%d\n", name.c_str(), major, minor, patch );
+        }
+        delete sample;
+    }
+}
+
 QCStatus_e SampleIF::Init( std::string name, QCNodeType_e type )
 {
     QCStatus_e ret = QC_STATUS_OK;

@@ -244,6 +244,11 @@ QCStatus_e SampleDepthFromStereo::Deinit()
     return ret;
 }
 
+const uint32_t SampleDepthFromStereo::GetVersion() const
+{
+    return QCNODE_DFS_VERSION;
+}
+
 REGISTER_SAMPLE( DepthFromStereo, SampleDepthFromStereo );
 
 }   // namespace sample

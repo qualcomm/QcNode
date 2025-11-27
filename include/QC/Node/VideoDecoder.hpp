@@ -29,6 +29,15 @@
 namespace QC::Node
 {
 
+/** @brief The QCNode VideoDecoder Version */
+#define QCNODE_VIDEODECODER_VERSION_MAJOR 2U
+#define QCNODE_VIDEODECODER_VERSION_MINOR 0U
+#define QCNODE_VIDEODECODER_VERSION_PATCH 0U
+
+#define QCNODE_VIDEODECODER_VERSION                                                                \
+    ( ( QCNODE_VIDEODECODER_VERSION_MAJOR << 16U ) | ( QCNODE_VIDEODECODER_VERSION_MINOR << 8U ) | \
+      QCNODE_VIDEODECODER_VERSION_PATCH )
+
 /** @brief This data type list the different VideoDecoder Callback Event Type */
 typedef VideoCodec_EventType_e VideoDecoder_EventType_e;
 

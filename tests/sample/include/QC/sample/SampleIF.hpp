@@ -124,6 +124,15 @@ public:
     const char *GetName() const;
 
     /**
+     * @brief Retrieves the version identifier of the sample application.
+     *
+     * @return An unsigned 32-bit integer representing the application version.
+     *   - Default: 0 (placeholder).
+     *   - Overridden implementations should return a valid version code.
+     */
+    virtual const uint32_t GetVersion() const { return 0; }
+
+    /**
      * @brief Creates a QCNode sample instance based on the specified sample type name.
      *
      * Looks up the registered creation function associated with the given name and invokes it
@@ -134,6 +143,11 @@ public:
      * @return A pointer to the created sample instance on success; nullptr if creation fails.
      */
     static SampleIF *Create( std::string name );
+
+    /**
+     * @brief Displays the current version information of the sample application.
+     */
+    static void ShowVersion();
 
     /**
      * @brief Registers a QCNode sample creation function under a specified sample type name.

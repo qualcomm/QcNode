@@ -273,6 +273,11 @@ QCStatus_e SampleOpticalFlow::Deinit()
     return ret;
 }
 
+const uint32_t SampleOpticalFlow::GetVersion() const
+{
+    return QCNODE_OFL_VERSION;
+}
+
 REGISTER_SAMPLE( OpticalFlow, SampleOpticalFlow );
 
 }   // namespace sample

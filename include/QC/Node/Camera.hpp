@@ -18,6 +18,10 @@ namespace Node
 #define QCNODE_CAMERA_VERSION_MINOR 0U
 #define QCNODE_CAMERA_VERSION_PATCH 1U
 
+#define QCNODE_CAMERA_VERSION                                                                      \
+    ( ( QCNODE_CAMERA_VERSION_MAJOR << 16U ) | ( QCNODE_CAMERA_VERSION_MINOR << 8U ) |             \
+      QCNODE_CAMERA_VERSION_PATCH )
+
 /** @brief The maximum stream number of QCNode Camera */
 #define QCNODE_CAMERA_MAX_STREAM_NUM 8
 
