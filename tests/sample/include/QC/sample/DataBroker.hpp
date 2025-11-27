@@ -106,7 +106,7 @@ public:
     }
 
     /// @brief clear the data queue
-    void clear()
+    void Clear()
     {
         std::unique_lock<std::mutex> lock( m_mutex );
         while ( false == m_queue.empty() )
@@ -192,6 +192,15 @@ public:
         return ret;
     }
 
+    void Clear()
+    {
+        std::unique_lock<std::mutex> lck( m_lock );
+        for ( auto it : m_dataQueueMap )
+        {
+            it.second->Clear();
+        }
+    }
+
 private:
     std::string m_topicName;
     std::mutex m_lock;
@@ -241,6 +250,14 @@ public:
         }
 
         return ret;
+    }
+
+    void Clear()
+    {
+        if ( nullptr != m_broker )
+        {
+            m_broker->Clear();
+        }
     }
 
 private:
@@ -300,6 +317,14 @@ public:
         }
 
         return ret;
+    }
+
+    void Clear()
+    {
+        if ( nullptr != m_sub )
+        {
+            m_sub->Clear();
+        }
     }
 
 private:

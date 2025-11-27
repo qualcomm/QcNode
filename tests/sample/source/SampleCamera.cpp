@@ -393,6 +393,11 @@ QCStatus_e SampleCamera::Stop()
         ProcessFrame( &camFrameDesc );
     }
 
+    for ( auto &it : m_pubMap )
+    {
+        it.second->Clear();
+    }
+
     ret = m_camera.Stop();
 
     return ret;
