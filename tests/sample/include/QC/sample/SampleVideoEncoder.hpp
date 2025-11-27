@@ -53,7 +53,7 @@ public:
 private:
     QCStatus_e ParseConfig( SampleConfig_t &config );
     void ThreadMain();
-    void ThreadReleaseMain();
+    void ThreadProcMain();
 
     struct FrameInfo
     {
@@ -68,7 +68,7 @@ private:
     QCNodeInit_t m_nodeCfg;
 
     std::thread m_thread;
-    std::thread m_threadRelease;
+    std::thread m_threadProc;
     bool m_stop = false;
 
     DataSubscriber<DataFrames_t> m_sub;
@@ -83,6 +83,7 @@ private:
     std::map<uint64_t, DataFrame_t> m_camFrameMap;
     std::queue<FrameInfo> m_frameInfoQueue;
     std::queue<uint64_t> m_frameReleaseQueue;
+    std::queue<VideoFrameDescriptor_t> m_frameOutQueue;
     std::condition_variable m_condVar;
 
     uint32_t m_width;
@@ -100,8 +101,7 @@ private:
 
     void InFrameCallback( VideoFrameDescriptor &inFrame,
                           const QCNodeEventInfo_t &eventInfo );
-    void OutFrameCallback( VideoFrameDescriptor &outFrame,
-                           const QCNodeEventInfo_t &eventInfo );
+    void OutFrameCallback( VideoFrameDescriptor &outFrame );
 
 };   // class SampleVideoEncoder
 

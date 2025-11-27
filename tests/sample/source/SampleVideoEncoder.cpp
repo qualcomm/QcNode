@@ -23,7 +23,10 @@ void SampleVideoEncoder::OnDoneCb( const QCNodeEventInfo_t &eventInfo )
     VideoFrameDescriptor *pBufOut = dynamic_cast<VideoFrameDescriptor *>( &bufOut );
     if ( nullptr != pBufOut )
     {
-        OutFrameCallback( *pBufOut, eventInfo );
+        std::unique_lock<std::mutex> l( m_lock );
+        m_frameOutQueue.push( *pBufOut );
+        m_condVar.notify_one();
+        // unlock @m_lock
     }
 }
 
@@ -42,19 +45,17 @@ void SampleVideoEncoder::InFrameCallback( VideoFrameDescriptor &inFrame,
     // unlock @m_lock
 }
 
-void SampleVideoEncoder::OutFrameCallback( VideoFrameDescriptor &outFrame,
-                                           const QCNodeEventInfo_t &eventInfo )
+void SampleVideoEncoder::OutFrameCallback( VideoFrameDescriptor &outFrame )
 {
     uint64_t frameId = outFrame.appMarkData;
 
-    QC_DEBUG( "Received output video frame Id %" PRIu64 " from node %d, status %d", frameId,
-              eventInfo.node, eventInfo.status, eventInfo.state );
+    QC_DEBUG( "Received output video frame Id %" PRIu64, frameId );
 
     DataFrames_t frames;
     DataFrame_t frame;
 
     SharedBuffer_t *pSharedBuffer = new SharedBuffer_t;
-    pSharedBuffer->SetBuffer(outFrame);
+    pSharedBuffer->SetBuffer( outFrame );
     pSharedBuffer->pubHandle = 0;
 
     std::shared_ptr<SharedBuffer_t> buffer( pSharedBuffer, [&]( SharedBuffer_t *pSharedBuffer ) {
@@ -72,12 +73,8 @@ void SampleVideoEncoder::OutFrameCallback( VideoFrameDescriptor &outFrame,
 
     if ( false == m_frameInfoQueue.empty() )
     {
-        FrameInfo info;
-        {
-            std::unique_lock<std::mutex> l( m_lock );
-            info = m_frameInfoQueue.front();
-            m_frameInfoQueue.pop();
-        }
+        FrameInfo info = m_frameInfoQueue.front();
+        m_frameInfoQueue.pop();
         frame.frameId = info.frameId;
         frame.buffer = buffer;
         frame.timestamp = info.timestamp;
@@ -122,7 +119,7 @@ QCStatus_e SampleVideoEncoder::Init( std::string name, SampleConfig_t &samplecfg
 
     QCImageProps_t imgProp;
 
-    memset(&imgProp, 0, sizeof(imgProp));
+    memset( &imgProp, 0, sizeof( imgProp ) );
     imgProp.format = m_outFormat;
     imgProp.width = m_width;
     imgProp.height = m_height;
@@ -167,7 +164,7 @@ QCStatus_e SampleVideoEncoder::Start()
     {
         m_stop = false;
         m_thread = std::thread( &SampleVideoEncoder::ThreadMain, this );
-        m_threadRelease = std::thread( &SampleVideoEncoder::ThreadReleaseMain, this );
+        m_threadProc = std::thread( &SampleVideoEncoder::ThreadProcMain, this );
     }
 
     return ret;
@@ -233,13 +230,13 @@ void SampleVideoEncoder::ThreadMain()
     }
 }
 
-void SampleVideoEncoder::ThreadReleaseMain()
+void SampleVideoEncoder::ThreadProcMain()
 {
     while ( false == m_stop )
     {
         std::unique_lock<std::mutex> l( m_lock );
         (void) m_condVar.wait_for( l, std::chrono::milliseconds( 10 ) );
-        if ( false == m_frameReleaseQueue.empty() )
+        while ( false == m_frameReleaseQueue.empty() )
         {
             uint64_t frameId;
             frameId = m_frameReleaseQueue.front();
@@ -252,8 +249,14 @@ void SampleVideoEncoder::ThreadReleaseMain()
             }
             else
             {
-                QC_ERROR( "ThreadReleaseMain with invalid frameId %" PRIu64, frameId );
+                QC_ERROR( "ThreadProcMain with invalid frameId %" PRIu64, frameId );
             }
+        }
+        while ( false == m_frameOutQueue.empty() )
+        {
+            VideoFrameDescriptor_t outFrame = m_frameOutQueue.front();
+            m_frameOutQueue.pop();
+            OutFrameCallback( outFrame );
         }
     }
 }
@@ -268,10 +271,12 @@ QCStatus_e SampleVideoEncoder::Stop()
         m_thread.join();
     }
 
-    if ( m_threadRelease.joinable() )
+    if ( m_threadProc.joinable() )
     {
-        m_threadRelease.join();
+        m_threadProc.join();
     }
+
+    m_pub.Clear();
 
     TRACE_BEGIN( SYSTRACE_TASK_STOP );
     ret = (QCStatus_e) m_encoder.Stop();
@@ -390,19 +395,17 @@ QCStatus_e SampleVideoEncoder::ParseConfig( SampleConfig_t &config )
     {
     }
 
-    m_inFormat = Get( config, "format" , QC_IMAGE_FORMAT_NV12 );
-    if (QC_IMAGE_FORMAT_MAX == m_inFormat ||
-        (m_inFormat != QC_IMAGE_FORMAT_NV12 &&
-         m_inFormat != QC_IMAGE_FORMAT_NV12_UBWC) )
+    m_inFormat = Get( config, "format", QC_IMAGE_FORMAT_NV12 );
+    if ( QC_IMAGE_FORMAT_MAX == m_inFormat ||
+         ( m_inFormat != QC_IMAGE_FORMAT_NV12 && m_inFormat != QC_IMAGE_FORMAT_NV12_UBWC ) )
     {
         QC_ERROR( "invalid format for input stream" );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
-    m_outFormat = Get( config, "output_format" , QC_IMAGE_FORMAT_COMPRESSED_H265 );
-    if (QC_IMAGE_FORMAT_MAX == m_outFormat ||
-        (m_outFormat != QC_IMAGE_FORMAT_COMPRESSED_H264 &&
-         m_outFormat != QC_IMAGE_FORMAT_COMPRESSED_H265) )
+    m_outFormat = Get( config, "output_format", QC_IMAGE_FORMAT_COMPRESSED_H265 );
+    if ( QC_IMAGE_FORMAT_MAX == m_outFormat || ( m_outFormat != QC_IMAGE_FORMAT_COMPRESSED_H264 &&
+                                                 m_outFormat != QC_IMAGE_FORMAT_COMPRESSED_H265 ) )
     {
         QC_ERROR( "invalid format for output stream" );
         ret = QC_STATUS_BAD_ARGUMENTS;

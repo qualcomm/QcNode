@@ -215,6 +215,11 @@ QCStatus_e SampleTinyViz::Stop()
 
     m_tinyViz.stop();
 
+    for ( auto &sub : m_camSubs )
+    {
+        sub.Clear();
+    }
+
     return ret;
 }
 
