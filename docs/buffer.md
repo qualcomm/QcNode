@@ -182,7 +182,7 @@ imgDesc.imgProps.planeBufSize[numPlanes-1] = strideX*actualHeight;
 // and then this can be feed into a QCNode
 ```
 
-And another thing, the Buffer Descriptor can be shared between QCNode, but it has no life cycle management ability. Here, the QCNode Sample Application has a demo that using C++ std::shared_ptr to demonstrate that how to do the buffer life cycle management between the components that running in the same process but in different threads, refer [The QCNode Sample Buffer Life Cycle Management](./sample-buffer-life-cycle-management.md).
+And another thing, the Buffer Descriptor can be shared between QCNode, but it has no life cycle management ability. Here, the QCNode Sample Application has a demo that using C++ std::shared_ptr to demonstrate that how to do the buffer life cycle management between the nodes that running in the same process but in different threads, refer [The QCNode Sample Buffer Life Cycle Management](./sample-buffer-life-cycle-management.md).
 
 ## QCNode Node Frame Descriptor
 
@@ -391,18 +391,18 @@ The [SANITY_TensorAllocate](../tests/unit_test/Infras/Memory/gtest_Memory.cpp#L3
 
 ## 3.4 Convert Image to Tensor
 
-Here for the component QnnRuntime, the inputs/outputs of this component must be Tensor not Image. So the shared buffer Image must be converted into Tensor.
+Here for the node QNN, the inputs/outputs of this node must be Tensor not Image. So the shared buffer Image must be converted into Tensor.
 
 ### 3.4.1 Convert the RGB Image to the Tensor
 
-For QnnRuntime with RGB or normalized RGB as input, here this API [ImageToTensor](../include/QC/Infras/Memory/ImageDescriptor.hpp##L228) can be used to convert the RGB Image to a Tensor.
+For QNN with RGB or normalized RGB as input, here this API [ImageToTensor](../include/QC/Infras/Memory/ImageDescriptor.hpp##L228) can be used to convert the RGB Image to a Tensor.
 
 - Refer [SampleQnn ThreadMain](../tests/sample/source/SampleQnn.cpp#L416).
 - Refer [gtest SANITY_ImageAllocateByWHF](../tests/unit_test/Infras/Memory/gtest_Memory.cpp#L104).
 
 ### 3.4.2 Convert the NV12/P010 Image to the Luma and Chroma Tensor
 
-For QnnRuntime with NV12 or P010 as input, here this API [ImageToTensor](../include/QC/Infras/Memory/ImageDescriptor.hpp##L237) can be used to convert the NV12/P010 Image to the Luma and Chroma Tensor.
+For QNN with NV12 or P010 as input, here this API [ImageToTensor](../include/QC/Infras/Memory/ImageDescriptor.hpp##L237) can be used to convert the NV12/P010 Image to the Luma and Chroma Tensor.
 
 - Refer [gtest L2_Image2Tensor](../tests/unit_test/Infras/Memory/gtest_Memory.cpp#L895).
 

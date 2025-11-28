@@ -30,31 +30,36 @@ And as below 2 pictures shows, the C++ std::shared_ptr will be a part of the mes
 
 ### 1.1.1 The buffer life cycle management for Camera
 
-Refer [SampleCamera::FrameCallBack](../tests/sample/source/SampleCamera.cpp#L26), when this callback from the Camera called, it means that a camera frame is ready, and by using the QCNode DataBroker message queue to publish it out.
+Refer [SampleCamera::ProcessDoneCb](../tests/sample/source/SampleCamera.cpp#L15), when this callback from the Camera is called, it means that a **camera frame is ready**.
+
+- This will finally **activate the related thread** to call [SampleCamera::ProcessFrame](../tests/sample/source/SampleCamera.cpp#L278).
+- `ProcessFrame` will then **publish the camera frame info out** using the **QCNode DataBroker message queue**, allowing subscribers to consume it asynchronously.
 
 ```c++
-void SampleCamera::FrameCallBack( CameraFrame_t *pFrame )
+void SampleCamera::ProcessFrame( CameraFrameDescriptor_t *pCamFrameDesc )
 {
     DataFrames_t frames;
     DataFrame_t frame;
-    SharedBuffer_t *pSharedBuffer = new SharedBuffer_t;
-    pSharedBuffer->sharedBuffer = pFrame->sharedBuffer;
-    pSharedBuffer->pubHandle = (uint64_t) pFrame->frameIndex;
-    ...
-    std::shared_ptr<SharedBuffer_t> buffer( pSharedBuffer, [&]( SharedBuffer_t *pSharedBuffer ) {
-        uint32_t frameIndex = pSharedBuffer->pubHandle & 0xFFFFFFFFul;
-        CameraFrame_t camFrame;
-        camFrame.sharedBuffer = pSharedBuffer->sharedBuffer;
-        camFrame.frameIndex = frameIndex;
-        if ( false == m_camConfig.bRequestMode )
-        {
-            m_camera.ReleaseFrame( &camFrame );
-        }
-        else
-        {
+    uint32_t streamId = pCamFrameDesc->streamId;
 
-            m_camera.RequestFrame( &camFrame );
-        }
+    SharedBuffer_t *pSharedBuffer = new SharedBuffer_t;
+    pSharedBuffer->SetBuffer( *pCamFrameDesc );
+    pSharedBuffer->pubHandle = (uint64_t) pCamFrameDesc->frameIdx + ( (uint64_t) streamId << 32 );
+
+    std::shared_ptr<SharedBuffer_t> buffer( pSharedBuffer, [&]( SharedBuffer_t *pSharedBuffer ) {
+        CameraFrameDescriptor_t camFrameDesc;
+        NodeFrameDescriptor frameDesc( 1 );
+
+        uint32_t frameIdx = pSharedBuffer->pubHandle & 0xFFFFFFFFul;
+        camFrameDesc = pSharedBuffer->imgDesc;
+        camFrameDesc.frameIdx = frameIdx;
+        camFrameDesc.streamId = pSharedBuffer->pubHandle >> 32;
+        (void) frameDesc.SetBuffer( 0, camFrameDesc );
+
+        ...
+            m_camera.ProcessFrameDescriptor( frameDesc );
+        ...
+
         delete pSharedBuffer;
     } );
     ...
@@ -64,7 +69,7 @@ void SampleCamera::FrameCallBack( CameraFrame_t *pFrame )
 
 ### 1.1.2 The buffer life cycle management for the Video Encoder
 
-Refer [SampleVideoEncoder::ThreadMain](../tests/sample/source/SampleVideoEncoder.cpp#L253) which will hold the shared camera buffer in the "m_camFrameMap" after successfully submit the camera frame to the Video Encoder.
+Refer [SampleVideoEncoder::ThreadMain](../tests/sample/source/SampleVideoEncoder.cpp#L173) which will hold the shared camera buffer in the "m_camFrameMap" after successfully submit the camera frame to the Video Encoder.
 
 ```c++
 void SampleVideoEncoder::ThreadMain()
@@ -84,52 +89,54 @@ void SampleVideoEncoder::ThreadMain()
                 m_camFrameMap[frame.frameId] = frame;
                 // hold the shared camera frame until the callback "InFrameCallback"
             }
-            ret = m_encoder.SubmitInputFrame( &inputFrame );
+            ...
+            ret = m_encoder.ProcessFrameDescriptor( frameDesc );
             ...
         }
     }
 }
 ```
 
-Refer [SampleVideoEncoder::InFrameCallback](../tests/sample/source/SampleVideoEncoder.cpp#L28), when this callback from the Video Encoder called, it means that the shared camera frame if fully consumed by the Video Encoder and thus in this callback, erase the shared camera frame from "m_camFrameMap" to release the camera frame back to the Camera.
+Refer [SampleVideoEncoder::InFrameCallback](../tests/sample/source/SampleVideoEncoder.cpp#L33), when this callback from the Video Encoder is called, it means that the **shared camera frame is fully consumed by the Video Encoder**.
+
+- This will then **activate the related thread** to erase the shared camera frame from `m_camFrameMap`.
+- By erasing the entry, the camera frame is **released back to the Camera** for reuse.
+
 
 ```c++
-void SampleVideoEncoder::InFrameCallback( const VideoEncoder_InputFrame_t *pInputFrame )
+void SampleVideoEncoder::ThreadProcMain()
 {
-    uint64_t frameId = pInputFrame->appMarkData;
-
-    QC_DEBUG( "InFrameCallback for frameId %" PRIu64, frameId );
-
-    std::lock_guard<std::mutex> l( m_lock );
+    ...
     auto it = m_camFrameMap.find( frameId );
     if ( it != m_camFrameMap.end() )
     {   /* release the input camera frame */
         m_camFrameMap.erase( frameId );
     }
-    else
-    {
-        QC_ERROR( "InFrameCallback with invalid frameId %" PRIu64, frameId );
-    }
+    ...
 }
 ```
 
-Refer [SampleVideoEncoder::OutFrameCallback](../tests/sample/source/SampleVideoEncoder.cpp#L47), when this callback from the Video Encoder called, it means that a encoded video frame is ready, and by using the QC DataBroker message queue to publish it out.
+Refer [SampleVideoEncoder::OutFrameCallback](../tests/sample/source/SampleVideoEncoder.cpp#L48), when this callback from the Video Encoder is called, it means that an **encoded video frame is ready**.
 
 ```c++
-void SampleVideoEncoder::OutFrameCallback( const VideoEncoder_OutputFrame_t *pOutputFrame )
+void SampleVideoEncoder::OutFrameCallback( VideoFrameDescriptor &outFrame )
 {
+    ...
     DataFrames_t frames;
     DataFrame_t frame;
-    SharedBuffer_t *pSharedBuffer = new SharedBuffer_t;
 
-    pSharedBuffer->sharedBuffer = pOutputFrame->sharedBuffer;
+    SharedBuffer_t *pSharedBuffer = new SharedBuffer_t;
+    pSharedBuffer->SetBuffer( outFrame );
     pSharedBuffer->pubHandle = 0;
     ...
     std::shared_ptr<SharedBuffer_t> buffer( pSharedBuffer, [&]( SharedBuffer_t *pSharedBuffer ) {
-        VideoEncoder_OutputFrame_t outFrame;
-        outFrame.sharedBuffer = pSharedBuffer->sharedBuffer;
-        outFrame.appMarkData = 0;
-        m_encoder.SubmitOutputFrame( &outFrame );
+        VideoFrameDescriptor buffDesc;
+        buffDesc = pSharedBuffer->GetBuffer();
+
+        NodeFrameDescriptor frameDesc( QC_NODE_VIDEO_ENCODER_OUTPUT_BUFF_ID + 1 );
+        frameDesc.SetBuffer( QC_NODE_VIDEO_ENCODER_OUTPUT_BUFF_ID, buffDesc );
+
+        m_encoder.ProcessFrameDescriptor( frameDesc );
         delete pSharedBuffer;
     } );
     ...
