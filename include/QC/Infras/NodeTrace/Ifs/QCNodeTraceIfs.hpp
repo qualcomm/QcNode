@@ -26,31 +26,31 @@ namespace QC
     do                                                                                             \
     {                                                                                              \
         m_trace.Init( __VA_ARGS__ );                                                               \
-    } while ( 0 )
+    } while ( false )
 
 #define QC_TRACE_BEGIN( name, ... )                                                                \
     do                                                                                             \
     {                                                                                              \
         m_trace.Trace( name, QCNODE_TRACE_TYPE_BEGIN, __VA_ARGS__ );                               \
-    } while ( 0 )
+    } while ( false )
 
 #define QC_TRACE_END( name, ... )                                                                  \
     do                                                                                             \
     {                                                                                              \
         m_trace.Trace( name, QCNODE_TRACE_TYPE_END, __VA_ARGS__ );                                 \
-    } while ( 0 )
+    } while ( false )
 
 #define QC_TRACE_EVENT( name, ... )                                                                \
     do                                                                                             \
     {                                                                                              \
         m_trace.Trace( name, QCNODE_TRACE_TYPE_EVENT, __VA_ARGS__ );                               \
-    } while ( 0 )
+    } while ( false )
 
 #define QC_TRACE_COUNTER( name, ... )                                                              \
     do                                                                                             \
     {                                                                                              \
         m_trace.Trace( name, QCNODE_TRACE_TYPE_COUNTER, __VA_ARGS__ );                             \
-    } while ( 0 )
+    } while ( false )
 
 #else
 #define QC_TRACE_IF( condition, ... )

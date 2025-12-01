@@ -260,16 +260,9 @@ using namespace QC::test::utils;
 using namespace QC::Memory;
 using namespace QC::sample;
 
-#if defined( __QNXNTO__ )
-#define QNN_GTEST_ENABLE_ASYNC
-#endif
-
-
-#ifdef QNN_GTEST_ENABLE_ASYNC
 static QCFrameDescriptorNodeIfs *s_frameDesc;
 static std::condition_variable s_condVar;
 static uint64_t s_counter = 0;
-#endif
 
 static void *LoadRaw( std::string path, size_t &size )
 {
@@ -298,7 +291,6 @@ static void *LoadRaw( std::string path, size_t &size )
     return pOut;
 }
 
-#ifdef QNN_GTEST_ENABLE_ASYNC
 static void Qnn_EventCallback( const QCNodeEventInfo_t &info )
 {
     if ( QC_STATUS_OK == info.status )
@@ -313,7 +305,6 @@ static void Qnn_EventCallback( const QCNodeEventInfo_t &info )
         s_condVar.notify_one();
     }
 }
-#endif
 
 QCStatus_e ConvertDtToProps( DataTree &dt, TensorProps_t &props )
 {
@@ -1621,7 +1612,6 @@ TEST( QNN, TwoModelWithSameBuffer )
     }
 }
 
-#ifdef QNN_GTEST_ENABLE_ASYNC
 TEST( QNN, AsyncExecute )
 {
     QCStatus_e ret = QC_STATUS_OK;
@@ -1760,7 +1750,6 @@ TEST( QNN, AsyncExecute )
         ASSERT_EQ( QC_STATUS_OK, ret );
     }
 }
-#endif
 
 TEST( QNN, InputOutputCheck )
 {
