@@ -1,3 +1,6 @@
+// Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+// SPDX-License-Identifier: BSD-3-Clause-Clear
+
 #ifndef _FADASIFACE_H
 #define _FADASIFACE_H
 #include <AEEStdDef.h>

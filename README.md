@@ -32,3 +32,6 @@ For how to run the QCNode package, check this [README](./scripts/launch/README.m
 
 For how to run the QCNode E2E perception pipeline sample, check this [README](./tests/sample/README.md).
 
+# License
+
+QCNode is licensed under the [BSD-3-clause License](https://spdx.org/licenses/BSD-3-Clause.html). See [LICENSE.txt](LICENSE.txt) for the full license text.
