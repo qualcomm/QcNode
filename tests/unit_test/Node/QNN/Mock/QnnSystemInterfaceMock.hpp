@@ -1,6 +1,5 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
-// All rights reserved.
-// Confidential and Proprietary - Qualcomm Technologies, Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Clear
 
 #ifndef QNN_SYSTEM_INTERFACE_MOCK_HPP
 #define QNN_SYSTEM_INTERFACE_MOCK_HPP
