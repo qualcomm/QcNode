@@ -12,6 +12,7 @@ import distutils.dir_util
 from shutil import copytree, rmtree, move, copy2
 from pathlib import Path
 from string import Template
+import glob
 
 ##################################
 # Main
@@ -215,6 +216,11 @@ for inc in incList:
     print( "Copying header file: " + inc + " to: " + tcIncDir )
     copy_file( inc, tcIncDir)
 
+svIncDir = inputDir  + "/qnx_ap/AMSS/multimedia/compute/sv/vendor/qcom/proprietary/sv-auto/public/amss/multimedia/sv/"
+for inc in glob.glob(f"{svIncDir}/*.h"):
+    print( "Copying header file: " + inc + " to: " + tcIncDir )
+    copy_file( inc, tcIncDir)
+
 # copy qcom OpenCL extension
 copy_file(inputDir + '/qnx_ap/AMSS/multimedia/graphics-fusa-binaries/include/public/CL/cl_ext_qcom.h', tcIncDir + '/CL')
 
@@ -257,13 +263,14 @@ libListDemux = [ "libFileDemux_Common.so",
             "libMKAVParserLib.so",
             "libAIFFParserLib.so",
 ]
-libListPmem  = [ "libpmem_client.so", "libpmemext.so" ]
+libListPmem  = [ "libpmem_client.so", "libpmemext.so" , "libsmmu_client.so"]
 libListFastADAS = [ "libfadas.so", "libfastrpc.so", "libfastrpc_pmem.so", "libfastrpc_pmem.so.1" ]
 libListQcx = [ "libqcxclient.so", "libqcxosal.so" ]
+libListSv = [ "libsvplatform.so", "libsvcl.so", "libdevioClient.so" ]
 libList = libListVidc + libListPmem + libListFastADAS + libListQcx + [
         "libplanedef.so", "libcdsprpc.so", "libapdf.so", "libaosal.so", "libfastrpc_pmem.so",
         "liblibstd.so", "libmmap_peer.so", "libOSAbstraction.so"
-    ] + libListDemux
+    ] + libListDemux + libListSv
 targetLibDirs = [
         inputDir + '/qnx_ap/install/aarch64le/lib',
         inputDir + '/qnx_ap/install/aarch64le/lib',
