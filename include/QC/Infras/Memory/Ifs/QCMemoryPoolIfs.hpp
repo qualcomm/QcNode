@@ -1,7 +1,6 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-
 #ifndef QC_MEMORY_POOL_IFS_HPP
 #define QC_MEMORY_POOL_IFS_HPP
 

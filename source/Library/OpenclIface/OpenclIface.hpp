@@ -1,7 +1,6 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-
 #ifndef QC_OPENCL_IFACE_HPP
 #define QC_OPENCL_IFACE_HPP
 
@@ -14,7 +13,6 @@
 #include "QC/Common/Types.hpp"
 #include "QC/Infras/Log/Logger.hpp"
 #include "QC/Infras/Memory/ImageDescriptor.hpp"
-#include "QC/Infras/Memory/SharedBuffer.hpp"
 #include "QC/Infras/Memory/TensorDescriptor.hpp"
 
 using namespace QC;

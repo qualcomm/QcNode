@@ -4,10 +4,10 @@
 
 homedir=`pwd`
 
-cdsp0skeldir="$homedir/lib/dsp;/vendor/dsp/cdsp;/vendor/dsp/cdsp0;/usr/share/fastrpc;/dspfw/image/dsp/cdsp0;/dsplib/image/dsp/cdsp0;/mnt/etc/images;/mnt/etc/images/cdsp0;/mnt/etc/images/dsp;/firmware/image/dsp/cdsp0/"
-cdsp1skeldir="$homedir/lib/dsp;/vendor/dsp/cdsp1;/dspfw/image/dsp/cdsp1;/usr/share/fastrpc;/dsplib/image/dsp/cdsp1;/mnt/etc/images;/mnt/etc/images/cdsp1;/mnt/etc/images/dsp;/firmware/image/dsp/cdsp1/"
-cdsp2skeldir="$homedir/lib/dsp;/vendor/dsp/cdsp2;/dspfw/image/dsp/cdsp2;/usr/share/fastrpc;/dsplib/image/dsp/cdsp2;/mnt/etc/images;/mnt/etc/images/cdsp2;/mnt/etc/images/dsp;/firmware/image/dsp/cdsp2/"
-cdsp3skeldir="$homedir/lib/dsp;/vendor/dsp/cdsp3;/dspfw/image/dsp/cdsp3;/usr/share/fastrpc;/dsplib/image/dsp/cdsp3;/mnt/etc/images;/mnt/etc/images/cdsp3;/mnt/etc/images/dsp;/firmware/image/dsp/cdsp3/"
+cdsp0skeldir="$homedir/lib/dsp;/vendor/dsp/cdsp;/vendor/dsp/cdsp0;/usr/share/fastrpc;/dspfw/image/dsp/cdsp0;/dsplib/image/dsp/cdsp0;/mnt/etc/images;/mnt/etc/images/cdsp0;/mnt/etc/images/dsp;/firmware/image/dsp/cdsp0/;/dsplib/image/cdsp0/"
+cdsp1skeldir="$homedir/lib/dsp;/vendor/dsp/cdsp1;/dspfw/image/dsp/cdsp1;/usr/share/fastrpc;/dsplib/image/dsp/cdsp1;/mnt/etc/images;/mnt/etc/images/cdsp1;/mnt/etc/images/dsp;/firmware/image/dsp/cdsp1/;/dsplib/image/cdsp1/"
+cdsp2skeldir="$homedir/lib/dsp;/vendor/dsp/cdsp2;/dspfw/image/dsp/cdsp2;/usr/share/fastrpc;/dsplib/image/dsp/cdsp2;/mnt/etc/images;/mnt/etc/images/cdsp2;/mnt/etc/images/dsp;/firmware/image/dsp/cdsp2/;/dsplib/image/cdsp2/"
+cdsp3skeldir="$homedir/lib/dsp;/vendor/dsp/cdsp3;/dspfw/image/dsp/cdsp3;/usr/share/fastrpc;/dsplib/image/dsp/cdsp3;/mnt/etc/images;/mnt/etc/images/cdsp3;/mnt/etc/images/dsp;/firmware/image/dsp/cdsp3/;/dsplib/image/cdsp3/"
 
 export LD_LIBRARY_PATH=$homedir/lib/:$LD_LIBRARY_PATH:/usr/lib64:/lib:/mnt/lib64:$homedir/lib/runtime
 export PATH=$PATH:$homedir/bin

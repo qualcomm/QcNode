@@ -1,7 +1,6 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-
 #include "QC/sample/SampleRemap.hpp"
 
 namespace QC
@@ -302,7 +301,6 @@ QCStatus_e SampleRemap::Init( std::string name, SampleConfig_t &config )
 
     if ( QC_STATUS_OK == ret )
     {
-        TRACE_ON( GPU );
         ret = ParseConfig( config );
     }
 
@@ -374,7 +372,6 @@ QCStatus_e SampleRemap::Init( std::string name, SampleConfig_t &config )
 
     if ( QC_STATUS_OK == ret )
     {
-        TRACE_BEGIN( SYSTRACE_TASK_INIT );
         nodeCfg.config = m_dataTree.Dump();
         for ( uint32_t i = 0; i < m_numOfInputs; i++ )
         {
@@ -399,7 +396,6 @@ QCStatus_e SampleRemap::Init( std::string name, SampleConfig_t &config )
             }
         }
         ret = m_remap.Initialize( nodeCfg );
-        TRACE_END( SYSTRACE_TASK_INIT );
     }
 
     if ( QC_STATUS_OK == ret )
@@ -419,9 +415,7 @@ QCStatus_e SampleRemap::Start()
 {
     QCStatus_e ret = QC_STATUS_OK;
 
-    TRACE_BEGIN( SYSTRACE_TASK_START );
     ret = m_remap.Start();
-    TRACE_END( SYSTRACE_TASK_START );
     if ( QC_STATUS_OK == ret )
     {
         m_stop = false;
@@ -434,7 +428,7 @@ QCStatus_e SampleRemap::Start()
 void SampleRemap::ThreadMain()
 {
     QCStatus_e ret;
-    QCSharedFrameDescriptorNode frameDesc( m_numOfInputs + 1 );
+    NodeFrameDescriptor frameDesc( m_numOfInputs + 1 );
     while ( false == m_stop )
     {
         DataFrames_t frames;
@@ -447,7 +441,6 @@ void SampleRemap::ThreadMain()
             if ( nullptr != bufferOutput )
             {
                 PROFILER_BEGIN();
-                TRACE_BEGIN( frames.FrameId( 0 ) );
                 frameDesc.Clear();
                 uint32_t globalIdx = 0;
 
@@ -482,7 +475,6 @@ void SampleRemap::ThreadMain()
                 if ( QC_STATUS_OK == ret )
                 {
                     PROFILER_END();
-                    TRACE_END( frames.FrameId( 0 ) );
                     DataFrames_t outFrames;
                     DataFrame_t frame;
                     frame.buffer = bufferOutput;
@@ -511,9 +503,7 @@ QCStatus_e SampleRemap::Stop()
         m_thread.join();
     }
 
-    TRACE_BEGIN( SYSTRACE_TASK_STOP );
     ret = m_remap.Stop();
-    TRACE_END( SYSTRACE_TASK_STOP );
     PROFILER_SHOW();
 
     return ret;
@@ -523,13 +513,11 @@ QCStatus_e SampleRemap::Deinit()
 {
     QCStatus_e ret = QC_STATUS_OK;
 
-    TRACE_BEGIN( SYSTRACE_TASK_DEINIT );
     ret = m_remap.DeInitialize();
     if ( QC_STATUS_OK == ret )
     {
         ret = SampleIF::Deinit();
     }
-    TRACE_END( SYSTRACE_TASK_DEINIT );
 
     if ( QC_STATUS_OK == ret )
     {
@@ -547,6 +535,11 @@ QCStatus_e SampleRemap::Deinit()
     m_pBufMgr = nullptr;
 
     return ret;
+}
+
+const uint32_t SampleRemap::GetVersion() const
+{
+    return QCNODE_REMAP_VERSION;
 }
 
 REGISTER_SAMPLE( Remap, SampleRemap );

@@ -1,7 +1,6 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-
 #include "QC/Common/DataTree.hpp"
 
 namespace QC
@@ -11,13 +10,7 @@ DataTree::DataTree() {}
 
 DataTree::DataTree( const json &js ) : m_json( js ) {}
 
-DataTree::DataTree( const DataTree &rhs )
-{
-    if ( this != &rhs )
-    {
-        m_json = rhs.m_json;
-    }
-}
+DataTree::DataTree( const DataTree &rhs ) : m_json( rhs.m_json ) {}
 
 DataTree::~DataTree() {}
 

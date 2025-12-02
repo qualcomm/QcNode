@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-
 #ifndef QC_NODE_CONFIG_BASE_HPP
 #define QC_NODE_CONFIG_BASE_HPP
 

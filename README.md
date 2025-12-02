@@ -1,24 +1,24 @@
 # Overview
 
-The [QCNode(Qualcomm Compute Node)](./docs/QCNode.md) is Qualcomm ADAS hardware abstraction layer that provides user friendly APIs to access the Qualcomm ADAS hardware accelerator. It is ADAS service oriented to provide user friendly component and utils to cover the perception and compute vision related task.
+The [QCNode(Qualcomm Compute Node)](./docs/QCNode.md) is Qualcomm ADAS hardware abstraction layer that provides user friendly APIs to access the Qualcomm ADAS hardware accelerator. It is ADAS service oriented to provide user friendly node and utils to cover the perception and compute vision related task.
 
 # Documents
 
-Check this [INDEX](./docs/index.md).
+Refer to the [INDEX](./docs/index.md) for full documentation.
 
-Below is a summary information of the current implemented components.
+Below is a summary information of the current implemented nodes.
 
-| QCNode |  QNX PVM  | HGY PVM  | Library  |   Processor     |  Feaures |
+| QCNode |  QNX PVM  | HGY PVM  | Library  |   Processor     |  Features |
 |-----------|------------|-------------|----------|-----------------|---------------------------------------|
-| [Camera](./docs/camera.md) | YES| YES | qcarcam | Camera | camera streaming |
+| [Camera](./docs/Camera.md) | YES| YES | qcarcam | Camera | camera streaming |
 | [Remap](./docs/remap.md)| YES | YES | FastADAS | CPU, HTP0, HTP1, GPU | Color Conversion, ROI Crop, Downscaling, Undistortion |
 | [QNN](./docs/QNN.md) | YES| YES | QNN | CPU, GPU, HTP0, HTP1 | AI model inference |
 | [VideoEncoder](./docs/videoencoder.md) | YES| YES | vidc | VPU | Encode image to video frame |
 | [VideoDecoder](./docs/VideoDecoder.md) | YES| YES | vidc | VPU | Decode video frame to image |
-| [Voxelization](./docs/Voxelization.md) | YES| YES | FastADAS, OpenCL| CPU, HTP0, HTP1, GPU | create pilliar |
+| [Voxelization](./docs/Voxelization.md) | YES| YES | FastADAS, OpenCL| CPU, HTP0, HTP1, GPU | Generate pillars from point clouds |
 | [CL2DFlex](./docs/CL2DFlex.md) | YES| Yes| OpenCL | GPU | Color Conversion, Resize, ROI Crop, Undistortion |
-| [OpticalFlow](./docs/OpticalFlow.md) | YES | YES| EVA | EVA | Optical flow |
-| [DepthFromStereo](./docs/DepthFromStereo.md) | YES | YES| EVA | EVA | Depth From Stereo |
+| [OpticalFlow](./docs/OpticalFlow.md) | YES | YES| SV | EVA | Optical flow computation |
+| [DepthFromStereo](./docs/DepthFromStereo.md) | YES | YES| SV | EVA | Depth estimation from stereo images |
 
 # How to build
 

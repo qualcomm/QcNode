@@ -1,7 +1,6 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-
 #include "md5_utils.hpp"
 #include <iomanip>
 #include <openssl/md5.h>

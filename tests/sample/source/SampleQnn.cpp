@@ -1,7 +1,6 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-
 #include "QC/sample/SampleQnn.hpp"
 
 
@@ -124,36 +123,17 @@ QCStatus_e SampleQnn::ParseConfig( SampleConfig_t &config )
     dt.Set<uint32_t>( "id", m_nodeId.id );
     dt.Set<std::string>( "type", "QNN" );
     dt.Set<std::string>( "modelPath", Get( config, "model_path", "" ) );
-    dt.Set<std::string>( "loadType", "binary" );
+    dt.Set<std::string>( "loadType", Get( config, "load_type", "binary" ) );
     dt.Set<std::string>( "processorType", Get( config, "processor", "htp0" ) );
     dt.Set<uint32_t>( "coreIds", coreIds );
     dt.Set( "udoPackages", udoPkgs );
-    dt.Set<std::string>( "perfProfile", Get( config, "perf_profile", "default" ) );
+    dt.Set<std::string>( "perfProfile", Get( config, "perf_profile", "burst" ) );
+    dt.Set<bool>( "weightSharingEnabled", Get( config, "weight_sharing_enabled", false ) );
+    dt.Set<bool>( "extendedUdma", Get( config, "extended_udma", false ) );
     m_dataTree.Set( "static", dt );
     m_processor = Get( config, "processor", QC_PROCESSOR_HTP0 );
     m_rsmPriority = Get( config, "rsm_priority", 0 );
 
-#if QC_TARGET_SOC == 8797
-    if ( ( QC_PROCESSOR_HTP0 == m_processor ) && ( coreIds.size() == 1 ) )
-    {
-        if ( 1u == coreIds[0] )
-        {
-            m_processor = QC_PROCESSOR_HTP0_CORE1;
-        }
-        else if ( 2u == coreIds[0] )
-        {
-            m_processor = QC_PROCESSOR_HTP0_CORE2;
-        }
-        else if ( 3u == coreIds[0] )
-        {
-            m_processor = QC_PROCESSOR_HTP0_CORE3;
-        }
-        else
-        {
-            /* default core 0 */
-        }
-    }
-#endif
     return ret;
 }
 
@@ -203,7 +183,6 @@ QCStatus_e SampleQnn::Init( std::string name, SampleConfig_t &config )
 
     if ( QC_STATUS_OK == ret )
     {
-        TRACE_BEGIN( SYSTRACE_TASK_INIT );
         m_nodeCfg.config = m_dataTree.Dump();
         if ( true == m_bAsync )
         {
@@ -211,7 +190,6 @@ QCStatus_e SampleQnn::Init( std::string name, SampleConfig_t &config )
             m_nodeCfg.callback = std::bind( &SampleQnn::EventCallback, this, _1 );
         }
         ret = m_qnn.Initialize( m_nodeCfg );
-        TRACE_END( SYSTRACE_TASK_INIT );
     }
 
     if ( QC_STATUS_OK == ret )
@@ -329,9 +307,7 @@ QCStatus_e SampleQnn::Start()
         m_modelInOutInfoPub.Publish( ioInfo );
     }
 
-    TRACE_BEGIN( SYSTRACE_TASK_START );
     ret = m_qnn.Start();
-    TRACE_END( SYSTRACE_TASK_START );
     if ( QC_STATUS_OK == ret )
     {
         m_stop = false;
@@ -475,7 +451,6 @@ void SampleQnn::ThreadMain()
                 if ( QC_STATUS_OK == ret )
                 {
                     PROFILER_BEGIN();
-                    TRACE_BEGIN( frames.FrameId( 0 ) );
                     if ( true == m_bAsync )
                     {
                         m_asyncResult = 0xdeadbeef;
@@ -507,7 +482,6 @@ void SampleQnn::ThreadMain()
                     if ( QC_STATUS_OK == ret )
                     {
                         PROFILER_END();
-                        TRACE_END( frames.FrameId( 0 ) );
                     }
                     else
                     {
@@ -554,9 +528,7 @@ QCStatus_e SampleQnn::Stop()
         m_thread.join();
     }
 
-    TRACE_BEGIN( SYSTRACE_TASK_STOP );
     ret = m_qnn.Stop();
-    TRACE_END( SYSTRACE_TASK_STOP );
     PROFILER_SHOW();
 
     return ret;
@@ -566,7 +538,6 @@ QCStatus_e SampleQnn::Deinit()
 {
     QCStatus_e ret = QC_STATUS_OK;
 
-    TRACE_BEGIN( SYSTRACE_TASK_DEINIT );
     ret = m_qnn.DeInitialize();
     if ( nullptr != m_pFrameDescPool )
     {
@@ -577,9 +548,13 @@ QCStatus_e SampleQnn::Deinit()
     {
         ret = SampleIF::Deinit();
     }
-    TRACE_END( SYSTRACE_TASK_DEINIT );
 
     return ret;
+}
+
+const uint32_t SampleQnn::GetVersion() const
+{
+    return QCNODE_QNN_VERSION;
 }
 
 REGISTER_SAMPLE( Qnn, SampleQnn );

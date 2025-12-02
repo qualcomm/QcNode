@@ -1,6 +1,5 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
-
 #include "HTP/QnnHtpCommon.h"
 #include "HTP/QnnHtpMem.h"
 #include "HTP/QnnHtpProfile.h"
@@ -48,8 +47,8 @@ typedef Qnn_ErrorHandle_t ( *QnnInterfaceGetProvidersFn_t )( const QnnInterface_
 typedef Qnn_ErrorHandle_t ( *QnnSystemInterfaceGetProvidersFn_t )(
         const QnnSystemInterface_t ***providerList, uint32_t *numProviders );
 
-static void QnnLog_Callback( const char *fmt, QnnLog_Level_t logLevel, uint64_t timestamp,
-                             va_list args )
+void QnnImpl::QnnLog_Callback( const char *fmt, QnnLog_Level_t logLevel, uint64_t timestamp,
+                               va_list args )
 {
 #ifndef DISABLE_QC_LOG
     switch ( logLevel )
@@ -76,7 +75,7 @@ static void QnnLog_Callback( const char *fmt, QnnLog_Level_t logLevel, uint64_t 
 #endif
 }
 
-static size_t memscpy( void *dst, size_t dstSize, const void *src, size_t copySize )
+size_t QnnImpl::memscpy( void *dst, size_t dstSize, const void *src, size_t copySize )
 {
     size_t minSize = 0;
     if ( ( nullptr == dst ) || ( nullptr == src ) || ( 0 == dstSize ) || ( 0 == copySize ) )
@@ -85,7 +84,7 @@ static size_t memscpy( void *dst, size_t dstSize, const void *src, size_t copySi
     }
     else
     {
-        size_t minSize = copySize;
+        minSize = copySize;
         if ( dstSize < copySize )
         {
             minSize = dstSize;
@@ -98,7 +97,7 @@ static size_t memscpy( void *dst, size_t dstSize, const void *src, size_t copySi
 }
 
 QCStatus_e QnnImpl::GetQnnFunctionPointers( std::string backendPath, std::string modelPath,
-                                            bool loadModelLib )
+                                            bool bLoadModelLib )
 {
     QCStatus_e status = QC_STATUS_OK;
     void *libModelHandle = nullptr;
@@ -174,7 +173,7 @@ QCStatus_e QnnImpl::GetQnnFunctionPointers( std::string backendPath, std::string
 
     if ( QC_STATUS_OK == status )
     {
-        if ( true == loadModelLib )
+        if ( true == bLoadModelLib )
         {
             QC_INFO( "Loading model shared library (%s)", modelPath.c_str() );
             libModelHandle = dlopen( modelPath.c_str(),
@@ -196,19 +195,6 @@ QCStatus_e QnnImpl::GetQnnFunctionPointers( std::string backendPath, std::string
                     status = QC_STATUS_FAIL;
                 }
             }
-
-            if ( QC_STATUS_OK == status )
-            {
-                std::string modelFreeFunc = "QnnModel_freeGraphsInfo";
-                m_qnnFunctionPointers.freeGraphInfoFnHandle =
-                        (QnnImplFreeGraphInfoFnHandleType_t) dlsym( libModelHandle,
-                                                                    modelFreeFunc.c_str() );
-                if ( nullptr == m_qnnFunctionPointers.freeGraphInfoFnHandle )
-                {
-                    QC_ERROR( "no symbol QnnModel_composeGraphs." );
-                    status = QC_STATUS_FAIL;
-                }
-            }
         }
         else
         {
@@ -219,7 +205,7 @@ QCStatus_e QnnImpl::GetQnnFunctionPointers( std::string backendPath, std::string
     if ( QC_STATUS_OK == status )
     {
         m_backendLibraryHandle = libBackendHandle;
-        if ( true == loadModelLib )
+        if ( true == bLoadModelLib )
         {
             m_modelLibraryHandle = libModelHandle;
         }
@@ -372,7 +358,10 @@ QCStatus_e QnnImpl::DeepCopyQnnTensorInfo( Qnn_Tensor_t *dst, const Qnn_Tensor_t
                     QNN_TENSOR_GET_QUANT_PARAMS( src ).axisScaleOffsetEncoding.axis;
             qParams.axisScaleOffsetEncoding.numScaleOffsets =
                     QNN_TENSOR_GET_QUANT_PARAMS( src ).axisScaleOffsetEncoding.numScaleOffsets;
-            if ( QNN_TENSOR_GET_QUANT_PARAMS( src ).axisScaleOffsetEncoding.numScaleOffsets > 0 )
+            if ( ( QNN_TENSOR_GET_QUANT_PARAMS( src ).axisScaleOffsetEncoding.numScaleOffsets >
+                   0u ) &&
+                 ( nullptr !=
+                   QNN_TENSOR_GET_QUANT_PARAMS( src ).axisScaleOffsetEncoding.scaleOffset ) )
             {
                 qParams.axisScaleOffsetEncoding.scaleOffset = (Qnn_ScaleOffset_t *) malloc(
                         QNN_TENSOR_GET_QUANT_PARAMS( src ).axisScaleOffsetEncoding.numScaleOffsets *
@@ -399,6 +388,11 @@ QCStatus_e QnnImpl::DeepCopyQnnTensorInfo( Qnn_Tensor_t *dst, const Qnn_Tensor_t
                     status = QC_STATUS_NOMEM;
                 }
             }
+            else
+            {
+                QC_ERROR( "numScaleOffsets is 0 or scaleOffset is nullptr" );
+                status = QC_STATUS_FAIL;
+            }
         }
         else if ( QNN_QUANTIZATION_ENCODING_UNDEFINED ==
                   QNN_TENSOR_GET_QUANT_PARAMS( src ).quantizationEncoding )
@@ -414,16 +408,16 @@ QCStatus_e QnnImpl::DeepCopyQnnTensorInfo( Qnn_Tensor_t *dst, const Qnn_Tensor_t
         QNN_TENSOR_SET_QUANT_PARAMS( dst, qParams );
         QNN_TENSOR_SET_RANK( dst, QNN_TENSOR_GET_RANK( src ) );
         QNN_TENSOR_SET_DIMENSIONS( dst, nullptr );
-        if ( QNN_TENSOR_GET_RANK( src ) > 0 )
+        if ( ( QNN_TENSOR_GET_RANK( src ) > 0 ) && ( nullptr != QNN_TENSOR_GET_DIMENSIONS( src ) ) )
         {
             QNN_TENSOR_SET_DIMENSIONS(
                     dst, (uint32_t *) malloc( QNN_TENSOR_GET_RANK( src ) * sizeof( uint32_t ) ) );
             if ( nullptr != QNN_TENSOR_GET_DIMENSIONS( dst ) )
             {
-                memscpy( QNN_TENSOR_GET_DIMENSIONS( dst ),
-                         QNN_TENSOR_GET_RANK( src ) * sizeof( uint32_t ),
-                         QNN_TENSOR_GET_DIMENSIONS( src ),
-                         QNN_TENSOR_GET_RANK( src ) * sizeof( uint32_t ) );
+                (void) memscpy( QNN_TENSOR_GET_DIMENSIONS( dst ),
+                                QNN_TENSOR_GET_RANK( src ) * sizeof( uint32_t ),
+                                QNN_TENSOR_GET_DIMENSIONS( src ),
+                                QNN_TENSOR_GET_RANK( src ) * sizeof( uint32_t ) );
             }
             else
             {
@@ -436,10 +430,10 @@ QCStatus_e QnnImpl::DeepCopyQnnTensorInfo( Qnn_Tensor_t *dst, const Qnn_Tensor_t
                         dst, (uint8_t *) malloc( QNN_TENSOR_GET_RANK( src ) * sizeof( uint8_t ) ) );
                 if ( nullptr != QNN_TENSOR_GET_IS_DYNAMIC_DIMENSIONS( dst ) )
                 {
-                    memscpy( QNN_TENSOR_GET_IS_DYNAMIC_DIMENSIONS( dst ),
-                             QNN_TENSOR_GET_RANK( src ) * sizeof( uint8_t ),
-                             QNN_TENSOR_GET_IS_DYNAMIC_DIMENSIONS( src ),
-                             QNN_TENSOR_GET_RANK( src ) * sizeof( uint8_t ) );
+                    (void) memscpy( QNN_TENSOR_GET_IS_DYNAMIC_DIMENSIONS( dst ),
+                                    QNN_TENSOR_GET_RANK( src ) * sizeof( uint8_t ),
+                                    QNN_TENSOR_GET_IS_DYNAMIC_DIMENSIONS( src ),
+                                    QNN_TENSOR_GET_RANK( src ) * sizeof( uint8_t ) );
                 }
                 else
                 {
@@ -447,6 +441,11 @@ QCStatus_e QnnImpl::DeepCopyQnnTensorInfo( Qnn_Tensor_t *dst, const Qnn_Tensor_t
                     status = QC_STATUS_NOMEM;
                 }
             }
+        }
+        else
+        {
+            QC_ERROR( "rank is 0 or dimensions is nullptr" );
+            status = QC_STATUS_FAIL;
         }
         QNN_TENSOR_SET_SPARSE_PARAMS( dst, QNN_TENSOR_GET_SPARSE_PARAMS( src ) );
     }
@@ -484,7 +483,7 @@ QCStatus_e QnnImpl::CopyGraphsInfoV1( const QnnSystemContext_GraphInfoV1_t *grap
 {
     QCStatus_e status = QC_STATUS_OK;
     graphInfoDst->graphName = nullptr;
-    if ( graphInfoSrc->graphName )
+    if ( nullptr != graphInfoSrc->graphName )
     {
         graphInfoDst->graphName =
                 strndup( graphInfoSrc->graphName, strlen( graphInfoSrc->graphName ) );
@@ -498,7 +497,7 @@ QCStatus_e QnnImpl::CopyGraphsInfoV1( const QnnSystemContext_GraphInfoV1_t *grap
     {
         graphInfoDst->inputTensors = nullptr;
         graphInfoDst->numInputTensors = 0;
-        if ( graphInfoSrc->graphInputs )
+        if ( nullptr != graphInfoSrc->graphInputs )
         {
             status = CopyTensorsInfo( graphInfoSrc->graphInputs, graphInfoDst->inputTensors,
                                       graphInfoSrc->numGraphInputs );
@@ -512,7 +511,7 @@ QCStatus_e QnnImpl::CopyGraphsInfoV1( const QnnSystemContext_GraphInfoV1_t *grap
     {
         graphInfoDst->outputTensors = nullptr;
         graphInfoDst->numOutputTensors = 0;
-        if ( graphInfoSrc->graphOutputs )
+        if ( nullptr != graphInfoSrc->graphOutputs )
         {
             status = CopyTensorsInfo( graphInfoSrc->graphOutputs, graphInfoDst->outputTensors,
                                       graphInfoSrc->numGraphOutputs );
@@ -647,7 +646,6 @@ QCStatus_e QnnImpl::CopyGraphsInfo( const QnnSystemContext_GraphInfo_t *graphsIn
         }
         free( graphsInfo );
         graphsInfo = nullptr;
-        status = QC_STATUS_FAIL;
     }
     return status;
 }
@@ -665,9 +663,9 @@ QCStatus_e QnnImpl::CopyMetadataToGraphsInfo( const QnnSystemContext_BinaryInfo_
     else
     {
         graphsCount = 0;
-        if ( binaryInfo->version == QNN_SYSTEM_CONTEXT_BINARY_INFO_VERSION_1 )
+        if ( QNN_SYSTEM_CONTEXT_BINARY_INFO_VERSION_1 == binaryInfo->version )
         {
-            if ( binaryInfo->contextBinaryInfoV1.graphs )
+            if ( nullptr != binaryInfo->contextBinaryInfoV1.graphs )
             {
                 status = CopyGraphsInfo( binaryInfo->contextBinaryInfoV1.graphs,
                                          binaryInfo->contextBinaryInfoV1.numGraphs, graphsInfo );
@@ -676,10 +674,15 @@ QCStatus_e QnnImpl::CopyMetadataToGraphsInfo( const QnnSystemContext_BinaryInfo_
                     graphsCount = binaryInfo->contextBinaryInfoV1.numGraphs;
                 }
             }
+            else
+            {
+                QC_ERROR( "V1 graphs is nullptr." );
+                status = QC_STATUS_FAIL;
+            }
         }
-        else if ( binaryInfo->version == QNN_SYSTEM_CONTEXT_BINARY_INFO_VERSION_2 )
+        else if ( QNN_SYSTEM_CONTEXT_BINARY_INFO_VERSION_2 == binaryInfo->version )
         {
-            if ( binaryInfo->contextBinaryInfoV2.graphs )
+            if ( nullptr != binaryInfo->contextBinaryInfoV2.graphs )
             {
                 status = CopyGraphsInfo( binaryInfo->contextBinaryInfoV2.graphs,
                                          binaryInfo->contextBinaryInfoV2.numGraphs, graphsInfo );
@@ -688,10 +691,15 @@ QCStatus_e QnnImpl::CopyMetadataToGraphsInfo( const QnnSystemContext_BinaryInfo_
                     graphsCount = binaryInfo->contextBinaryInfoV2.numGraphs;
                 }
             }
+            else
+            {
+                QC_ERROR( "V2 graphs is nullptr." );
+                status = QC_STATUS_FAIL;
+            }
         }
-        else if ( binaryInfo->version == QNN_SYSTEM_CONTEXT_BINARY_INFO_VERSION_3 )
+        else if ( QNN_SYSTEM_CONTEXT_BINARY_INFO_VERSION_3 == binaryInfo->version )
         {
-            if ( binaryInfo->contextBinaryInfoV3.graphs )
+            if ( nullptr != binaryInfo->contextBinaryInfoV3.graphs )
             {
                 status = CopyGraphsInfo( binaryInfo->contextBinaryInfoV3.graphs,
                                          binaryInfo->contextBinaryInfoV3.numGraphs, graphsInfo );
@@ -700,17 +708,32 @@ QCStatus_e QnnImpl::CopyMetadataToGraphsInfo( const QnnSystemContext_BinaryInfo_
                     graphsCount = binaryInfo->contextBinaryInfoV3.numGraphs;
                 }
             }
+            else
+            {
+                QC_ERROR( "V3 graphs is nullptr." );
+                status = QC_STATUS_FAIL;
+            }
+        }
+        else
+        {
+            QC_ERROR( "binaryInfo version %d is not supported.", binaryInfo->version );
+            status = QC_STATUS_UNSUPPORTED;
         }
     }
     return status;
 }
 
-QCStatus_e QnnImpl::FreeQnnTensor( Qnn_Tensor_t &tensor )
+void QnnImpl::FreeQnnTensor( Qnn_Tensor_t &tensor )
 {
-    QCStatus_e status = QC_STATUS_OK;
     // free all pointer allocations in struct
-    free( (void *) QNN_TENSOR_GET_NAME( tensor ) );
-    free( QNN_TENSOR_GET_DIMENSIONS( tensor ) );
+    if ( nullptr != QNN_TENSOR_GET_NAME( tensor ) )
+    {
+        free( (void *) QNN_TENSOR_GET_NAME( tensor ) );
+    }
+    if ( nullptr != QNN_TENSOR_GET_DIMENSIONS( tensor ) )
+    {
+        free( QNN_TENSOR_GET_DIMENSIONS( tensor ) );
+    }
     if ( QNN_TENSOR_GET_IS_DYNAMIC_DIMENSIONS( tensor ) )
     {
         free( QNN_TENSOR_GET_IS_DYNAMIC_DIMENSIONS( tensor ) );
@@ -724,24 +747,16 @@ QCStatus_e QnnImpl::FreeQnnTensor( Qnn_Tensor_t &tensor )
             free( quant.axisScaleOffsetEncoding.scaleOffset );
         }
     }
-    return status;
 }
 
-QCStatus_e QnnImpl::FreeQnnTensors( Qnn_Tensor_t *&tensors, uint32_t numTensors )
+void QnnImpl::FreeQnnTensors( Qnn_Tensor_t *&tensors, uint32_t numTensors )
 {
-    QCStatus_e status = QC_STATUS_OK;
-    QCStatus_e status2;
     // free all pointer allocations in struct
     for ( size_t i = 0; i < numTensors; i++ )
     {
-        status2 = FreeQnnTensor( tensors[i] );
-        if ( status2 != QC_STATUS_OK )
-        {
-            status = status2;
-        }
+        FreeQnnTensor( tensors[i] );
     }
     free( tensors );
-    return status;
 }
 
 QCStatus_e QnnImpl::FreeGraphsInfo( qnn_wrapper_api::GraphInfoPtr_t **graphsInfo,
@@ -758,18 +773,9 @@ QCStatus_e QnnImpl::FreeGraphsInfo( qnn_wrapper_api::GraphInfoPtr_t **graphsInfo
         for ( uint32_t i = 0; i < numGraphs; i++ )
         {
             free( ( *graphsInfo )[i]->graphName );
-            status2 = FreeQnnTensors( ( *graphsInfo )[i]->inputTensors,
-                                      ( *graphsInfo )[i]->numInputTensors );
-            if ( status2 != QC_STATUS_OK )
-            {
-                status = status2;
-            }
-            status2 = FreeQnnTensors( ( *graphsInfo )[i]->outputTensors,
-                                      ( *graphsInfo )[i]->numOutputTensors );
-            if ( status2 != QC_STATUS_OK )
-            {
-                status = status2;
-            }
+            FreeQnnTensors( ( *graphsInfo )[i]->inputTensors, ( *graphsInfo )[i]->numInputTensors );
+            FreeQnnTensors( ( *graphsInfo )[i]->outputTensors,
+                            ( *graphsInfo )[i]->numOutputTensors );
         }
         free( **graphsInfo );
         free( *graphsInfo );
@@ -1091,7 +1097,7 @@ QCStatus_e QnnImpl::SetHtpPerformanceMode()
             uint32_t coreId = m_config.coreIds[i];
             QnnDevice_HardwareDeviceInfo_t &hwDevice = m_platformInfo->v1.hwDevices[deviceId];
             deviceId = hwDevice.v1.deviceId;
-            coreId = hwDevice.v1.cores->v1.coreId;
+            coreId = hwDevice.v1.cores[coreId].v1.coreId;
             uint32_t powerConfigId = UINT32_MAX;
             retVal = m_perfInfra->createPowerConfigId( deviceId, coreId, &powerConfigId );
             if ( QNN_SUCCESS != retVal )
@@ -1296,6 +1302,7 @@ QCStatus_e QnnImpl::SetHtpPerformanceMode()
             {
                 QC_ERROR( "Failure in setPowerConfig() = %" PRIu64, retVal );
                 status = QC_STATUS_FAIL;
+                break;
             }
         }
     }
@@ -1304,16 +1311,25 @@ QCStatus_e QnnImpl::SetHtpPerformanceMode()
     return status;
 }
 
+bool QnnImpl::IsHtpProcessor()
+{
+    bool bIsHtp = false;
+    if ( ( m_config.processorType >= QNN_PROCESSOR_HTP0 ) &&
+         ( m_config.processorType <= QNN_PROCESSOR_HTP3 ) )
+    {
+        bIsHtp = true;
+    }
+    return bIsHtp;
+}
+
 QCStatus_e QnnImpl::SetPerformanceMode()
 {
     QCStatus_e status = QC_STATUS_OK;
 
     if ( QNN_PERF_PROFILE_DEFAULT != m_config.perfProfile )
     {
-        if ( ( QNN_PROCESSOR_HTP0 == m_config.processorType ) ||
-             ( QNN_PROCESSOR_HTP1 == m_config.processorType ) ||
-             ( QNN_PROCESSOR_HTP2 == m_config.processorType ) ||
-             ( QNN_PROCESSOR_HTP3 == m_config.processorType ) )
+        bool bIsHtp = IsHtpProcessor();
+        if ( true == bIsHtp )
         {
             status = SetHtpPerformanceMode();
         }
@@ -1329,13 +1345,52 @@ QnnImpl::Initialize( QCNodeEventCallBack_t callback,
     QCStatus_e status = QC_STATUS_OK;
     Qnn_ErrorHandle_t retVal;
 
-    if ( QC_OBJECT_STATE_INITIAL != m_state )
-    {
-        QC_ERROR( "QNN not in initial state!" );
-        status = QC_STATUS_BAD_STATE;
-    }
-    else if ( ( QNN_LOAD_CONTEXT_BIN_FROM_BUFFER != m_config.loadType ) &&
-              ( true == m_config.modelPath.empty() ) )
+    QC_TRACE_INIT( [&]() {
+        std::ostringstream oss;
+        std::string processor = "unknown";
+        switch ( m_config.processorType )
+        {
+            case QNN_PROCESSOR_HTP0:
+                processor = "htp0";
+                break;
+            case QNN_PROCESSOR_HTP1:
+                processor = "htp1";
+                break;
+            case QNN_PROCESSOR_HTP2:
+                processor = "htp2";
+                break;
+            case QNN_PROCESSOR_HTP3:
+                processor = "htp3";
+                break;
+            case QNN_PROCESSOR_CPU:
+                processor = "cpu";
+                break;
+            case QNN_PROCESSOR_GPU:
+                processor = "gpu";
+                break;
+            default:
+                break;
+        }
+        oss << "{";
+        oss << "\"name\": \"" << m_nodeId.name << "\", ";
+        oss << "\"processor\": \"" << processor << "\", ";
+        oss << "\"coreIds\": [";
+        for ( size_t i = 0; i < m_config.coreIds.size(); ++i )
+        {
+            oss << m_config.coreIds[i];
+            if ( i != m_config.coreIds.size() - 1 )
+            {
+                oss << ", ";
+            }
+        }
+        oss << "]}";
+        return oss.str();
+    }() );
+
+    QC_TRACE_BEGIN( "Init", {} );
+
+    if ( ( QNN_LOAD_CONTEXT_BIN_FROM_BUFFER != m_config.loadType ) &&
+         ( true == m_config.modelPath.empty() ) )
     {
         QC_ERROR( "modelPath is null" );
         status = QC_STATUS_BAD_ARGUMENTS;
@@ -1456,6 +1511,8 @@ QnnImpl::Initialize( QCNodeEventCallBack_t callback,
             QC_ERROR( "Could not get backend version due to error = %" PRIu64, retVal );
             status = QC_STATUS_FAIL;
         }
+        QC_INFO( "QNN node version: %u.%u.%u", QCNODE_QNN_VERSION_MAJOR, QCNODE_QNN_VERSION_MINOR,
+                 QCNODE_QNN_VERSION_PATCH );
         QC_INFO( "QNN build version: %s", QNN_SDK_BUILD_ID );
         QC_INFO( "QNN running core api version: %u.%u.%u, backend api version: %u.%u.%u",
                  version.coreApiVersion.major, version.coreApiVersion.minor,
@@ -1571,16 +1628,39 @@ QnnImpl::Initialize( QCNodeEventCallBack_t callback,
 
     if ( QC_STATUS_OK == status )
     {
-        if ( ( QNN_PROCESSOR_HTP0 == m_config.processorType ) ||
-             ( QNN_PROCESSOR_HTP1 == m_config.processorType ) ||
-             ( QNN_PROCESSOR_HTP2 == m_config.processorType ) ||
-             ( QNN_PROCESSOR_HTP3 == m_config.processorType ) )
+        bool bIsHtp = IsHtpProcessor();
+        if ( true == bIsHtp )
         {   // set up context priority
-            m_contextConfigArray[0].option = QNN_CONTEXT_CONFIG_OPTION_PRIORITY;
-            m_contextConfigArray[0].priority = m_config.priority;
-            m_contextConfig[0] = &m_contextConfigArray[0];
-            m_contextConfig[1] = nullptr;
+            size_t idx = 0;
+
             QC_INFO( "set context priority = %d", m_config.priority );
+            m_contextConfigArray[idx].option = QNN_CONTEXT_CONFIG_OPTION_PRIORITY;
+            m_contextConfigArray[idx].priority = m_config.priority;
+            m_contextConfig[idx] = &m_contextConfigArray[idx];
+            idx++;
+
+            QC_INFO( "set context weight sharing enabled = %s",
+                     m_config.bWeightSharingEnabled ? "true" : "false" );
+            m_contextConfigArray[idx].option = QNN_CONTEXT_CONFIG_OPTION_CUSTOM;
+            m_weightSharingEnabledConfig.option =
+                    QNN_HTP_CONTEXT_CONFIG_OPTION_WEIGHT_SHARING_ENABLED;
+            m_weightSharingEnabledConfig.weightSharingEnabled = m_config.bWeightSharingEnabled;
+            m_contextConfigArray[idx].customConfig = &m_weightSharingEnabledConfig;
+            m_contextConfig[idx] = &m_contextConfigArray[idx];
+            idx++;
+
+#if ( ( QNN_HTP_API_VERSION_MAJOR == 5 ) && ( QNN_HTP_API_VERSION_MINOR >= 35 ) ) ||               \
+        ( QNN_HTP_API_VERSION_MAJOR > 5 )
+            QC_INFO( "set context extended udma = %s",
+                     m_config.bUseExtendedUdma ? "true" : "false" );
+            m_contextConfigArray[idx].option = QNN_CONTEXT_CONFIG_OPTION_CUSTOM;
+            m_useExtendedUdmaConfig.option = QNN_HTP_CONTEXT_CONFIG_OPTION_USE_EXTENDED_UDMA;
+            m_useExtendedUdmaConfig.useExtendedUdma = m_config.bUseExtendedUdma;
+            m_contextConfigArray[idx].customConfig = &m_useExtendedUdmaConfig;
+            m_contextConfig[idx] = &m_contextConfigArray[idx];
+            idx++;
+#endif
+            m_contextConfig[idx] = nullptr;
         }
 
         switch ( m_config.loadType )
@@ -1603,7 +1683,6 @@ QnnImpl::Initialize( QCNodeEventCallBack_t callback,
                 }
                 break;
             }
-
             case QNN_LOAD_CONTEXT_BIN_FROM_FILE:
             default:
             {
@@ -1665,6 +1744,8 @@ QnnImpl::Initialize( QCNodeEventCallBack_t callback,
     { /* do error clean up */
         (void) Destroy();
     }
+
+    QC_TRACE_END( "Init", {} );
 
     return status;
 }
@@ -1760,6 +1841,8 @@ QCStatus_e QnnImpl::RegisterBufferToHTP( const TensorDescriptor_t &tensorDesc,
         if ( it == m_dmaMemInfoMap.end() )
         {
             int fd;
+            QC_TRACE_BEGIN( "Register", { QCNodeTraceArg( "handle", tensorDesc.dmaHandle ),
+                                          QCNodeTraceArg( "size", tensorDesc.size ) } );
             status = RemoteRegisterBuf( tensorDesc, fd );
             if ( QC_STATUS_OK == status )
             {
@@ -1800,7 +1883,7 @@ QCStatus_e QnnImpl::RegisterBufferToHTP( const TensorDescriptor_t &tensorDesc,
                 }
                 else
                 {
-                    (void) RemoteDeRegisterBuf( tensorDesc.pBuf, tensorDesc.size );
+                    RemoteDeRegisterBuf( tensorDesc.pBuf, tensorDesc.size );
                     QC_ERROR( "failed to map buffer %p(%d, %" PRIu64 ", %" PRIu64
                               ") for core %d, error %d\n",
                               tensorDesc.pBuf, fd, tensorDesc.size, tensorDesc.offset,
@@ -1808,6 +1891,7 @@ QCStatus_e QnnImpl::RegisterBufferToHTP( const TensorDescriptor_t &tensorDesc,
                     status = QC_STATUS_FAIL;
                 }
             }
+            QC_TRACE_END( "Register", {} );
         }
         else
         {
@@ -1827,10 +1911,9 @@ QCStatus_e QnnImpl::GetMemHandle( const TensorDescriptor_t &tensorDesc, Qnn_MemH
 {
     QCStatus_e status = QC_STATUS_OK;
 
-    if ( ( QNN_PROCESSOR_HTP0 == m_config.processorType ) ||
-         ( QNN_PROCESSOR_HTP1 == m_config.processorType ) ||
-         ( QNN_PROCESSOR_HTP2 == m_config.processorType ) ||
-         ( QNN_PROCESSOR_HTP3 == m_config.processorType ) )
+    memHandle = nullptr;
+    bool bIsHtp = IsHtpProcessor();
+    if ( true == bIsHtp )
     {
         status = RegisterBufferToHTP( tensorDesc, memHandle );
     }
@@ -1847,6 +1930,8 @@ QCStatus_e QnnImpl::RegisterTensor( const TensorDescriptor_t &tensorDesc )
 QCStatus_e QnnImpl::Start()
 {
     QCStatus_e status = QC_STATUS_OK;
+
+    QC_TRACE_BEGIN( "Start", {} );
     if ( QC_OBJECT_STATE_READY == m_state )
     {
         m_state = QC_OBJECT_STATE_RUNNING;
@@ -1856,6 +1941,7 @@ QCStatus_e QnnImpl::Start()
         QC_ERROR( "QNN node start failed due to wrong state!" );
         status = QC_STATUS_BAD_STATE;
     }
+    QC_TRACE_END( "Start", {} );
 
     return status;
 }
@@ -1938,6 +2024,10 @@ QCStatus_e QnnImpl::ProcessFrameDescriptor( QCFrameDescriptorNodeIfs &frameDesc 
                     dynamic_cast<const TensorDescriptor_t *>( &bufDesc );
             if ( nullptr != pTensor )
             {
+                QC_TRACE_IF(
+                        0 == i,
+                        QC_TRACE_BEGIN( "Execute", { QCNodeTraceArg( "frameId", pTensor->id ) } ) );
+
                 status = ValidateTensor( *pTensor, m_graphsInfo[0]->inputTensors[i] );
                 if ( QC_STATUS_OK != status )
                 {
@@ -2035,13 +2125,14 @@ QCStatus_e QnnImpl::ProcessFrameDescriptor( QCFrameDescriptorNodeIfs &frameDesc 
             retVal = m_qnnFunctionPointers.qnnInterface.graphExecute(
                     hGraph, m_inputs.data(), m_inputs.size(), m_outputs.data(), m_outputs.size(),
                     m_profileBackendHandle, nullptr );
+            QC_TRACE_END( "Execute", {} );
         }
         else
         {
             pNotifyParam = m_notifyParamQ.Pop();
             if ( nullptr != pNotifyParam )
             {
-                pNotifyParam->self = this;
+                pNotifyParam->pSelf = this;
                 pNotifyParam->pFrameDesc = &frameDesc;
                 retVal = m_qnnFunctionPointers.qnnInterface.graphExecuteAsync(
                         hGraph, m_inputs.data(), m_inputs.size(), m_outputs.data(),
@@ -2060,6 +2151,7 @@ QCStatus_e QnnImpl::ProcessFrameDescriptor( QCFrameDescriptorNodeIfs &frameDesc 
             status = QC_STATUS_FAIL;
         }
     }
+
     return status;
 }
 
@@ -2067,7 +2159,8 @@ QCStatus_e QnnImpl::Stop()
 {
     QCStatus_e status = QC_STATUS_OK;
 
-    if ( ( QC_OBJECT_STATE_RUNNING == m_state ) || ( QC_OBJECT_STATE_ERROR == m_state ) )
+    QC_TRACE_BEGIN( "Stop", {} );
+    if ( QC_OBJECT_STATE_RUNNING == m_state )
     {
         if ( m_config.bDeRegisterAllBuffersWhenStop )
         {
@@ -2080,6 +2173,7 @@ QCStatus_e QnnImpl::Stop()
         QC_ERROR( "QNN node stop failed due to wrong state!" );
         status = QC_STATUS_BAD_STATE;
     }
+    QC_TRACE_END( "Stop", {} );
 
     return status;
 }
@@ -2089,6 +2183,7 @@ QCStatus_e QnnImpl::DeInitialize()
     QCStatus_e status = QC_STATUS_OK;
     Qnn_ErrorHandle_t retVal = QNN_SUCCESS;
 
+    QC_TRACE_BEGIN( "DeInit", {} );
     if ( QC_OBJECT_STATE_READY != m_state )
     {
         QC_ERROR( "QNN node not in ready status!" );
@@ -2099,6 +2194,7 @@ QCStatus_e QnnImpl::DeInitialize()
     {
         status = Destroy();
     }
+    QC_TRACE_END( "DeInit", {} );
 
     return status;
 }
@@ -2262,9 +2358,8 @@ QCStatus_e QnnImpl::DisablePerf()
     return status;
 }
 
-QCStatus_e QnnImpl::RemoteDeRegisterBuf( void *pData, size_t size )
+void QnnImpl::RemoteDeRegisterBuf( void *pData, size_t size )
 {
-    QCStatus_e status = QC_STATUS_OK;
 #ifdef QC_USE_REMOTE_REGISTER_V2
     constexpr int client = 0;   // NOTE: default is 0
     int domain = CDSP_DOMAIN_ID;
@@ -2298,8 +2393,6 @@ QCStatus_e QnnImpl::RemoteDeRegisterBuf( void *pData, size_t size )
         /* buffer is possbile that remote_register_buf by others */
         QC_INFO( "Can't find buffer %p(%" PRIu64 ") in dma ref map", pData, size );
     }
-
-    return status;
 }
 
 QCStatus_e QnnImpl::DeRegisterAllBuffers()
@@ -2307,6 +2400,7 @@ QCStatus_e QnnImpl::DeRegisterAllBuffers()
     QCStatus_e status = QC_STATUS_OK;
     Qnn_ErrorHandle_t retVal;
     std::lock_guard<std::mutex> l( m_lock );
+    bool bIsHtp = IsHtpProcessor();
     for ( auto &kv : m_dmaMemInfoMap )
     {
         auto pData = kv.first;
@@ -2322,16 +2416,10 @@ QCStatus_e QnnImpl::DeRegisterAllBuffers()
             QC_INFO( "succeed to deregister buffer %p(%d, %" PRIu64 ") as %p for core %d", pData,
                      info.fd, info.size, info.memHandle, m_config.processorType );
         }
-        if ( ( QNN_PROCESSOR_HTP0 == m_config.processorType ) ||
-             ( QNN_PROCESSOR_HTP1 == m_config.processorType ) ||
-             ( QNN_PROCESSOR_HTP2 == m_config.processorType ) ||
-             ( QNN_PROCESSOR_HTP3 == m_config.processorType ) )
+
+        if ( true == bIsHtp )
         {
-            QCStatus_e status2 = RemoteDeRegisterBuf( pData, info.size );
-            if ( QC_STATUS_OK != status2 )
-            {
-                status = status2;
-            }
+            RemoteDeRegisterBuf( pData, info.size );
         }
     }
     m_dmaMemInfoMap.clear();
@@ -2481,16 +2569,39 @@ void QnnImpl::QnnNotifyFn( void *pNotifyParam, Qnn_NotifyStatus_t notifyStatus )
 {
     NotifyParam_t *pNotifyParam2 = static_cast<NotifyParam_t *>( pNotifyParam );
 
-    pNotifyParam2->self->QnnNotifyFn( pNotifyParam2, notifyStatus );
+    if ( nullptr != pNotifyParam2 )
+    {
+        if ( QNN_NOTIFY_MAGIC == pNotifyParam2->magic )
+        {
+            if ( nullptr != pNotifyParam2->pSelf )
+            {
+                pNotifyParam2->pSelf->QnnNotifyFn( *pNotifyParam2, notifyStatus );
+            }
+            else
+            {
+                QC_LOG_ERROR( "Qnn Notify param magic number correct but self is nullptr" );
+            }
+        }
+        else
+        {
+            QC_LOG_ERROR( "Qnn Notify param magic number not correct: %" PRIx64,
+                          pNotifyParam2->magic );
+        }
+    }
+    else
+    {
+        QC_LOG_ERROR( "Qnn Notify with nullptr" );
+    }
 }
 
-void QnnImpl::QnnNotifyFn( NotifyParam_t *pNotifyParam, Qnn_NotifyStatus_t notifyStatus )
+void QnnImpl::QnnNotifyFn( NotifyParam_t &notifyParam, Qnn_NotifyStatus_t notifyStatus )
 {
     if ( QNN_SUCCESS == notifyStatus.error )
     {
         if ( m_callback != nullptr )
         {
-            QCFrameDescriptorNodeIfs *pFrameDesc = pNotifyParam->pFrameDesc;
+            QC_TRACE_END( "Execute", {} );
+            QCFrameDescriptorNodeIfs *pFrameDesc = notifyParam.pFrameDesc;
             QCNodeEventInfo_t info( *pFrameDesc, m_nodeId, QC_STATUS_OK, GetState() );
             m_callback( info );
         }
@@ -2503,7 +2614,7 @@ void QnnImpl::QnnNotifyFn( NotifyParam_t *pNotifyParam, Qnn_NotifyStatus_t notif
     {
         if ( m_callback != nullptr )
         {
-            QCFrameDescriptorNodeIfs *pFrameDesc = pNotifyParam->pFrameDesc;
+            QCFrameDescriptorNodeIfs *pFrameDesc = notifyParam.pFrameDesc;
             QCBufferDescriptorBase_t errDesc;
             uint32_t globalBufferId =
                     m_config.globalBufferIdMap[static_cast<size_t>( m_inputTensorNum +
@@ -2529,7 +2640,7 @@ void QnnImpl::QnnNotifyFn( NotifyParam_t *pNotifyParam, Qnn_NotifyStatus_t notif
         }
     }
 
-    m_notifyParamQ.Push( pNotifyParam );
+    m_notifyParamQ.Push( &notifyParam );
 }
 
 
@@ -2843,6 +2954,7 @@ void QnnImpl::NotifyParamQueue::Init()
 
     for ( idx = 0; idx < QNN_NOTIFY_PARAM_NUM; idx++ )
     {
+        notifyParam[idx].magic = QNN_NOTIFY_MAGIC;
         ring[pushIdx % QNN_NOTIFY_PARAM_NUM] = idx;
         pushIdx++;
     }

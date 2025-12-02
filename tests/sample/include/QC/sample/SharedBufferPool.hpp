@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-
 #ifndef QC_SHARED_BUFFER_POOL_HPP
 #define QC_SHARED_BUFFER_POOL_HPP
 

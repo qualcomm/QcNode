@@ -1,7 +1,6 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-
 #include "QC/Infras/Memory/UtilsBase.hpp"
 
 namespace QC
@@ -97,7 +96,7 @@ UtilsBase::UtilsBase()
 
 UtilsBase::~UtilsBase()
 {
-    (void) (void) QC_LOGGER_DEINIT();
+    (void) QC_LOGGER_DEINIT();
 }
 
 QCStatus_e UtilsBase::MemoryMap( const QCBufferDescriptorBase_t &orig,

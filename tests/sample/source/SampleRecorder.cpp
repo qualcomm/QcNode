@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-
 #include "QC/sample/SampleRecorder.hpp"
 
 

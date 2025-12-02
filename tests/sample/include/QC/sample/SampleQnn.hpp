@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-
 #ifndef QC_SAMPLE_QNN_HPP
 #define QC_SAMPLE_QNN_HPP
 
@@ -41,6 +40,11 @@ public:
     /// @brief deinitialize the QC Node Qnn
     /// @return QC_STATUS_OK on success, others on failure
     QCStatus_e Deinit();
+
+    /**
+     * @brief Retrieves the version identifier of the Node QNN.
+     */
+    const uint32_t GetVersion() const;
 
 private:
     QCStatus_e ParseConfig( SampleConfig_t &config );

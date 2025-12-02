@@ -2,15 +2,15 @@ set( HEADERS_DIR ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/source/Libr
 
 set( VIDEOCODEC_HEADERS
     VidcDrvClient.hpp
-    VidcCompBase.hpp
+    VidcNodeBase.hpp
 )
 
 set( VIDEOCODEC_SOURCES
     VidcDrvClient.cpp
-    VidcCompBase.cpp
+    VidcNodeBase.cpp
 )
 
-set( TARGET_LIBRARIES QCNodeComponentCommon )
+set( TARGET_LIBRARIES QCNodeMemory )
 
 if( "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" )
     list( APPEND TARGET_LIBRARIES vidc vidc_client mmosal )
@@ -33,6 +33,8 @@ set_property( TARGET QCNodeVideoCodec PROPERTY POSITION_INDEPENDENT_CODE ON )
 target_include_directories( QCNodeVideoCodec PUBLIC ${HEADERS_DIR} )
 
 target_link_libraries( QCNodeVideoCodec PUBLIC ${TARGET_LIBRARIES} )
+
+target_compile_options( QCNodeVideoCodec PRIVATE -Wno-error=deprecated-declarations )
 
 install(TARGETS QCNodeVideoCodec DESTINATION lib)
 

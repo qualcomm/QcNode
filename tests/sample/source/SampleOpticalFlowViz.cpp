@@ -1,7 +1,6 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-
 #include "QC/sample/SampleOpticalFlowViz.hpp"
 #include <algorithm>
 #include <math.h>

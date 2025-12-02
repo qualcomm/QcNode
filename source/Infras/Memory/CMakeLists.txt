@@ -14,7 +14,7 @@ set( MEMORY_HEADERS
         ${HEADERS_DIR}/QC/Infras/Memory/HeapAllocator.hpp
         ${HEADERS_DIR}/QC/Infras/Memory/ManagerLocal.hpp
         ${HEADERS_DIR}/QC/Infras/Memory/UtilsBase.hpp
-
+        ${HEADERS_DIR}/QC/Infras/Memory/VideoFrameDescriptor.hpp
 )
 
 set( MEMORY_SOURCES
@@ -25,6 +25,7 @@ set( MEMORY_SOURCES
     ManagerLocal.cpp
     HeapAllocator.cpp
     UtilsBase.cpp
+    VideoFrameDescriptor.cpp
 )
 
 if( "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" AND "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "aarch64" )
@@ -53,6 +54,12 @@ endif()
 
 set( TARGET_LIBRARIES QCNodeCommon )
 
+if( "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" AND "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "aarch64" )
+    list( APPEND TARGET_LIBRARIES kiumd apdf aosal )
+    list( APPEND HEADERS_DIR ${CMAKE_SYSROOT}/usr/include/WF )
+    list( APPEND HEADERS_DIR ${CMAKE_SYSROOT}/usr/include/linux-ark )
+endif()
+
 add_library( QCNodeMemory OBJECT ${MEMORY_SOURCES} )
 
 set_property( TARGET QCNodeMemory PROPERTY LINKER_LANGUAGE CXX )
@@ -63,3 +70,8 @@ target_include_directories( QCNodeMemory PUBLIC ${HEADERS_DIR} )
 target_link_libraries( QCNodeMemory PUBLIC ${TARGET_LIBRARIES} )
 
 install( FILES ${MEMORY_HEADERS} DESTINATION include/QC/Infras/Memory )
+
+if( "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" )
+target_include_directories( QCNodeMemory PUBLIC ${CMAKE_SYSROOT}/usr/include/mm-osal/include )
+target_compile_definitions( QCNodeMemory PUBLIC _VIDC_LRH_LINUX_ )
+endif()

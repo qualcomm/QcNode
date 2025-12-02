@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-
 #include "QC/sample/SampleIF.hpp"
 #include <assert.h>
 
@@ -53,6 +52,27 @@ void SampleIF::RegisterSample( std::string name, Sample_CreateFunction_t createF
     {
         printf( "sample %s is already registered\n", name.c_str() );
         assert( 0 );
+    }
+}
+
+void SampleIF::ShowVersion()
+{
+    SampleIF *sample = nullptr;
+    printf( "Version:\n" );
+    for ( auto it : s_SampleMap )
+    {
+        std::string name = it.first;
+        Sample_CreateFunction_t createFnc = it.second;
+        sample = createFnc();
+        uint32_t version = sample->GetVersion();
+        if ( 0u != version )
+        {
+            uint8_t major = version >> 16;
+            uint8_t minor = ( version >> 8 ) & 0xFF;
+            uint8_t patch = version & 0xFF;
+            printf( "  %s: %d.%d.%d\n", name.c_str(), major, minor, patch );
+        }
+        delete sample;
     }
 }
 
@@ -687,50 +707,6 @@ QCStatus_e SampleIF::DeRegisterBuffers( std::string name )
         ret = QC_STATUS_FAIL;
     }
 
-
-    return ret;
-}
-
-QCStatus_e SampleIF::LoadFile( QCSharedBuffer_t buffer, std::string path )
-{
-    QCStatus_e ret = QC_STATUS_OK;
-    FILE *file = nullptr;
-    size_t length = 0;
-    size_t size = buffer.size;
-
-    file = fopen( path.c_str(), "rb" );
-    if ( nullptr == file )
-    {
-        QC_ERROR( "Failed to open file %s", path.c_str() );
-        ret = QC_STATUS_FAIL;
-    }
-
-    if ( QC_STATUS_OK == ret )
-    {
-        fseek( file, 0, SEEK_END );
-        length = (size_t) ftell( file );
-        if ( size != length )
-        {
-            QC_ERROR( "Invalid file size for %s, need %d but got %d", path.c_str(), size, length );
-            ret = QC_STATUS_FAIL;
-        }
-    }
-
-    if ( QC_STATUS_OK == ret )
-    {
-        fseek( file, 0, SEEK_SET );
-        auto r = fread( buffer.data(), 1, length, file );
-        if ( length != r )
-        {
-            QC_ERROR( "failed to read map table file %s", path.c_str() );
-            ret = QC_STATUS_FAIL;
-        }
-    }
-
-    if ( nullptr != file )
-    {
-        fclose( file );
-    }
 
     return ret;
 }

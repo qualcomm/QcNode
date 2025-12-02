@@ -1,7 +1,6 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-
 #include "CameraImpl.hpp"
 #include "QC/Node/Camera.hpp"
 
@@ -124,7 +123,7 @@ QCStatus_e CameraConfig::VerifyStaticConfig( DataTree &dt, std::string &errors )
     if ( QC_STATUS_OK == status )
     {
         uint32_t numStream = streamConfigs.size();
-        if ( numStream > MAX_CAMERA_STREAM )
+        if ( numStream > QCNODE_CAMERA_MAX_STREAM_NUM )
         {
             errors += "the numStream is larger than maximum, ";
             status = QC_STATUS_BAD_ARGUMENTS;
@@ -183,14 +182,15 @@ QCStatus_e CameraConfig::VerifyStaticConfig( DataTree &dt, std::string &errors )
 
             if ( QC_STATUS_OK != status )
             {
-                QC_ERROR( "Config verification failed for stream %u, error: %s", i, errors );
+                QC_ERROR( "Config verification failed for stream %u, error: %s", i,
+                          errors.c_str() );
                 break;
             }
         }
     }
     else
     {
-        QC_ERROR( "Config verification failed for CameraConfigIfs, error: %s", errors );
+        QC_ERROR( "Config verification failed for CameraConfigIfs, error: %s", errors.c_str() );
     }
 
     return status;
@@ -278,4 +278,3 @@ const QCNodeConfigBase_t &CameraConfig::Get()
 
 }   // namespace Node
 }   // namespace QC
-

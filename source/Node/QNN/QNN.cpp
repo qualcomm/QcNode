@@ -1,7 +1,6 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-
 #include "QC/Node/QNN.hpp"
 #include "QnnImpl.hpp"
 #include <unistd.h>
@@ -30,14 +29,22 @@ QCStatus_e Qnn::Initialize( QCNodeInit_t &config )
     const QCNodeConfigBase_t &cfg = m_configIfs.Get();
     bool bNodeBaseInitDone = false;
 
-    status = m_configIfs.VerifyAndSet( config.config, errors );
-    if ( QC_STATUS_OK == status )
+    if ( QC_OBJECT_STATE_INITIAL != GetState() )
     {
-        status = NodeBase::Init( cfg.nodeId );
+        QC_ERROR( "QNN not in initial state!" );
+        status = QC_STATUS_BAD_STATE;
     }
     else
     {
-        QC_ERROR( "config error: %s", errors.c_str() );
+        status = m_configIfs.VerifyAndSet( config.config, errors );
+        if ( QC_STATUS_OK == status )
+        {
+            status = NodeBase::Init( cfg.nodeId );
+        }
+        else
+        {
+            QC_ERROR( "config error: %s", errors.c_str() );
+        }
     }
 
     if ( QC_STATUS_OK == status )

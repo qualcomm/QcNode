@@ -1,7 +1,5 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
-
-#include "QC/Infras/Memory/SharedBuffer.hpp"
 #include "QC/sample/BufferManager.hpp"
 #include "gtest/gtest.h"
 #include <algorithm>
@@ -33,6 +31,9 @@ typedef struct
 public:
     QCBufferDescriptorBase_t &GetBuffer() { return buffer->buffer; }
 } DataFrame_t;
+
+
+static bool IsTheSameSharedBuffer( BufferDescriptor_t &bufferA, BufferDescriptor_t &bufferB );
 
 TEST( Memory, SANITY_BufferTypeCast )
 {
@@ -197,6 +198,11 @@ TEST( Memory, SANITY_ImageAllocateByWHF )
     ASSERT_EQ( 1, imgDescM.numPlanes );
     ASSERT_LE( 1024 * 3, imgDescM.stride[0] );
     ASSERT_LE( 768, imgDescM.actualHeight[0] );
+
+    imgDesc.type = QC_BUFFER_TYPE_RAW;
+    status = imgDesc.GetImageDesc( imgDescM, 3 );
+    ASSERT_EQ( QC_STATUS_UNSUPPORTED, status );
+    imgDesc.type = QC_BUFFER_TYPE_IMAGE;
 
 
     status = imgDesc.ImageToTensor( imgDescTs );
@@ -377,6 +383,7 @@ TEST( Memory, SANITY_TensorAllocate )
     ASSERT_EQ( tensorDesc.validSize, tensorDesc.size );
     ASSERT_EQ( 1 * 128 * 128 * 10, tensorDesc.size );
     ASSERT_EQ( 4, tensorDesc.numDims );
+
     status = bufMgr.Free( tensorDesc );
     ASSERT_EQ( QC_STATUS_OK, status );
 }
@@ -448,7 +455,7 @@ static std::string GetBufferTextInfo( const BufferDescriptor_t &bufDesc )
 static bool IsTheSameSharedBuffer( BufferDescriptor_t &bufferA, BufferDescriptor_t &bufferB )
 {
     bool bEqual = true;
-    if ( ( bufferA.pBuf != bufferB.pBuf ) || ( bufferA.pBuf != bufferB.pBuf ) ||
+    if ( ( bufferA.name != bufferB.name ) || ( bufferA.pBuf != bufferB.pBuf ) ||
          ( bufferA.dmaHandle != bufferB.dmaHandle ) || ( bufferA.size != bufferB.size ) ||
          ( bufferA.id != bufferB.id ) || ( bufferA.pid != bufferB.pid ) ||
          ( bufferA.allocatorType != bufferB.allocatorType ) || ( bufferA.cache != bufferB.cache ) )
@@ -457,7 +464,7 @@ static bool IsTheSameSharedBuffer( BufferDescriptor_t &bufferA, BufferDescriptor
         bEqual = false;
     }
 
-    if ( ( bufferA.size != bufferB.size ) || ( bufferA.offset != bufferB.offset ) ||
+    if ( ( bufferA.validSize != bufferB.validSize ) || ( bufferA.offset != bufferB.offset ) ||
          ( bufferA.type != bufferB.type ) )
     {
         printf( "buffer size/offset/type not equal\n" );
@@ -539,6 +546,58 @@ TEST( Memory, L2_Buffer )
                                   bufDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
 
+
+        BufferDescriptor_t bufDescB;
+        bufDescB = bufDesc;
+        ASSERT_EQ( bufDescB.name, bufDesc.name );
+        ASSERT_EQ( bufDescB.pBuf, bufDesc.pBuf );
+        ASSERT_EQ( bufDescB.size, bufDesc.size );
+        ASSERT_EQ( bufDescB.type, bufDesc.type );
+        ASSERT_EQ( bufDescB.dmaHandle, bufDesc.dmaHandle );
+        ASSERT_EQ( bufDescB.validSize, bufDesc.validSize );
+        ASSERT_EQ( bufDescB.offset, bufDesc.offset );
+        ASSERT_EQ( bufDescB.id, bufDesc.id );
+        ASSERT_EQ( bufDescB.pid, bufDesc.pid );
+        ASSERT_EQ( bufDescB.allocatorType, bufDesc.allocatorType );
+        ASSERT_EQ( bufDescB.cache, bufDesc.cache );
+
+        BufferDescriptor_t *pBufDesc = &bufDescB;
+        bufDescB = *pBufDesc;
+
+        ImageDescriptor_t imgDesc;
+        imgDesc = bufDesc;
+        ASSERT_EQ( imgDesc.name, bufDesc.name );
+        ASSERT_EQ( imgDesc.pBuf, bufDesc.pBuf );
+        ASSERT_EQ( imgDesc.size, bufDesc.size );
+        ASSERT_EQ( imgDesc.type, QC_BUFFER_TYPE_IMAGE );
+        ASSERT_EQ( imgDesc.dmaHandle, bufDesc.dmaHandle );
+        ASSERT_EQ( imgDesc.validSize, bufDesc.validSize );
+        ASSERT_EQ( imgDesc.offset, bufDesc.offset );
+        ASSERT_EQ( imgDesc.id, bufDesc.id );
+        ASSERT_EQ( imgDesc.pid, bufDesc.pid );
+        ASSERT_EQ( imgDesc.allocatorType, bufDesc.allocatorType );
+        ASSERT_EQ( imgDesc.cache, bufDesc.cache );
+
+        ImageDescriptor_t *pImgDesc = &imgDesc;
+        imgDesc = *pImgDesc;
+
+        TensorDescriptor_t tsDesc;
+        tsDesc = bufDesc;
+        ASSERT_EQ( tsDesc.name, bufDesc.name );
+        ASSERT_EQ( tsDesc.pBuf, bufDesc.pBuf );
+        ASSERT_EQ( tsDesc.size, bufDesc.size );
+        ASSERT_EQ( tsDesc.type, QC_BUFFER_TYPE_TENSOR );
+        ASSERT_EQ( tsDesc.dmaHandle, bufDesc.dmaHandle );
+        ASSERT_EQ( tsDesc.validSize, bufDesc.validSize );
+        ASSERT_EQ( tsDesc.offset, bufDesc.offset );
+        ASSERT_EQ( tsDesc.id, bufDesc.id );
+        ASSERT_EQ( tsDesc.pid, bufDesc.pid );
+        ASSERT_EQ( tsDesc.allocatorType, bufDesc.allocatorType );
+        ASSERT_EQ( tsDesc.cache, bufDesc.cache );
+
+        TensorDescriptor_t *pTsDesc = &tsDesc;
+        tsDesc = *pTsDesc;
+
         status = bufMgr.Free( bufDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
     }
@@ -575,39 +634,6 @@ TEST( Memory, L2_Buffer )
         status = bufMgr.Allocate(
                 BufferProps_t( (size_t) 1024 * 1024 * 64, (QCMemoryAllocator_e) -2 ), bufDesc );
         ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
-    }
-
-    {
-        void *pData;
-        uint64_t dmaHandle;
-
-        status = QCDmaAllocate( &pData, nullptr, 1000000, QC_BUFFER_FLAGS_CACHE_WB_WA,
-                                QC_BUFFER_USAGE_DEFAULT );
-        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
-
-        status = QCDmaAllocate( nullptr, &dmaHandle, 1000000, QC_BUFFER_FLAGS_CACHE_WB_WA,
-                                QC_BUFFER_USAGE_DEFAULT );
-        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
-
-        status = QCDmaAllocate( &pData, &dmaHandle, 1000000, QC_BUFFER_FLAGS_CACHE_WB_WA,
-                                QC_BUFFER_USAGE_DEFAULT );
-        ASSERT_EQ( QC_STATUS_OK, status );
-
-        status = QCDmaFree( nullptr, 0, 1000000 );
-        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
-
-        status = QCDmaFree( (void *) 0x1, 0, 1000000 );
-        ASSERT_EQ( QC_STATUS_FAIL, status );
-#if !defined( __QNXNTO__ ) /* dmaHandle was only used by Linux when do free */
-        status = QCDmaFree( pData, (uint64_t) -1, 1000000 );
-        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
-
-        status = QCDmaFree( pData, (uint64_t) 0x7FFFFFFF, 1000000 );
-        ASSERT_EQ( QC_STATUS_FAIL, status );
-#endif
-
-        status = QCDmaFree( pData, dmaHandle, 1000000 );
-        ASSERT_EQ( QC_STATUS_OK, status );
     }
 }
 
@@ -740,6 +766,20 @@ TEST( Memory, L2_Image )
         auto status = bufMgr.Allocate( imgProp, imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
 
+        BufferDescriptor_t bufDescB;
+        bufDescB = imgDesc;
+        ASSERT_EQ( bufDescB.name, imgDesc.name );
+        ASSERT_EQ( bufDescB.pBuf, imgDesc.pBuf );
+        ASSERT_EQ( bufDescB.size, imgDesc.size );
+        ASSERT_EQ( bufDescB.type, imgDesc.type );
+        ASSERT_EQ( bufDescB.dmaHandle, imgDesc.dmaHandle );
+        ASSERT_EQ( bufDescB.validSize, imgDesc.validSize );
+        ASSERT_EQ( bufDescB.offset, imgDesc.offset );
+        ASSERT_EQ( bufDescB.id, imgDesc.id );
+        ASSERT_EQ( bufDescB.pid, imgDesc.pid );
+        ASSERT_EQ( bufDescB.allocatorType, imgDesc.allocatorType );
+        ASSERT_EQ( bufDescB.cache, imgDesc.cache );
+
         status = bufMgr.Free( imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
     }
@@ -841,6 +881,42 @@ TEST( Memory, L2_Image )
         status = bufMgr.Free( imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
     }
+
+    {
+        ImageDescriptor_t imgDesc;
+        auto status = bufMgr.Allocate( ImageBasicProps_t( 3840, 2160, QC_IMAGE_FORMAT_NV12_UBWC ),
+                                       imgDesc );
+        ASSERT_EQ( QC_STATUS_OK, status );
+        ASSERT_EQ( imgDesc.numPlanes, QC_NUM_IMAGE_PLANES );
+
+        imgDesc.numPlanes = QC_NUM_IMAGE_PLANES + 1;
+        ImageDescriptor_t imgDescB;
+        imgDescB = imgDesc;
+        imgDesc.numPlanes = QC_NUM_IMAGE_PLANES;
+
+        ASSERT_EQ( IsTheSameSharedBuffer( imgDesc, imgDescB ), true );
+
+        status = bufMgr.Free( imgDesc );
+        ASSERT_EQ( QC_STATUS_OK, status );
+    }
+
+    {
+        ImageDescriptor_t imgDesc;
+        auto status = bufMgr.Allocate( ImageBasicProps_t( 3840, 2160, QC_IMAGE_FORMAT_TP10_UBWC ),
+                                       imgDesc );
+        ASSERT_EQ( QC_STATUS_OK, status );
+        ASSERT_EQ( imgDesc.numPlanes, QC_NUM_IMAGE_PLANES );
+
+        imgDesc.numPlanes = QC_NUM_IMAGE_PLANES + 1;
+        ImageDescriptor_t imgDescB;
+        imgDescB = imgDesc;
+        imgDesc.numPlanes = QC_NUM_IMAGE_PLANES;
+
+        ASSERT_EQ( IsTheSameSharedBuffer( imgDesc, imgDescB ), true );
+
+        status = bufMgr.Free( imgDesc );
+        ASSERT_EQ( QC_STATUS_OK, status );
+    }
 }
 
 TEST( Memory, L2_Tensor )
@@ -858,7 +934,40 @@ TEST( Memory, L2_Tensor )
         ASSERT_EQ( QC_STATUS_OK, status );
         ASSERT_EQ( QC_BUFFER_TYPE_TENSOR, tsDesc.type );
 
-        TensorDescriptor_t tsDesc2 = tsDesc;
+        TensorDescriptor_t tsDesc2;
+        tsDesc2 = tsDesc;
+        ASSERT_EQ( IsTheSameSharedBuffer( tsDesc, tsDesc2 ), true );
+
+        BufferDescriptor_t bufDescB;
+        bufDescB = tsDesc;
+        ASSERT_EQ( bufDescB.name, tsDesc.name );
+        ASSERT_EQ( bufDescB.pBuf, tsDesc.pBuf );
+        ASSERT_EQ( bufDescB.size, tsDesc.size );
+        ASSERT_EQ( bufDescB.type, tsDesc.type );
+        ASSERT_EQ( bufDescB.dmaHandle, tsDesc.dmaHandle );
+        ASSERT_EQ( bufDescB.validSize, tsDesc.validSize );
+        ASSERT_EQ( bufDescB.offset, tsDesc.offset );
+        ASSERT_EQ( bufDescB.id, tsDesc.id );
+        ASSERT_EQ( bufDescB.pid, tsDesc.pid );
+        ASSERT_EQ( bufDescB.allocatorType, tsDesc.allocatorType );
+        ASSERT_EQ( bufDescB.cache, tsDesc.cache );
+
+        status = bufMgr.Free( tsDesc );
+        ASSERT_EQ( QC_STATUS_OK, status );
+    }
+
+    {
+        TensorDescriptor_t tsDesc;
+        TensorProps_t tensorProp( QC_TENSOR_TYPE_UFIXED_POINT_8, { 1, 2, 3, 4, 5, 6, 7, 8 } );
+
+        status = bufMgr.Allocate( tensorProp, tsDesc );
+        ASSERT_EQ( QC_STATUS_OK, status );
+        ASSERT_EQ( QC_NUM_TENSOR_DIMS, tsDesc.numDims );
+
+        tsDesc.numDims += 1;
+        TensorDescriptor_t tsDesc2;
+        tsDesc2 = tsDesc;
+        tsDesc.numDims -= 1;
         ASSERT_EQ( IsTheSameSharedBuffer( tsDesc, tsDesc2 ), true );
 
         status = bufMgr.Free( tsDesc );
@@ -921,6 +1030,17 @@ TEST( Memory, L2_Image2Tensor )
         ASSERT_EQ( QC_STATUS_OK, status );
         status = imgDesc.ImageToTensor( tensor );
         ASSERT_EQ( QC_STATUS_OK, status );
+
+        imgDesc.type = QC_BUFFER_TYPE_RAW;
+        status = imgDesc.ImageToTensor( tensor );
+        ASSERT_EQ( QC_STATUS_UNSUPPORTED, status );
+        imgDesc.type = QC_BUFFER_TYPE_IMAGE;
+
+        imgDesc.planeBufSize[0] -= 10;
+        status = imgDesc.ImageToTensor( tensor );
+        ASSERT_EQ( QC_STATUS_UNSUPPORTED, status );
+        imgDesc.planeBufSize[0] += 10;
+
         status = bufMgr.Free( imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
     }
@@ -943,6 +1063,11 @@ TEST( Memory, L2_Image2Tensor )
         ASSERT_EQ( chroma.offset, 1920 * 1024 );
         ASSERT_EQ( luma.validSize, 1920 * 1024 );
         ASSERT_EQ( chroma.validSize, 1920 * 1024 / 2 );
+
+        imgDesc.type = QC_BUFFER_TYPE_RAW;
+        status = imgDesc.ImageToTensor( luma, chroma );
+        ASSERT_EQ( QC_STATUS_UNSUPPORTED, status );
+        imgDesc.type = QC_BUFFER_TYPE_IMAGE;
 
         status = bufMgr.Free( imgDesc );
         ASSERT_EQ( QC_STATUS_OK, status );
@@ -1064,10 +1189,16 @@ TEST( Memory, L2_Image2Tensor )
 }
 
 #ifndef GTEST_QCNODE
+#if __CTC__
+extern "C" void ctc_append_all( void );
+#endif
 int main( int argc, char **argv )
 {
     ::testing::InitGoogleTest( &argc, argv );
     int nVal = RUN_ALL_TESTS();
+#if __CTC__
+    ctc_append_all();
+#endif
     return nVal;
 }
 #endif

@@ -15,20 +15,16 @@ set( TARGET_LIBRARIES
     QCNodeCommon
     QCNodeMemory
     QCNodeCamera
-    QCNodeVideoEncoder
-    QCNodeVideoDecoder
     QCNodeCL2DFlex
     QCNodeBase
-    QCNodeNodeVideoEncoder
-    QCNodeNodeVideoDecoder
+    QCNodeVideoEncoder
+    QCNodeVideoDecoder
 )
 
 if ( ENABLE_EVA )
   list( APPEND TARGET_LIBRARIES
             QCNodeOpticalFlow
-            QCNodeNodeOpticalFlow
             QCNodeDepthFromStereo
-            QCNodeNodeDepthFromStereo
   )
 endif()
 
@@ -36,7 +32,6 @@ if ( ENABLE_FADAS )
   list( APPEND TARGET_LIBRARIES
             QCNodeRemap
             QCNodeVoxelization
-            QCNodeNodeVoxelization
   )
 endif()
 

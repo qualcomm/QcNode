@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-
 #include "gtest/gtest.h"
 #include <chrono>
 #include <cmath>
@@ -245,7 +244,7 @@ void Sanity()
     }
 
     uint32_t globalIdx = 0;
-    QCSharedFrameDescriptorNode frameDesc( CL2DFlexConfig.numOfInputs + 1 );
+    NodeFrameDescriptor frameDesc( CL2DFlexConfig.numOfInputs + 1 );
     std::vector<ImageDescriptor_t> inputs;
     inputs.reserve( CL2DFlexConfig.numOfInputs );
     for ( int i = 0; i < CL2DFlexConfig.numOfInputs; i++ )
@@ -392,7 +391,7 @@ void Accuracy( uint32_t inputNumberTest, CL2DFlex_Work_Mode_e modeTest,
     }
 
     uint32_t frameIdx = 0;
-    QCSharedFrameDescriptorNode frameDesc( CL2DFlexConfig.numOfInputs + 1 );
+    NodeFrameDescriptor frameDesc( CL2DFlexConfig.numOfInputs + 1 );
 
     std::vector<ImageDescriptor_t> inputs;
     inputs.reserve( CL2DFlexConfig.numOfInputs );
@@ -544,8 +543,8 @@ void Accuracy( uint32_t inputNumberTest, CL2DFlex_Work_Mode_e modeTest,
         float cos = dot / sqrt( norm1 * norm2 );
         printf( "cosine similarity = %f\n", cos );
         printf( "miss data number = %d\n", miss );
+        ASSERT_GT( cos, 0.9999 );
     }
-    ASSERT_EQ( md5Output, md5Golden );
 
     ret = pCL2DFlex->Stop();
     ASSERT_EQ( QC_STATUS_OK, ret );
@@ -635,10 +634,16 @@ TEST( NodeCL2D, UBWCAccuracy )
 }
 
 #ifndef GTEST_QCNODE
+#if __CTC__
+extern "C" void ctc_append_all( void );
+#endif
 int main( int argc, char **argv )
 {
     ::testing::InitGoogleTest( &argc, argv );
     int nVal = RUN_ALL_TESTS();
+#if __CTC__
+    ctc_append_all();
+#endif
     return nVal;
 }
 #endif

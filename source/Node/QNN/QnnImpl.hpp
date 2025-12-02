@@ -1,12 +1,13 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-
 #ifndef QC_NODE_QNN_IMPL_HPP
 #define QC_NODE_QNN_IMPL_HPP
 
+#include "HTP/QnnHtpContext.h"
 #include "HTP/QnnHtpDevice.h"
 #include "QC/Infras/Memory/TensorDescriptor.hpp"
+#include "QC/Infras/NodeTrace/NodeTrace.hpp"
 #include "QC/Node/QNN.hpp"
 #include "QnnInterface.h"
 #include "QnnWrapperUtils.hpp"
@@ -25,6 +26,12 @@ using namespace QC::Memory;
 #ifndef QNN_NOTIFY_PARAM_NUM
 /* @note this value must be power of 2 */
 #define QNN_NOTIFY_PARAM_NUM 8u
+#endif
+
+#define QNN_NOTIFY_MAGIC ( 0x464900544F4E4E51ull )
+
+#ifndef QNNIMPL_FRIEND_CLASS
+#define QNNIMPL_FRIEND_CLASS()
 #endif
 
 
@@ -51,6 +58,7 @@ typedef enum
     QNN_PERF_PROFILE_HIGH_PERFORMANCE,
     QNN_PERF_PROFILE_SUSTAINED_HIGH_PERFORMANCE,
     QNN_PERF_PROFILE_BURST,
+    QNN_PERF_PROFILE_MAX,
 } Qnn_PerfProfile_e;
 
 /**
@@ -61,9 +69,9 @@ typedef enum
  * path to the UDO shared library.
  *
  * @param interfaceProvider A string specifying the name of the interface provider
- *                          responsible for implementing the UDO functionality.
- * @param udoLibPath        A string representing the file system path to the
- *                          UDO shared library (.so/.dll) that contains the implementation.
+ *                          responsible for implementing the UDO functionality.
+ * @param udoLibPath        A string representing the file system path to the
+ *                          UDO shared library (.so/.dll) that contains the implementation.
  */
 typedef struct
 {
@@ -117,8 +125,8 @@ typedef enum
  * @param processorType    Specifies the target hardware processor on which the model will run.
  *                         Typical values include CPU, HTP (Hexagon Tensor Processor), or GPU.
  *
- * @param coreIds          A list of core IDs representing the target hardware processors
- *                         on which the model will be executed.
+ * @param coreIds          A list of core IDs representing the target hardware processors
+ *                         on which the model will be executed.
  *
  * @param priority         Execution priority for the QNN model. May influence scheduling
  *                         and resource allocation in multi-model or multi-threaded environments.
@@ -141,6 +149,16 @@ typedef enum
  *
  * @param bDeRegisterAllBuffersWhenStop If true, all registered buffers will be deregistered
  *                         when the QNN node's Stop API is called.
+ *
+ * @param perfProfile      Specifies the performance profile to be used.
+ *
+ * @param bWeightSharingEnabled This field sets the weight sharing which is by default false.
+ *
+ * @param bUseExtendedUdma This field enables preparing graphs, associated with this context, with
+ *                      far-mapping enabled so that weights and spill/fill buffer are mapped to the
+ *                      far region of the DSP which is helpful if PD's limited VA space is
+ *                      exhausted. Total RAM usage may increase if used together with shared
+ *                      weights. Only available for Hexagon arch v81 and above.
  */
 typedef struct QnnImplConfig : public QCNodeConfigBase_t
 {
@@ -155,6 +173,8 @@ typedef struct QnnImplConfig : public QCNodeConfigBase_t
     std::vector<QCNodeBufferMapEntry_t> globalBufferIdMap;
     bool bDeRegisterAllBuffersWhenStop;
     Qnn_PerfProfile_e perfProfile;
+    bool bWeightSharingEnabled;
+    bool bUseExtendedUdma;
 } QnnImplConfig_t;
 
 // TODO
@@ -168,13 +188,10 @@ typedef qnn_wrapper_api::ModelError_t ( *QnnImplComposeGraphsFnHandleType_t )(
         Qnn_BackendHandle_t, QNN_INTERFACE_VER_TYPE, Qnn_ContextHandle_t,
         const qnn_wrapper_api::GraphConfigInfo_t **, const uint32_t,
         qnn_wrapper_api::GraphInfo_t ***, uint32_t *, bool, QnnLog_Callback_t, QnnLog_Level_t );
-typedef qnn_wrapper_api::ModelError_t ( *QnnImplFreeGraphInfoFnHandleType_t )(
-        qnn_wrapper_api::GraphInfo_t ***, uint32_t );
 
 typedef struct QnnImplFunctionPointers
 {
     QnnImplComposeGraphsFnHandleType_t composeGraphsFnHandle;
-    QnnImplFreeGraphInfoFnHandleType_t freeGraphInfoFnHandle;
     QNN_INTERFACE_VER_TYPE qnnInterface;
     QNN_SYSTEM_INTERFACE_VER_TYPE qnnSystemInterface;
 } QnnImplFunctionPointers_t;
@@ -186,8 +203,8 @@ public:
         : m_nodeId( nodeId ),
           m_logger( logger ),
           m_state( QC_OBJECT_STATE_INITIAL ) {};
-    QnnImplConfig_t &GetConifg() { return m_config; }
-    QnnImplMonitorConfig_t &GetMonitorConifg() { return m_monitorConfig; }
+    QnnImplConfig_t &GetConfig() { return m_config; }
+    QnnImplMonitorConfig_t &GetMonitorConfig() { return m_monitorConfig; }
 
     QCStatus_e Initialize( QCNodeEventCallBack_t callback,
                            std::vector<std::reference_wrapper<QCBufferDescriptorBase>> &buffers );
@@ -232,7 +249,7 @@ public:
      * This function populates the provided vector with information about each input tensor,
      * including their names, types, dimensions, and quantization parameters.
      *
-     * @param[out] inputTensors  A reference to a vector that will be filled with input tensor
+     * @param[out] inputTensors  A reference to a vector that will be filled with input tensor
      * metadata.
      * @return QC_STATUS_OK if the operation is successful; an appropriate error code otherwise.
      */
@@ -244,7 +261,7 @@ public:
      * This function populates the provided vector with information about each output tensor,
      * including their names, types, dimensions, and quantization parameters.
      *
-     * @param[out] inputTensors  A reference to a vector that will be filled with output tensor
+     * @param[out] inputTensors  A reference to a vector that will be filled with output tensor
      * metadata.
      * @return QC_STATUS_OK if the operation is successful; an appropriate error code otherwise.
      */
@@ -272,7 +289,6 @@ public:
      */
     Qnn_DataType_t SwitchToQnnDataType( QCTensorType_e tensorType );
 
-
 private:
     typedef struct
     {
@@ -283,7 +299,8 @@ private:
 
     typedef struct
     {
-        QnnImpl *self;
+        uint64_t magic;
+        QnnImpl *pSelf;
         QCFrameDescriptorNodeIfs *pFrameDesc;
     } NotifyParam_t;
 
@@ -302,7 +319,7 @@ private:
 
 private:
     static void QnnNotifyFn( void *pNotifyParam, Qnn_NotifyStatus_t notifyStatus );
-    void QnnNotifyFn( NotifyParam_t *pNotifyParam, Qnn_NotifyStatus_t notifyStatus );
+    void QnnNotifyFn( NotifyParam_t &notifyParam, Qnn_NotifyStatus_t notifyStatus );
 
     QnnLog_Level_t GetQnnLogLevel( Logger_Level_e level );
     uint32_t GetQnnDeviceId( Qnn_ProcessorType_e processorType );
@@ -324,7 +341,7 @@ private:
 
     QCStatus_e ValidateTensor( const TensorDescriptor_t &tensorDesc, const Qnn_Tensor_t &tensor );
 
-    QCStatus_e RemoteDeRegisterBuf( void *pData, size_t size );
+    void RemoteDeRegisterBuf( void *pData, size_t size );
     QCStatus_e DeRegisterAllBuffers();
     QCStatus_e Destroy();
 
@@ -344,11 +361,16 @@ private:
     QCStatus_e CopyMetadataToGraphsInfo( const QnnSystemContext_BinaryInfo_t *binaryInfo,
                                          qnn_wrapper_api::GraphInfo_t **&graphsInfo,
                                          uint32_t &graphsCount );
-    QCStatus_e FreeQnnTensor( Qnn_Tensor_t &tensor );
-    QCStatus_e FreeQnnTensors( Qnn_Tensor_t *&tensors, uint32_t numTensors );
+    void FreeQnnTensor( Qnn_Tensor_t &tensor );
+    void FreeQnnTensors( Qnn_Tensor_t *&tensors, uint32_t numTensors );
     QCStatus_e FreeGraphsInfo( qnn_wrapper_api::GraphInfoPtr_t **graphsInfo, uint32_t numGraphs );
     QCStatus_e SetHtpPerformanceMode();
     QCStatus_e SetPerformanceMode();
+    bool IsHtpProcessor();
+
+    static void QnnLog_Callback( const char *fmt, QnnLog_Level_t logLevel, uint64_t timestamp,
+                                 va_list args );
+    static size_t memscpy( void *dst, size_t dstSize, const void *src, size_t copySize );
 
 private:
     QCNodeID_t &m_nodeId;
@@ -364,7 +386,7 @@ private:
     static std::map<void *, int> s_dmaMemRefMap[QNN_PROCESSOR_MAX];
     static std::map<Qnn_ProcessorType_e, std::string> s_Backends;
 
-    static constexpr size_t CONTEXT_CONFIG_SIZE = 1;
+    static constexpr size_t CONTEXT_CONFIG_SIZE = 3;
 
     Qnn_BackendHandle_t m_backendHandle = nullptr;
     Qnn_DeviceHandle_t m_deviceHandle = nullptr;
@@ -382,6 +404,8 @@ private:
     Qnn_ContextHandle_t m_context = nullptr;
     QnnContext_Config_t *m_contextConfig[CONTEXT_CONFIG_SIZE + 1] = { nullptr };
     QnnContext_Config_t m_contextConfigArray[CONTEXT_CONFIG_SIZE];
+    QnnHtpContext_CustomConfig_t m_useExtendedUdmaConfig;
+    QnnHtpContext_CustomConfig_t m_weightSharingEnabledConfig;
 
     bool m_bLoadFromCachedBinary = false;
 
@@ -405,6 +429,10 @@ private:
 
     std::vector<Qnn_Tensor_t> m_inputs;
     std::vector<Qnn_Tensor_t> m_outputs;
+
+    QC_DECLARE_NODETRACE();
+
+    QNNIMPL_FRIEND_CLASS();
 };
 
 }   // namespace Node

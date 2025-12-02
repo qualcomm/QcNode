@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-
 #ifndef QCNODE_SAMPLE_C2C_EXAMPLE_HPP
 #define QCNODE_SAMPLE_C2C_EXAMPLE_HPP
 

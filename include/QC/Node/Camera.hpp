@@ -1,7 +1,6 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-
 #ifndef QC_NODE_CAMERA_HPP
 #define QC_NODE_CAMERA_HPP
 
@@ -13,8 +12,17 @@ namespace QC
 namespace Node
 {
 
-#define MAX_CAMERA_STREAM 8
-#define MAX_QUERY_TIMES ( 20 )
+/** @brief The QCNode Camera Version */
+#define QCNODE_CAMERA_VERSION_MAJOR 2U
+#define QCNODE_CAMERA_VERSION_MINOR 0U
+#define QCNODE_CAMERA_VERSION_PATCH 1U
+
+#define QCNODE_CAMERA_VERSION                                                                      \
+    ( ( QCNODE_CAMERA_VERSION_MAJOR << 16U ) | ( QCNODE_CAMERA_VERSION_MINOR << 8U ) |             \
+      QCNODE_CAMERA_VERSION_PATCH )
+
+/** @brief The maximum stream number of QCNode Camera */
+#define QCNODE_CAMERA_MAX_STREAM_NUM 8
 
 /**
  * @brief Represents the Camera implementation used by NodeCamera
@@ -84,7 +92,7 @@ public:
      *              "bufCnt": "Buffer count set to camera, type: uint32_t",
      *              "width": "Camera frame width, type: uint32_t",
      *              "height": "Camera frame height, type: uint32_t",
-     *              "format": "Camera frame format, type: string, options: [""nv12", nv12_ubwc",
+     *              "format": "Camera frame format, type: string, options: ["nv12", "nv12_ubwc",
      *                        "uyvy", "rgb", "bgr", "p010", "tp10_ubwc"]",
      *              "submitRequestPattern": "Buffer submit request pattern, type: uint32_t"}
      *         ],

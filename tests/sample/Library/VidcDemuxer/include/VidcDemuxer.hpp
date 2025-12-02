@@ -1,7 +1,6 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-
 #ifndef QC_SAMPLE_VIDC_DEMUXER_HPP
 #define QC_SAMPLE_VIDC_DEMUXER_HPP
 
@@ -63,7 +62,7 @@ public:
     VidcDemuxer();
     ~VidcDemuxer();
 
-    QCStatus_e Init( VidcDemuxer_Config_t *pConfig );
+    QCStatus_e Init( const VidcDemuxer_Config_t *pConfig );
     QCStatus_e DeInit();
     QCStatus_e GetFrame( QCBufferDescriptorBase_t &bufDesc, VidcDemuxer_FrameInfo_t &frameInfo );
     QCStatus_e GetVideoInfo( VidcDemuxer_VideoInfo_t &videoInfo );

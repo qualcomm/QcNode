@@ -1,7 +1,6 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-
 #include "QC/sample/SampleC2C.hpp"
 
 #define C2C_MAX_PIO_MSG_SIZE 256

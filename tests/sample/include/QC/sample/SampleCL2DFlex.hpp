@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-
 #ifndef QC_SAMPLE_CL2DFLEX_HPP
 #define QC_SAMPLE_CL2DFLEX_HPP
 
@@ -45,6 +44,11 @@ public:
     /// @brief deinitialize the CL2DFlex
     /// @return QC_STATUS_OK on success, others on failure
     QCStatus_e Deinit();
+
+    /**
+     * @brief Retrieves the version identifier of the Node CL2DFlex.
+     */
+    const uint32_t GetVersion() const;
 
 private:
     QCStatus_e ParseConfig( SampleConfig_t &config );

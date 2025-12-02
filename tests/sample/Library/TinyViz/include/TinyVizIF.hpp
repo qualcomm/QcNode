@@ -1,7 +1,6 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-
 #ifndef QC_SAMPLE_TINYVIZ_IF_HPP
 #define QC_SAMPLE_TINYVIZ_IF_HPP
 

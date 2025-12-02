@@ -1,7 +1,6 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-
 #include "QC/Node/Remap.hpp"
 #include "RemapImpl.hpp"
 #include <unistd.h>
@@ -206,7 +205,11 @@ QCStatus_e RemapConfig::VerifyAndSet( const std::string config, std::string &err
 const std::string &RemapConfig::GetOptions()
 {
     QCStatus_e status = QC_STATUS_OK;
-    // empty function for Remap node
+
+    DataTree dt;
+    dt.Set<uint32_t>( "version", QCNODE_REMAP_VERSION );
+    m_options = dt.Dump();
+
     return m_options;
 }
 

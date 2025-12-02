@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-
 #ifndef _QC_SAMPLE_PROFILER_HPP_
 #define _QC_SAMPLE_PROFILER_HPP_
 
@@ -42,11 +41,11 @@ namespace sample
 
 #define PROFILER_GET_MS( end, begin )                                                              \
     ( (double) std::chrono::duration_cast<std::chrono::microseconds>( end - begin ).count() /      \
-      1000.d )
+      1000.0 )
 
 #define PROFILER_GET_SECONDS( end, begin )                                                         \
     ( (double) std::chrono::duration_cast<std::chrono::milliseconds>( end - begin ).count() /      \
-      1000.d )
+      1000.0 )
 
 #ifndef PROFILER_SHOW_PERIOD_SECONDS
 #define PROFILER_SHOW_PERIOD_SECONDS 5

@@ -1,7 +1,6 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-
 #include "VidcDemuxer.hpp"
 #include <filesource.h>
 #include <malloc.h>
@@ -17,7 +16,7 @@ VidcDemuxer::VidcDemuxer() : m_fileSource( FileSourceCallback, this, false ) {}
 
 VidcDemuxer::~VidcDemuxer() {}
 
-QCStatus_e VidcDemuxer::Init( VidcDemuxer_Config_t *pConfig )
+QCStatus_e VidcDemuxer::Init( const VidcDemuxer_Config_t *pConfig )
 {
     QCStatus_e ret = QC_STATUS_OK;
 

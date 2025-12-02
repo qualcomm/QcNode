@@ -1,7 +1,6 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-
 #include "QC/Infras/Memory/ImageDescriptor.hpp"
 #include "QC/Infras/Log/Logger.hpp"
 
@@ -164,7 +163,7 @@ QCStatus_e ImageDescriptor::ImageToTensor( TensorDescriptor_t &luma,
         luma.dims[2] = this->width;
         luma.dims[3] = 1;
         luma.validSize = static_cast<size_t>( this->height * this->width *
-                                               s_qcFormatToBytesPerPixel[this->format] );
+                                              s_qcFormatToBytesPerPixel[this->format] );
 
         chroma = *this;
         chroma.offset = this->offset + this->planeBufSize[0];
@@ -183,7 +182,7 @@ QCStatus_e ImageDescriptor::ImageToTensor( TensorDescriptor_t &luma,
         chroma.dims[2] = this->width / 2;
         chroma.dims[3] = 2;
         chroma.validSize = static_cast<size_t>( this->height * this->width *
-                                                 s_qcFormatToBytesPerPixel[this->format] / 2 );
+                                                s_qcFormatToBytesPerPixel[this->format] / 2 );
     }
 
     return status;
@@ -233,31 +232,47 @@ QCStatus_e ImageDescriptor::GetImageDesc( ImageDescriptor &imageDesc, uint32_t b
 
 ImageDescriptor &ImageDescriptor::operator=( const BufferDescriptor &other )
 {
+    BufferDescriptor::operator=( other );
+    this->type = QC_BUFFER_TYPE_IMAGE;
+    return *this;
+}
+
+ImageDescriptor &ImageDescriptor::operator=( const ImageDescriptor &other )
+{
     if ( this != &other )
     {
-        this->name = other.name;
-        this->pBuf = other.pBuf;
-        this->size = other.size;
+        BufferDescriptor::operator=( other );
         this->type = QC_BUFFER_TYPE_IMAGE;
-        this->dmaHandle = other.dmaHandle;
-        this->validSize = other.validSize;
-        this->offset = other.offset;
-        this->id = other.id;
-        this->pid = other.pid;
-        this->allocatorType = other.allocatorType;
-        this->cache = other.cache;
-        const ImageDescriptor_t *pImage = dynamic_cast<const ImageDescriptor_t *>( &other );
-        if ( pImage )
+        this->format = other.format;
+        this->batchSize = other.batchSize;
+        this->width = other.width;
+        this->height = other.height;
+        uint32_t numPlanes = std::min( other.numPlanes, (uint32_t) QC_NUM_IMAGE_PLANES );
+        std::copy( other.stride, other.stride + numPlanes, this->stride );
+        std::copy( other.actualHeight, other.actualHeight + numPlanes, this->actualHeight );
+        std::copy( other.planeBufSize, other.planeBufSize + numPlanes, this->planeBufSize );
+        this->numPlanes = numPlanes;
+    }
+    return *this;
+}
+
+ImageDescriptor &ImageDescriptor::operator=( const QCBufferDescriptorBase_t &other )
+{
+    if ( this != &other )
+    {
+        const ImageDescriptor_t *pImageDesc = static_cast<const ImageDescriptor_t *>( &other );
+        const BufferDescriptor_t *pBufDesc = static_cast<const BufferDescriptor_t *>( &other );
+        if ( nullptr != pImageDesc )
         {
-            this->format = pImage->format;
-            this->batchSize = pImage->batchSize;
-            this->width = pImage->width;
-            this->height = pImage->height;
-            uint32_t numPlanes = std::min( pImage->numPlanes, (uint32_t) QC_NUM_IMAGE_PLANES );
-            std::copy( pImage->stride, pImage->stride + numPlanes, this->stride );
-            std::copy( pImage->actualHeight, pImage->actualHeight + numPlanes, this->actualHeight );
-            std::copy( pImage->planeBufSize, pImage->planeBufSize + numPlanes, this->planeBufSize );
-            this->numPlanes = pImage->numPlanes;
+            ImageDescriptor::operator=( *pImageDesc );
+        }
+        else if ( nullptr != pBufDesc )
+        {
+            ImageDescriptor::operator=( *pBufDesc );
+        }
+        else
+        {
+            BufferDescriptor::operator=( other );
         }
     }
     return *this;

@@ -1,7 +1,6 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-
 #include <cstring>
 #include <stdint.h>
 #include <thread>
@@ -119,7 +118,7 @@ CameraImpl::~CameraImpl()
         QC_ERROR( "g_nCamInitRefCount not greater than 0, unexpected" );
     }
 
-    for ( uint32_t i = 0; i < MAX_CAMERA_STREAM; i++ )
+    for ( uint32_t i = 0; i < QCNODE_CAMERA_MAX_STREAM_NUM; i++ )
     {
         std::queue<uint32_t> empty;
         if ( false == m_freeBufIdxQueue[i].empty() )
@@ -140,6 +139,19 @@ CameraImpl::Initialize( QCNodeEventCallBack_t callback,
     uint32_t param = 0;
     bool isQCarCamera = false;
     CameraInputs_t camInputsInfo;
+
+    QC_INFO( "Camera node version: %u.%u.%u", QCNODE_CAMERA_VERSION_MAJOR,
+             QCNODE_CAMERA_VERSION_MINOR, QCNODE_CAMERA_VERSION_PATCH );
+
+    QC_TRACE_INIT( [&]() {
+        std::ostringstream oss;
+        oss << "{";
+        oss << "\"name\": \"" << m_nodeId.name << "\", ";
+        oss << "\"processor\": \"" << "camera" << "\"";
+        oss << "}";
+        return oss.str();
+    }() );
+    QC_TRACE_BEGIN( "Init", {} );
 
     if ( QC_OBJECT_STATE_INITIAL != m_state )
     {
@@ -178,12 +190,12 @@ CameraImpl::Initialize( QCNodeEventCallBack_t callback,
         m_bRequestPatternMode = false;
         if ( ( true == m_bRequestMode ) && ( m_numStream > 1 ) )
         {
-            m_refStreamId = MAX_CAMERA_STREAM;
+            m_refStreamId = QCNODE_CAMERA_MAX_STREAM_NUM;
             for ( uint32_t i = 0; i < m_numStream; i++ )
             {
                 if ( 0 == m_streamConfigs[i].submitRequestPattern )
                 {
-                    if ( MAX_CAMERA_STREAM == m_refStreamId )
+                    if ( QCNODE_CAMERA_MAX_STREAM_NUM == m_refStreamId )
                     {
                         /* the first stream with 0 pattern acting as reference stream */
                         m_refStreamId = m_streamConfigs[i].streamId;
@@ -201,7 +213,7 @@ CameraImpl::Initialize( QCNodeEventCallBack_t callback,
 
             if ( true == m_bRequestPatternMode )
             {
-                if ( MAX_CAMERA_STREAM == m_refStreamId )
+                if ( QCNODE_CAMERA_MAX_STREAM_NUM == m_refStreamId )
                 {
                     ret = QC_STATUS_BAD_ARGUMENTS;
                     QC_ERROR( "Need at least 1 stream with 0 submitRequestPattern" );
@@ -431,6 +443,8 @@ CameraImpl::Initialize( QCNodeEventCallBack_t callback,
         }
     }
 
+    QC_TRACE_END( "Init", {} );
+
     return ret;
 }
 
@@ -439,6 +453,8 @@ QCStatus_e CameraImpl::Start()
     QCStatus_e ret = QC_STATUS_OK;
     QCarCamRet_e status = QCARCAM_RET_OK;
     bool bStartOK = false;
+
+    QC_TRACE_BEGIN( "Start", {} );
 
     if ( QC_OBJECT_STATE_READY != m_state )
     {
@@ -482,6 +498,8 @@ QCStatus_e CameraImpl::Start()
         }
     }
 
+    QC_TRACE_END( "Start", {} );
+
     return ret;
 }
 
@@ -490,13 +508,22 @@ QCStatus_e CameraImpl::ProcessFrameDescriptor( QCFrameDescriptorNodeIfs &frameDe
     QCStatus_e ret = QC_STATUS_OK;
 
     QCBufferDescriptorBase_t &bufDesc = frameDesc.GetBuffer( 0 );
-    const CameraFrameDescriptor_t *pCamFrameDesc =
-            dynamic_cast<const CameraFrameDescriptor_t *>( &bufDesc );
+    CameraFrameDescriptor_t *pCamFrameDesc = dynamic_cast<CameraFrameDescriptor_t *>( &bufDesc );
 
+    uint64_t streamId = 0;
+    uint64_t frameId = 0;
     if ( nullptr == pCamFrameDesc )
     {
         ret = QC_STATUS_INVALID_BUF;
     }
+    else
+    {
+        streamId = pCamFrameDesc->streamId;
+        frameId = pCamFrameDesc->id;
+    }
+
+    QC_TRACE_BEGIN( "Execute", { QCNodeTraceArg( "streamId", streamId ),
+                                 QCNodeTraceArg( "frameId", frameId ) } );
 
     if ( QC_STATUS_OK == ret )
     {
@@ -515,6 +542,9 @@ QCStatus_e CameraImpl::ProcessFrameDescriptor( QCFrameDescriptorNodeIfs &frameDe
         QC_ERROR( "Failed to process camera frame" );
     }
 
+    QC_TRACE_END( "Execute", { QCNodeTraceArg( "streamId", streamId ),
+                               QCNodeTraceArg( "frameId", frameId ) } );
+
     return ret;
 }
 
@@ -522,6 +552,8 @@ QCStatus_e CameraImpl::Stop()
 {
     QCStatus_e ret = QC_STATUS_OK;
     QCarCamRet_e status = QCARCAM_RET_OK;
+
+    QC_TRACE_BEGIN( "Stop", {} );
 
     if ( QC_OBJECT_STATE_RUNNING == m_state )
     {
@@ -546,6 +578,8 @@ QCStatus_e CameraImpl::Stop()
         ret = QC_STATUS_BAD_STATE;
     }
 
+    QC_TRACE_END( "Stop", {} );
+
     return ret;
 }
 
@@ -553,6 +587,8 @@ QCStatus_e CameraImpl::DeInitialize()
 {
     QCStatus_e ret = QC_STATUS_OK;
     QCarCamRet_e status = QCARCAM_RET_OK;
+
+    QC_TRACE_BEGIN( "DeInit", {} );
 
     if ( QC_OBJECT_STATE_READY != m_state )
     {
@@ -607,6 +643,8 @@ QCStatus_e CameraImpl::DeInitialize()
             }
         }
     }
+
+    QC_TRACE_END( "DeInit", {} );
 
     return ret;
 }
@@ -1326,7 +1364,7 @@ QCStatus_e CameraImpl::ValidateConfig( const CameraImplConfig_t *pConfig )
 
     if ( QC_STATUS_OK == ret )
     {
-        if ( ( pConfig->numStream > MAX_CAMERA_STREAM ) || ( 0 == pConfig->numStream ) )
+        if ( ( pConfig->numStream > QCNODE_CAMERA_MAX_STREAM_NUM ) || ( 0 == pConfig->numStream ) )
         {
             ret = QC_STATUS_BAD_ARGUMENTS;
             QC_ERROR( "Invalid numStream: %u", pConfig->numStream );
@@ -1346,7 +1384,7 @@ QCStatus_e CameraImpl::ValidateConfig( const CameraImplConfig_t *pConfig )
     {
         for ( uint32_t i = 0; i < pConfig->numStream; i++ )
         {
-            if ( pConfig->streamConfigs[i].streamId >= MAX_CAMERA_STREAM )
+            if ( pConfig->streamConfigs[i].streamId >= QCNODE_CAMERA_MAX_STREAM_NUM )
             {
                 ret = QC_STATUS_BAD_ARGUMENTS;
                 QC_ERROR( "Invalid streamId: %u for stream %u", pConfig->streamConfigs[i].streamId,
@@ -1375,7 +1413,7 @@ void CameraImpl::FrameCallback( CameraFrameDescriptor_t *pFrame, void *pPrivData
 void CameraImpl::FrameCallback( CameraFrameDescriptor_t *pFrame )
 {
     QCStatus_e ret = QC_STATUS_OK;
-    QCSharedFrameDescriptorNode frameDesc( 1 );
+    NodeFrameDescriptor frameDesc( 1 );
 
     if ( nullptr == m_callback )
     {
@@ -1392,8 +1430,12 @@ void CameraImpl::FrameCallback( CameraFrameDescriptor_t *pFrame )
     {
         if ( QC_OBJECT_STATE_RUNNING == m_state )
         {
+            QC_TRACE_EVENT( "FrameReady",
+                            { QCNodeTraceArg( "streamId", pFrame->streamId ),
+                              QCNodeTraceArg( "frameId", m_frameId[pFrame->streamId] ) } );
             QCNodeEventInfo_t info( frameDesc, m_nodeId, QC_STATUS_OK,
                                     static_cast<QCObjectState_e>( m_state ) );
+            pFrame->id = m_frameId[pFrame->streamId]++;
             m_callback( info );
         }
     }
@@ -1413,7 +1455,7 @@ void CameraImpl::EventCallback( const uint32_t eventId, const void *pPayload, vo
 void CameraImpl::EventCallback( const uint32_t eventId, const void *pPayload )
 {
     QCStatus_e ret = QC_STATUS_OK;
-    QCSharedFrameDescriptorNode frameDesc( 1 );
+    NodeFrameDescriptor frameDesc( 1 );
     QCBufferDescriptorBase_t eventDesc;
     CameraImpEvent_t event;
 

@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-
 #include "AEEStdErr.h"
 #include "FadasIface.h"
 #include "HAP_farf.h"

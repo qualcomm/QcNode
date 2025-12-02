@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-
 #include "QC/sample/SampleDataReader.hpp"
 #include <chrono>
 #include <time.h>
@@ -135,10 +134,10 @@ QCStatus_e SampleDataReader::ParseConfig( SampleConfig_t &config )
         m_configs.push_back( cfg );
     }
 
-    m_fps = Get( config, "fps", 30 );
-    if ( 0 == m_fps )
+    m_fps = Get( config, "fps", 30.0f );
+    if ( m_fps <= 0.0f )
     {
-        QC_ERROR( "invalid fps = %d\n", m_fps );
+        QC_ERROR( "invalid fps = %f\n", m_fps );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
@@ -422,10 +421,10 @@ void SampleDataReader::ThreadMain()
         uint64_t elapsedMs =
                 std::chrono::duration_cast<std::chrono::milliseconds>( end - start ).count();
         QC_DEBUG( "Loading frame %" PRIu64 " cost %" PRIu64 "ms", frameId, elapsedMs );
-        if ( ( 1000 / m_fps ) > elapsedMs )
+        if ( static_cast<uint64_t>( 1000 / m_fps ) > elapsedMs )
         {
-            std::this_thread::sleep_for(
-                    std::chrono::milliseconds( ( 1000 / m_fps ) - elapsedMs ) );
+            std::this_thread::sleep_for( std::chrono::milliseconds(
+                    static_cast<uint64_t>( 1000 / m_fps ) - elapsedMs ) );
         }
     }
 }

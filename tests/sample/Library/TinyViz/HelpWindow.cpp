@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-
 #include <SDL2/SDL_opengl.h>
 #include <algorithm>   // for_each
 

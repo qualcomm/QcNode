@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-
 #ifndef QC_TYPES_HPP
 #define QC_TYPES_HPP
 

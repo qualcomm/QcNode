@@ -1,7 +1,6 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-
 #ifndef _QC_SAMPLE_PLRPRE_HPP_
 #define _QC_SAMPLE_PLRPRE_HPP_
 
@@ -42,12 +41,18 @@ public:
     /// @return QC_STATUS_OK on success, others on failure
     QCStatus_e Deinit();
 
+    /**
+     * @brief Retrieves the version identifier of the Node Voxelization.
+     */
+    const uint32_t GetVersion() const;
+
 private:
     void ThreadMain();
     QCStatus_e ParseConfig( SampleConfig_t &config );
 
 private:
     QC::Node::Voxelization m_voxel;
+    DataTree m_voxelConfig;
     DataTree m_config;
     DataTree m_dataTree;
     QCProcessorType_e m_processor;
@@ -58,8 +63,14 @@ private:
     std::string m_outputTopicName;
 
     std::thread m_thread;
-    SharedBufferPool m_coordsPool;
-    SharedBufferPool m_featuresPool;
+
+    SharedBufferPool m_outputPlrBufferPool;
+    SharedBufferPool m_outputFeatureBufferPool;
+    TensorDescriptor_t m_plrPointsTensor;
+    TensorDescriptor_t m_coordToPlrIdxTensor;
+
+    BufferManager *m_pBufMgr = nullptr;
+
     bool m_stop;
 
     DataSubscriber<DataFrames_t> m_sub;

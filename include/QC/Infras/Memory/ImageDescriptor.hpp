@@ -1,7 +1,6 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-
 #ifndef QC_IMAGE_DESCRIPTOR_HPP
 #define QC_IMAGE_DESCRIPTOR_HPP
 
@@ -191,7 +190,7 @@ public:
  * @param pid The process ID of the buffer.
  * @param validSize The size of valid data currently stored in the buffer.
  * @param offset The offset of the valid buffer within the shared buffer.
- * @param id The unique ID assigned by the buffer manager.
+ * @param id A identifier assigned by the user application to distinguish the buffer.
  *
  * New Members:
  * @param format The image format.
@@ -207,7 +206,21 @@ public:
 typedef struct ImageDescriptor : public BufferDescriptor
 {
 public:
-    ImageDescriptor() : BufferDescriptor() {}
+    ImageDescriptor()
+        : BufferDescriptor(),
+          format( QC_IMAGE_FORMAT_MAX ),
+          batchSize( 0 ),
+          width( 0 ),
+          height( 0 ),
+          numPlanes( 0 )
+    {
+        for ( unsigned int i = 0; i < QC_NUM_IMAGE_PLANES; i++ )
+        {
+            stride[i] = 0;
+            actualHeight[i] = 0;
+            planeBufSize[i] = 0;
+        }
+    }
 
     /**
      * @brief Sets up the image descriptor from another buffer descriptor object.
@@ -215,7 +228,8 @@ public:
      * @return The updated image descriptor object.
      */
     ImageDescriptor &operator=( const BufferDescriptor &other );
-
+    ImageDescriptor &operator=( const ImageDescriptor &other );
+    ImageDescriptor &operator=( const QCBufferDescriptorBase_t &other );
 
     /**
      * @brief Initializes the image descriptor using another shared buffer object.
@@ -263,6 +277,7 @@ public:
     uint32_t actualHeight[QC_NUM_IMAGE_PLANES];
     uint32_t planeBufSize[QC_NUM_IMAGE_PLANES];
     uint32_t numPlanes;
+
 } ImageDescriptor_t;
 
 }   // namespace Memory

@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-
 #ifndef QC_SAMPLE_NODE_OPTICALFLOW_HPP
 #define QC_SAMPLE_NODE_OPTICALFLOW_HPP
 
@@ -43,6 +42,11 @@ public:
     /// @brief deinitialize the OpticalFlow
     /// @return QC_STATUS_OK on success, others on failure
     QCStatus_e Deinit();
+
+    /**
+     * @brief Retrieves the version identifier of the Node OpticalFlow.
+     */
+    const uint32_t GetVersion() const;
 
 private:
     QCStatus_e ParseConfig( SampleConfig_t &config );

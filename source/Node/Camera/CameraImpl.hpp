@@ -1,15 +1,15 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-
 #ifndef QC_NODE_CAMERA_IMPL_HPP
 #define QC_NODE_CAMERA_IMPL_HPP
 
 #include <mutex>
 #include <queue>
 
-#include "QC/Infras/Memory/SharedBuffer.hpp"
+#include "QC/Infras/NodeTrace/NodeTrace.hpp"
 #include "QC/Node/Camera.hpp"
+
 #if defined( __QNXNTO__ )
 #include "QC/Infras/Memory/PMEMUtils.hpp"
 #else
@@ -22,6 +22,8 @@ namespace Node
 {
 
 using namespace QC::Memory;
+
+#define MAX_QUERY_TIMES 20
 
 /**
  * @brief Camera Inputs structure
@@ -118,7 +120,7 @@ typedef struct Camera_Config : public QCNodeConfigBase_t
     bool bRequestMode;
     bool bPrimary;
     bool bRecovery;
-    CameraStreamConfig_t streamConfigs[MAX_CAMERA_STREAM];
+    CameraStreamConfig_t streamConfigs[QCNODE_CAMERA_MAX_STREAM_NUM];
 } CameraImplConfig_t;
 
 // TODO
@@ -259,23 +261,25 @@ private:
     uint32_t m_requestId;
     uint32_t m_clientId;
     uint32_t m_maxBufCnt;
-    uint32_t m_refStreamId = MAX_CAMERA_STREAM;
-    uint32_t m_submitRequestPattern[MAX_CAMERA_STREAM];
+    uint32_t m_refStreamId = QCNODE_CAMERA_MAX_STREAM_NUM;
+    uint32_t m_submitRequestPattern[QCNODE_CAMERA_MAX_STREAM_NUM];
+    uint64_t m_frameId[QCNODE_CAMERA_MAX_STREAM_NUM] = { 0 };
 
     std::mutex m_mutex;
-    std::queue<uint32_t> m_freeBufIdxQueue[MAX_CAMERA_STREAM];
+    std::queue<uint32_t> m_freeBufIdxQueue[QCNODE_CAMERA_MAX_STREAM_NUM];
 
-    CameraStreamConfig_t m_streamConfigs[MAX_CAMERA_STREAM];
-    CameraFrameDescriptor_t *m_pCameraFrames[MAX_CAMERA_STREAM];
+    CameraStreamConfig_t m_streamConfigs[QCNODE_CAMERA_MAX_STREAM_NUM];
+    CameraFrameDescriptor_t *m_pCameraFrames[QCNODE_CAMERA_MAX_STREAM_NUM];
 
-    QCarCamBuffer_t *m_pQcarcamBuffers[MAX_CAMERA_STREAM];
-    QCarCamBufferList_t m_qcarcamBuffers[MAX_CAMERA_STREAM];
+    QCarCamBuffer_t *m_pQcarcamBuffers[QCNODE_CAMERA_MAX_STREAM_NUM];
+    QCarCamBufferList_t m_qcarcamBuffers[QCNODE_CAMERA_MAX_STREAM_NUM];
 
     QCarCamHndl_t m_QcarCamHndl;
     QCNodeEventCallBack_t m_callback = nullptr;
+
+    QC_DECLARE_NODETRACE();
 };
 
 }   // namespace Node
 }   // namespace QC
 #endif   // QC_NODE_CAMERA_IMPL_HPP
-

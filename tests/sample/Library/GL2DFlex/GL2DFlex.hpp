@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-
 #ifndef QC_GL2DFLEX_HPP
 #define QC_GL2DFLEX_HPP
 

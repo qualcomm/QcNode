@@ -40,6 +40,10 @@ target_include_directories( QCNodeQNN PUBLIC
     ${QNN_SDK_ROOT}/include/QNN
 )
 
+if( ENABLE_GCOV OR ENABLE_CTC )
+target_compile_definitions( QCNodeQNN PRIVATE DISABLE_QC_LOG )
+endif()
+
 target_link_libraries( QCNodeQNN PUBLIC ${TARGET_LIBRARIES} )
 
 install( FILES ${QC_NODE_QNN_HEADERS} DESTINATION include/QC/Node )

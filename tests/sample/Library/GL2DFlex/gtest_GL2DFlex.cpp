@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-
 #include "gtest/gtest.h"
 #include <stdio.h>
 

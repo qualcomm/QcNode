@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-
 #include "QC/Infras/Log/Logger.hpp"
 #include <syslog.h>
 

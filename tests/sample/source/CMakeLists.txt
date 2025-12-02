@@ -26,9 +26,15 @@ set( QCNODE_SAMPLE_SOURCES
 
 if ( ENABLE_EVA )
   list( APPEND QCNODE_SAMPLE_SOURCES
-            SampleOpticalFlow.cpp
+           SampleOpticalFlow.cpp
+           SampleOpticalFlowViz.cpp
+           SampleDepthFromStereo.cpp
+           SampleDepthFromStereoViz.cpp )
+elseif ( ENABLE_EVA_AUTO )
+  list( APPEND QCNODE_SAMPLE_SOURCES
+            SampleOpticalFlowEvaAuto.cpp
             SampleOpticalFlowViz.cpp
-            SampleDepthFromStereo.cpp
+            SampleDepthFromStereoEvaAuto.cpp
             SampleDepthFromStereoViz.cpp )
 endif()
 
@@ -56,6 +62,11 @@ endif()
 
 set( TARGET_LIBRARIES QCNode SharedRing BufferManager )
 
+if ( ENABLE_GENIE )
+  list( APPEND QCNODE_SAMPLE_SOURCES SampleGenie.cpp )
+  list( APPEND TARGET_LIBRARIES Genie )
+endif()
+
 if( NOT TARGET TinyViz )
   message(STATUS "build sample without TinyViz")
 else()
@@ -72,6 +83,10 @@ list( APPEND TARGET_LIBRARIES SampleGL2DFlex )
 
 if ( ENABLE_FADAS )
   list( APPEND TARGET_LIBRARIES SamplePostCenterPoint )
+endif()
+
+if ( ENABLE_EVA_AUTO )
+list( APPEND TARGET_LIBRARIES SampleDepthFromStereo SampleOpticalFlow )
 endif()
 
 if( DEFINED ENV{QNN_SDK_ROOT} )
@@ -101,6 +116,11 @@ endif()
 if ( ENABLE_C2C )
   list( APPEND QCNODE_SAMPLE_SOURCES SampleC2C.cpp )
   list( APPEND TARGET_LIBRARIES c2c )
+endif()
+
+if ( ENABLE_RESMON )
+  list( APPEND QCNODE_SAMPLE_SOURCES SampleResMon.cpp )
+  list( APPEND TARGET_LIBRARIES ResMonitor )
 endif()
 
 add_library( QCNodeSample SHARED ${QCNODE_SAMPLE_SOURCES} )

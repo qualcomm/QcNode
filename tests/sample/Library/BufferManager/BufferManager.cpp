@@ -1,7 +1,6 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-
 #include "QC/sample/BufferManager.hpp"
 #include "QC/Infras/Memory/HeapAllocator.hpp"
 #include "QC/Infras/Memory/ManagerLocal.hpp"
@@ -10,7 +9,6 @@
 #else
 #include "QC/Infras/Memory/DMABUFFAllocator.hpp"
 #endif
-#include "QC/Infras/Memory/SharedBuffer.hpp"
 #include <functional>
 #include <memory>
 #include <unistd.h>

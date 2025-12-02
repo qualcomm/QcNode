@@ -1,7 +1,6 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-
 #include "QC/Infras/Memory/TensorDescriptor.hpp"
 #include "QC/Infras/Log/Logger.hpp"
 
@@ -12,27 +11,42 @@ namespace Memory
 
 TensorDescriptor &TensorDescriptor::operator=( const BufferDescriptor &other )
 {
+    BufferDescriptor::operator=( other );
+    this->type = QC_BUFFER_TYPE_TENSOR;
+    return *this;
+}
+
+TensorDescriptor &TensorDescriptor::operator=( const TensorDescriptor &other )
+{
     if ( this != &other )
     {
-        this->name = other.name;
-        this->pBuf = other.pBuf;
-        this->size = other.size;
+        BufferDescriptor::operator=( other );
         this->type = QC_BUFFER_TYPE_TENSOR;
-        this->dmaHandle = other.dmaHandle;
-        this->validSize = other.validSize;
-        this->offset = other.offset;
-        this->id = other.id;
-        this->pid = other.pid;
-        this->allocatorType = other.allocatorType;
-        this->cache = other.cache;
+        this->tensorType = other.tensorType;
+        uint32_t numDims = std::min( other.numDims, (uint32_t) QC_NUM_TENSOR_DIMS );
+        std::copy( other.dims, other.dims + numDims, this->dims );
+        this->numDims = numDims;
+    }
+    return *this;
+}
 
-        const TensorDescriptor_t *pTensor = dynamic_cast<const TensorDescriptor_t *>( &other );
-        if ( nullptr != pTensor )
+TensorDescriptor &TensorDescriptor::operator=( const QCBufferDescriptorBase_t &other )
+{
+    if ( this != &other )
+    {
+        const TensorDescriptor_t *pTensorDesc = static_cast<const TensorDescriptor_t *>( &other );
+        const BufferDescriptor_t *pBufDesc = static_cast<const BufferDescriptor_t *>( &other );
+        if ( nullptr != pTensorDesc )
         {
-            this->tensorType = pTensor->tensorType;
-            uint32_t numDims = std::min( pTensor->numDims, (uint32_t) QC_NUM_TENSOR_DIMS );
-            std::copy( pTensor->dims, pTensor->dims + numDims, this->dims );
-            this->numDims = pTensor->numDims;
+            TensorDescriptor::operator=( *pTensorDesc );
+        }
+        else if ( nullptr != pBufDesc )
+        {
+            TensorDescriptor::operator=( *pBufDesc );
+        }
+        else
+        {
+            BufferDescriptor::operator=( other );
         }
     }
     return *this;

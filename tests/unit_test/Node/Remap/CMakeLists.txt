@@ -6,5 +6,5 @@ set( HEADERS_DIR ${PROJECT_SOURCE_DIR}/include
 )
 add_executable( gtest_NodeRemap gtest_NodeRemap.cpp )
 target_include_directories( gtest_NodeRemap PUBLIC ${HEADERS_DIR})
-target_link_libraries( gtest_NodeRemap gtest QCNodeComponentCommon QCNode QCNodeTestUtils BufferManager)
+target_link_libraries( gtest_NodeRemap gtest QCNode QCNodeTestUtils BufferManager)
 install(TARGETS gtest_NodeRemap DESTINATION bin)

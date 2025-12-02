@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-
 #include "QC/sample/SampleGL2DFlex.hpp"
 
 
@@ -210,9 +209,6 @@ void SampleGL2DFlex::ThreadMain()
 
                 PROFILER_BEGIN();
                 TRACE_BEGIN( frames.FrameId( 0 ) );
-
-                void *pOutputData = buffer->sharedBuffer.data();
-                memset( pOutputData, 0, buffer->sharedBuffer.size );
 
                 {
                     QCBufferDescriptorBase_t &bufDesc = buffer->GetBuffer();

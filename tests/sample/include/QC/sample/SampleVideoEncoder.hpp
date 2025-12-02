@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-
 #ifndef QC_SAMPLE_NODE_VIDEO_ENCODER_HPP
 #define QC_SAMPLE_NODE_VIDEO_ENCODER_HPP
 
@@ -16,7 +15,6 @@ namespace QC
 namespace sample
 {
 
-using namespace QC;
 using namespace QC::Node;
 
 /// @brief qcnode::sample::SampleVideoEncoder
@@ -46,10 +44,15 @@ public:
     /// @return QC_STATUS_OK on success, others on failure
     QCStatus_e Deinit();
 
+    /**
+     * @brief Retrieves the version identifier of the Node VideoEncoder.
+     */
+    const uint32_t GetVersion() const;
+
 private:
     QCStatus_e ParseConfig( SampleConfig_t &config );
     void ThreadMain();
-    void ThreadReleaseMain();
+    void ThreadProcMain();
 
     struct FrameInfo
     {
@@ -61,9 +64,10 @@ private:
     QC::Node::VideoEncoder m_encoder;
     DataTree m_config;
     DataTree m_dataTree;
+    QCNodeInit_t m_nodeCfg;
 
     std::thread m_thread;
-    std::thread m_threadRelease;
+    std::thread m_threadProc;
     bool m_stop = false;
 
     DataSubscriber<DataFrames_t> m_sub;
@@ -72,18 +76,31 @@ private:
     std::string m_inputTopicName;
     std::string m_outputTopicName;
 
+    SharedBufferPool m_frameBufferPools;
+
     std::mutex m_lock;
     std::map<uint64_t, DataFrame_t> m_camFrameMap;
     std::queue<FrameInfo> m_frameInfoQueue;
     std::queue<uint64_t> m_frameReleaseQueue;
+    std::queue<VideoFrameDescriptor_t> m_frameOutQueue;
     std::condition_variable m_condVar;
+
+    uint32_t m_width;
+    uint32_t m_height;
+    uint32_t m_poolSize;
+    QCImageFormat_e m_inFormat;  /**< uncompressed type */
+    QCImageFormat_e m_outFormat; /**< compressed type */
+    uint32_t m_numInputBufferReq;
+    uint32_t m_numOutputBufferReq;
+    uint32_t m_bitRate;
+    uint32_t m_frameRate;
+    bool m_bSyncFrameSeqHdr;
 
     void OnDoneCb( const QCNodeEventInfo_t &eventInfo );
 
-    void InFrameCallback( QCSharedVideoFrameDescriptor_t &inFrame,
+    void InFrameCallback( VideoFrameDescriptor &inFrame,
                           const QCNodeEventInfo_t &eventInfo );
-    void OutFrameCallback( QCSharedVideoFrameDescriptor_t &outFrame,
-                           const QCNodeEventInfo_t &eventInfo );
+    void OutFrameCallback( VideoFrameDescriptor &outFrame );
 
 };   // class SampleVideoEncoder
 

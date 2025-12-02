@@ -1,7 +1,6 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-
 #ifndef QC_NODE_MONITORING_IFS_HPP
 #define QC_NODE_MONITORING_IFS_HPP
 
@@ -37,10 +36,10 @@ public:
     virtual const QCNodeMonitoringBase_t &Get() = 0;
 
     // return Monitoring information maximal size in bytes
-    virtual inline uint32_t GetMaximalSize() = 0;
+    virtual uint32_t GetMaximalSize() = 0;
 
     // return Monitoring information currently configured data size in Bytes
-    virtual inline uint32_t GetCurrentSize() = 0;
+    virtual uint32_t GetCurrentSize() = 0;
 
     // place monitoring information in a provided pointer
     // buffer size variable is provided as input to indicate the maximal buffer size available for

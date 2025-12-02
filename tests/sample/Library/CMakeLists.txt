@@ -16,3 +16,12 @@ add_subdirectory(GL2DFlex)
 if ( ENABLE_FADAS )
   add_subdirectory(PostCenterPoint)
 endif()
+
+if ( ENABLE_EVA_AUTO )
+  add_subdirectory(OpticalFlow)
+  add_subdirectory(DepthFromStereo)
+endif()
+
+if ( ENABLE_RESMON )
+  add_subdirectory(ResMonitor)
+endif()

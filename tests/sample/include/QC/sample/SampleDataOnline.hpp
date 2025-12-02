@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-
 #ifndef QC_SAMPLE_DATA_ONLINE_HPP
 #define QC_SAMPLE_DATA_ONLINE_HPP
 

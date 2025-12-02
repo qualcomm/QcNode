@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-
 #include "QC/component/ComponentIF.hpp"
 #include <stdio.h>
 

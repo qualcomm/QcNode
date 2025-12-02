@@ -1,7 +1,6 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-
 #include "QC/Node/QNN.hpp"
 #include "QnnImpl.hpp"
 #include "QnnTypeMacros.hpp"
@@ -58,14 +57,7 @@ QnnConfig::ConvertTensorInfoListToJson( const std::vector<Qnn_Tensor_t> &infoLis
 QCStatus_e QnnConfig::VerifyStaticConfig( DataTree &dt, std::string &errors )
 {
     QCStatus_e status = QC_STATUS_OK;
-
     QCStatus_e status2;
-    std::string name = dt.Get<std::string>( "name", "" );
-    if ( "" == name )
-    {
-        errors += "the name is empty, ";
-        status = QC_STATUS_BAD_ARGUMENTS;
-    }
 
     std::string type = dt.Get<std::string>( "type", "QNN" );
     if ( "QNN" != type )
@@ -226,7 +218,7 @@ QCStatus_e QnnConfig::ParseStaticConfig( DataTree &dt, std::string &errors )
 {
     QCStatus_e status = QC_STATUS_OK;
 
-    QnnImplConfig_t &config = m_pQnnImpl->GetConifg();
+    QnnImplConfig_t &config = m_pQnnImpl->GetConfig();
 
     status = VerifyStaticConfig( dt, errors );
     if ( QC_STATUS_OK == status )
@@ -369,6 +361,8 @@ QCStatus_e QnnConfig::ParseStaticConfig( DataTree &dt, std::string &errors )
 
         config.bDeRegisterAllBuffersWhenStop =
                 dt.Get<bool>( "deRegisterAllBuffersWhenStop", false );
+        config.bWeightSharingEnabled = dt.Get<bool>( "weightSharingEnabled", false );
+        config.bUseExtendedUdma = dt.Get<bool>( "extendedUdma", false );
     }
 
     return status;
@@ -399,6 +393,11 @@ QCStatus_e QnnConfig::ApplyDynamicConfig( DataTree &dt, std::string &errors )
             QC_DEBUG( "%s perf OK", bEnablePerf ? "Enable" : "Disable" );
         }
     }
+    else
+    {
+        QC_ERROR( "only support dynamic enablePerf option" );
+        status = QC_STATUS_UNSUPPORTED;
+    }
 
     return status;
 }
@@ -407,7 +406,7 @@ QCStatus_e QnnConfig::VerifyAndSet( const std::string config, std::string &error
 {
     QCStatus_e status = QC_STATUS_OK;
 
-    status = NodeConfigIfs::VerifyAndSet( config, errors );
+    status = NodeConfigBase::VerifyAndSet( config, errors );
     if ( QC_STATUS_OK == status )
     {
         DataTree dt;
@@ -452,6 +451,7 @@ const std::string &QnnConfig::GetOptions()
             std::vector<DataTree> outputDts = ConvertTensorInfoListToJson( outputTensors );
             dt.Set( "model.inputs", inputDts );
             dt.Set( "model.outputs", outputDts );
+            dt.Set<uint32_t>( "version", QCNODE_QNN_VERSION );
             m_options = dt.Dump();
             m_bOptionsBuilt = true;
         }
@@ -466,7 +466,7 @@ const std::string &QnnConfig::GetOptions()
 
 const QCNodeConfigBase_t &QnnConfig::Get()
 {
-    return m_pQnnImpl->GetConifg();
+    return m_pQnnImpl->GetConfig();
 }
 
 }   // namespace Node

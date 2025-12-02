@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-
 #include "QC/Infras/Log/Logger.hpp"
 #include <stdlib.h>
 
@@ -85,23 +84,37 @@ QCStatus_e Logger::Init( const char *pName, Logger_Level_e level )
     return ret;
 }
 
-void Logger::Log( Logger_Level_e level, const char *pFormat, ... )
+void Logger::Log( Logger_Level_e level, const char *pFormat, ... ) const
 {
     va_list args;
 
-    if ( ( level >= m_level ) && ( nullptr != m_hHandle ) )
+    if ( level >= m_level )
     {
         va_start( args, pFormat );
-        m_logFnc( m_hHandle, level, pFormat, args );
+        if ( nullptr != m_hHandle )
+        {
+            m_logFnc( m_hHandle, level, pFormat, args );
+        }
+        else
+        {
+            (void) vprintf( pFormat, args );
+        }
         va_end( args );
     }
 }
 
-void Logger::Log( Logger_Level_e level, const char *pFormat, va_list args )
+void Logger::Log( Logger_Level_e level, const char *pFormat, va_list args ) const
 {
-    if ( ( level >= m_level ) && ( nullptr != m_hHandle ) )
+    if ( level >= m_level )
     {
-        m_logFnc( m_hHandle, level, pFormat, args );
+        if ( nullptr != m_hHandle )
+        {
+            m_logFnc( m_hHandle, level, pFormat, args );
+        }
+        else
+        {
+            (void) vprintf( pFormat, args );
+        }
     }
 }
 

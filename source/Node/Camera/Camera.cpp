@@ -1,7 +1,6 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-
 #include "QC/Node/Camera.hpp"
 #include "CameraImpl.hpp"
 
@@ -100,4 +99,3 @@ QCObjectState_e Camera::GetState()
 
 }   // namespace Node
 }   // namespace QC
-

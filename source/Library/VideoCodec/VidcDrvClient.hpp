@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-
 #ifndef QC_VIDC_DRV_CLIENT_HPP
 #define QC_VIDC_DRV_CLIENT_HPP
 
@@ -16,7 +15,8 @@
 #include <vidc_client.h>
 #endif
 
-#include "QC/component/ComponentIF.hpp"
+#include "QC/Infras/Memory/VideoFrameDescriptor.hpp"
+#include "QC/Node/NodeBase.hpp"
 #include <mutex>
 #include <queue>
 #include <sys/uio.h>
@@ -26,7 +26,7 @@ using std::string;
 
 namespace QC
 {
-namespace component
+namespace Node
 {
 
 typedef enum
@@ -54,26 +54,6 @@ typedef enum
     VIDEO_CODEC_START_INPUT,
     VIDEO_CODEC_START_ALL,
 } VideoCodec_StartType_e;
-
-/** @brief The VideoCodec Input Frame */
-typedef struct
-{
-    QCSharedBuffer_t sharedBuffer; /**< contains input buffer */
-    uint64_t timestampUs;          /**< frame data's timestamp, us */
-    uint64_t appMarkData; /**< frame data's mark data, this data will be copied to corresponding
-                               output buf. API won't touch this data, only copy it. */
-} VideoCodec_InputFrame_t;
-
-/** @brief The VideoCodec Output Frame */
-typedef struct
-{
-    QCSharedBuffer_t sharedBuffer; /**< contains output buffer */
-    uint64_t timestampUs;          /**< frame data's timestamp. */
-    uint64_t appMarkData;          /**< frame data's mark data, this data copied from corresponding
-                                        input buf. API won't touch this data, only copy it. */
-    uint32_t frameFlag; /**< indicate whether some error occurred during deccoding this frame. */
-    vidc_frame_type frameType; /**< indicate I/P/B/IDR frame, used by encoder. */
-} VideoCodec_OutputFrame_t;
 
 /** @brief This data type list the different VideoCodec Callback Event Type */
 typedef enum
@@ -103,14 +83,16 @@ typedef struct
 } VidcCodecMeta_t;
 
 /** @brief callback for input buffer done */
-typedef void ( *VideoCodec_InFrameCallback_t )( const VideoCodec_InputFrame_t *pInputBuf,
+typedef void ( *VideoCodec_InFrameCallback_t )( VideoFrameDescriptor &inFrameDesc,
                                                 void *pPrivData );
 /** @brief callback for output buffer done */
-typedef void ( *VideoCodec_OutFrameCallback_t )( const VideoCodec_OutputFrame_t *pOutputBuf,
+typedef void ( *VideoCodec_OutFrameCallback_t )( VideoFrameDescriptor &outFrameDesc,
                                                  void *pPrivData );
 /** @brief callback for event */
-typedef void ( *VideoCodec_EventCallback_t )( const VideoCodec_EventType_e eventId,
+typedef void ( *VideoCodec_EventCallback_t )( VideoCodec_EventType_e eventId,
                                               const void *pEvent, void *pPrivData );
+
+typedef struct VidcNodeBase_Config VidcNodeBase_Config_t;
 
 /** @brief Top level control for interfacing with vidc based driver */
 class VidcDrvClient
@@ -121,7 +103,8 @@ public:
     /** @brief Default destructor */
     ~VidcDrvClient() = default;
 
-    void Init( const char *pName, Logger_Level_e level, VideoEncDecType_e type );
+    void Init( const string &name, Logger_Level_e level, VideoEncDecType_e type,
+               const VidcNodeBase_Config_t &config);
 
     /**
      * @brief open driver and register callback
@@ -137,24 +120,47 @@ public:
 
     QCStatus_e InitDriver( const VidcCodecMeta_t &meta );
 
-    QCStatus_e GetDrvProperty( uint32_t id, uint32_t nPktSize, uint8_t *pPkt );
-    QCStatus_e SetDrvProperty( uint32_t id, uint32_t nPktSize, uint8_t *pPkt );
+    QCStatus_e GetDrvProperty( uint32_t id, uint32_t nPktSize, const uint8_t &pkt );
+    QCStatus_e SetDrvProperty( uint32_t id, uint32_t nPktSize, const uint8_t &pkt );
 
     QCStatus_e LoadResources();
     QCStatus_e ReleaseResources();
 
     QCStatus_e StartDriver( VideoCodec_StartType_e type );
 
-    QCStatus_e SetBuffer( VideoCodec_BufType_e bufferType, QCSharedBuffer_t *pBufList,
-                          int32_t bufCnt, int32_t bufSize );
+    /**
+     * @brief Inform the video driver of an externally allocated buffer address.
+     *        i.e register a buffer address with driver.
+     *        to be used only if an external allocator allocated this buffer.
+     * @note NegotiateBufferReq() should be called before to get the buffer requirements
+     *       from the driver.
+     * @note API type: Synchronous
+     */
+    QCStatus_e SetBuffer( VideoCodec_BufType_e bufferType,
+                          const std::vector<std::reference_wrapper<VideoFrameDescriptor_t>> &buffers );
 
-    QCStatus_e EmptyBuffer( const QCSharedBuffer_t *pInputBuffer, uint64_t timestampUs,
-                            uint64_t appMarkData );
+    /**
+     * @brief: Passing an input video buffer (frame) for processing.
+     * @note: API type: Asynchronous.
+     */
+    QCStatus_e EmptyBuffer( VideoFrameDescriptor &frameDesc );
 
-    QCStatus_e FillBuffer( const QCSharedBuffer_t *pOutputBuffer );
+    /**
+     * @brief: Provides the video driver with an unfilled output buffer to
+     *         "fill in" the processed video output frame.
+     *         This buffer would be added to driver's unfilled output buffers
+     *         queue and will later get used to place the processed output frame contents.
+     * @note API type: Asynchronous.
+     */
+    QCStatus_e FillBuffer( VideoFrameDescriptor &frameDesc );
 
-    QCStatus_e FreeBuffer( QCSharedBuffer_t *pBufList, int32_t bufCnt,
-                           VideoCodec_BufType_e bufferType );
+    /**
+    * @brief: Request freeing/de-registering of a single buffer.
+    *         Driver would de-register buffer address from driver buffer pool.
+    * @note:  API type: Synchronous.
+    */
+    QCStatus_e FreeBuffers( VideoCodec_BufType_e bufferType,
+                            const std::vector<std::reference_wrapper<VideoFrameDescriptor_t>> &buffers );
 
     QCStatus_e StopDecoder();
     QCStatus_e StopEncoder();
@@ -162,19 +168,18 @@ public:
     void CloseDriver();
 
     QCStatus_e SetDynamicMode( VideoCodec_BufType_e type, bool mode );
-    QCStatus_e NegotiateBufferReq( VideoCodec_BufType_e bufType, uint32_t &bufNum,
-                                   uint32_t &bufSize );
+    QCStatus_e NegotiateBufferReq( VideoCodec_BufType_e bufType, uint32_t &bufNum, uint32_t &bufSize );
     void PrintCodecConfig();
+
+    VideoEncDecType_e GetType() const { return m_encDecType; }
 
 private:
     ioctl_session_t *m_pIoHandle = nullptr; /**< The IOSession */
     vidc_codec_type m_codecType;
     VideoEncDecType_e m_encDecType;
-    string m_type;
 
     uint32_t m_width = 0;
     uint32_t m_height = 0;
-    uint32_t m_bufNum[VIDEO_CODEC_BUF_TYPE_NUM] = { 0, 0 };
 
     bool m_bInputDynamicMode = true;
     bool m_bOutputDynamicMode = true;
@@ -214,15 +219,17 @@ private:
 
     typedef struct
     {
-        VideoCodec_InputFrame_t inFrameInfo;
-        bool bUseFlag = false; /**< indicate whether sharedBuffer is using by driver or available */
+        VideoFrameDescriptor_t inFrameDesc;
+        bool bUsedFlag = false; /**< indicate whether sharedBuffer is using by driver or available */
     } VideoCodec_InputInfo_t;
 
     typedef struct
     {
-        QCSharedBuffer_t sharedBuffer;
-        bool bUseFlag = false; /**< indicate whether sharedBuffer is using by driver or available */
+        VideoFrameDescriptor_t outFrameDesc;
+        bool bUsedFlag = false; /**< indicate whether sharedBuffer is using by driver or available */
     } VideoCodec_OutputInfo_t;
+
+    uint32_t m_bufNum[VIDEO_CODEC_BUF_TYPE_NUM] = { 0, 0 };
 
     std::mutex m_inLock;
     std::unordered_map<uint64_t, VideoCodec_InputInfo_t> m_inputMap; /**< store input info */
@@ -238,7 +245,7 @@ private:
     QC_DECLARE_LOGGER();
 };
 
-}   // namespace component
+}   // namespace Node
 }   // namespace QC
 
 #endif   // QC_VIDC_DRV_CLIENT_HPP

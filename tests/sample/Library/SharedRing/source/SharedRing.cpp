@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-
 #include "QC/sample/shared_ring/SharedRing.hpp"
 #if defined( __QNXNTO__ )
 #include "QC/Infras/Memory/PMEMUtils.hpp"

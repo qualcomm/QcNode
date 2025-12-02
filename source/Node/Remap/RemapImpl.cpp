@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-
 #include "RemapImpl.hpp"
 
 namespace QC
@@ -14,6 +13,7 @@ QCStatus_e RemapImpl::Start()
 {
     QCStatus_e status = QC_STATUS_OK;
 
+    QC_TRACE_BEGIN( "Start", {} );
     if ( QC_OBJECT_STATE_READY == m_state )
     {
         m_state = QC_OBJECT_STATE_RUNNING;
@@ -23,6 +23,7 @@ QCStatus_e RemapImpl::Start()
         QC_ERROR( "Remap node start failed due to wrong state!" );
         status = QC_STATUS_BAD_STATE;
     }
+    QC_TRACE_END( "Start", {} );
 
     return status;
 }
@@ -31,6 +32,7 @@ QCStatus_e RemapImpl::Stop()
 {
     QCStatus_e status = QC_STATUS_OK;
 
+    QC_TRACE_BEGIN( "Stop", {} );
     if ( QC_OBJECT_STATE_RUNNING == m_state )
     {
         m_state = QC_OBJECT_STATE_READY;
@@ -40,6 +42,7 @@ QCStatus_e RemapImpl::Stop()
         QC_ERROR( "Remap node stop failed due to wrong state!" );
         status = QC_STATUS_BAD_STATE;
     }
+    QC_TRACE_END( "Stop", {} );
 
     return status;
 }
@@ -49,6 +52,36 @@ RemapImpl::Initialize( std::vector<std::reference_wrapper<QCBufferDescriptorBase
 {
     QCStatus_e status = QC_STATUS_OK;
 
+
+    QC_TRACE_INIT( [&]() {
+        std::ostringstream oss;
+        std::string processor = "unknown";
+        switch ( m_config.params.processor )
+        {
+            case QC_PROCESSOR_HTP0:
+                processor = "htp0";
+                break;
+            case QC_PROCESSOR_HTP1:
+                processor = "htp1";
+                break;
+            case QC_PROCESSOR_CPU:
+                processor = "cpu";
+                break;
+            case QC_PROCESSOR_GPU:
+                processor = "gpu";
+                break;
+            default:
+                break;
+        }
+        oss << "{";
+        oss << "\"name\": \"" << m_nodeId.name << "\", ";
+        oss << "\"processor\": \"" << processor << "\", ";
+        oss << "\"coreIds\": [0]";
+        oss << "}";
+        return oss.str();
+    }() );
+
+    QC_TRACE_BEGIN( "Init", {} );
     if ( QC_OBJECT_STATE_INITIAL != m_state )
     {
         QC_ERROR( "Remap not in initial state!" );
@@ -56,6 +89,9 @@ RemapImpl::Initialize( std::vector<std::reference_wrapper<QCBufferDescriptorBase
     }
     else
     {
+        QC_INFO( "REMAP node version: %u.%u.%u", QCNODE_REMAP_VERSION_MAJOR,
+                 QCNODE_REMAP_VERSION_MINOR, QCNODE_REMAP_VERSION_PATCH );
+
         status = m_fadasRemapObj.Init( m_config.params.processor, "Remap", LOGGER_LEVEL_ERROR );
         if ( QC_STATUS_OK != status )
         {
@@ -163,6 +199,7 @@ RemapImpl::Initialize( std::vector<std::reference_wrapper<QCBufferDescriptorBase
             m_state = QC_OBJECT_STATE_READY;
         }
     }
+    QC_TRACE_END( "Init", {} );
 
     return status;
 }
@@ -172,6 +209,7 @@ QCStatus_e RemapImpl::DeInitialize()
     QCStatus_e status = QC_STATUS_OK;
     QCStatus_e status2 = QC_STATUS_OK;
 
+    QC_TRACE_BEGIN( "DeInit", {} );
     if ( QC_OBJECT_STATE_READY != m_state )
     {
         QC_ERROR( "Remap node not in ready status!" );
@@ -198,6 +236,7 @@ QCStatus_e RemapImpl::DeInitialize()
             status = QC_STATUS_FAIL;
         }
     }
+    QC_TRACE_END( "DeInit", {} );
 
     return status;
 }
@@ -206,6 +245,13 @@ QCStatus_e RemapImpl::ProcessFrameDescriptor( QCFrameDescriptorNodeIfs &frameDes
 {
     QCStatus_e status = QC_STATUS_OK;
 
+    QC_TRACE_BEGIN( "Execute", { QCNodeTraceArg( "frameId", [&]() {
+                        uint64_t frameId = 0;
+                        const BufferDescriptor_t *pBufDesc =
+                                dynamic_cast<BufferDescriptor_t *>( &frameDesc.GetBuffer( 0 ) );
+                        frameId = pBufDesc->id;
+                        return frameId;
+                    }() ) } );
     if ( QC_OBJECT_STATE_RUNNING != m_state )
     {
         QC_ERROR( "Remap node not in running status!" );
@@ -215,6 +261,7 @@ QCStatus_e RemapImpl::ProcessFrameDescriptor( QCFrameDescriptorNodeIfs &frameDes
     {
         status = m_fadasRemapObj.RemapRun( frameDesc );
     }
+    QC_TRACE_END( "Execute", {} );
 
     return status;
 }

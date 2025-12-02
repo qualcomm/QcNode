@@ -1,21 +1,66 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-
 #include "md5_utils.hpp"
 #include "gtest/gtest.h"
 #include <chrono>
 #include <cstdlib>
+#include <errno.h>
 #include <stdio.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include "QC/Node/OpticalFlow.hpp"
+#include "QC/sample/BufferManager.hpp"
 
 using namespace QC::Node;
 using namespace QC::test::utils;
 using namespace QC;
+using namespace QC::Memory;
+using namespace QC::sample;
 
 #define ALIGN_S( size, align ) ( ( size + align - 1 ) / align ) * align
+
+// Scope guard implementation for automatic cleanup
+template<typename F>
+class ScopeGuard
+{
+public:
+    explicit ScopeGuard( F &&f ) : func_( std::forward<F>( f ) ), active_( true ) {}
+
+    ~ScopeGuard()
+    {
+        if ( active_ )
+        {
+            func_();
+        }
+    }
+
+    void dismiss() { active_ = false; }
+
+    ScopeGuard( const ScopeGuard & ) = delete;
+    ScopeGuard &operator=( const ScopeGuard & ) = delete;
+
+    ScopeGuard( ScopeGuard &&other ) : func_( std::move( other.func_ ) ), active_( other.active_ )
+    {
+        other.active_ = false;
+    }
+
+private:
+    F func_;
+    bool active_;
+};
+
+template<typename F>
+ScopeGuard<F> MakeScopeGuard( F &&f )
+{
+    return ScopeGuard<F>( std::forward<F>( f ) );
+}
+
+#define SCOPE_GUARD_CONCAT_IMPL( x, y ) x##y
+#define SCOPE_GUARD_CONCAT( x, y ) SCOPE_GUARD_CONCAT_IMPL( x, y )
+#define SCOPE_EXIT( code )                                                                         \
+    auto SCOPE_GUARD_CONCAT( scope_guard_, __LINE__ ) = MakeScopeGuard( [&]() { code; } )
 
 static void LoadRaw( void *pData, uint32_t length, std::string path )
 {
@@ -42,484 +87,419 @@ static void SaveRaw( std::string path, void *pData, size_t size )
     }
 }
 
+
 static void Eva_NodeOpticalFlowRun( std::string name, OpticalFlow_Config_t &config,
                                     std::string img1 = "", std::string img2 = "",
-                                    std::string goldenMvMap = "", std::string goldenMvConf = "" )
+                                    std::string goldenFwdMvMap = "",
+                                    std::string goldenFwdMvConf = "",
+                                    std::string goldenBwdMvMap = "",
+                                    std::string goldenBwdMvConf = "" )
 {
     QC::Node::OpticalFlow opticalFlow;
     QCNodeIfs *node = dynamic_cast<QCNodeIfs *>( &opticalFlow );
     QCStatus_e ret;
     QCStatus_e status;
-    QCSharedBufferDescriptor_t refImg;
-    QCSharedBufferDescriptor_t curImg;
-    QCSharedBufferDescriptor_t mvFwdMap;
-    QCSharedBufferDescriptor_t mvConf;
-    QCSharedBufferDescriptor_t mvFwdMapG;
-    QCSharedBufferDescriptor_t mvConfG;
 
-    uint32_t width = ( config.width >> config.amFilter.nStepSize ) << config.amFilter.nUpScale;
-    uint32_t height = ( config.height >> config.amFilter.nStepSize ) << config.amFilter.nUpScale;
+    BufferManager bufMgr( { "LME", QC_NODE_TYPE_EVA_OPTICAL_FLOW, 0 } );
 
-    QCTensorProps_t mvFwdMapTsProp = { QC_TENSOR_TYPE_UINT_16,
-                                       { 1, ALIGN_S( height, 8 ), ALIGN_S( width * 2, 128 ), 1 },
-                                       4 };
-    QCTensorProps_t mvConfTsProp = { QC_TENSOR_TYPE_UINT_8,
-                                     { 1, ALIGN_S( height, 8 ), ALIGN_S( width, 128 ), 1 },
-                                     4 };
+    ImageDescriptor_t refImgDesc;
+    ImageBasicProps_t refImgProp;
+    ImageDescriptor_t curImgDesc;
+    ImageBasicProps_t curImgProp;
+    TensorDescriptor_t mvFwdMapDesc;
+    TensorDescriptor_t mvFwdconfMapDesc;
+    TensorDescriptor_t mvFwdMapDescG;
+    TensorDescriptor_t mvFwdconfMapDescG;
+    TensorDescriptor_t mvBwdMapDesc;
+    TensorDescriptor_t mvBwdconfMapDesc;
+    TensorDescriptor_t mvBwdMapDescG;
+    TensorDescriptor_t mvBwdconfMapDescG;
+    TensorProps_t mvFwdMapProp;
+    TensorProps_t mvFwdConfProp;
+    TensorProps_t mvBwdMapProp;
+    TensorProps_t mvBwdConfProp;
 
+    NodeFrameDescriptor *frameDescriptor = nullptr;
+    bool nodeInitialized = false;
+    bool nodeStarted = false;
+
+    // Scope guard to ensure cleanup happens even if ASSERT fails
+    SCOPE_EXIT(
+            // Stop node if started
+            if ( nodeStarted && node ) {
+                QCStatus_e stopStatus = node->Stop();
+                EXPECT_EQ( QC_STATUS_OK, stopStatus );
+            }
+
+            // DeInitialize node if initialized
+            if ( nodeInitialized && node ) {
+                QCStatus_e deinitStatus = node->DeInitialize();
+                EXPECT_EQ( QC_STATUS_OK, deinitStatus );
+            }
+
+            // Free all buffers
+            bufMgr.Free( refImgDesc );
+            bufMgr.Free( curImgDesc ); bufMgr.Free( mvFwdMapDesc ); bufMgr.Free( mvFwdconfMapDesc );
+            bufMgr.Free( mvFwdMapDescG ); bufMgr.Free( mvFwdconfMapDescG );
+            bufMgr.Free( mvBwdMapDesc ); bufMgr.Free( mvBwdconfMapDesc );
+            bufMgr.Free( mvBwdMapDescG ); bufMgr.Free( mvBwdconfMapDescG );
+
+            // Delete frame descriptor
+            if ( frameDescriptor ) { delete frameDescriptor; } );
+
+    refImgProp.format = config.imageFormat;
+    refImgProp.batchSize = 1;
+    refImgProp.width = config.width;
+    refImgProp.height = config.height;
+
+    ret = bufMgr.Allocate( refImgProp, refImgDesc );
+    ASSERT_EQ( QC_STATUS_OK, ret );
+
+    curImgProp.format = config.imageFormat;
+    curImgProp.batchSize = 1;
+    curImgProp.width = config.width;
+    curImgProp.height = config.height;
+
+    ret = bufMgr.Allocate( curImgProp, curImgDesc );
+    ASSERT_EQ( QC_STATUS_OK, ret );
+
+    if ( img1.empty() == false )
+    {
+        LoadRaw( refImgDesc.GetDataPtr(), refImgDesc.GetDataSize(), img1 );
+    }
+
+    if ( img2.empty() == false )
+    {
+        LoadRaw( curImgDesc.GetDataPtr(), curImgDesc.GetDataSize(), img2 );
+    }
+
+
+    if ( ( config.motionDirection == MOTION_DIRECTION_FORWARD ) or
+         ( config.motionDirection == MOTION_DIRECTION_BIDIRECTIONAL ) )
+    {
+
+        mvFwdMapProp = { QC_TENSOR_TYPE_UINT_16,
+                         { 1, ALIGN_S( config.height, 8 ), ALIGN_S( config.width * 2, 128 ), 1 } };
+
+        ret = bufMgr.Allocate( mvFwdMapProp, mvFwdMapDesc );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+
+        mvFwdConfProp = { QC_TENSOR_TYPE_UINT_8,
+                          { 1, ALIGN_S( config.height, 8 ), ALIGN_S( config.width, 128 ), 1 } };
+
+
+        ret = bufMgr.Allocate( mvFwdConfProp, mvFwdconfMapDesc );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+
+        memset( mvFwdMapDesc.GetDataPtr(), 0, mvFwdMapDesc.GetDataSize() );
+        memset( mvFwdconfMapDesc.GetDataPtr(), 0, mvFwdconfMapDesc.GetDataSize() );
+    }
+
+    if ( ( config.motionDirection == MOTION_DIRECTION_BACKWARD ) or
+         ( config.motionDirection == MOTION_DIRECTION_BIDIRECTIONAL ) )
+    {
+
+        mvBwdMapProp = { QC_TENSOR_TYPE_UINT_16,
+                         { 1, ALIGN_S( config.height, 8 ), ALIGN_S( config.width * 2, 128 ), 1 } };
+
+        ret = bufMgr.Allocate( mvBwdMapProp, mvBwdMapDesc );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+
+        mvBwdConfProp = { QC_TENSOR_TYPE_UINT_8,
+                          { 1, ALIGN_S( config.height, 8 ), ALIGN_S( config.width, 128 ), 1 } };
+
+
+        ret = bufMgr.Allocate( mvBwdConfProp, mvBwdconfMapDesc );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+
+        memset( mvBwdMapDesc.GetDataPtr(), 0, mvBwdMapDesc.GetDataSize() );
+        memset( mvBwdconfMapDesc.GetDataPtr(), 0, mvBwdconfMapDesc.GetDataSize() );
+    }
 
     printf( "-- Test for %s\n", name.c_str() );
 
-    ret = refImg.buffer.Allocate( config.width, config.height, config.format );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-    ret = curImg.buffer.Allocate( config.width, config.height, config.format );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-    ret = mvFwdMap.buffer.Allocate( &mvFwdMapTsProp );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-    ret = mvConf.buffer.Allocate( &mvConfTsProp );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    if ( false == img1.empty() )
-    {
-        LoadRaw( refImg.buffer.data(), refImg.buffer.size, img1 );
-    }
-
-    if ( false == img2.empty() )
-    {
-        LoadRaw( curImg.buffer.data(), curImg.buffer.size, img2 );
-    }
-
-    if ( ( false == goldenMvMap.empty() ) && ( false == goldenMvConf.empty() ) )
-    { /* clear output buffer for accuracy test */
-        memset( mvFwdMap.buffer.data(), 0, mvFwdMap.buffer.size );
-        memset( mvConf.buffer.data(), 0, mvConf.buffer.size );
-    }
-
     DataTree dt;
+    DataTree top_dt;
     dt.Set<uint32_t>( "width", config.width );
     dt.Set<uint32_t>( "height", config.height );
-    dt.Set<EvaOFFilterOperationMode_e>( "filterOperationMode", config.filterOperationMode );
+    dt.Set<uint32_t>( "fps", config.frameRate );
+    dt.Set<bool>( "confidenceOutputEn", config.confidenceOutputEn );
+    dt.Set<uint8_t>( "computationAccuracy", config.computationAccuracy );
+    dt.Set<uint32_t>( "edgeAlignMetric", config.edgeAlignMetric );
+    dt.Set<float32_t>( "imageSharpnessThreshold", config.imageSharpnessThreshold );
+    dt.Set<float32_t>( "textureThreshold", config.textureThreshold );
+    dt.Set<bool>( "isFirstRequest", config.isFirstRequest );
+    dt.SetImageFormat( "format", config.imageFormat );
+    dt.Set<uint8_t>( "motionDirection", config.motionDirection );
 
-    QCNodeInit_t configuration = { dt.Dump() };
+    top_dt.Set( "static", dt );
+    top_dt.Set<std::string>( "static.name", "SANITY" );
+
+    QCNodeInit_t configuration = { top_dt.Dump() };
     printf( "configuration.config: %s\n", configuration.config.c_str() );
     status = node->Initialize( configuration );
     ASSERT_EQ( QC_STATUS_OK, status );
+    nodeInitialized = true;
 
-    QCFrameDescriptorNodeIfs *frameDescriptor =
-            new QCSharedFrameDescriptorNode( QC_NODE_OF_LAST_BUFF_ID );
 
-    status = frameDescriptor->SetBuffer(
-            static_cast<uint32_t>( QC_NODE_OF_REFERENCE_IMAGE_BUFF_ID ), refImg );
-    ASSERT_EQ( QC_STATUS_OK, status );
-    status = frameDescriptor->SetBuffer( static_cast<uint32_t>( QC_NODE_OF_CURRENT_IMAGE_BUFF_ID ),
-                                         curImg );
-    ASSERT_EQ( QC_STATUS_OK, status );
-    status = frameDescriptor->SetBuffer( static_cast<uint32_t>( QC_NODE_OF_MOTION_VECTORS_BUFF_ID ),
-                                         mvFwdMap );
-    ASSERT_EQ( QC_STATUS_OK, status );
-    status = frameDescriptor->SetBuffer( static_cast<uint32_t>( QC_NODE_OF_CONFIDENCE_BUFF_ID ),
-                                         mvConf );
-    ASSERT_EQ( QC_STATUS_OK, status );
+    frameDescriptor = new NodeFrameDescriptor( QC_NODE_OF_LAST_BUFF_ID );
+
+    ret = frameDescriptor->SetBuffer( QC_NODE_OF_REFERENCE_IMAGE_BUFF_ID, refImgDesc );
+    ASSERT_EQ( QC_STATUS_OK, ret );
+    ret = frameDescriptor->SetBuffer( QC_NODE_OF_CURRENT_IMAGE_BUFF_ID, curImgDesc );
+    ASSERT_EQ( QC_STATUS_OK, ret );
+    if ( ( config.motionDirection == MOTION_DIRECTION_FORWARD ) or
+         ( config.motionDirection == MOTION_DIRECTION_BIDIRECTIONAL ) )
+    {
+        ret = frameDescriptor->SetBuffer( QC_NODE_OF_FWD_MOTION_BUFF_ID, mvFwdMapDesc );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+        ret = frameDescriptor->SetBuffer( QC_NODE_OF_FWD_CONF_BUFF_ID, mvFwdconfMapDesc );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+    }
+    if ( ( config.motionDirection == MOTION_DIRECTION_BACKWARD ) or
+         ( config.motionDirection == MOTION_DIRECTION_BIDIRECTIONAL ) )
+    {
+        ret = frameDescriptor->SetBuffer( QC_NODE_OF_BWD_MOTION_BUFF_ID, mvBwdMapDesc );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+        ret = frameDescriptor->SetBuffer( QC_NODE_OF_BWD_CONF_BUFF_ID, mvBwdconfMapDesc );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+    }
+
 
     status = node->Start();
     ASSERT_EQ( QC_STATUS_OK, status );
+    nodeStarted = true;
 
     status = node->ProcessFrameDescriptor( *frameDescriptor );
     ASSERT_EQ( QC_STATUS_OK, status );
 
-    if ( ( false == goldenMvMap.empty() ) && ( false == goldenMvConf.empty() ) )
+    if ( ( config.motionDirection == MOTION_DIRECTION_FORWARD ) or
+         ( config.motionDirection == MOTION_DIRECTION_BIDIRECTIONAL ) )
     {
-        // for the first run, with below to generate the golden
-        // SaveRaw( goldenMvMap, mvFwdMap.data(), mvFwdMap.size );
-        // SaveRaw( goldenMvConf, mvConf.data(), mvConf.size );
-
-        ret = mvFwdMapG.buffer.Allocate( &mvFwdMapTsProp );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        ret = mvConfG.buffer.Allocate( &mvConfTsProp );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-
-        LoadRaw( mvFwdMapG.buffer.data(), mvFwdMapG.size, goldenMvMap );
-        LoadRaw( mvConfG.buffer.data(), mvConfG.size, goldenMvConf );
-
-        std::string md5Output = MD5Sum( mvFwdMap.buffer.data(), mvFwdMap.buffer.size );
-        std::string md5Golden = MD5Sum( mvFwdMapG.buffer.data(), mvFwdMapG.buffer.size );
-        ASSERT_EQ( md5Output, md5Golden );
-
-        md5Output = MD5Sum( mvConf.buffer.data(), mvConf.buffer.size );
-        md5Golden = MD5Sum( mvConfG.buffer.data(), mvConfG.buffer.size );
-        ASSERT_EQ( md5Output, md5Golden );
-
-        mvFwdMapG.buffer.Free();
-        mvConfG.buffer.Free();
-    }
-
-    status = node->ProcessFrameDescriptor( *frameDescriptor );
-    ASSERT_EQ( QC_STATUS_OK, status );
-
-    status = node->Stop();
-    ASSERT_EQ( QC_STATUS_OK, status );
-
-    status = node->DeInitialize();
-    ASSERT_EQ( QC_STATUS_OK, status );
-
-    reinterpret_cast<QCSharedFrameDescriptorNode *>( frameDescriptor )
-            ->~QCSharedFrameDescriptorNode();
-
-    ret = refImg.buffer.Free();
-    ASSERT_EQ( QC_STATUS_OK, ret );
-    ret = curImg.buffer.Free();
-    ASSERT_EQ( QC_STATUS_OK, ret );
-    ret = mvFwdMap.buffer.Free();
-    ASSERT_EQ( QC_STATUS_OK, ret );
-    ret = mvConf.buffer.Free();
-    ASSERT_EQ( QC_STATUS_OK, ret );
-}
-
-TEST( EVA, SANITY_NodeOpticalFlowCPU )
-{
-    OpticalFlow_Config_t config;
-    config.width = 1920;
-    config.height = 1024;
-    config.filterOperationMode = EVA_OF_MODE_CPU;
-    Eva_NodeOpticalFlowRun( "OFL0_CPU", config, "data/test/ofl/0.nv12", "data/test/ofl/1.nv12",
-                            "data/test/ofl/golden/semi-cpu-mv-map.raw",
-                            "data/test/ofl/golden/semi-cpu-mv-conf.raw" );
-}
-
-TEST( EVA, SANITY_NodeOpticalFlowDSP )
-{
-    OpticalFlow_Config_t config;
-    config.width = 1920;
-    config.height = 1024;
-    config.filterOperationMode = EVA_OF_MODE_DSP;
-    /* output the same as cpu */
-    Eva_NodeOpticalFlowRun( "OFL0_DSP", config, "data/test/ofl/0.nv12", "data/test/ofl/1.nv12",
-                            "data/test/ofl/golden/semi-cpu-mv-map.raw",
-                            "data/test/ofl/golden/semi-cpu-mv-conf.raw" );
-}
-
-TEST( EVA, SANITY_NodeOpticalFlowNONE )
-{
-    OpticalFlow_Config_t config;
-    config.width = 1920;
-    config.height = 1024;
-    config.filterOperationMode = EVA_OF_MODE_DISABLE;
-    Eva_NodeOpticalFlowRun( "OFL0_NONE", config, "data/test/ofl/0.nv12", "data/test/ofl/1.nv12",
-                            "data/test/ofl/golden/semi-none-mv-map.raw",
-                            "data/test/ofl/golden/semi-none-mv-conf.raw" );
-}
-
+        if ( ( goldenFwdMvMap.empty() == false ) and ( goldenFwdMvConf.empty() == false ) )
+        {
+// for the first run, execute the below to generate the golden output
 #if defined( __QNXNTO__ )
-/* below case run separately on linux, no issues, but in the same gtest without filter, it
- * will fail, maybe some platform issue related, under debug. */
-TEST( EVA, L2_NodeOpticalFlowFormat )
-{
-    /* UYVY Only supported for EvaOFFilterOperationMode_e != EVA_OF_MODE_DISABLE */
-    {
-        OpticalFlow_Config_t config;
-        config.width = 1920;
-        config.height = 1024;
-        config.format = QC_IMAGE_FORMAT_UYVY;
-        config.filterOperationMode = EVA_OF_MODE_CPU;
-        Eva_NodeOpticalFlowRun( "OFL0_CPU_UYVY", config );
-    }
-    {
-        OpticalFlow_Config_t config;
-        config.width = 1920;
-        config.height = 1024;
-        config.format = QC_IMAGE_FORMAT_UYVY;
-        config.filterOperationMode = EVA_OF_MODE_DSP;
-        Eva_NodeOpticalFlowRun( "OFL0_DSP_UYVY", config );
-    }
-
-    /* P010 Only supported for EVA_OF_MODE_DISABLE in EvaOFFilterOperationMode_e */
-    {
-        OpticalFlow_Config_t config;
-        config.width = 1920;
-        config.height = 1024;
-        config.format = QC_IMAGE_FORMAT_P010;
-        config.filterOperationMode = EVA_OF_MODE_DISABLE;
-        Eva_NodeOpticalFlowRun( "OFL0_NONE_P010", config );
-    }
-}
-
-TEST( EVA, L2_NodeOpticalFlowBackward )
-{
-    {
-        OpticalFlow_Config_t config;
-        config.width = 1920;
-        config.height = 1024;
-        config.filterOperationMode = EVA_OF_MODE_CPU;
-        config.direction = EVA_OF_BACKWARD_DIRECTION;
-        Eva_NodeOpticalFlowRun( "OFL0_CPU_BWK", config );
-    }
-    {
-        OpticalFlow_Config_t config;
-        config.width = 1920;
-        config.height = 1024;
-        config.filterOperationMode = EVA_OF_MODE_DSP;
-        config.direction = EVA_OF_BACKWARD_DIRECTION;
-        Eva_NodeOpticalFlowRun( "OFL0_DSP_BWK", config );
-    }
-}
-
-TEST( EVA, L2_NodeOpticalFlowError )
-{
-    QCStatus_e ret;
-    {
-        QC::component::OpticalFlow ofl;
-        OpticalFlow_Config_t configDft;
-        configDft.width = 1920;
-        configDft.height = 1024;
-        OpticalFlow_Config_t config = configDft;
-
-        ret = ofl.Init( nullptr, &config );
-        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
-
-        ret = ofl.Init( "OFL0", nullptr );
-        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
-
-        config = configDft;
-        config.format = QC_IMAGE_FORMAT_NV12_UBWC;
-        ret = ofl.Init( "OFL0", &config );
-        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
-
-        config = configDft;
-        config.filterOperationMode = EVA_OF_MODE_MAX;
-        ret = ofl.Init( "OFL0", &config );
-        ASSERT_EQ( QC_STATUS_FAIL, ret );
-
-        config = configDft;
-        config.direction = EVA_OF_BIDIRECTIONAL;
-        ret = ofl.Init( "OFL0", &config );
-        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
-
-        config = configDft; /* super large image */
-        config.width = 409600;
-        config.height = 409600;
-        ret = ofl.Init( "OFL0", &config );
-        ASSERT_EQ( QC_STATUS_FAIL, ret );
-
-        ret = ofl.Deinit();
-        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
-
-        config = configDft;
-        QCSharedBuffer_t refImg;
-        QCSharedBuffer_t curImg;
-        QCSharedBuffer_t mvFwdMap;
-        QCSharedBuffer_t mvConf;
-
-        uint32_t width = ( config.width >> config.amFilter.nStepSize ) << config.amFilter.nUpScale;
-        uint32_t height = ( config.height >> config.amFilter.nStepSize )
-                          << config.amFilter.nUpScale;
-
-        QCTensorProps_t mvFwdMapTsProp = {
-                QC_TENSOR_TYPE_UINT_16,
-                { 1, ALIGN_S( height, 8 ), ALIGN_S( width * 2, 128 ), 1 },
-                4 };
-        QCTensorProps_t mvConfTsProp = { QC_TENSOR_TYPE_UINT_8,
-                                         { 1, ALIGN_S( height, 8 ), ALIGN_S( width, 128 ), 1 },
-                                         4 };
-
-        ret = refImg.Allocate( config.width, config.height, config.format );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        ret = curImg.Allocate( config.width, config.height, config.format );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        ret = mvFwdMap.Allocate( &mvFwdMapTsProp );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        ret = mvConf.Allocate( &mvConfTsProp );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-
-        ret = ofl.RegisterBuffers( &refImg, 1 );
-        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
-
-        ret = ofl.DeRegisterBuffers( &refImg, 1 );
-        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
-
-        ret = ofl.Execute( &refImg, &curImg, &mvFwdMap, &mvConf );
-        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
-
-        ret = ofl.Start();
-        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
-
-        ret = ofl.Stop();
-        ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
-
-        ret = ofl.Init( "OFL0", &config );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-
-        ret = ofl.RegisterBuffers( nullptr, 1 );
-        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
-
-        ret = ofl.RegisterBuffers( &refImg, 0 );
-        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
-
-        QCSharedBuffer_t invalidImg = refImg;
-        invalidImg.buffer.dmaHandle = 0xdeadbeef;
-        ret = ofl.RegisterBuffers( &invalidImg, 1 );
-        ASSERT_EQ( QC_STATUS_FAIL, ret );
-
-        ret = ofl.Start();
-        ASSERT_EQ( QC_STATUS_OK, ret );
-
-        ret = ofl.RegisterBuffers( &curImg, 1 );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-
-        ret = ofl.Execute( &refImg, &curImg, &mvFwdMap, nullptr );
-        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
-
-        ret = ofl.Execute( &refImg, &curImg, nullptr, &mvConf );
-        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
-
-        ret = ofl.Execute( &refImg, nullptr, &mvFwdMap, &mvConf );
-        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
-
-        ret = ofl.Execute( nullptr, &curImg, &mvFwdMap, &mvConf );
-        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
-
-        QCSharedBuffer_t invalidFwdMap = mvFwdMap;
-        invalidFwdMap.type = QC_BUFFER_TYPE_IMAGE;
-        ret = ofl.Execute( &refImg, &curImg, &invalidFwdMap, &mvConf );
-        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
-
-        invalidFwdMap = mvFwdMap;
-        invalidFwdMap.buffer.pData = nullptr;
-        ret = ofl.Execute( &refImg, &curImg, &invalidFwdMap, &mvConf );
-        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
-
-        invalidFwdMap = mvFwdMap;
-        invalidFwdMap.tensorProps.numDims = 8;
-        ret = ofl.Execute( &refImg, &curImg, &invalidFwdMap, &mvConf );
-        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
-
-        invalidFwdMap = mvFwdMap;
-        invalidFwdMap.tensorProps.type = QC_TENSOR_TYPE_INT_16;
-        ret = ofl.Execute( &refImg, &curImg, &invalidFwdMap, &mvConf );
-        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
-
-        invalidFwdMap = mvFwdMap;
-        invalidFwdMap.tensorProps.dims[0] = 2;
-        ret = ofl.Execute( &refImg, &curImg, &invalidFwdMap, &mvConf );
-        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
-
-        invalidFwdMap = mvFwdMap;
-        invalidFwdMap.tensorProps.dims[1] += 2;
-        ret = ofl.Execute( &refImg, &curImg, &invalidFwdMap, &mvConf );
-        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
-
-        invalidFwdMap = mvFwdMap;
-        invalidFwdMap.tensorProps.dims[2] += 2;
-        ret = ofl.Execute( &refImg, &curImg, &invalidFwdMap, &mvConf );
-        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
-
-        invalidFwdMap = mvFwdMap;
-        invalidFwdMap.tensorProps.dims[3] += 2;
-        ret = ofl.Execute( &refImg, &curImg, &invalidFwdMap, &mvConf );
-        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
-
-        QCSharedBuffer_t invalidMvConf = mvConf;
-        invalidMvConf.type = QC_BUFFER_TYPE_IMAGE;
-        ret = ofl.Execute( &refImg, &curImg, &mvFwdMap, &invalidMvConf );
-        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
-
-        invalidMvConf = mvConf;
-        invalidMvConf.buffer.pData = nullptr;
-        ret = ofl.Execute( &refImg, &curImg, &mvFwdMap, &invalidMvConf );
-        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
-
-        invalidMvConf = mvConf;
-        invalidMvConf.tensorProps.numDims = 8;
-        ret = ofl.Execute( &refImg, &curImg, &mvFwdMap, &invalidMvConf );
-        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
-
-        invalidMvConf = mvConf;
-        invalidMvConf.tensorProps.type = QC_TENSOR_TYPE_INT_16;
-        ret = ofl.Execute( &refImg, &curImg, &mvFwdMap, &invalidMvConf );
-        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
-
-        invalidMvConf = mvConf;
-        invalidMvConf.tensorProps.dims[0] = 2;
-        ret = ofl.Execute( &refImg, &curImg, &mvFwdMap, &invalidMvConf );
-        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
-
-        invalidMvConf = mvConf;
-        invalidMvConf.tensorProps.dims[1] += 2;
-        ret = ofl.Execute( &refImg, &curImg, &mvFwdMap, &invalidMvConf );
-        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
-
-        invalidMvConf = mvConf;
-        invalidMvConf.tensorProps.dims[2] += 2;
-        ret = ofl.Execute( &refImg, &curImg, &mvFwdMap, &invalidMvConf );
-        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
-
-        invalidMvConf = mvConf;
-        invalidMvConf.tensorProps.dims[3] += 2;
-        ret = ofl.Execute( &refImg, &curImg, &mvFwdMap, &invalidMvConf );
-        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
-
-        invalidImg = refImg;
-        invalidImg.type = QC_BUFFER_TYPE_TENSOR;
-        ret = ofl.Execute( &invalidImg, &curImg, &mvFwdMap, &mvConf );
-        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
-
-        invalidImg = refImg;
-        invalidImg.buffer.pData = nullptr;
-        ret = ofl.Execute( &invalidImg, &curImg, &mvFwdMap, &mvConf );
-        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
-
-        invalidImg = refImg;
-        invalidImg.imgProps.format = QC_IMAGE_FORMAT_RGB888;
-        ret = ofl.Execute( &invalidImg, &curImg, &mvFwdMap, &mvConf );
-        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
-
-        invalidImg = refImg;
-        invalidImg.imgProps.width += 1;
-        ret = ofl.Execute( &invalidImg, &curImg, &mvFwdMap, &mvConf );
-        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
-
-        invalidImg = refImg;
-        invalidImg.imgProps.height += 1;
-        ret = ofl.Execute( &invalidImg, &curImg, &mvFwdMap, &mvConf );
-        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
-
-        invalidImg = refImg;
-        invalidImg.imgProps.numPlanes += 1;
-        ret = ofl.Execute( &invalidImg, &curImg, &mvFwdMap, &mvConf );
-        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
-
-        invalidImg = refImg;
-        invalidImg.imgProps.stride[0] += 1;
-        ret = ofl.Execute( &invalidImg, &curImg, &mvFwdMap, &mvConf );
-        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
-
-        invalidImg = refImg;
-        invalidImg.imgProps.planeBufSize[0] += 1;
-        ret = ofl.Execute( &invalidImg, &curImg, &mvFwdMap, &mvConf );
-        ASSERT_EQ( QC_STATUS_INVALID_BUF, ret );
-
-        ret = ofl.Stop();
-        ASSERT_EQ( QC_STATUS_OK, ret );
-
-        ret = ofl.Deinit();
-        ASSERT_EQ( QC_STATUS_OK, ret );
-
-        ret = refImg.Free();
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        ret = curImg.Free();
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        ret = mvFwdMap.Free();
-        ASSERT_EQ( QC_STATUS_OK, ret );
-        ret = mvConf.Free();
-        ASSERT_EQ( QC_STATUS_OK, ret );
-    }
-}
+            // SaveRaw( goldenFwdMvMap, mvFwdMapDesc.GetDataPtr(), mvFwdMapDesc.GetDataSize() );
+            // SaveRaw( goldenFwdMvConf, mvFwdconfMapDesc.GetDataPtr(),
+            //          mvFwdconfMapDesc.GetDataSize() );
 #endif
 
+            ret = bufMgr.Allocate( mvFwdMapProp, mvFwdMapDescG );
+            ASSERT_EQ( QC_STATUS_OK, ret );
+
+            ret = bufMgr.Allocate( mvFwdConfProp, mvFwdconfMapDescG );
+            ASSERT_EQ( QC_STATUS_OK, ret );
+
+            memset( mvFwdMapDescG.GetDataPtr(), 0, mvFwdMapDescG.GetDataSize() );
+            memset( mvFwdconfMapDescG.GetDataPtr(), 0, mvFwdconfMapDescG.GetDataSize() );
+
+            auto file_size = [&]( const std::string &path ) -> long long {
+                struct stat st;
+                if ( stat( path.c_str(), &st ) != 0 )
+                {
+                    printf( "stat failed for %s: errno=%d\n", path.c_str(), errno );
+                    return -1;
+                }
+                return static_cast<long long>( st.st_size );
+            };
+
+            LoadRaw( mvFwdMapDescG.GetDataPtr(), mvFwdMapDescG.GetDataSize(), goldenFwdMvMap );
+            LoadRaw( mvFwdconfMapDescG.GetDataPtr(), mvFwdconfMapDescG.GetDataSize(),
+                     goldenFwdMvConf );
+
+            std::string md5Output = MD5Sum( mvFwdMapDesc.GetDataPtr(), mvFwdMapDesc.GetDataSize() );
+            std::string md5Golden =
+                    MD5Sum( mvFwdMapDescG.GetDataPtr(), mvFwdMapDescG.GetDataSize() );
+            ASSERT_EQ( md5Output, md5Golden );
+
+            md5Output = MD5Sum( mvFwdconfMapDesc.GetDataPtr(), mvFwdconfMapDesc.GetDataSize() );
+            md5Golden = MD5Sum( mvFwdconfMapDescG.GetDataPtr(), mvFwdconfMapDescG.GetDataSize() );
+            ASSERT_EQ( md5Output, md5Golden );
+        }
+    }
+
+    if ( ( config.motionDirection == MOTION_DIRECTION_BACKWARD ) or
+         ( config.motionDirection == MOTION_DIRECTION_BIDIRECTIONAL ) )
+    {
+        if ( ( goldenBwdMvMap.empty() == false ) and ( goldenBwdMvConf.empty() == false ) )
+        {
+// for the first run, execute the below to generate the golden output
+#if defined( __QNXNTO__ )
+            // SaveRaw( goldenBwdMvMap, mvBwdMapDesc.GetDataPtr(), mvBwdMapDesc.GetDataSize() );
+            // SaveRaw( goldenBwdMvConf, mvBwdconfMapDesc.GetDataPtr(),
+            //          mvBwdconfMapDesc.GetDataSize() );
+#endif
+
+            ret = bufMgr.Allocate( mvBwdMapProp, mvBwdMapDescG );
+            ASSERT_EQ( QC_STATUS_OK, ret );
+
+            ret = bufMgr.Allocate( mvBwdConfProp, mvBwdconfMapDescG );
+            ASSERT_EQ( QC_STATUS_OK, ret );
+
+            memset( mvBwdMapDescG.GetDataPtr(), 0, mvBwdMapDescG.GetDataSize() );
+            memset( mvBwdconfMapDescG.GetDataPtr(), 0, mvBwdconfMapDescG.GetDataSize() );
+
+            LoadRaw( mvBwdMapDescG.GetDataPtr(), mvBwdMapDescG.GetDataSize(), goldenBwdMvMap );
+            LoadRaw( mvBwdconfMapDescG.GetDataPtr(), mvBwdconfMapDescG.GetDataSize(),
+                     goldenBwdMvConf );
+
+            std::string md5Output = MD5Sum( mvBwdMapDesc.GetDataPtr(), mvBwdMapDesc.GetDataSize() );
+            std::string md5Golden =
+                    MD5Sum( mvBwdMapDescG.GetDataPtr(), mvBwdMapDescG.GetDataSize() );
+            ASSERT_EQ( md5Output, md5Golden );
+
+            md5Output = MD5Sum( mvBwdconfMapDesc.GetDataPtr(), mvBwdconfMapDesc.GetDataSize() );
+            md5Golden = MD5Sum( mvBwdconfMapDescG.GetDataPtr(), mvBwdconfMapDescG.GetDataSize() );
+            ASSERT_EQ( md5Output, md5Golden );
+        }
+    }
+
+
+    // Cleanup will be handled by scope guard, but we still verify operations succeed
+    status = node->Stop();
+    EXPECT_EQ( QC_STATUS_OK, status );
+    nodeStarted = false;   // Mark as stopped so scope guard doesn't try again
+
+    status = node->DeInitialize();
+    EXPECT_EQ( QC_STATUS_OK, status );
+    nodeInitialized = false;   // Mark as deinitialized so scope guard doesn't try again
+
+    // Note: Buffer cleanup and frameDescriptor deletion will be handled by scope guard
+}
+
+
+TEST( EVA, L0_NV12_FWD_NodeOpticalFlow )
+{
+    OpticalFlow_Config_t config;
+    config.width = 1920;
+    config.height = 1024;
+    config.frameRate = 30;
+    config.imageFormat = QC_IMAGE_FORMAT_NV12;
+    config.confidenceOutputEn = true;
+    config.computationAccuracy = COMPUTATION_ACCURACY_MEDIUM;
+    config.edgeAlignMetric = 0;
+    config.imageSharpnessThreshold = 0.0f;
+    config.textureThreshold = 0.5f;
+    config.isFirstRequest = true;
+    config.motionDirection = MOTION_DIRECTION_FORWARD;
+    Eva_NodeOpticalFlowRun( "OFL0_FWD_NV12", config, "data/test/ofl/0.nv12", "data/test/ofl/1.nv12",
+                            "data/test/ofl/fwd_mv-map_nv12.raw",
+                            "data/test/ofl/fwd_mv-conf_nv12.raw" );
+}
+
+TEST( EVA, L0_NV12_UBWC_FWD_NodeOpticalFlow )
+{
+    OpticalFlow_Config_t config;
+    config.width = 1920;
+    config.height = 1024;
+    config.frameRate = 30;
+    config.imageFormat = QC_IMAGE_FORMAT_NV12_UBWC;
+    config.confidenceOutputEn = true;
+    config.computationAccuracy = COMPUTATION_ACCURACY_MEDIUM;
+    config.edgeAlignMetric = 0;
+    config.imageSharpnessThreshold = 0.0f;
+    config.textureThreshold = 0.5f;
+    config.isFirstRequest = true;
+    config.motionDirection = MOTION_DIRECTION_FORWARD;
+    Eva_NodeOpticalFlowRun( "OFL0_FWD_NV12_UBWC", config, "data/test/ofl/0.nv12_ubwc",
+                            "data/test/ofl/1.nv12_ubwc", "data/test/ofl/fwd_mv-map_nv12_ubwc.raw",
+                            "data/test/ofl/fwd_mv-conf_nv12_ubwc.raw" );
+}
+
+TEST( EVA, L0_NV12_BWD_NodeOpticalFlow )
+{
+    OpticalFlow_Config_t config;
+    config.width = 1920;
+    config.height = 1024;
+    config.frameRate = 30;
+    config.imageFormat = QC_IMAGE_FORMAT_NV12;
+    config.confidenceOutputEn = true;
+    config.computationAccuracy = COMPUTATION_ACCURACY_MEDIUM;
+    config.edgeAlignMetric = 0;
+    config.imageSharpnessThreshold = 0.0f;
+    config.textureThreshold = 0.5f;
+    config.isFirstRequest = true;
+    config.motionDirection = MOTION_DIRECTION_BACKWARD;
+    Eva_NodeOpticalFlowRun( "OFL0_BWD_NV12", config, "data/test/ofl/0.nv12", "data/test/ofl/1.nv12",
+                            "", "", "data/test/ofl/bwd_mv-map_nv12.raw",
+                            "data/test/ofl/bwd_mv-conf_nv12.raw" );
+}
+
+TEST( EVA, L0_NV12_UBWC_BWD_NodeOpticalFlow )
+{
+    OpticalFlow_Config_t config;
+    config.width = 1920;
+    config.height = 1024;
+    config.frameRate = 30;
+    config.imageFormat = QC_IMAGE_FORMAT_NV12_UBWC;
+    config.confidenceOutputEn = true;
+    config.computationAccuracy = COMPUTATION_ACCURACY_MEDIUM;
+    config.edgeAlignMetric = 0;
+    config.imageSharpnessThreshold = 0.0f;
+    config.textureThreshold = 0.5f;
+    config.isFirstRequest = true;
+    config.motionDirection = MOTION_DIRECTION_BACKWARD;
+    Eva_NodeOpticalFlowRun( "OFL0_BWD_NV12_UBWC", config, "data/test/ofl/0.nv12_ubwc",
+                            "data/test/ofl/1.nv12_ubwc", "", "",
+                            "data/test/ofl/bwd_mv-map_nv12_ubwc.raw",
+                            "data/test/ofl/bwd_mv-conf_nv12_ubwc.raw" );
+}
+
+TEST( EVA, L0_NV12_BID_NodeOpticalFlow )
+{
+    OpticalFlow_Config_t config;
+    config.width = 1920;
+    config.height = 1024;
+    config.frameRate = 30;
+    config.imageFormat = QC_IMAGE_FORMAT_NV12;
+    config.confidenceOutputEn = true;
+    config.computationAccuracy = COMPUTATION_ACCURACY_MEDIUM;
+    config.edgeAlignMetric = 0;
+    config.imageSharpnessThreshold = 0.0f;
+    config.textureThreshold = 0.5f;
+    config.isFirstRequest = true;
+    config.motionDirection = MOTION_DIRECTION_BIDIRECTIONAL;
+    Eva_NodeOpticalFlowRun(
+            "OFL0_BID_NV12", config, "data/test/ofl/0.nv12", "data/test/ofl/1.nv12",
+            "data/test/ofl/bid_fwd_mv-map_nv12.raw", "data/test/ofl/bid_fwd_mv-conf_nv12.raw",
+            "data/test/ofl/bid_bwd_mv-map_nv12.raw", "data/test/ofl/bid_bwd_mv-conf_nv12.raw" );
+}
+
+TEST( EVA, L0_NV12_UBWC_BID_NodeOpticalFlow )
+{
+    OpticalFlow_Config_t config;
+    config.width = 1920;
+    config.height = 1024;
+    config.frameRate = 30;
+    config.imageFormat = QC_IMAGE_FORMAT_NV12_UBWC;
+    config.confidenceOutputEn = true;
+    config.computationAccuracy = COMPUTATION_ACCURACY_MEDIUM;
+    config.edgeAlignMetric = 0;
+    config.imageSharpnessThreshold = 0.0f;
+    config.textureThreshold = 0.5f;
+    config.isFirstRequest = true;
+    config.motionDirection = MOTION_DIRECTION_BIDIRECTIONAL;
+    Eva_NodeOpticalFlowRun( "OFL0_BID_NV12_UBWC", config, "data/test/ofl/0.nv12_ubwc",
+                            "data/test/ofl/1.nv12_ubwc",
+                            "data/test/ofl/bid_fwd_mv-map_nv12_ubwc.raw",
+                            "data/test/ofl/bid_fwd_mv-conf_nv12_ubwc.raw",
+                            "data/test/ofl/bid_bwd_mv-map_nv12_ubwc.raw",
+                            "data/test/ofl/bid_bwd_mv-conf_nv12_ubwc.raw" );
+}
+
+
 #ifndef GTEST_QCNODE
+#if __CTC__
+extern "C" void ctc_append_all( void );
+#endif
 int main( int argc, char **argv )
 {
     ::testing::InitGoogleTest( &argc, argv );
     int nVal = RUN_ALL_TESTS();
+#if __CTC__
+    ctc_append_all();
+#endif
     return nVal;
 }
 #endif

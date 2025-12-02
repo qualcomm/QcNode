@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-
 #include "pipeline/CL2DPipelineLetterbox.hpp"
 
 namespace QC

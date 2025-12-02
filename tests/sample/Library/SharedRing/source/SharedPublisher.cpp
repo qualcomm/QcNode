@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-
 #include "QC/sample/shared_ring/SharedPublisher.hpp"
 #include <chrono>
 using namespace std::chrono_literals;

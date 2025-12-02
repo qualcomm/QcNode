@@ -1,7 +1,6 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-
 #include "QC/Infras/Memory/DMABUFFUtils.hpp"
 #include <linux/dma-heap.h>
 #include <plat_dmabuf.h>

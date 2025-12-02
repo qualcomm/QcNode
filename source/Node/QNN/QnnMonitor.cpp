@@ -1,7 +1,6 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-
 #include "QC/Node/QNN.hpp"
 #include "QnnImpl.hpp"
 #include <unistd.h>
@@ -24,7 +23,7 @@ const std::string &QnnMonitor::GetOptions()
 
 const QCNodeMonitoringBase_t &QnnMonitor::Get()
 {
-    return m_pQnnImpl->GetMonitorConifg();
+    return m_pQnnImpl->GetMonitorConfig();
 }
 
 

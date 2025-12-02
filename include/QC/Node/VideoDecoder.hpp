@@ -1,29 +1,62 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-
 #ifndef QC_NODE_VIDEO_DECODER_HPP
 #define QC_NODE_VIDEO_DECODER_HPP
 
-#include "QC/component/VideoDecoder.hpp"
-#include "QC/Node/NodeBase.hpp"
 #include <mutex>
 #include <queue>
 #include <sys/uio.h>
 #include <unordered_map>
 
-namespace QC
-{
-namespace Node
-{
-using namespace QC::component;
+#include <vidc_ioctl.h>
+#include <vidc_types.h>
 
-typedef struct VideoDecoderConfig : public QCNodeConfigBase_t
-{
-    VideoDecoder_Config_t params;
-} VideoDecoder_Config_t;
+#ifndef _VIDC_LRH_LINUX_
+#include <ioctlClient.h>
+#else
+#include <cstring>
+#include <vidc_client.h>
+#endif
+#include "VidcDrvClient.hpp"
+#include "QC/Common/Types.hpp"
+#include "QC/Infras/Log/Logger.hpp"
+#include "QC/Infras/Memory/VideoFrameDescriptor.hpp"
+#include "QC/Node/NodeBase.hpp"
+#include "VidcNodeBase.hpp"
 
-class VideoDecoderConfigIfs : public NodeConfigIfs
+namespace QC::Node
+{
+
+/** @brief The QCNode VideoDecoder Version */
+#define QCNODE_VIDEODECODER_VERSION_MAJOR 2U
+#define QCNODE_VIDEODECODER_VERSION_MINOR 0U
+#define QCNODE_VIDEODECODER_VERSION_PATCH 0U
+
+#define QCNODE_VIDEODECODER_VERSION                                                                \
+    ( ( QCNODE_VIDEODECODER_VERSION_MAJOR << 16U ) | ( QCNODE_VIDEODECODER_VERSION_MINOR << 8U ) | \
+      QCNODE_VIDEODECODER_VERSION_PATCH )
+
+/** @brief This data type list the different VideoDecoder Callback Event Type */
+typedef VideoCodec_EventType_e VideoDecoder_EventType_e;
+
+/**
+ * @brief The VideoDecoder Init Config
+ * Buffer allocate has three modes:
+ * dynamic mode: app allocate buffers, told component when SubmitInputFrame() & SubmitOutputFrame().
+ * We call it mode 1).
+ * none dynamic mode: different with dynamic mode, none dynamic mode will set buffer address to
+ * driver before decode. For none dynamic mode, app can allocate buffers, we call it mode 2); if app
+ * don't allocate, qcnode component will allocate, we call it mode 3). mode 2): app allocate
+ * buffers, transfer buffer list by init() with bufferList ptr and number. In this mode, bufferList
+ * ptr must not be nullptr, and app must make sure bufferList number <= bufferList.len(). mode 3):
+ * app not allocate buffers, and bufferList ptr must be nullptr; and app will tell the buffer number
+ * requested to component with Init(). When app call init(), qcnode will allocate buffers in
+ * component.
+ */
+using VideoDecoder_Config_t = VidcNodeBase_Config_t;
+
+class VideoDecoderConfigIfs : public VidcNodeBaseConfigIfs
 {
 public:
     /**
@@ -33,9 +66,8 @@ public:
      * VideoDecoderConfigIfs.
      * @return None
      */
-    VideoDecoderConfigIfs( Logger &logger, VideoDecoder &vide )
-        : NodeConfigIfs( logger ),
-          m_vide( vide )
+    VideoDecoderConfigIfs( Logger &logger )
+        : VidcNodeBaseConfigIfs( logger )
     {}
 
     /**
@@ -81,23 +113,23 @@ public:
      * @note
      * TODO: Provide a more detailed introduction about the JSON configuration options.
      */
-    virtual const std::string &GetOptions();
+    const virtual std::string& GetOptions( );
 
     /**
      * @brief Get the Configuration Structure.
      * @return A reference to the Configuration Structure.
      */
-    virtual const QCNodeConfigBase_t &Get() { return m_config; }
+    const virtual QCNodeConfigBase_t& Get( )
+    {
+        return m_config;
+    }
 
 private:
-    QCStatus_e VerifyStaticConfig( DataTree &dt, std::string &errors );
     QCStatus_e ParseStaticConfig( DataTree &dt, std::string &errors );
     QCStatus_e ApplyDynamicConfig( DataTree &dt, std::string &errors );
 
-
-    VideoDecoder &m_vide;
     VideoDecoder_Config_t m_config;
-    std::string m_options;
+    std::string m_options = "{}";
 };
 
 typedef struct VideoDecoderMonitorConfig : public QCNodeMonitoringBase_t
@@ -108,9 +140,8 @@ typedef struct VideoDecoderMonitorConfig : public QCNodeMonitoringBase_t
 class VideoDecoderMonitoringIfs : public QCNodeMonitoringIfs
 {
 public:
-    VideoDecoderMonitoringIfs( Logger &logger, VideoDecoder &vide )
-        : m_logger( logger ),
-          m_vide( vide )
+    VideoDecoderMonitoringIfs( Logger &logger )
+        : m_logger( logger )
     {}
     virtual ~VideoDecoderMonitoringIfs() {}
 
@@ -119,9 +150,16 @@ public:
         return QC_STATUS_UNSUPPORTED;
     }
 
-    virtual const std::string &GetOptions() { return m_options; }
+    const virtual std::string& GetOptions( )
+    {
+        return m_options;
+    }
 
-    virtual const QCNodeMonitoringBase_t &Get() { return m_config; };
+    const virtual QCNodeMonitoringBase_t& Get( )
+    {
+        return m_config;
+    }
+    ;
 
     virtual inline uint32_t GetMaximalSize() { return UINT32_MAX; }
     virtual inline uint32_t GetCurrentSize() { return UINT32_MAX; }
@@ -129,7 +167,6 @@ public:
     virtual QCStatus_e Place( void *ptr, uint32_t &size ) { return QC_STATUS_UNSUPPORTED; }
 
 private:
-    VideoDecoder &m_vide;
     Logger &m_logger;
     std::string m_options;
     VideoDecoderMonitorConfig_t m_config;
@@ -143,7 +180,7 @@ typedef enum
 } VideoDecoderBufferId_e;
 
 /** @brief Top level control for interfacing with vidc based driver */
-class VideoDecoder : public NodeBase
+class VideoDecoder : public VidcNodeBase
 {
 
 public:
@@ -151,7 +188,11 @@ public:
      * @brief VideoDecoder Constructor
      * @return None
      */
-    VideoDecoder() : m_configIfs( m_logger, m_vide ), m_monitorIfs( m_logger, m_vide ) {}
+    VideoDecoder()
+        : m_configIfs( m_logger ), m_monitorIfs( m_logger )
+    {
+        m_state = QC_OBJECT_STATE_INITIAL;
+    }
 
     /**
      * @brief VideoDecoder Destructor
@@ -179,24 +220,6 @@ public:
     virtual inline QCNodeMonitoringIfs &GetMonitoringIfs() { return m_monitorIfs; }
 
     /**
-     * @brief Start the Node Video Decoder
-     * @return QC_STATUS_OK on success, others on failure
-     */
-    virtual QCStatus_e Start();
-
-    /**
-     * @brief Stop the Node Video Decoder
-     * @return QC_STATUS_OK on success, others on failure
-     */
-    virtual QCStatus_e Stop();
-
-    /**
-     * @brief De-initialize Node Video Decoder
-     * @return QC_STATUS_OK on success, others on failure
-     */
-    virtual QCStatus_e DeInitialize();
-
-    /**
      * @brief Processes the Frame Descriptor.
      * @param[in] frameDesc The frame descriptor containing a vector of input/output buffers.
      * @note ProcessFrameDescriptor call will return immediately after queuing the job into the
@@ -221,7 +244,10 @@ public:
      * @brief Get the current state of the Node VideoDecoder
      * @return The current state of the Node VideoDecoder
      */
-    virtual QCObjectState_e GetState();
+    virtual QCObjectState_e GetState() { return m_state; }
+
+    virtual QCStatus_e Start();
+    virtual QCStatus_e Stop();
 
 protected:
     /**
@@ -229,36 +255,42 @@ protected:
      * @param pInput pointer to hold the video frame information
      * @return QC_STATUS_OK on success, others on failure
      */
-    QCStatus_e SubmitInputFrame( const QCSharedVideoFrameDescriptor *pInput );
+    QCStatus_e SubmitInputFrame( VideoFrameDescriptor_t &inFrameDesc );
 
     /**
      * @brief submit a video frame back to VIDC driver
      * @param pOutput pointer to hold the video frame information
      * @return QC_STATUS_OK on success, others on failure
      */
-    QCStatus_e SubmitOutputFrame( const QCSharedVideoFrameDescriptor *pOutput );
+    QCStatus_e SubmitOutputFrame( VideoFrameDescriptor_t &outFrameDesc );
 
-    void InFrameCallback( const VideoDecoder_InputFrame_t *pInputFrame );
-    void OutFrameCallback( const VideoDecoder_OutputFrame_t *pOutputFrame );
-    void EventCallback( const VideoDecoder_EventType_e eventId, const void *pEvent );
+    QCStatus_e ValidateConfig( );
+    QCStatus_e HandleOutputReconfig();
+    QCStatus_e FinishOutputReconfig();
+    QCStatus_e InitDrvProperty();
+    QCStatus_e CheckBuffer( const VideoFrameDescriptor_t &frameDesc,
+                            VideoCodec_BufType_e bufferType );
+
+    void InFrameCallback( VideoFrameDescriptor_t &inFrameDesc );
+    void OutFrameCallback( VideoFrameDescriptor_t &outFrameDesc );
+    void EventCallback( VideoDecoder_EventType_e eventId, const void *pEvent );
 
 private:
-    QC::component::VideoDecoder m_vide;
     VideoDecoderConfigIfs m_configIfs;
     VideoDecoderMonitoringIfs m_monitorIfs;
     QCNodeEventCallBack_t m_callback;
 
-    static void NVD_InFrameCallback( const VideoDecoder_InputFrame_t *pInputFrame,
-                                     void *pPrivData );
+    const VideoDecoder_Config_t *m_pConfig = nullptr;
 
-    static void NVD_OutFrameCallback( const VideoDecoder_OutputFrame_t *pOutputFrame,
-                                      void *pPrivData );
+    bool m_OutputStarted = false;
+    bool m_OutputReconfigInprogress = false;
+    std::mutex m_reconfigMutex;  // Mutex for reconfig state
 
-    static void NVD_EventCallback( const VideoDecoder_EventType_e eventId,
-                                   const void *pEvent, void *pPrivData );
+    static void InFrameCallback( VideoFrameDescriptor_t &inFrameDesc, void *pPrivData );
+    static void OutFrameCallback( VideoFrameDescriptor_t &outFrameDesc, void *pPrivData );
+    static void EventCallback( VideoCodec_EventType_e eventId, const void *pEvent, void *pPrivData );
 };
 
-}   // namespace Node
-}   // namespace QC
+}   // namespace QC::Node
 
 #endif   // QC_NODE_VIDEO_DECODER_HPP

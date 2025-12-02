@@ -1,7 +1,6 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-
 #include "QC/Infras/Memory/ManagerLocal.hpp"
 #include "QC/Infras/Log/Logger.hpp"
 #include "QC/Infras/Memory/Pool.hpp"
@@ -261,11 +260,11 @@ QCStatus_e ManagerLocal::UnRegister( const QCMemoryHandle_t &memHandle )
     else if ( false == IsMemoryHandleRegistered( memHandle, handleIt ) )
     {
         status = QC_STATUS_BAD_ARGUMENTS;
-        QC_ERROR( "memHndle %ull is not in data base", memHandle.GetHandle() );
+        QC_ERROR( "memHndle %" PRIx64 " is not in data base", memHandle.GetHandle() );
     }
     else
     {
-        QC_DEBUG( "memHndle %ull is in data base", memHandle.GetHandle() );
+        QC_DEBUG( "memHndle %" PRIx64 " is in data base", memHandle.GetHandle() );
         // clean all allocations related to this handle
         status = ReclaimResources( memHandle );
         if ( status != QC_STATUS_OK )
@@ -279,7 +278,8 @@ QCStatus_e ManagerLocal::UnRegister( const QCMemoryHandle_t &memHandle )
             if ( true == IsMemoryHandleRegistered( memHandle, handleIt ) )
             {
                 status = QC_STATUS_FAIL;
-                QC_ERROR( "cant remove memhandle %ull from data base", memHandle.GetHandle() );
+                QC_ERROR( "cant remove memhandle %" PRIx64 " from data base",
+                          memHandle.GetHandle() );
             }
         }
     }
@@ -313,13 +313,13 @@ QCStatus_e ManagerLocal::CreatePool( const QCMemoryHandle_t &handle,
     else if ( false == IsMemoryHandleRegistered( handle, itNodeMap ) )
     {
         status = QC_STATUS_BAD_ARGUMENTS;
-        QC_ERROR( "not registers handle  %ull", handle.GetHandle() );
+        QC_ERROR( "not registers handle  %" PRIx64 "", handle.GetHandle() );
     }
     else if ( UINT64_MAX == GetRegisteredPoolsCountForANode( handle ) )
     {
         status = QC_STATUS_OUT_OF_BOUND;
         count = GetRegisteredPoolsCountForANode( handle );
-        QC_ERROR( "Node m_pools count too hight %ull ", count );
+        QC_ERROR( "Node m_pools count too hight %" PRIu64 " ", count );
     }
     else
     {
@@ -340,7 +340,7 @@ QCStatus_e ManagerLocal::CreatePool( const QCMemoryHandle_t &handle,
 
         // set new pool count
         poolHandle.SetPoolCount( static_cast<uint16_t>( count + 1 ) );
-        QC_DEBUG( "Pool Handle created %ull", poolHandle.GetHandle() );
+        QC_DEBUG( "Pool Handle created %" PRIx64 "", poolHandle.GetHandle() );
 
         auto it = m_pools[itNodeMap->second].find( poolHandle );
         if ( it != m_pools[itNodeMap->second].end() )
@@ -371,11 +371,13 @@ QCStatus_e ManagerLocal::CreatePool( const QCMemoryHandle_t &handle,
                     if ( m_pools[itNodeMap->second].find( poolHandle ) !=
                          m_pools[itNodeMap->second].end() )
                     {
-                        QC_DEBUG( "SUCCESFULL INSERTION OF handle %ull ", poolHandle );
+                        QC_DEBUG( "SUCCESFULL INSERTION OF handle %" PRIx64 " ",
+                                  poolHandle.GetHandle() );
                     }
                     else
                     {
-                        QC_ERROR( "INSERTION OF handle %ull FAILED", poolHandle );
+                        QC_ERROR( "INSERTION OF handle %" PRIx64 " FAILED",
+                                  poolHandle.GetHandle() );
                         status = QC_STATUS_FAIL;
                         pool->~QCMemoryPoolIfs();
                     }
@@ -410,12 +412,12 @@ QCStatus_e ManagerLocal::DestroyPool( const QCMemoryHandle_t &handle,
     else if ( false == IsMemoryHandleRegistered( handle, itNodeMap ) )
     {
         status = QC_STATUS_BAD_ARGUMENTS;
-        QC_ERROR( "not registers handle  %ull", handle.GetHandle() );
+        QC_ERROR( "not registers handle  %" PRIx64 "", handle.GetHandle() );
     }
     else if ( m_pools[itNodeMap->second].find( poolHandle ) == m_pools[itNodeMap->second].end() )
     {
         status = QC_STATUS_BAD_ARGUMENTS;
-        QC_ERROR( "not registers pool handle %ull", poolHandle.GetHandle() );
+        QC_ERROR( "not registers pool handle %" PRIx64 "", poolHandle.GetHandle() );
     }
     else
     {
@@ -426,7 +428,8 @@ QCStatus_e ManagerLocal::DestroyPool( const QCMemoryHandle_t &handle,
         // verify erasure
         if ( m_pools[itNodeMap->second].find( poolHandle ) != m_pools[itNodeMap->second].end() )
         {
-            QC_ERROR( "FAILED POOL DESTRUCTION WITH HANDLE %ull om NODE WITH HANDLE %ull",
+            QC_ERROR( "FAILED POOL DESTRUCTION WITH HANDLE %" PRIx64 " om NODE WITH HANDLE %" PRIx64
+                      "",
                       poolHandle.GetHandle(), handle.GetHandle() );
             status = QC_STATUS_FAIL;
         }
@@ -459,12 +462,12 @@ QCStatus_e ManagerLocal::AllocateBufferFromPool( const QCMemoryHandle_t &memoryH
     else if ( false == IsMemoryHandleRegistered( memoryHandle, itNodeMap ) )
     {
         status = QC_STATUS_BAD_ARGUMENTS;
-        QC_ERROR( "not registers handle  %ull", memoryHandle.GetHandle() );
+        QC_ERROR( "not registers handle  %" PRIx64 "", memoryHandle.GetHandle() );
     }
     else if ( m_pools[itNodeMap->second].find( poolHandle ) == m_pools[itNodeMap->second].end() )
     {
         status = QC_STATUS_BAD_ARGUMENTS;
-        QC_ERROR( "not registers pool handle %ull", poolHandle.GetHandle() );
+        QC_ERROR( "not registers pool handle %" PRIx64 "", poolHandle.GetHandle() );
     }
     else
     {
@@ -500,12 +503,12 @@ QCStatus_e ManagerLocal::PutBufferToPool( const QCMemoryHandle_t &memoryHandle,
     else if ( false == IsMemoryHandleRegistered( memoryHandle, itNodeMap ) )
     {
         status = QC_STATUS_BAD_ARGUMENTS;
-        QC_ERROR( "not registers handle  %ull", memoryHandle.GetHandle() );
+        QC_ERROR( "not registers handle  %" PRIx64 "", memoryHandle.GetHandle() );
     }
     else if ( m_pools[itNodeMap->second].find( poolHandle ) == m_pools[itNodeMap->second].end() )
     {
         status = QC_STATUS_BAD_ARGUMENTS;
-        QC_ERROR( "not registers pool handle %ull", poolHandle.GetHandle() );
+        QC_ERROR( "not registers pool handle %" PRIx64 "", poolHandle.GetHandle() );
     }
     else
     {
@@ -547,7 +550,7 @@ QCStatus_e ManagerLocal::AllocateBuffer( const QCMemoryHandle_t handle,
     }
     else if ( false == IsMemoryHandleRegistered( handle, handleIt ) )
     {
-        QC_ERROR( "handle (%ull) elegal", handle.GetHandle() );
+        QC_ERROR( "handle (%" PRIx64 ") elegal", handle.GetHandle() );
         status = QC_STATUS_BAD_ARGUMENTS;
     }
     else if ( handleIt->second >= m_config->numOfNodes )
@@ -625,7 +628,7 @@ QCStatus_e ManagerLocal::FreeBuffer( const QCMemoryHandle_t handle,
     // validate handle
     else if ( false == IsMemoryHandleRegistered( handle, handleIt ) )
     {
-        QC_ERROR( "handle (%ull) elegal", handle.GetHandle() );
+        QC_ERROR( "handle (%" PRIx64 ") elegal", handle.GetHandle() );
         status = QC_STATUS_BAD_ARGUMENTS;
     }
     else if ( false == IsAllocatorLeagal( buff.allocatorType ) )
@@ -696,12 +699,12 @@ QCStatus_e ManagerLocal::ReclaimResources( const QCMemoryHandle_t &handle )
     // validate handle
     if ( false == IsMemoryHandleRegistered( handle, handleIt ) )
     {
-        QC_ERROR( "handle (%ull) elegal", handle.GetHandle() );
+        QC_ERROR( "handle (%" PRIx64 ") elegal", handle.GetHandle() );
         status = QC_STATUS_BAD_ARGUMENTS;
     }
     else
     {
-        QC_DEBUG( "handle (%ull) ", handle.GetHandle() );
+        QC_DEBUG( "handle (%" PRIx64 ") ", handle.GetHandle() );
         QC_DEBUG( "handle allocations in vector is %d ", handleIt->second );
         // reclaim stand alone allocations
         // ###############################
@@ -744,11 +747,12 @@ QCStatus_e ManagerLocal::ReclaimResources( const QCMemoryHandle_t &handle )
             if ( true != bufferMap.empty() )
             {
                 status = QC_STATUS_FAIL;
-                QC_ERROR( "Allocation buffer map of handle %ull is not empty", handle.GetHandle() );
+                QC_ERROR( "Allocation buffer map of handle %" PRIx64 " is not empty",
+                          handle.GetHandle() );
             }
             else
             {
-                QC_DEBUG( "All stand alone allocations at handle (%ull) reclaimed",
+                QC_DEBUG( "All stand alone allocations at handle (%" PRIx64 ") reclaimed",
                           handle.GetHandle() );
             }
         }
@@ -774,9 +778,9 @@ QCStatus_e ManagerLocal::ReclaimResources( const QCMemoryHandle_t &handle )
                     if ( QC_STATUS_OK != localStatus )
                     {
                         status = localStatus;
-                        QC_ERROR(
-                                "Destroy Pool failed with memory handle %ull and pool handle %ull",
-                                handle.GetHandle(), it->first.GetHandle() );
+                        QC_ERROR( "Destroy Pool failed with memory handle %" PRIx64
+                                  " and pool handle %" PRIx64 "",
+                                  handle.GetHandle(), it->first.GetHandle() );
                     }
                     else
                     {
@@ -791,7 +795,8 @@ QCStatus_e ManagerLocal::ReclaimResources( const QCMemoryHandle_t &handle )
             if ( true != poolMap.empty() )
             {
                 status = QC_STATUS_FAIL;
-                QC_ERROR( "Allocation buffer map of handle %ull is not empty", handle.GetHandle() );
+                QC_ERROR( "Allocation buffer map of handle %" PRIx64 " is not empty",
+                          handle.GetHandle() );
             }
         }
     }
@@ -870,11 +875,11 @@ inline uint64_t ManagerLocal::GetRegisteredPoolsCountForANode( const QCMemoryHan
     if ( true == IsMemoryHandleRegistered( handle, it ) )
     {
         result = m_pools[it->second].size();
-        QC_DEBUG( "size of map for %ull", result );
+        QC_DEBUG( "size of map for %" PRIu64 "", result );
     }
     else
     {
-        QC_ERROR( "BAD memory handle %ull", handle.GetHandle() );
+        QC_ERROR( "BAD memory handle %" PRIx64 "", handle.GetHandle() );
         result = UINT64_MAX;
     }
 

@@ -1,7 +1,6 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-
 #include "QC/sample/shared_ring/SharedSubscriber.hpp"
 #if defined( __QNXNTO__ )
 #include "QC/Infras/Memory/PMEMUtils.hpp"

@@ -28,6 +28,8 @@
     - [2.24 QCNode Radar Sample](#224-qcnode-radar-sample)
     - [2.25 QCNode C2C Sample](#225-qcnode-c2c-sample)
     - [2.26 QCNode Temporal Sample](#226-qcnode-temporal-sample)
+    - [2.27 QCNode ResMon Sample](#227-qcnode-resmon-sample)
+    - [2.28 QCNode Genie Sample](#228-qcnode-genie-sample)
   - [3. Typical QCNode Sample Application pipelines](#3-typical-qcnode-sample-application-pipelines)
     - [3.1 4 DataReader based QNN perception pipelines](#31-4-datareader-based-qnn-perception-pipelines)
     - [3.2 1 DataReader and 1 Camera AR231 based QNN perception pipelines](#32-1-datareader-and-1-camera-ar231-based-qnn-perception-pipelines)
@@ -65,6 +67,7 @@ Note: the "-n componentX_name -t componentX_type" must be in the begin for each 
 | -v        | true     | string    | The attribute value for the previous attribute name |
 | -d        | false    |   -       | Direct the QCNode log to stdout |
 | -T        | false    | int       | Specify the time in seconds that the QCNodeSampleApp runs, if not specified or value 0, it means that the QCNodeSampleApp will run forever until stop signal(Ctrl + C).  |
+| -V        | false    |   -       | Prints the QCNode application version information to the standard output. |
 
 ## 2. QCNode Samples
 
@@ -264,13 +267,16 @@ The command line template example:
 | rsm_priority  | false     | int    | 0       | the RSM request priority, options [0,1,2,3], 0 is the lowest and 3 is highest priority. |
 | async         | fasle    | bool      | false   | If true, enable to use QNN Async Execute API, else use QNN Sync Execute API. |
 | model_path    | true     | string    | -       | The QNN model path |
-| image_convert         | false    | string    | default | The image convert method for input image, options from [default, gray, chroma_first]. `default`: the default way to convert the image to 1 or more tenors. `gray`: convert the image to 1 tensor with the gray(luminance) part of the image. `chroma_first`: the same as `default` for NV12 or P010, but with chroma tensor first and then luma tensor. |
+| load_type     | false    | string    | binary  | The QNN model load type, options: `binary`, `library` |
+| image_convert | false    | string    | default | The image convert method for input image, options from [default, gray, chroma_first]. `default`: the default way to convert the image to 1 or more tenors. `gray`: convert the image to 1 tensor with the gray(luminance) part of the image. `chroma_first`: the same as `default` for NV12 or P010, but with chroma tensor first and then luma tensor. |
 | pool_size     | false    | int       | 4       | the image memory pool size |
 | input_topic   | true     | string    | -       | the input topic name |
 | output_topic  | true     | string    | -       | the output topic name |
 | udo           | false    | string    | -       | udo lib path and interface provider name. e.g. libQnnAutoAiswOpPackage.so:AutoAiswOpPackageInterfaceProvider |
 | model_io_info_topic | false    | string    | ""       | if configured, this topic will be used to publish the input/output tensor informatin of the model, generally used by the QCNode DataOnline Sample for the QNN online inference.  |
-| perf_profile | false | string    | `default`  | Specifies perf profile to set. <br> Options: `low_balanced`, `balanced`, `default`, `high_performance`, `sustained_high_performance`, `burst`, `low_power_saver`, `power_saver`, `high_power_saver`, `extreme_power_saver` <br> Default: `default` |
+| perf_profile | false | string    | `burst`  | Specifies perf profile to set. <br> Options: `low_balanced`, `balanced`, `default`, `high_performance`, `sustained_high_performance`, `burst`, `low_power_saver`, `power_saver`, `high_power_saver`, `extreme_power_saver` <br> Default: `default` |
+| weight_sharing_enabled | fasle    | bool      | false   | If true, enable the weight sharing. |
+| extended_udma  | fasle    | bool      | false   | If true, enable the extended udma feature. |
 
 The command line template example:
 
@@ -335,16 +341,19 @@ The command line template example for Lidar pipeline:
 
 ### 2.8 QCNode VideoEncoder Sample
 
-| attribute     | required | type      | default | comments |
-|---------------|----------|-----------|---------|----------|
-| format        | false    | string    | "nv12"  | The image format, options from [nv12, nv12_ubwc] |
-| width         | true     | int       | -       | The image width |
-| height        | true     | int       | -       | The image height |
-| pool_size     | false    | int       | 4       | The image memory pool size |
-| bitrate       | false    | int       | 8000000 | The encoding bitrate |
-| fps           | false    | int       | 30      | The frame rate per second |
-| input_topic   | true     | string    | -       | the input topic name |
-| output_topic  | true     | string    | -       | the output topic name |
+| attribute          | required | type      | default     | comments |
+|--------------------|----------|-----------|-------------|----------|
+| width              | true     | int       | -           | The image width |
+| height             | true     | int       | -           | The image height |
+| pool_size          | false    | int       | 4           | The image memory pool size |
+| bitrate            | false    | int       | 8000000     | The encoding bitrate |
+| fps                | false    | int       | 30          | The frame rate per second |
+| input_topic        | true     | string    | -           | the input topic name |
+| output_topic       | true     | string    | -           | the output topic name |
+| format             | false    | string    | "nv12"      | The image format, options from [nv12, nv12_ubwc] |
+| output_format      | false    | string    | h265        | The output image format, options from [h264, h265] |
+| numInputBufferReq  | false    | int       | $pool_size  | Number of input buffers |
+| numOutputBufferReq | false    | int       | $pool_size  | Number of output buffers |
 
 The command line template example:
 
@@ -574,16 +583,18 @@ The command line template example:
 
 ### 2.17 QCNode VideoDecoder Sample
 
-| attribute     | required | type      | default | comments |
-|---------------|----------|-----------|---------|----------|
-| width         | true     | int       | -       | The frame width |
-| height        | true     | int       | -       | The frame height |
-| input_format  | false    | string    | h265    | The input frame format, options from [h264, h265] |
-| output_format | false    | string    | nv12    | The output image format, options from [nv12, nv12_ubwc, p010] |
-| pool_size     | false    | int       | 4       | The image memory pool size |
-| fps           | false    | int       | 30      | The frame rate per second |
-| input_topic   | true     | string    | -       | the input topic name |
-| output_topic  | true     | string    | -       | the output topic name |
+| attribute          | required | type      | default     | comments |
+|--------------------|----------|-----------|-------------|----------|
+| width              | true     | int       | -           | The frame width |
+| height             | true     | int       | -           | The frame height |
+| input_format       | false    | string    | h265        | The input frame format, options from [h264, h265] |
+| output_format      | false    | string    | nv12        | The output image format, options from [nv12, nv12_ubwc, p010] |
+| pool_size          | false    | int       | 4           | The image memory pool size |
+| fps                | false    | int       | 30          | The frame rate per second |
+| input_topic        | true     | string    | -           | the input topic name |
+| output_topic       | true     | string    | -           | the output topic name |
+| numInputBufferReq  | false    | int       | $pool_size  | Number of input buffers |
+| numOutputBufferReq | false    | int       | $pool_size  | Number of output buffers |
 
 The command line template example:
 
@@ -918,6 +929,58 @@ The command line template example:
     -k output_topic -v /sensor/camera/VAD0/temp \
 ```
 
+### 2.27 QCNode ResMon Sample
+
+The Sample ResMon gets the real-time system loading, including CPU utilization, GPU utilization, NSP0/NSP1 utilization and DDR bandwidth. Users can configure the sampling interval and total sampling duration, and optionally enable loop mode. When loop mode is enabled, the total sampling duration is ignored, and ResMon will continue running indefinitely.
+
+| attribute        | required | type        | default | comments |
+|------------------|----------|-------------|---------|----------|
+| metrics          | true     | string list | -       | The metric names for ResMon. Options: cpu_util, gpu_util, nsp0_util, nsp1_util, ddr_bw |
+| loop_mode        | true     | bool        | true    | The option to enable loop mode |
+| sample_interval  | true     | int         | 5000    | The ResMon sampling iterval in ms |
+| total_time       | false    | int         | 0       | The ResMon total sampling time in ms |
+
+loop mode:
+```sh
+  -n RESMON -t ResMon \
+    -k metrics -v cpu_util,gpu_util,nsp0_util,nsp1_util,ddr_bw \
+    -k loop_mode -v true \
+    -k sample_interval -v 1000
+```
+
+non-loop mode:
+```sh
+  -n RESMON -t ResMon \
+    -k metrics -v cpu_util,gpu_util,nsp0_util,nsp1_util,ddr_bw \
+    -k loop_mode -v false \
+    -k sample_interval -v 1000 \
+    -k total_time -v 10000
+```
+
+### 2.28 QCNode Genie Sample
+
+| attribute            | required | type      | default       | comments |
+|----------------------|----------|-----------|---------------|----------|
+| config               | true     | string    |       -       | The Genie Dialog JSON configuration file. |
+| embedding_table      | true     | string    |       -       | Token-to-Embedding lookup table provided as a file. |
+| lut_data_type        | true     | string    | float32       | Token-to-Embedding lookup table data type, options from [float32,ufixed_point8,ufixed_point16,sfixed_point8,sfixed_point16] |
+| lut_scale | false    | float     | 1.0f          | The quantization scale of the Token-to-Embedding lookup table |
+| lut_offset| false    | int       | 0             | The quantization offset of the Token-to-Embedding lookup table |
+| input_data_type        | true     | string    | float32       | Input data type, options from [float32,ufixed_point8,ufixed_point16,sfixed_point8,sfixed_point16] |
+| input_scale | false    | float     | 1.0f          | The quantization scale of the input |
+| input_offset| false    | int       | 0             | The quantization offset of the input |
+| input_topic          | true     | string    |      -        | the input topic name |
+| output_topic         | true     | string    |      -        | the output topic name |
+
+The command line template example:
+
+```sh
+  -n GENIE0 -t Genie -k config -v qwen2vl.json \
+    -k embedding_table -v embedding_weights_152064x3584_ssd.bin \
+    -k input_topic -v /sensor/genie/embeding/raw \
+    -k output_topic -v /sensor/genie/decoder/text \
+```
+
 ## 3. Typical QCNode Sample Application pipelines
 
 ### 3.1 4 DataReader based QNN perception pipelines
@@ -1127,3 +1190,4 @@ export QC_LOG_LEVEL=INFO
     -k output_topic -v /sensor/camera/CAM0/objs \
   -n VIZ -t TinyViz -k cameras -v CAM0 -k winH -v 1050 -d
 ```
+

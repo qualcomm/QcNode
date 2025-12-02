@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-
 #ifndef QC_REMAP_HPP
 #define QC_REMAP_HPP
 
@@ -11,7 +10,9 @@
 #include <memory>
 #include <unistd.h>
 
+#include "QC/Infras/NodeTrace/NodeTrace.hpp"
 #include "QC/Node/Remap.hpp"
+
 
 namespace QC
 {
@@ -74,6 +75,8 @@ private:
     RemapImplConfig_t m_config;
     QCObjectState_e m_state;
     FadasRemap m_fadasRemapObj;
+
+    QC_DECLARE_NODETRACE();
 
 };   // class RemapImpl
 

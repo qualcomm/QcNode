@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-
 #ifndef QC_NODE_FRAME_DESCRIPTOR_POOL_HPP
 #define QC_NODE_FRAME_DESCRIPTOR_POOL_HPP
 

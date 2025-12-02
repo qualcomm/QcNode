@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-
 #ifndef QC_SAMPLE_TINYVIZ_HELP_WINDOW_HPP
 #define QC_SAMPLE_TINYVIZ_HELP_WINDOW_HPP
 

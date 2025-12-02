@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-
 #ifndef _QC_SAMPLE_TINYVIZ_HPP_
 #define _QC_SAMPLE_TINYVIZ_HPP_
 #include "QC/sample/SampleIF.hpp"

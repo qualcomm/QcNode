@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
+#ifndef QC_SAMPLE_IF_HPP
+#define QC_SAMPLE_IF_HPP
 
-#ifndef _QC_SAMPLE_IF_HPP_
-#define _QC_SAMPLE_IF_HPP_
-
+#include "QC/Common/DataTree.hpp"
 #include "QC/Common/Types.hpp"
 #include "QC/Infras/Log/Logger.hpp"
 #include "QC/sample/DataBroker.hpp"
@@ -28,6 +28,8 @@ namespace QC
 {
 namespace sample
 {
+
+using namespace QC::Node;
 
 typedef std::map<std::string, std::string> SampleConfig_t;
 
@@ -124,6 +126,15 @@ public:
     const char *GetName() const;
 
     /**
+     * @brief Retrieves the version identifier of the sample application.
+     *
+     * @return An unsigned 32-bit integer representing the application version.
+     *   - Default: 0 (placeholder).
+     *   - Overridden implementations should return a valid version code.
+     */
+    virtual const uint32_t GetVersion() const { return 0; }
+
+    /**
      * @brief Creates a QCNode sample instance based on the specified sample type name.
      *
      * Looks up the registered creation function associated with the given name and invokes it
@@ -134,6 +145,11 @@ public:
      * @return A pointer to the created sample instance on success; nullptr if creation fails.
      */
     static SampleIF *Create( std::string name );
+
+    /**
+     * @brief Displays the current version information of the sample application.
+     */
+    static void ShowVersion();
 
     /**
      * @brief Registers a QCNode sample creation function under a specified sample type name.
@@ -222,7 +238,6 @@ protected:
     QCTensorType_e Get( SampleConfig_t &config, std::string key, QCTensorType_e defaultV );
     QCProcessorType_e Get( SampleConfig_t &config, std::string key, QCProcessorType_e defaultV );
     bool Get( SampleConfig_t &config, std::string key, bool defaultV );
-    QCStatus_e LoadFile( QCSharedBuffer_t buffer, std::string path );
     QCStatus_e LoadFile( QCBufferDescriptorBase_t &bufferDesc, std::string path );
 
 protected:
@@ -230,6 +245,7 @@ protected:
     QCNodeID_t m_nodeId;
     Profiler m_profiler;
     SysTrace m_systrace;
+    QC_DECLARE_NODETRACE();
     QC_DECLARE_LOGGER();
 
 private:
@@ -256,4 +272,4 @@ private:
 }   // namespace sample
 }   // namespace QC
 
-#endif   // _QC_SAMPLE_IF_HPP_
+#endif   // QC_SAMPLE_IF_HPP

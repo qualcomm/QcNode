@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-
 #ifndef _QC_SAMPLE_DATAREADER_HPP_
 #define _QC_SAMPLE_DATAREADER_HPP_
 
@@ -64,7 +63,7 @@ private:
         std::string dataPath;
     } DataReaderConfig_t;
 
-    uint32_t m_fps;
+    float m_fps;
     std::vector<DataReaderConfig_t> m_configs;
     uint32_t m_numOfDataReaders;
     uint32_t m_offset;

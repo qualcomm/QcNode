@@ -1,7 +1,6 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-
 #ifndef QC_DEFS_HPP
 #define QC_DEFS_HPP
 
@@ -63,6 +62,7 @@ typedef enum
     QC_NODE_TYPE_VENC,
     QC_NODE_TYPE_VDEC,
     QC_NODE_TYPE_RADAR,
+    QC_NODE_TYPE_VOXEL,
     QC_NODE_TYPE_CUSTOM_0,
     QC_NODE_TYPE_CUSTOM_1,
     QC_NODE_TYPE_CUSTOM_2,

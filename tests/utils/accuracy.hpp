@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-
 #ifndef QC_TEST_ACCURACY_UTILS
 #define QC_TEST_ACCURACY_UTILS
 

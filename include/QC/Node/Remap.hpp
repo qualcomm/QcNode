@@ -1,7 +1,6 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-
 #ifndef QC_NODE_REMAP_HPP
 #define QC_NODE_REMAP_HPP
 
@@ -12,6 +11,16 @@ namespace QC
 {
 namespace Node
 {
+
+/** @brief The QCNode REMAP Version */
+#define QCNODE_REMAP_VERSION_MAJOR 2U
+#define QCNODE_REMAP_VERSION_MINOR 0U
+#define QCNODE_REMAP_VERSION_PATCH 0U
+
+#define QCNODE_REMAP_VERSION                                                                       \
+    ( ( QCNODE_REMAP_VERSION_MAJOR << 16U ) | ( QCNODE_REMAP_VERSION_MINOR << 8U ) |               \
+      QCNODE_REMAP_VERSION_PATCH )
+
 using namespace QC::libs::FadasIface;
 
 /*=================================================================================================
@@ -99,6 +108,9 @@ public:
      *     "static": {
      *        "name": "The Node unique name, type: string",
      *        "id": "The Node unique ID, type: uint32_t",
+     *        "logLevel": "The message log level, type: string,
+     *                     options: [VERBOSE, DEBUG, INFO, WARN, ERROR],
+     *                     default: ERROR"
      *        "processorType": "The processor type, type: string",
      *                      options: [cpu, gpu, htp0, htp1]",
      *        "outputWidth": "The output width, type: uint32_t",

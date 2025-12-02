@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-
 #ifndef QC_CL2D_PIPELINE_CONVERT_HPP
 #define QC_CL2D_PIPELINE_CONVERT_HPP
 

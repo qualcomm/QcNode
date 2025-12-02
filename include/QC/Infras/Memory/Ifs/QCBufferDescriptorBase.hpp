@@ -1,7 +1,6 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-
 #ifndef QC_BUFFER_DESCRIPTOR_BASE_HPP
 #define QC_BUFFER_DESCRIPTOR_BASE_HPP
 

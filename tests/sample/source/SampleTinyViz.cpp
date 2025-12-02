@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 
-
 #include "QC/sample/SampleTinyViz.hpp"
 
 namespace QC
@@ -214,6 +213,11 @@ QCStatus_e SampleTinyViz::Stop()
     m_threads.clear();
 
     m_tinyViz.stop();
+
+    for ( auto &sub : m_camSubs )
+    {
+        sub.Clear();
+    }
 
     return ret;
 }

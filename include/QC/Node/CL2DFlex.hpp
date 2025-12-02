@@ -1,7 +1,6 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-
 #ifndef QC_NODE_CL2DFLEX_HPP
 #define QC_NODE_CL2DFLEX_HPP
 
@@ -12,6 +11,16 @@ namespace QC
 {
 namespace Node
 {
+
+/** @brief The QCNode CL2DFLEX Version */
+#define QCNODE_CL2DFLEX_VERSION_MAJOR 2U
+#define QCNODE_CL2DFLEX_VERSION_MINOR 0U
+#define QCNODE_CL2DFLEX_VERSION_PATCH 0U
+
+#define QCNODE_CL2DFLEX_VERSION                                                                    \
+    ( ( QCNODE_CL2DFLEX_VERSION_MAJOR << 16U ) | ( QCNODE_CL2DFLEX_VERSION_MINOR << 8U ) |         \
+      QCNODE_CL2DFLEX_VERSION_PATCH )
+
 using namespace QC::libs::OpenclIface;
 
 /*=================================================================================================
@@ -130,6 +139,9 @@ public:
      *     "static": {
      *        "name": "The Node unique name, type: string",
      *        "id": "The Node unique ID, type: uint32_t",
+     *        "logLevel": "The message log level, type: string,
+     *                     options: [VERBOSE, DEBUG, INFO, WARN, ERROR],
+     *                     default: ERROR"
      *        "priority": "The performance priority level, type: string,
      *                     options: [low, normal, high]",
      *        "deviceId": "The device ID for OpenCL platform, type: uint32_t",
