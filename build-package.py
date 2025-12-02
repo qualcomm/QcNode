@@ -51,13 +51,6 @@ parser.add_argument(
 parser.add_argument(
     "-e", "--env_script", type=str, default="", help="Optional toolchain env script to source.", required=False
 )
-parser.add_argument(
-    "--samples_dir",
-    type=str,
-    default=None,
-    help="A directory contains sample files that related to QCNode",
-    required=False,
-)
 args = parser.parse_args()
 HOMEDIR = os.path.dirname(__file__)
 if HOMEDIR == "":
@@ -72,23 +65,12 @@ TOOLCHAIN = os.path.abspath(args.toolchain)
 ENV_SCRIPT = args.env_script
 THIRD_PARTY = WORKSPACE + "/third_party"
 BUILD_DIR = WORKSPACE + "/build/" + SOCID
-SAMPLES_DIR = args.samples_dir
 if args.sudo:
     OPT_SUDO = "sudo "
 else:
     OPT_SUDO = ""
 
 RunCommand(["mkdir -p " + WORKSPACE])
-
-if VARIANT == "qnx":
-    if SOCID == "8797":
-        CC = "aarch64-unknown-nto-qnx8.0.0"
-    else:
-        CC = "aarch64-unknown-nto-qnx7.1.0"
-elif VARIANT == "linux":
-    CC = "aarch64-oe-linux-"
-else:
-    CC = "aarch64-linux-gnu-"
 
 if TOOLCHAIN.startswith("/prj"):
     MOUNT_TOOLCHAIN = "-v /prj/:/prj"

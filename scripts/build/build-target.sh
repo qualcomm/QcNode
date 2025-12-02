@@ -12,6 +12,7 @@ target=$1
 
 # Toplevel build dir
 topdir=$(realpath $2)
+export QCNODR_DIR=$topdir
 
 # Linux kernel variant: rh, oe
 if [ $# -eq 3 ] ; then
@@ -34,12 +35,25 @@ if ! [[ -v QC_TARGET_SOC ]] ; then
   export QC_TARGET_SOC=8797
 fi
 
+if ! [[ -v ENABLE_SDP8 ]] ; then
+  if [[ "${QC_TARGET_SOC}" == "8797" ]] ; then
+    export ENABLE_SDP8=ON
+  else
+    export ENABLE_SDP8=OFF
+  fi
+fi
+
 if ! [[ -v ENABLE_TINYVIZ ]] ; then
   export ENABLE_TINYVIZ=ON
 fi
 
 if ! [[ -v ENABLE_GCOV ]] ; then
   export ENABLE_GCOV=OFF
+fi
+
+if ! [[ -v ENABLE_CTC ]] ; then
+  export ENABLE_CTC=OFF
+  export CTC_BUILD_PREFIX=""
 fi
 
 if ! [[ -v ENABLE_C2D ]] ; then
@@ -52,9 +66,17 @@ fi
 
 if ! [[ -v ENABLE_EVA ]] ; then
   if [[ "${QC_TARGET_SOC}" == "8797" ]] ; then
-    export ENABLE_EVA=OFF
-  else
     export ENABLE_EVA=ON
+  else
+    export ENABLE_EVA=OFF
+  fi
+fi
+
+if ! [[ -v ENABLE_EVA_AUTO ]] ; then
+  if [[ "${QC_TARGET_SOC}" == "8797" ]] ; then
+    export ENABLE_EVA_AUTO=OFF
+  else
+    export ENABLE_EVA_AUTO=ON
   fi
 fi
 
@@ -84,6 +106,23 @@ if ! [[ -v ENABLE_C2C ]] ; then
   fi
 fi
 
+if ! [[ -v ENABLE_TRACE ]] ; then
+  if [[ "${ENABLE_GCOV}" == "ON" ]] ; then
+    export ENABLE_TRACE=OFF
+  else
+    export ENABLE_TRACE=ON
+  fi
+  if [[ "${ENABLE_CTC}" == "ON" ]] ; then
+    export ENABLE_TRACE=OFF
+  else
+    export ENABLE_TRACE=ON
+  fi
+fi
+
+if ! [[ -v ENABLE_GENIE ]] ; then
+  export ENABLE_GENIE=OFF
+fi
+
 # Get dependent packages
 export THIRD_PARTY_DIR=$topdir/third_party
 sh $topdir/scripts/build/toolchain/get-3rd-party.sh
@@ -93,7 +132,7 @@ export QC_TOOLCHAIN_PATH=/opt/toolchain
 
 setup_env_qnx() {
     if [[ -v BSP_ROOT ]]; then
-        if [[ "${QC_TARGET_SOC}" == "8797" ]] ; then
+        if [[ "${ENABLE_SDP8}" == "ON" ]] ; then
             QNX_VERSION=qnx8.0.0
         else
             QNX_VERSION=qnx7.1.0
@@ -124,7 +163,7 @@ setup_env_qnx() {
         fi
         source /opt/qnx/env.sh
     fi
-    if [[ "${QC_TARGET_SOC}" == "8797" ]] ; then
+    if [[ "${ENABLE_SDP8}" == "ON" ]] ; then
         export CMAKE_TOOLCHAIN_FILE=$homedir/toolchain/toolchain-aarch64-qnx8.cmake
     else
         export CMAKE_TOOLCHAIN_FILE=$homedir/toolchain/toolchain-aarch64-qnx7.cmake
@@ -280,6 +319,70 @@ setup_qnn_sdk() {
         fi
         source /opt/qnn_sdk/bin/envsetup.sh
     fi
+
+    qnx_target_arch=$target
+    MODEL_FILE=$topdir/tests/unit_test/Node/QNN/Mock/QnnAddModelMock.cpp
+    case $target in
+    aarch64-qnx)
+        if [[ "${QC_TARGET_SOC}" == "8797" ]] ; then
+          qnx_target_arch=aarch64-qnx800
+        else
+          qnx_target_arch=aarch64-qnx
+        fi
+        ;;
+    aarch64-linux)
+        export TARGET_PREFIX=aarch64-oe-linux-
+        export SDKTARGETSYSROOT=${TOOLCHAIN_SYSROOT}
+        qnx_target_arch=aarch64-oe-linux-gcc11.2
+        ;;
+    aarch64-ubuntu)
+        MODEL_FILE=NOT_SUPPORT
+        ;;
+    esac
+    if [ -f $MODEL_FILE ] ; then
+      qnn-model-lib-generator -c $MODEL_FILE -o $workdir -l QnnAddModelMock -t $qnx_target_arch
+      mkdir -p $destdir/opt/qcnode/lib
+      cp -v $workdir/$qnx_target_arch/libQnnAddModelMock.so $destdir/opt/qcnode/lib
+    fi
+
+    if [[ -f ${QNN_SDK_ROOT}/lib/${qnx_target_arch}/libGenie.so ]] ; then
+      mkdir -p $destdir/opt/qcnode/include
+      mkdir -p $destdir/opt/qcnode/lib
+      cp -v ${QNN_SDK_ROOT}/lib/${qnx_target_arch}/libGenie.so $destdir/opt/qcnode/lib
+      cp -v ${QNN_SDK_ROOT}/include/Genie/*.h $destdir/opt/qcnode/include
+      export ENABLE_GENIE=ON
+    fi
+
+}
+
+setup_env_ctc() {
+  if ! [[ -v CTC_INSTALLER ]]; then
+    CTC_INSTALLER=/local/mnt/workspace/CTC_INSTALLER/ctclinux
+  fi
+
+  if ! [ -d ${CTC_INSTALLER} ]; then
+    echo please specify the CTC_INSTALLER path that contains the ctclinux tool
+    exit -1
+  fi
+
+  export CTC_INSTALLER=${CTC_INSTALLER}
+  export CTCHOME=${CTC_INSTALLER}/lib/ctc
+  export PATH=${CTC_INSTALLER}/bin:${PATH}
+  export CTC_BUILD_PREFIX="ctclaunch -i m -v"
+
+  mkdir -p ${workdir}/third_party/ctc/build
+  cp ${homedir}/toolchain/ctc/CMakeLists.txt ${workdir}/third_party/ctc
+  cd ${workdir}/third_party/ctc/build
+  cmake \
+    -DCMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE \
+    -DCMAKE_INCLUDE_PATH=$TOOLCHAIN_SYSROOT/usr/include \
+    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+    -DCMAKE_INSTALL_PREFIX=/opt/qcnode \
+    -DCMAKE_PREFIX_PATH=$destdir/opt/qcnode \
+    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+    .. || exit -1
+  make -j 16 || exit -1
+  make DESTDIR=$destdir install || exit -1
 }
 
 ## Run tests on x86 builds
@@ -294,6 +397,10 @@ aarch64-ubuntu)
     setup_env_ubuntu
     ;;
 esac
+
+if [[ "${ENABLE_CTC}" == "ON" ]] ; then
+  setup_env_ctc
+fi
 
 # build FastADAS interface library
 if [[ -v HEXAGON_SDK_ROOT && -v BSP_ROOT ]] ; then
@@ -322,15 +429,19 @@ cmake \
     -DCMAKE_PREFIX_PATH=$destdir/opt/qcnode \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
     -DENABLE_GCOV=${ENABLE_GCOV} \
+    -DENABLE_CTC=${ENABLE_CTC} \
     -DENABLE_C2D=${ENABLE_C2D} \
     -DENABLE_EVA=${ENABLE_EVA} \
+    -DENABLE_EVA_AUTO=${ENABLE_EVA_AUTO} \
     -DENABLE_DEMUXER=${ENABLE_DEMUXER} \
     -DENABLE_FADAS=${ENABLE_FADAS} \
     -DENABLE_RSM_V2=${ENABLE_RSM_V2} \
     -DENABLE_C2C=${ENABLE_C2C} \
+    -DENABLE_TRACE=${ENABLE_TRACE} \
+    -DENABLE_GENIE=${ENABLE_GENIE} \
     -DQC_TARGET_SOC=${QC_TARGET_SOC} \
     .. || exit -1
-make -j 16 || exit -1
+${CTC_BUILD_PREFIX} make -j 16 || exit -1
 # Install the QC SDK
 make DESTDIR=$destdir install || exit -1
 
@@ -357,13 +468,13 @@ aarch64-qnx)
     cp -vf $QNN_SDK_ROOT/lib/${HEXAGON_VARIANT}/unsigned/libQnn* $destdir/opt/qcnode/lib/dsp
     ;;
 aarch64-linux)
-    cp -vf $QNN_SDK_ROOT/bin/aarch64-${variant}-linux-gcc9.3/* $destdir/opt/qcnode/bin
-    cp -vf $QNN_SDK_ROOT/lib/aarch64-${variant}-linux-gcc9.3/libQnn* $destdir/opt/qcnode/lib
+    cp -vf $QNN_SDK_ROOT/bin/aarch64-${variant}-linux-gcc11.2/* $destdir/opt/qcnode/bin
+    cp -vf $QNN_SDK_ROOT/lib/aarch64-${variant}-linux-gcc11.2/libQnn* $destdir/opt/qcnode/lib
     cp -vf $QNN_SDK_ROOT/lib/${HEXAGON_VARIANT}/unsigned/libQnn* $destdir/opt/qcnode/lib/dsp
     ;;
 aarch64-ubuntu)
-    cp -vf $QNN_SDK_ROOT/bin/aarch64-${variant}-linux-gcc9.3/* $destdir/opt/qcnode/bin
-    cp -vf $QNN_SDK_ROOT/lib/aarch64-${variant}-linux-gcc9.3/libQnn* $destdir/opt/qcnode/lib
+    cp -vf $QNN_SDK_ROOT/bin/aarch64-${variant}-linux-gcc11.2/* $destdir/opt/qcnode/bin
+    cp -vf $QNN_SDK_ROOT/lib/aarch64-${variant}-linux-gcc11.2/libQnn* $destdir/opt/qcnode/lib
     cp -vf $QNN_SDK_ROOT/lib/${HEXAGON_VARIANT}/unsigned/libQnn* $destdir/opt/qcnode/lib/dsp
     ;;
 esac
