@@ -19,7 +19,7 @@ paramiko==3.3.1
 pathlib2==2.3.6
 Pillow==6.2.1
 plotly==5.16.1
-protobuf==3.19.6
+protobuf==4.25.8
 psutil==5.9.5
 pytest==7.0.1
 PyYAML==3.10
