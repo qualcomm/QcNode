@@ -310,6 +310,7 @@ void VdTestDynamic( uint32_t bufferNum, QCImageFormat_e outFormat, const char *v
 
         std::unique_lock<std::mutex> outLock( g_OutMutex );
         g_OutCondVar.wait( outLock );
+        std::this_thread::sleep_for( std::chrono::milliseconds( 30 ) );
 
         //  Set up an output buffer for the frame
         ret = outFrameDesc.SetBuffer( QC_NODE_VIDEO_DECODER_OUTPUT_BUFF_ID, outputs[bufferIdx] );
