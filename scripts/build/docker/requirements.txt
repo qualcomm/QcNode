@@ -6,7 +6,7 @@ invoke==2.0.0
 joblib==1.2.0
 jsonschema==4.19.0
 lxml==4.6.5
-Mako==1.1.0
+Mako==1.4.2
 matplotlib==3.3.4
 mock==5.1.0
 numpy==1.17.3
