@@ -1,6 +1,6 @@
 absl-py==0.13.0
 attrs==22.2.0
-dash==2.12.1
+dash==2.15.0
 decorator==5.1.1
 invoke==2.0.0
 joblib==1.2.0
